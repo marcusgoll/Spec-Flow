@@ -6,7 +6,8 @@ Welcome to Spec-Flow! This guide will walk you through building your first featu
 
 In this tutorial, you'll use Spec-Flow to plan and implement a Dark Mode Toggle feature (similar to the example in `specs/001-example-feature/`). By the end, you'll understand how to:
 
-- Create a feature specification
+- Build and prioritize your roadmap with ICE scoring
+- Create a feature specification from a roadmap entry
 - Generate an implementation plan
 - Break down work into tasks
 - Track progress through the workflow phases
@@ -68,7 +69,11 @@ Spec-Flow follows a fixed sequence of phases:
 
 ```
 ┌─────────────┐
-│ /spec-flow  │  Phase 0: Write the specification
+│  /roadmap   │  Phase -1: Add features, prioritize with ICE scoring
+└─────┬───────┘
+      │
+┌─────▼───────┐
+│ /spec-flow  │  Phase 0: Write the specification (from roadmap)
 └─────┬───────┘
       │
 ┌─────▼───────┐
@@ -131,24 +136,52 @@ This creates `.spec-flow/memory/constitution.md` with principles that govern eve
 - Testing standards - ≥80% coverage required
 - Performance requirements - define and enforce thresholds
 
-## Step 4: Create Your First Feature
+## Step 4: Build Your Roadmap
 
-Let's build a "Dark Mode Toggle" feature!
-
-### 4.1 Start the Specification
+Before implementing features, plan what you want to build:
 
 ```bash
 # In Claude Code
-/spec-flow "Add dark mode toggle to the application"
+/roadmap
+```
+
+This will:
+1. Initialize or update `.spec-flow/memory/roadmap.md`
+2. Help you add new feature ideas
+3. Prioritize features using ICE scoring (Impact × Confidence / Effort)
+4. Organize features into: Backlog → Next → In Progress → Shipped
+
+**Add a feature to your roadmap**:
+- **Title**: "Dark Mode Toggle"
+- **Area**: app (marketing/app/api/infra)
+- **Role**: all (student/cfi/school/all)
+- **Impact**: 4 (how much value for users?)
+- **Effort**: 2 (how many weeks?)
+- **Confidence**: 0.9 (how certain are estimates?)
+- **ICE Score**: (4 × 0.9) / 2 = 1.8
+
+Roadmap will sort features by ICE score automatically.
+
+## Step 5: Create Your First Feature
+
+Now select a feature from your roadmap and build it!
+
+### 5.1 Start the Specification
+
+```bash
+# In Claude Code
+/spec-flow "dark-mode-toggle"  # Use the slug from your roadmap
 ```
 
 Claude will:
-1. Create `specs/001-dark-mode-toggle/` directory
-2. Generate `spec.md` with requirements and acceptance criteria
-3. Create `NOTES.md` for tracking progress
-4. Scaffold `visuals/README.md` for design references
+1. Look up the feature in `roadmap.md`
+2. Create `specs/001-dark-mode-toggle/` directory
+3. Generate `spec.md` with requirements and acceptance criteria (using roadmap context)
+4. Create `NOTES.md` for tracking progress
+5. Scaffold `visuals/README.md` for design references
+6. Move the roadmap feature from "Backlog" or "Next" to "In Progress"
 
-### 4.2 Review the Specification
+### 5.2 Review the Specification
 
 Open `specs/001-dark-mode-toggle/spec.md` and review:
 
@@ -157,9 +190,9 @@ Open `specs/001-dark-mode-toggle/spec.md` and review:
 - **Functional Requirements**: Testable capabilities (FR-001, FR-002, etc.)
 - **Non-Functional Requirements**: Performance, accessibility, mobile
 
-Look for `[NEEDS CLARIFICATION]` markers. If you find any, continue to Step 4.3. Otherwise, skip to Step 5.
+Look for `[NEEDS CLARIFICATION]` markers. If you find any, continue to Step 5.3. Otherwise, skip to Step 6.
 
-### 4.3 Clarify Ambiguities (If Needed)
+### 5.3 Clarify Ambiguities (If Needed)
 
 ```bash
 /clarify
@@ -170,7 +203,7 @@ Claude will:
 2. Update the spec with clarifications
 3. Mark the spec as "clear for planning"
 
-## Step 5: Generate Implementation Plan
+## Step 6: Generate Implementation Plan
 
 ```bash
 /plan
@@ -188,7 +221,7 @@ Claude creates `artifacts/plan.md` with:
 - Do the risks make sense?
 - Is the timeline reasonable?
 
-## Step 6: Break Down Into Tasks
+## Step 7: Break Down Into Tasks
 
 ```bash
 /tasks
@@ -205,7 +238,7 @@ Claude generates `artifacts/tasks.md` with 20-30 specific tasks:
 - T002: Implement theme state management (1 hour, P0)
 - T015: Create ThemeToggle component (0.5 hours, P0)
 
-## Step 7: Analyze Consistency & Risks
+## Step 8: Analyze Consistency & Risks
 
 ```bash
 /analyze
@@ -219,7 +252,7 @@ Claude reviews:
 
 If **critical issues** are found, Claude pauses and asks you to fix them before continuing.
 
-## Step 8: Implement the Feature
+## Step 9: Implement the Feature
 
 ```bash
 /implement
@@ -245,7 +278,7 @@ pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 -FeatureDir specs/
 
 If you exceed the budget (75k/100k/125k depending on phase), Claude will auto-compact context.
 
-## Step 9: Optimize & Code Review
+## Step 10: Optimize & Code Review
 
 ```bash
 /optimize
@@ -259,7 +292,7 @@ Claude performs:
 
 If **blockers** are found, Claude may offer auto-fix or ask you to resolve manually.
 
-## Step 10: Preview & Validate (Manual Gate)
+## Step 11: Preview & Validate (Manual Gate)
 
 ```bash
 /preview
@@ -277,7 +310,7 @@ Claude generates:
 
 Once validated, continue to shipping.
 
-## Step 11: Ship to Staging
+## Step 12: Ship to Staging
 
 ```bash
 /phase-1-ship
@@ -295,7 +328,7 @@ Claude will:
 - Code review requested (if CODEOWNERS configured)
 - Merged when all checks pass ✅
 
-## Step 12: Validate on Staging (Manual Gate)
+## Step 13: Validate on Staging (Manual Gate)
 
 ```bash
 /validate-staging
@@ -311,7 +344,7 @@ Claude generates a validation checklist:
 
 If validation passes, approve for production.
 
-## Step 13: Ship to Production
+## Step 14: Ship to Production
 
 ```bash
 /phase-2-ship
@@ -326,6 +359,11 @@ Claude will:
 6. Update the roadmap (move feature to "Shipped")
 
 🎉 **Congratulations!** Your feature is now live in production.
+
+**Note**: The `/phase-2-ship` command automatically:
+- Moves your feature from "In Progress" to "Shipped" in the roadmap
+- Updates the roadmap with release version and date
+- Allows you to start building the next feature from your roadmap
 
 ## What's Next?
 

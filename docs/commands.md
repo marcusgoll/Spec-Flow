@@ -2,7 +2,8 @@
 
 | Command | Purpose | Key Artifacts |
 |---------|---------|---------------|
-| `/spec-flow` | Drafts feature specification, NOTES.md, and visuals scaffold. | `spec.md`, `NOTES.md`, `visuals/README.md` |
+| `/roadmap` | Add features to roadmap, prioritize with ICE scoring, organize into stages. | `roadmap.md` with Backlog/Next/In Progress/Shipped |
+| `/spec-flow` | Drafts feature specification from roadmap entry, creates NOTES.md and visuals scaffold. | `spec.md`, `NOTES.md`, `visuals/README.md` |
 | `/clarify` | Resolves ambiguities marked in the spec. | Clarification log inline within `spec.md` |
 | `/plan` | Produces implementation plan and research summary. | `plan.md`, `research.md` |
 | `/tasks` | Builds the execution backlog with acceptance criteria. | `tasks.md` |

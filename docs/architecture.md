@@ -12,13 +12,27 @@ Spec-Flow orchestrates feature work through a fixed series of Claude commands. E
 
     ┌───────────┐
     │   START   │
-    │   IDEA    │
+    │   IDEAS   │
     └─────┬─────┘
+          │
+          ▼
+   ┌──────────────┐
+   │  /roadmap    │ Phase -1: ROADMAP PLANNING
+   │ Add Features │ Output: roadmap.md with prioritized features
+   │ Prioritize   │ (ICE scoring: Impact × Confidence / Effort)
+   └──────┬───────┘
+          │
+          ▼
+    ┌─────────────────────┐
+    │ Select feature from │
+    │  roadmap to build   │
+    └─────────┬───────────┘
           │
           ▼
    ┌──────────────┐
    │ /spec-flow   │ Phase 0: SPECIFICATION
    │ Create Spec  │ Output: spec.md, NOTES.md, visuals/README.md
+   │ from Roadmap │ Links back to roadmap entry
    └──────┬───────┘
           │
           ▼

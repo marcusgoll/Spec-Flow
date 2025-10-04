@@ -15,3 +15,7 @@ Thumbs.db
 
 # Token cache or context compaction output
 .spec-flow/**/*.bak
+
+# Temporary documentation files
+TWITTER_ANNOUNCEMENT.md
+GITHUB_SETUP_INSTRUCTIONS.md

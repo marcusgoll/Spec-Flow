@@ -3,20 +3,20 @@
   <p><em>Build high-quality features faster with repeatable Claude workflows.</em></p>
 
   <p>
-    <a href="https://github.com/your-org/spec-flow-workflow-kit/blob/main/LICENSE">
+    <a href="https://github.com/marcusgoll/Spec-Flow/blob/main/LICENSE">
       <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
     </a>
-    <a href="https://github.com/your-org/spec-flow-workflow-kit/actions/workflows/ci.yml">
-      <img src="https://img.shields.io/github/actions/workflow/status/your-org/spec-flow-workflow-kit/ci.yml?branch=main" alt="CI Status">
+    <a href="https://github.com/marcusgoll/Spec-Flow/actions/workflows/ci.yml">
+      <img src="https://img.shields.io/github/actions/workflow/status/marcusgoll/Spec-Flow/ci.yml?branch=main" alt="CI Status">
     </a>
-    <a href="https://github.com/your-org/spec-flow-workflow-kit/releases">
-      <img src="https://img.shields.io/github/v/release/your-org/spec-flow-workflow-kit" alt="Latest Release">
+    <a href="https://github.com/marcusgoll/Spec-Flow/releases">
+      <img src="https://img.shields.io/github/v/release/marcusgoll/Spec-Flow" alt="Latest Release">
     </a>
-    <a href="https://github.com/your-org/spec-flow-workflow-kit/issues">
-      <img src="https://img.shields.io/github/issues/your-org/spec-flow-workflow-kit" alt="GitHub Issues">
+    <a href="https://github.com/marcusgoll/Spec-Flow/issues">
+      <img src="https://img.shields.io/github/issues/marcusgoll/Spec-Flow" alt="GitHub Issues">
     </a>
-    <a href="https://github.com/your-org/spec-flow-workflow-kit/stargazers">
-      <img src="https://img.shields.io/github/stars/your-org/spec-flow-workflow-kit?style=social" alt="GitHub Stars">
+    <a href="https://github.com/marcusgoll/Spec-Flow/stargazers">
+      <img src="https://img.shields.io/github/stars/marcusgoll/Spec-Flow?style=social" alt="GitHub Stars">
     </a>
   </p>
 </div>
@@ -102,18 +102,18 @@ Spec-Driven Development flips the traditional model: specifications become execu
 ### The Workflow
 
 ```
-💡 Idea → 📝 Spec → 📋 Plan → ✅ Tasks → 🔍 Analyze → 💻 Implement →
-⚡ Optimize → 👀 Preview → 🚀 Staging → ✅ Validate → 🎉 Production
+💡 Ideas → 🗺️ Roadmap → 📝 Spec → 📋 Plan → ✅ Tasks → 🔍 Analyze →
+💻 Implement → ⚡ Optimize → 👀 Preview → 🚀 Staging → ✅ Validate → 🎉 Production
 ```
 
-**Key Principle**: Write the specification first, let AI agents execute it faithfully.
+**Key Principle**: Plan your roadmap first, then write specifications from prioritized features, and let AI agents execute faithfully.
 
 ## 🚀 Quick Start
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-org/spec-flow-workflow-kit.git
-cd spec-flow-workflow-kit
+git clone https://github.com/marcusgoll/Spec-Flow.git
+cd Spec-Flow
 
 # 2. Configure Claude Code permissions
 cp .claude/settings.example.json .claude/settings.local.json
@@ -124,9 +124,12 @@ pwsh -File .spec-flow/scripts/powershell/check-prerequisites.ps1 -Json
 # OR (macOS/Linux)
 .spec-flow/scripts/bash/check-prerequisites.sh --json
 
-# 4. Start your first feature!
+# 4. Plan your roadmap (add features and prioritize)
 # In Claude Code:
-/spec-flow "Dark mode toggle"
+/roadmap
+
+# 5. Build a feature from your roadmap
+/spec-flow "dark-mode-toggle"  # References roadmap entry
 /plan
 /tasks
 /implement
@@ -151,11 +154,19 @@ Copy `.claude/settings.example.json` to `.claude/settings.local.json` and update
 
 Run the `/constitution` command in Claude to document the engineering principles that guard every feature. Store the output in `.spec-flow/memory/constitution.md`.
 
-### 3. Kick off a feature
+### 3. Build your roadmap
 
-Use `/spec-flow` to describe what you want to build. Follow with `/plan`, `/tasks`, `/implement`, and the remaining commands until `/phase-2-ship` completes.
+Use `/roadmap` to add features, prioritize them with ICE scoring (Impact × Confidence / Effort), and organize them into:
+- **Backlog** - Ideas to consider
+- **Next** - Top 5-10 prioritized features
+- **In Progress** - Currently being built
+- **Shipped** - Completed features
 
-For a fully automated pass, use `/flow "<feature name>"` to step through the entire state machine with manual gates for approvals.
+### 4. Kick off a feature
+
+Select a feature from your roadmap and use `/spec-flow "<feature-slug>"` to initiate the workflow. Follow with `/plan`, `/tasks`, `/implement`, and the remaining commands until `/phase-2-ship` completes.
+
+For a fully automated pass, use `/flow "<feature-slug>"` to step through the entire state machine with manual gates for approvals.
 
 ## Supported AI Agents
 
@@ -191,6 +202,7 @@ Every automation script is provided in both PowerShell (`.ps1`) and shell (`.sh`
 
 | Phase | Command | Primary Outputs |
 |-------|---------|-----------------|
+| -1 | `/roadmap` | `roadmap.md` with ICE-scored features |
 | 0 | `/spec-flow` | `spec.md`, `NOTES.md`, `visuals/README.md` |
 | 0.5 | `/clarify` | Clarification log inside the spec |
 | 1 | `/plan` | `plan.md`, `research.md` |
@@ -261,12 +273,13 @@ specs/001-example-feature/
 
 ## Detailed Process
 
-1. Run `.spec-flow/scripts/bash/check-prerequisites.sh --json` (or the PowerShell variant) to ensure your feature directory is ready.
-2. Launch `/spec-flow` in Claude, paste the feature goal, and let the command scaffold the spec.
-3. Progress through `/clarify`, `/plan`, `/tasks`, and `/analyze`, addressing blockers as they appear.
-4. Use `calculate-tokens` to watch context budgets and `compact-context` to summarise when approaching thresholds.
-5. Walk the release staircase: `/preview`, `/phase-1-ship`, `/validate-staging`, `/phase-2-ship`.
-6. Update the roadmap and changelog, then tag a release once production is live.
+1. Run `.spec-flow/scripts/bash/check-prerequisites.sh --json` (or the PowerShell variant) to ensure your environment is ready.
+2. Build your roadmap with `/roadmap` - add features, prioritize with ICE scoring, and organize into Backlog → Next → In Progress → Shipped.
+3. Select a feature from the roadmap and launch `/spec-flow "<feature-slug>"` in Claude to scaffold the spec from the roadmap entry.
+4. Progress through `/clarify`, `/plan`, `/tasks`, and `/analyze`, addressing blockers as they appear.
+5. Use `calculate-tokens` to watch context budgets and `compact-context` to summarise when approaching thresholds.
+6. Walk the release staircase: `/preview`, `/phase-1-ship`, `/validate-staging`, `/phase-2-ship`.
+7. The feature automatically moves to "Shipped" in the roadmap, and changelog is updated with the release.
 
 ## Troubleshooting
 
