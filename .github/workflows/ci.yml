@@ -1,0 +1,263 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, staging, develop ]
+  pull_request:
+    branches: [ main, staging, develop ]
+  workflow_dispatch:
+
+jobs:
+  # Validate PowerShell scripts
+  validate-powershell:
+    name: Validate PowerShell Scripts
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install PowerShell modules
+        shell: pwsh
+        run: |
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          Install-Module -Name Pester -Force -Scope CurrentUser -SkipPublisherCheck
+
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path .spec-flow/scripts/powershell/ -Recurse -ReportSummary
+          if ($results) {
+            $results | Format-Table -AutoSize
+            exit 1
+          }
+          Write-Host "✅ No PowerShell issues found"
+
+      - name: Test PowerShell scripts syntax
+        shell: pwsh
+        run: |
+          $errors = @()
+          Get-ChildItem -Path .spec-flow/scripts/powershell/ -Filter *.ps1 -Recurse | ForEach-Object {
+            $content = Get-Content $_.FullName -Raw
+            $tokens = $null
+            $parseErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseInput($content, [ref]$tokens, [ref]$parseErrors) | Out-Null
+            if ($parseErrors) {
+              $errors += "Parse errors in $($_.Name): $($parseErrors | Out-String)"
+            }
+          }
+          if ($errors) {
+            $errors | ForEach-Object { Write-Error $_ }
+            exit 1
+          }
+          Write-Host "✅ All PowerShell scripts have valid syntax"
+
+  # Validate Bash scripts
+  validate-bash:
+    name: Validate Bash Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck
+        run: |
+          shellcheck .spec-flow/scripts/bash/*.sh || exit 1
+          echo "✅ No Bash issues found"
+
+      - name: Test Bash scripts syntax
+        run: |
+          for script in .spec-flow/scripts/bash/*.sh; do
+            bash -n "$script" || exit 1
+          done
+          echo "✅ All Bash scripts have valid syntax"
+
+      - name: Make scripts executable
+        run: chmod +x .spec-flow/scripts/bash/*.sh
+
+  # Validate Markdown documentation
+  validate-markdown:
+    name: Validate Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli
+
+      - name: Run markdownlint
+        run: |
+          markdownlint '**/*.md' \
+            --ignore node_modules \
+            --ignore .spec-flow/scripts \
+            --config .markdownlint.json || true
+          echo "ℹ️ Markdown linting complete (warnings only)"
+
+      - name: Check for broken links (markdown-link-check)
+        run: |
+          npm install -g markdown-link-check
+          find . -name "*.md" \
+            -not -path "./node_modules/*" \
+            -not -path "./.spec-flow/scripts/*" \
+            -exec markdown-link-check --config .markdown-link-check.json {} \; || true
+          echo "ℹ️ Link checking complete"
+
+  # Validate JSON files
+  validate-json:
+    name: Validate JSON Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Validate JSON syntax
+        run: |
+          find . -name "*.json" \
+            -not -path "./node_modules/*" \
+            -exec sh -c 'jq empty "{}" || exit 1' \;
+          echo "✅ All JSON files are valid"
+
+  # Validate YAML files
+  validate-yaml:
+    name: Validate YAML Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Run yamllint
+        run: |
+          yamllint .github/ || true
+          echo "ℹ️ YAML linting complete"
+
+  # Check file structure
+  validate-structure:
+    name: Validate Repository Structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check required directories
+        run: |
+          required_dirs=(
+            ".claude/agents"
+            ".claude/commands"
+            ".spec-flow/scripts/powershell"
+            ".spec-flow/scripts/bash"
+            ".spec-flow/templates"
+            ".spec-flow/memory"
+            "docs"
+          )
+          for dir in "${required_dirs[@]}"; do
+            if [ ! -d "$dir" ]; then
+              echo "❌ Missing required directory: $dir"
+              exit 1
+            fi
+          done
+          echo "✅ All required directories exist"
+
+      - name: Check required files
+        run: |
+          required_files=(
+            "README.md"
+            "LICENSE"
+            "CONTRIBUTING.md"
+            "CODE_OF_CONDUCT.md"
+            "SECURITY.md"
+            "CLAUDE.md"
+            ".gitignore"
+            ".claude/settings.example.json"
+          )
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "❌ Missing required file: $file"
+              exit 1
+            fi
+          done
+          echo "✅ All required files exist"
+
+  # Check for common issues
+  validate-content:
+    name: Validate Content
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for TODO/FIXME comments
+        run: |
+          if grep -r "TODO\|FIXME" .spec-flow/ --exclude-dir=node_modules || true; then
+            echo "ℹ️ Found TODO/FIXME comments (informational only)"
+          fi
+
+      - name: Check for placeholder text
+        run: |
+          if grep -r "your-org\|your-repo\|example.com" README.md docs/ .github/ || true; then
+            echo "⚠️ Found placeholder text - update for production"
+          fi
+
+      - name: Check for broken internal links
+        run: |
+          # Check if referenced files exist
+          for file in $(find docs -name "*.md"); do
+            grep -oP '\[.*?\]\(\K[^)]+' "$file" | while read -r link; do
+              # Skip external links and anchors
+              if [[ ! "$link" =~ ^https?:// ]] && [[ ! "$link" =~ ^# ]]; then
+                # Resolve relative path
+                target=$(dirname "$file")/"$link"
+                if [ ! -f "$target" ] && [ ! -d "$target" ]; then
+                  echo "⚠️ Broken link in $file: $link"
+                fi
+              fi
+            done
+          done || true
+          echo "ℹ️ Internal link check complete"
+
+  # Security checks
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for secrets in code
+        run: |
+          if grep -r "API_KEY\|SECRET\|PASSWORD\|TOKEN" .spec-flow/ --exclude-dir=node_modules | grep -v "example" | grep -v "template" || true; then
+            echo "⚠️ Possible secrets found - review carefully"
+          fi
+          echo "ℹ️ Secret scan complete"
+
+  # All checks passed
+  all-checks:
+    name: All Checks Passed
+    runs-on: ubuntu-latest
+    needs:
+      - validate-powershell
+      - validate-bash
+      - validate-markdown
+      - validate-json
+      - validate-yaml
+      - validate-structure
+      - validate-content
+      - security-scan
+    steps:
+      - name: Success
+        run: |
+          echo "✅ All validation checks passed!"
+          echo "🚀 Ready to merge"

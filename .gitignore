@@ -1,0 +1,17 @@
+﻿# OS cruft
+.DS_Store
+Thumbs.db
+
+# Editor settings
+.vscode/
+.idea/
+
+# Local agent overrides
+.claude/settings.local.json
+
+# Logs and scratch files
+*.log
+*.tmp
+
+# Token cache or context compaction output
+.spec-flow/**/*.bak

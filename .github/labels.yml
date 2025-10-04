@@ -1,0 +1,182 @@
+# GitHub Issue Labels Configuration
+# Use with: gh label sync --file .github/labels.yml
+
+# Type Labels (What kind of issue?)
+- name: "type: bug"
+  description: "Something isn't working as expected"
+  color: "d73a4a"
+
+- name: "type: enhancement"
+  description: "New feature or request"
+  color: "a2eeef"
+
+- name: "type: documentation"
+  description: "Improvements or additions to documentation"
+  color: "0075ca"
+
+- name: "type: question"
+  description: "Further information is requested"
+  color: "d876e3"
+
+- name: "type: discussion"
+  description: "Open discussion or RFC"
+  color: "cc317c"
+
+# Priority Labels (How urgent?)
+- name: "priority: critical"
+  description: "Blocking issue that requires immediate attention"
+  color: "b60205"
+
+- name: "priority: high"
+  description: "Important issue that should be resolved soon"
+  color: "d93f0b"
+
+- name: "priority: medium"
+  description: "Normal priority issue"
+  color: "fbca04"
+
+- name: "priority: low"
+  description: "Low priority issue"
+  color: "0e8a16"
+
+# Component Labels (What area?)
+- name: "component: scripts"
+  description: "Related to PowerShell or Bash scripts"
+  color: "1d76db"
+
+- name: "component: templates"
+  description: "Related to Markdown templates"
+  color: "5319e7"
+
+- name: "component: agents"
+  description: "Related to agent briefs or prompts"
+  color: "0052cc"
+
+- name: "component: commands"
+  description: "Related to slash commands"
+  color: "006b75"
+
+- name: "component: docs"
+  description: "Related to documentation files"
+  color: "0075ca"
+
+- name: "component: workflow"
+  description: "Related to the workflow process itself"
+  color: "1d76db"
+
+# Platform Labels (What platform?)
+- name: "platform: windows"
+  description: "Windows-specific issue"
+  color: "0078d7"
+
+- name: "platform: macos"
+  description: "macOS-specific issue"
+  color: "000000"
+
+- name: "platform: linux"
+  description: "Linux-specific issue"
+  color: "fcc624"
+
+- name: "platform: all"
+  description: "Affects all platforms"
+  color: "bfd4f2"
+
+# Status Labels (What's happening?)
+- name: "status: needs-triage"
+  description: "Needs initial review and categorization"
+  color: "ededed"
+
+- name: "status: needs-info"
+  description: "Waiting for more information from reporter"
+  color: "d4c5f9"
+
+- name: "status: in-progress"
+  description: "Currently being worked on"
+  color: "0e8a16"
+
+- name: "status: blocked"
+  description: "Blocked by another issue or external dependency"
+  color: "d93f0b"
+
+- name: "status: on-hold"
+  description: "Work paused, awaiting decision or resources"
+  color: "fbca04"
+
+- name: "status: ready-for-review"
+  description: "PR is ready for code review"
+  color: "0e8a16"
+
+# Resolution Labels (How was it resolved?)
+- name: "resolution: duplicate"
+  description: "This issue or PR already exists"
+  color: "cfd3d7"
+
+- name: "resolution: wontfix"
+  description: "This will not be worked on"
+  color: "cfd3d7"
+
+- name: "resolution: invalid"
+  description: "This doesn't seem right or doesn't belong here"
+  color: "cfd3d7"
+
+- name: "resolution: by-design"
+  description: "Working as intended, not a bug"
+  color: "cfd3d7"
+
+# Effort Labels (How much work?)
+- name: "effort: trivial"
+  description: "Less than 1 hour of work"
+  color: "c2e0c6"
+
+- name: "effort: small"
+  description: "1-4 hours of work"
+  color: "7bd687"
+
+- name: "effort: medium"
+  description: "1-3 days of work"
+  color: "fbca04"
+
+- name: "effort: large"
+  description: "1-2 weeks of work"
+  color: "d93f0b"
+
+- name: "effort: epic"
+  description: "Multiple weeks of work"
+  color: "b60205"
+
+# Special Labels
+- name: "good-first-issue"
+  description: "Good for newcomers to the project"
+  color: "7057ff"
+
+- name: "help-wanted"
+  description: "Extra attention is needed from community"
+  color: "008672"
+
+- name: "breaking-change"
+  description: "Introduces breaking changes to workflow or APIs"
+  color: "d73a4a"
+
+- name: "dependencies"
+  description: "Updates to dependencies"
+  color: "0366d6"
+
+- name: "security"
+  description: "Security-related issue or improvement"
+  color: "d73a4a"
+
+- name: "performance"
+  description: "Performance optimization"
+  color: "f9d0c4"
+
+- name: "accessibility"
+  description: "Related to accessibility (a11y)"
+  color: "006b75"
+
+- name: "needs-example"
+  description: "Needs a code example or demonstration"
+  color: "d4c5f9"
+
+- name: "needs-tests"
+  description: "Needs automated tests"
+  color: "d4c5f9"
