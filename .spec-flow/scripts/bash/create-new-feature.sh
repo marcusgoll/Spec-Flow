@@ -4,7 +4,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=common.sh
+# shellcheck source=.spec-flow/scripts/bash/common.sh
 source "$SCRIPT_DIR/common.sh"
 
 show_help() {
@@ -82,7 +82,7 @@ for word in "${words[@]:0:6}"; do
     fi
     if [ ${#short_slug} -ge 40 ]; then
         short_slug="${short_slug:0:40}"
-        short_slug="$(echo "$short_slug" | sed -e 's/-$//' )"
+        short_slug="${short_slug%-}"
         break
     fi
 done
@@ -135,7 +135,7 @@ if [ -z "$template_used" ]; then
     cat <<EOF >"$spec_file"
 # Feature Specification: $desc
 
-**Feature Branch**: \\`$branch_name\\`
+**Feature Branch**: $branch_name
 **Created**: $(date +%Y-%m-%d)
 **Status**: Draft
 
@@ -178,4 +178,3 @@ else
     echo "HAS_GIT: $has_git"
     echo "export SPEC_FLOW_FEATURE=$branch_name"
 fi
-

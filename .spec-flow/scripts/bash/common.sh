@@ -32,8 +32,10 @@ resolve_repo_root() {
         git rev-parse --show-toplevel
         return
     fi
-    local dir="$(script_dir)"
-    local candidate="$(cd "$dir/../.." >/dev/null 2>&1 && pwd)"
+    local dir
+    dir="$(script_dir)"
+    local candidate
+    candidate="$(cd "$dir/../.." >/dev/null 2>&1 && pwd)"
     if [ -d "$candidate/specs" ] || [ -d "$candidate/.git" ]; then
         printf "%s\n" "$candidate"
         return
@@ -41,4 +43,3 @@ resolve_repo_root() {
     candidate="$(cd "$candidate/.." >/dev/null 2>&1 && pwd)"
     printf "%s\n" "$candidate"
 }
-

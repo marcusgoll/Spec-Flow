@@ -161,23 +161,44 @@ else
 fi
 
 if $JSON_OUT; then
-    {
+    breakdown_rows="$({
         for idx in "${!breakdown_files[@]}"; do
             printf '%s\t%s\n' "${breakdown_files[$idx]}" "${breakdown_tokens[$idx]}"
         done
-    } | python - <<PY
-import json, sys
-pairs = [line.rstrip().split('\t', 1) for line in sys.stdin if line.strip()]
+    })"
+    env \
+        FEATURE_DIR="$FEATURE_DIR" \
+        PHASE="$PHASE" \
+        TOTAL="$TOTAL" \
+        BUDGET="$BUDGET" \
+        THRESH="$THRESH" \
+        REMAINING="$REMAINING" \
+        PERCENT="$PERCENT" \
+        SHOULD_COMPACT="$SHOULD_COMPACT" \
+        BREAKDOWN_ROWS="$breakdown_rows" \
+        python <<'PY'
+import json
+import os
+
+feature_dir = os.environ["FEATURE_DIR"]
+phase = os.environ["PHASE"]
+total = int(os.environ["TOTAL"])
+budget = int(os.environ["BUDGET"])
+threshold = int(os.environ["THRESH"])
+remaining = int(os.environ["REMAINING"])
+percent = float(os.environ["PERCENT"])
+should_compact = os.environ["SHOULD_COMPACT"].lower() == "true"
+pairs = [line.split('\t', 1) for line in os.environ.get("BREAKDOWN_ROWS", "").splitlines() if line.strip()]
 breakdown = {name: int(tokens) for name, tokens in pairs}
 print(json.dumps({
-    "featureDir": "$FEATURE_DIR",
-    "phase": "$PHASE",
-    "totalTokens": $TOTAL,
-    "budget": $BUDGET,
-    "compactionThreshold": $THRESH,
-    "remaining": $REMAINING,
-    "percentUsed": $PERCENT,
-    "shouldCompact": $SHOULD_COMPACT,
+    "featureDir": feature_dir,
+    "phase": phase,
+    "totalTokens": total,
+    "budget": budget,
+    "compactionThreshold": threshold,
+    "remaining": remaining,
+    "percentUsed": percent,
+    "shouldCompact": should_compact,
     "breakdown": breakdown
 }))
 PY
@@ -209,4 +230,3 @@ print(f"Within budget ({margin_pct}% margin until compaction)")
 PY
     fi
 fi
-

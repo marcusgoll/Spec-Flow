@@ -4,7 +4,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=common.sh
+# shellcheck source=.spec-flow/scripts/bash/common.sh
 source "$SCRIPT_DIR/common.sh"
 
 show_help() {
@@ -44,7 +44,11 @@ done
 
 mapfile -t ENV_VARS < <(feature_paths_env)
 for kv in "${ENV_VARS[@]}"; do
-    export "$kv"
+    if [[ $kv == *=* ]]; then
+        key="${kv%%=*}"
+        value="${kv#*=}"
+        export "$key=$value"
+    fi
 done
 
 if $PATHS_ONLY; then
@@ -143,16 +147,33 @@ if $INCLUDE_MEMORIES; then
 fi
 
 if $JSON_OUT; then
-    printf '%s\n' "${AVAILABLE_DOCS[@]-}" | python - "$FEATURE_DIR" "$INCLUDE_MEMORIES" "${MEMORY_DOCS[@]-}" <<'PY'
-import json, sys
-feature_dir = sys.argv[1]
-include_memories = sys.argv[2].lower() == 'true'
-mem_docs = sys.argv[3:]
-available = [line.strip() for line in sys.stdin if line.strip()]
-out = {"FEATURE_DIR": feature_dir, "AVAILABLE_DOCS": available}
+    available_docs_payload="$({
+        for doc in "${AVAILABLE_DOCS[@]-}"; do
+            printf '%s\n' "$doc"
+        done
+    })"
+    memory_docs_payload="$({
+        for doc in "${MEMORY_DOCS[@]-}"; do
+            printf '%s\n' "$doc"
+        done
+    })"
+    env \
+        FEATURE_DIR="$FEATURE_DIR" \
+        INCLUDE_MEMORIES="$INCLUDE_MEMORIES" \
+        AVAILABLE_DOCS_PAYLOAD="$available_docs_payload" \
+        MEMORY_DOCS_PAYLOAD="$memory_docs_payload" \
+        python <<'PY'
+import json
+import os
+
+feature_dir = os.environ["FEATURE_DIR"]
+include_memories = os.environ["INCLUDE_MEMORIES"].lower() == "true"
+available = [line for line in os.environ.get("AVAILABLE_DOCS_PAYLOAD", "").splitlines() if line]
+memory_docs = [line for line in os.environ.get("MEMORY_DOCS_PAYLOAD", "").splitlines() if line]
+output = {"FEATURE_DIR": feature_dir, "AVAILABLE_DOCS": available}
 if include_memories:
-    out["MEMORY_DOCS"] = mem_docs
-json.dump(out, sys.stdout)
+    output["MEMORY_DOCS"] = memory_docs
+json.dump(output, sys.stdout)
 PY
 else
     echo "FEATURE_DIR:$FEATURE_DIR"
@@ -172,4 +193,3 @@ else
         done
     fi
 fi
-
