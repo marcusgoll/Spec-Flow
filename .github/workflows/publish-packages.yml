@@ -1,0 +1,72 @@
+name: Publish Packages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+          always-auth: true
+
+      - name: Read package metadata
+        id: pkg
+        run: |
+          echo "name=$(node -p \"require('./package.json').name\")" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to npm
+        env:
+          PKG_NAME: ${{ steps.pkg.outputs.name }}
+          PKG_VERSION: ${{ steps.pkg.outputs.version }}
+        run: |
+          existing=$(npm view "$PKG_NAME" version || true)
+          if [ "$existing" = "$PKG_VERSION" ]; then
+            echo "Version $PKG_VERSION already published to npm. Skipping."
+          else
+            npm publish --access public
+          fi
+
+      - name: Prepare GitHub package
+        env:
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: node scripts/prepare-github-package.cjs
+
+      - name: Configure npm for GitHub Packages
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://npm.pkg.github.com
+          scope: '@${{ github.repository_owner }}'
+          always-auth: true
+
+      - name: Publish to GitHub Packages
+        working-directory: dist/github-package
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+          PKG_VERSION: ${{ steps.pkg.outputs.version }}
+          OWNER: ${{ github.repository_owner }}
+          PKG_NAME: ${{ steps.pkg.outputs.name }}
+        run: |
+          pkg="@${OWNER}/${PKG_NAME}"
+          existing=$(npm view "$pkg" version --registry https://npm.pkg.github.com 2>/dev/null || true)
+          if [ "$existing" = "$PKG_VERSION" ]; then
+            echo "Version $PKG_VERSION already published to GitHub Packages. Skipping."
+          else
+            npm publish --access public
+          fi

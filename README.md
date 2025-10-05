@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
   <h1>Spec-Flow Workflow Kit</h1>
   <p><em>Build high-quality features faster with repeatable Claude workflows.</em></p>
 
@@ -8,6 +8,9 @@
     </a>
     <a href="https://github.com/marcusgoll/Spec-Flow/actions/workflows/ci.yml">
       <img src="https://img.shields.io/github/actions/workflow/status/marcusgoll/Spec-Flow/ci.yml?branch=main" alt="CI Status">
+    </a>
+    <a href="https://www.npmjs.com/package/spec-flow">
+      <img src="https://img.shields.io/npm/v/spec-flow.svg?logo=npm&color=CB3837" alt="npm package">
     </a>
     <a href="https://github.com/marcusgoll/Spec-Flow/releases">
       <img src="https://img.shields.io/github/v/release/marcusgoll/Spec-Flow" alt="Latest Release">
@@ -50,6 +53,7 @@
 - [Learn More](#learn-more)
 - [Detailed Process](#detailed-process)
 - [Troubleshooting](#troubleshooting)
+- [Packages & Releases](#packages--releases)
 - [Maintainers](#maintainers)
 - [License](#license)
 
@@ -168,6 +172,16 @@ powershell -File .spec-flow/scripts/powershell/install-wizard.ps1
 ## Get Started
 
 ### 1. Install the toolkit
+
+**From npm (fastest):**
+
+```bash
+npm install -g spec-flow
+# or use npx without a global install
+npx spec-flow init --target ./my-project
+```
+
+**From source:**
 
 Clone this repository and ensure you have either PowerShell 7.3+ (`pwsh`) or a POSIX shell (`bash`) plus Python 3.10+ available. Scripts live under `.spec-flow/scripts/powershell/` and `.spec-flow/scripts/bash/`.
 
@@ -296,6 +310,7 @@ specs/001-example-feature/
 - [`docs/installation.md`](docs/installation.md) — platform-specific installation guide
 - [`docs/troubleshooting.md`](docs/troubleshooting.md) — common issues and solutions
 - [`docs/use-cases.md`](docs/use-cases.md) — examples for different project types
+- [`PUBLISHING.md`](PUBLISHING.md) — release checklist for npm & GitHub Packages
 - [`AGENTS.md`](AGENTS.md) — contributor guide for working in this repo
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — branching, reviews, and release process
 
@@ -308,6 +323,12 @@ specs/001-example-feature/
 5. Use `calculate-tokens` to watch context budgets and `compact-context` to summarise when approaching thresholds.
 6. Walk the release staircase: `/preview`, `/phase-1-ship`, `/validate-staging`, `/phase-2-ship`.
 7. The feature automatically moves to "Shipped" in the roadmap, and changelog is updated with the release.
+
+## Packages & Releases
+
+- **npm**: Published as [`spec-flow`](https://www.npmjs.com/package/spec-flow). Install globally with `npm install -g spec-flow` or run one-off with `npx spec-flow`.
+- **GitHub Packages**: The `Publish Packages` workflow mirrors each release to GitHub Packages under the scoped name `@marcusgoll/spec-flow`, enabling the repository's *Packages* tab.
+- **Automation**: Creating a GitHub release (or manually running the workflow) triggers the dual publish. Set the `NPM_TOKEN` repository secret with an npm automation token that has `publish` rights; GitHub packages use the built-in `GITHUB_TOKEN`.
 
 ## Troubleshooting
 
