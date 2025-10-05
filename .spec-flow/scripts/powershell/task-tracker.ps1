@@ -471,7 +471,7 @@ try {
     }
 
 } catch {
-    $error = @{
+    $errorDetails = @{
         Success = $false
         Error = $_.Exception.Message
         Action = $Action
@@ -479,11 +479,10 @@ try {
     }
 
     if ($Json) {
-        $error | ConvertTo-Json
+        $errorDetails | ConvertTo-Json
     } else {
-        Write-Error $error.Error
+        Write-Error $errorDetails.Error
     }
     exit 1
 }
-
 

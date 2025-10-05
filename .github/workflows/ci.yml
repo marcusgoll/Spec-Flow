@@ -25,7 +25,7 @@ jobs:
       - name: Run PSScriptAnalyzer
         shell: pwsh
         run: |
-          $results = Invoke-ScriptAnalyzer -Path .spec-flow/scripts/powershell/ -Recurse -ReportSummary
+          $results = Invoke-ScriptAnalyzer -Path .spec-flow/scripts/powershell/ -Recurse -ReportSummary -Severity Error
           if ($results) {
             $results | Format-Table -AutoSize
             exit 1
