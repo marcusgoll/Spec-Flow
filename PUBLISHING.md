@@ -195,11 +195,12 @@ npm deprecate spec-flow@1.0.0 "Please upgrade to 1.0.1"
 
 ## Current Status
 
-✅ **Published**: spec-flow@1.1.0 is live on npm
+✅ **Published**: spec-flow@1.2.0 is live on npm
 📦 **Package**: https://www.npmjs.com/package/spec-flow
 🔗 **Repository**: https://github.com/marcusgoll/Spec-Flow
 
 ## Version History
 
+- **1.2.0** (2025-10-04) - Simplified installation (KISS & DRY) - removed wizard, let Claude Code handle setup
 - **1.1.0** (2025-10-04) - Added interactive configuration wizard (`spec-flow configure`)
 - **1.0.0** (2025-10-03) - Initial release with complete Spec-Flow workflow

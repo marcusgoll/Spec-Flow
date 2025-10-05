@@ -120,9 +120,6 @@ npx spec-flow init
 
 # Or specify target directory
 npx spec-flow init --target ./my-project
-
-# Configure interactively (prompts for project type, roadmap, design inspirations)
-npx spec-flow configure
 ```
 
 ### Option 2: Manual Installation
@@ -145,30 +142,24 @@ powershell -File .spec-flow/scripts/powershell/install-wizard.ps1
 - ✅ `.claude/` - Agents, commands, and settings
 - ✅ `.spec-flow/` - Scripts, templates, and memory
 - ✅ `CLAUDE.md` - Workflow documentation
-- ✅ Memory files initialized (constitution, roadmap, design-inspirations)
+- ✅ `QUICKSTART.md` - Quick start guide (copied to your project)
+- ✅ Memory files initialized with defaults
 
-**Configuration Options:**
+**Next steps after installation:**
 
-1. **During Installation** - Answer prompts to configure interactively
-2. **After Installation** - Run `npx spec-flow configure` anytime
-3. **In Claude Code** - Use slash commands to customize individually
-
-```bash
-# Option 1: All-in-one configuration
-npx spec-flow configure
-
-# Option 2: Configure in Claude Code (one at a time)
-/constitution         # Customize engineering standards
-/roadmap              # Build your feature roadmap
-/design-inspiration   # Curate visual references
-```
-
-**Then start building features:**
-```bash
-# In Claude Code (in your project directory)
-/spec-flow "my-feature"  # Create specification
-/flow "my-feature"       # Automate full workflow
-```
+1. **Read the guide** - Open `QUICKSTART.md` in your project
+2. **Open in Claude Code** - Navigate to your project directory
+3. **Set up your project** (optional but recommended):
+   ```bash
+   /constitution         # Interactive Q&A for engineering standards
+   /roadmap              # Plan and prioritize features with ICE scoring
+   /design-inspiration   # Curate visual references for consistency
+   ```
+4. **Start building:**
+   ```bash
+   /spec-flow "my-feature"  # Create specification
+   /flow "my-feature"       # Automate full workflow
+   ```
 
 👉 **Full guide**: [QUICKSTART.md](QUICKSTART.md) | **Detailed tutorial**: [Getting Started](docs/getting-started.md)
 

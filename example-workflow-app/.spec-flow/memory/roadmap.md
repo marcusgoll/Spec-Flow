@@ -1,8 +1,8 @@
 # Spec-Flow Product Roadmap
 
-**Last updated**: 2025-10-03
+**Last updated**: 2025-10-05
 
-> Features from brainstorm  shipped. Managed via `/roadmap`
+> Features from brainstorm → shipped. Managed via `/roadmap`
 
 ## Shipped
 
@@ -44,6 +44,14 @@
 
 ## Backlog
 
+### light-dark-mode
+- **Title**: Light/Dark Mode
+- **Area**: infra
+- **Role**: all
+- **Impact**: 4 | **Effort**: 1 | **Confidence**: 0.7 | **Score**: 2.80
+- **Requirements**:
+  - [To be defined]
+
 <!-- All other ideas (unlimited, sorted by score) -->
 <!-- Format:
 ### slug-name
@@ -68,7 +76,7 @@
 
 ## Scoring Guide
 
-**ICE** = Impact  Confidence  Effort
+**ICE** = Impact × Confidence ÷ Effort
 
 - **Impact** (1-5): 1=nice-to-have, 3=useful, 5=critical
 - **Effort** (1-5): 1=<1 day, 3=1-2 weeks, 5=4+ weeks
@@ -79,9 +87,9 @@ Higher score = higher priority
 ## Status Flow
 
 ```
-Backlog  Later  Next  In Progress  Shipped
-                               
-                          Archive
+Backlog → Later → Next → In Progress → Shipped
+                                ↓
+                             Archive
 ```
 
 ## Feature Sizing
@@ -89,4 +97,3 @@ Backlog  Later  Next  In Progress  Shipped
 **/spec-flow-sized**: 30 tasks, one screen/flow/API, 1-2 weeks
 
 If larger: Break into multiple features by area or domain
-

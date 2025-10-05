@@ -54,6 +54,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - All placeholder URLs updated to actual repository: `https://github.com/marcusgoll/Spec-Flow`
 
+## [1.2.0] - 2025-10-04
+
+### Changed - Simplified Installation (KISS & DRY)
+- **Removed interactive configuration wizard** - Installation now completes in seconds
+- **QUICKSTART.md copied to project** - Local quick start guide for immediate reference
+- **Let Claude Code do the work** - `/constitution`, `/roadmap`, `/design-inspiration` commands provide interactive Q&A
+- **Simplified install flow** - No prompts during installation, just copy files and go
+- **Removed `configure` command** - Configuration happens in Claude Code where it belongs
+
+### Enhanced
+- **QUICKSTART.md improvements**:
+  - Added "Let Claude Code Set Up Your Project" section
+  - Clear guidance on optional vs required setup
+  - Interactive command examples with expected Claude responses
+  - Emphasis on Claude Code's Q&A capabilities
+- **Install wizard updates**:
+  - Simpler next steps pointing to QUICKSTART.md
+  - Clear indication that setup commands are optional
+  - Removed configuration decision fatigue
+- **Documentation cleanup**:
+  - README.md updated to reflect simpler flow
+  - Postinstall message now clearer and more concise
+  - Help command simplified (no configure references)
+
+### Removed
+- `bin/configure.js` - Configuration wizard (moved to Claude Code slash commands)
+- Configuration prompts from install wizard
+- `spec-flow configure` command from CLI
+
+### Improved
+- **Faster installation**: 5 seconds vs several minutes
+- **Less decision fatigue**: No prompts during install
+- **More flexible**: Set up Constitution, Roadmap, Design Inspirations when ready
+- **More powerful**: Claude Code's interactive commands > static wizard
+- **Works everywhere**: Same simple flow for all project types
+
 ## [1.1.0] - 2025-10-04
 
 ### Added

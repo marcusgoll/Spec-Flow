@@ -27,3 +27,5 @@ package-lock.json
 # Build outputs
 dist/
 build/
+
+PUBLISHING.md

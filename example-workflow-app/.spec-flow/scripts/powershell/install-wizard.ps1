@@ -263,6 +263,36 @@ if ((Test-Path -LiteralPath $constitutionPath) -and (Test-Path -LiteralPath $roa
 
 # Roadmap is initialized empty - use /roadmap command in Claude Code to add features
 
+# --- Configuration Prompt ---------------------------------------------------
+if (-not $NonInteractive) {
+    Write-Header "Configure Memory Files"
+
+    Write-Host "  Memory files have been initialized with defaults." -ForegroundColor White
+    Write-Host ""
+    Write-Host "  Would you like to configure them now with an interactive wizard?" -ForegroundColor Yellow
+    Write-Host "  (You can always run 'spec-flow configure' later)" -ForegroundColor DarkGray
+    Write-Host ""
+
+    $configureNow = Read-Host "Configure now? (Y/n)"
+
+    if ($configureNow -ne 'n' -and $configureNow -ne 'N') {
+        Write-Host ""
+        Write-Host "  Launching configuration wizard..." -ForegroundColor Cyan
+        Write-Host ""
+
+        # Get the package root (where configure.js is located)
+        $packageRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+        $configureScript = Join-Path -Path $packageRoot -ChildPath 'bin' | Join-Path -ChildPath 'configure.js'
+
+        if (Test-Path -LiteralPath $configureScript) {
+            & node $configureScript $targetAbsolute
+        } else {
+            Write-Warning "Configuration script not found at: $configureScript"
+            Write-Host "  You can run 'spec-flow configure' manually later." -ForegroundColor DarkGray
+        }
+    }
+}
+
 # --- Final Steps ------------------------------------------------------------
 Write-Header "Installation Complete!"
 
@@ -273,10 +303,10 @@ Write-Host "  * .claude/ directory (agents, commands, settings)" -ForegroundColo
 Write-Host "  * .spec-flow/ directory (scripts, templates, memory)" -ForegroundColor White
 Write-Host "  * CLAUDE.md (workflow documentation)" -ForegroundColor White
 Write-Host ""
-Write-Host "  Initialized memory files with defaults:" -ForegroundColor Cyan
-Write-Host "  * .spec-flow/memory/constitution.md (80% test coverage, standard performance targets)" -ForegroundColor DarkGray
-Write-Host "  * .spec-flow/memory/roadmap.md (empty - ready for your features)" -ForegroundColor DarkGray
-Write-Host "  * .spec-flow/memory/design-inspirations.md (empty - ready for your references)" -ForegroundColor DarkGray
+Write-Host "  Memory files initialized:" -ForegroundColor Cyan
+Write-Host "  * .spec-flow/memory/constitution.md" -ForegroundColor DarkGray
+Write-Host "  * .spec-flow/memory/roadmap.md" -ForegroundColor DarkGray
+Write-Host "  * .spec-flow/memory/design-inspirations.md" -ForegroundColor DarkGray
 
 Write-Host ""
 Write-Host "  Next steps:" -ForegroundColor Cyan
@@ -284,21 +314,25 @@ Write-Host ""
 Write-Host "  1. Open your project in Claude Code:" -ForegroundColor White
 Write-Host "     cd $targetAbsolute" -ForegroundColor DarkGray
 Write-Host ""
-Write-Host "  2. Customize your engineering principles:" -ForegroundColor White
-Write-Host "     /constitution" -ForegroundColor Green
-Write-Host "     (Interactive wizard to set test coverage, performance targets, etc.)" -ForegroundColor DarkGray
-Write-Host ""
-Write-Host "  3. Build your feature roadmap:" -ForegroundColor White
-Write-Host "     /roadmap" -ForegroundColor Green
-Write-Host "     (Add features, prioritize with ICE scoring)" -ForegroundColor DarkGray
-Write-Host ""
-Write-Host "  4. Add design inspirations:" -ForegroundColor White
-Write-Host "     /design-inspiration" -ForegroundColor Green
-Write-Host "     (Reference sites/apps for visual consistency)" -ForegroundColor DarkGray
-Write-Host ""
-Write-Host "  5. Start building your first feature:" -ForegroundColor White
-Write-Host "     /spec-flow \"feature-name\"" -ForegroundColor Green
-Write-Host "     (Creates spec from roadmap and kicks off workflow)" -ForegroundColor DarkGray
+
+if ($NonInteractive -or $configureNow -eq 'n' -or $configureNow -eq 'N') {
+    Write-Host "  2. Configure memory files interactively:" -ForegroundColor White
+    Write-Host "     spec-flow configure" -ForegroundColor Green
+    Write-Host "     (Set project type, test coverage, roadmap features, design inspirations)" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  3. Or configure directly in Claude Code:" -ForegroundColor White
+    Write-Host "     /constitution" -ForegroundColor Green
+    Write-Host "     /roadmap" -ForegroundColor Green
+    Write-Host "     /design-inspiration" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "  4. Start building your first feature:" -ForegroundColor White
+    Write-Host "     /spec-flow \"feature-name\"" -ForegroundColor Green
+    Write-Host "     (Creates spec from roadmap and kicks off workflow)" -ForegroundColor DarkGray
+} else {
+    Write-Host "  2. Start building your first feature:" -ForegroundColor White
+    Write-Host "     /spec-flow \"feature-name\"" -ForegroundColor Green
+    Write-Host "     (Creates spec from roadmap and kicks off workflow)" -ForegroundColor DarkGray
+}
 
 Write-Host ""
 Write-Host "  Full guide: https://github.com/marcusgoll/Spec-Flow/blob/main/QUICKSTART.md" -ForegroundColor DarkGray

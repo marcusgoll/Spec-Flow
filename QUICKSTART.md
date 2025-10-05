@@ -99,32 +99,80 @@ If any checks fail, see [Installation Guide](docs/installation.md) for troublesh
 
 ---
 
-## Configuration
+## Let Claude Code Set Up Your Project
 
-### Customize Your Constitution
+Instead of manually editing files, let Claude Code's interactive commands configure your project with guided Q&A.
 
-Open `.spec-flow/memory/constitution.md` in your project and customize the engineering principles to match your team's standards:
+### Recommended Setup (Optional but Powerful)
 
-```markdown
-# Engineering Constitution
+Open Claude Code in your project directory and run these commands:
 
-## Core Principles
+#### 1. Define Your Engineering Standards (Optional)
 
-### 1. Specification First
-Every feature begins with a written specification...
-
-### 2. Testing Standards
-All production code must have 80%+ test coverage...
-
-### 3. Performance Requirements
-API responses: <200ms p50, <500ms p95...
+```
+/constitution
 ```
 
-Update the principles, remove what doesn't apply, add what's missing.
+Claude will interactively help you:
+- Set project type (Web App, API, Mobile, CLI, etc.)
+- Define test coverage requirements (50%, 70%, 80%, 90%)
+- Configure performance targets (API response times, page load speeds)
+- Set accessibility standards (WCAG Level A, AA, AAA)
+- Add custom principles specific to your project
 
-### Configure Claude Code Permissions
+**Why?** Your constitution becomes the Single Source of Truth for all feature development. Every spec, plan, and review references these standards.
 
-The installer creates `.claude/settings.local.json` with your project path pre-filled. Review and adjust if needed:
+**Skip if:** You want to start with defaults (80% coverage, <200ms API, <2s page load, WCAG AA)
+
+#### 2. Plan Your Feature Roadmap (Optional)
+
+```
+/roadmap
+```
+
+Claude will guide you through:
+- Adding feature ideas to your backlog
+- ICE scoring (Impact × Confidence ÷ Effort) for prioritization
+- Organizing features: Backlog → Next → In Progress → Shipped
+
+**Example interaction:**
+```
+You: /roadmap
+Claude: Let's build your product roadmap. What feature would you like to add?
+
+You: Add dark mode toggle
+Claude: Great! Let me score this feature...
+  - Impact (1-5): How much value for users? → 4
+  - Effort (1-5): Implementation complexity? → 2
+  - Confidence (0-1): Estimate certainty? → 0.9
+  - ICE Score: (4 × 0.9) ÷ 2 = 1.8
+
+✓ Added to "Next" (high priority). Ready to spec it out?
+```
+
+**Why?** Prioritized roadmap = focused development. ICE scoring prevents "urgency bias" and helps you ship high-impact features first.
+
+**Skip if:** You have one clear feature to build and don't need prioritization
+
+#### 3. Curate Design Inspirations (Optional)
+
+```
+/design-inspiration
+```
+
+Claude will help you collect:
+- Color palettes and typography references
+- Component styles from sites you admire
+- Layout and spacing systems
+- Animation and interaction patterns
+
+**Why?** Visual consistency across features. Designers and developers reference the same inspiration sources.
+
+**Skip if:** Your project doesn't have UI components or you're not concerned with design consistency
+
+### Configure Claude Code Permissions (Required)
+
+The installer creates `.claude/settings.local.json` with your project path. Review permissions:
 
 ```json
 {

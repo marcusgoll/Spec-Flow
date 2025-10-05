@@ -2,115 +2,17 @@
 
 **Purpose**: Global mood board of design patterns, styles, and interactions we admire. Reference this when creating specs or implementing UI features.
 
-**Last updated**: 2025-10-03
+**Last updated**: 2025-10-05
 
 ---
 
-## Landing Pages & Hero Sections
+## Color & Typography
 
-### [Site Name]
-**URL**: [link]
-**What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
-
----
-
-## Dashboards & Data Display
-
-### [Site Name]
-**URL**: [link]
-**What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
-
----
-
-## Forms & Input Components
-
-### [Site Name]
-**URL**: [link]
-**What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
-
----
-
-## Navigation & Menu Patterns
-
-### [Site Name]
-**URL**: [link]
-**What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
-
----
-
-## Tables & List Views
-
-### [Site Name]
-**URL**: [link]
-**What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
-
----
-
-## Modals, Dialogs & Overlays
-
-### [Site Name]
-**URL**: [link]
-**What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
-
----
-
-## Buttons, CTAs & Interactive Elements
-
-### [Site Name]
-**URL**: [link]
-**What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
-
----
-
-## Loading States & Empty States
-
-### [Site Name]
-**URL**: [link]
-**What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
-
----
-
-## Authentication & Onboarding
-
-### [Site Name]
-**URL**: [link]
-**What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
-
----
-
-## Color & Typography Systems
-
-### [Site Name]
-**URL**: [link]
-**What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
-
----
-
-## Animations & Transitions
-
-### [Site Name]
-**URL**: [link]
-**What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
-
----
-
-## Mobile Patterns
-
-### [Site Name]
-**URL**: [link]
-**What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
+### clockify.com
+**URL**: https://clockify.com
+**Inspiration**: Colors, Typography, Layout, Components, Animations
+**Notes**: All of it
+**Added**: 2025-10-05
 
 ---
 
@@ -124,7 +26,7 @@
 **What to capture:**
 - Quick observations (not exhaustive analysis)
 - Specific elements (button styles, animations, layout patterns)
-- Why it matters for our audience (students, CFIs, schools)
+- Why it matters for our audience
 
 **What NOT to do:**
 - Don't duplicate feature-specific visuals/README.md (use that for deep dives)

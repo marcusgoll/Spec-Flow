@@ -138,27 +138,6 @@ program
     }
   });
 
-// Configure command - interactive setup wizard
-program
-  .command('configure')
-  .description('Configure Spec-Flow memory files interactively')
-  .option('-t, --target <path>', 'Target directory (defaults to current directory)')
-  .action(async (options) => {
-    const targetDir = options.target ? path.resolve(options.target) : process.cwd();
-
-    // Check if Spec-Flow is installed
-    const specFlowDir = path.join(targetDir, '.spec-flow');
-    if (!fs.existsSync(specFlowDir)) {
-      console.error(chalk.red('\n✗ Spec-Flow not found in this directory.'));
-      console.log(chalk.gray('  Run ' + chalk.green('spec-flow init') + ' to install.\n'));
-      process.exit(1);
-    }
-
-    // Load and run configuration module
-    const { configure } = require('./configure.js');
-    await configure(targetDir);
-  });
-
 // Help command
 program
   .command('help')
@@ -170,7 +149,6 @@ program
 
     console.log(chalk.white('Commands:'));
     console.log(chalk.green('  init') + chalk.gray('        Initialize Spec-Flow in current directory'));
-    console.log(chalk.green('  configure') + chalk.gray('   Configure memory files interactively'));
     console.log(chalk.green('  update') + chalk.gray('      Update existing Spec-Flow installation'));
     console.log(chalk.green('  help') + chalk.gray('        Show this help message\n'));
 
@@ -182,8 +160,6 @@ program
     console.log(chalk.white('Examples:'));
     console.log(chalk.gray('  # Initialize in current directory'));
     console.log(chalk.green('  npx spec-flow init\n'));
-    console.log(chalk.gray('  # Configure memory files interactively'));
-    console.log(chalk.green('  npx spec-flow configure\n'));
     console.log(chalk.gray('  # Initialize in specific directory'));
     console.log(chalk.green('  npx spec-flow init --target ./my-project\n'));
     console.log(chalk.gray('  # Update existing installation'));

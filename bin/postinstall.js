@@ -3,19 +3,18 @@
 const chalk = require('chalk');
 
 console.log(chalk.cyan.bold('\n═══════════════════════════════════════════════════════════════════'));
-console.log(chalk.cyan.bold(' Spec-Flow Installed Successfully!'));
+console.log(chalk.cyan.bold(' ✓ Spec-Flow Package Installed'));
 console.log(chalk.cyan.bold('═══════════════════════════════════════════════════════════════════\n'));
 
-console.log(chalk.white('Get started:'));
-console.log(chalk.gray('  1. Initialize Spec-Flow in your project:'));
-console.log(chalk.green('     npx spec-flow init\n'));
+console.log(chalk.white('Quick Start:'));
+console.log(chalk.green('  npx spec-flow init') + chalk.gray('        # Initialize in current directory'));
+console.log(chalk.green('  npx spec-flow init --target ./my-project') + chalk.gray(' # Or specify directory\n'));
 
-console.log(chalk.gray('  2. Or initialize in a specific directory:'));
-console.log(chalk.green('     npx spec-flow init --target ./my-project\n'));
-
-console.log(chalk.gray('  3. Update existing installation:'));
-console.log(chalk.green('     npx spec-flow update\n'));
+console.log(chalk.white('After installation:'));
+console.log(chalk.gray('  1. Read QUICKSTART.md (copied to your project)'));
+console.log(chalk.gray('  2. Open in Claude Code'));
+console.log(chalk.gray('  3. Run /constitution, /roadmap, /design-inspiration (optional)'));
+console.log(chalk.gray('  4. Start building: /spec-flow "feature-name"\n'));
 
 console.log(chalk.white('Documentation:'));
-console.log(chalk.gray('  • Quick Start: https://github.com/marcusgoll/Spec-Flow/blob/main/QUICKSTART.md'));
-console.log(chalk.gray('  • Full Guide: https://github.com/marcusgoll/Spec-Flow#readme\n'));
+console.log(chalk.gray('  https://github.com/marcusgoll/Spec-Flow\n'));
