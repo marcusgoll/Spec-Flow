@@ -26,14 +26,9 @@ jobs:
 
       - name: Read package metadata
         id: pkg
-        shell: bash
         run: |
-          name=$(node -p "require('./package.json').name")
-          version=$(node -p "require('./package.json').version")
-          {
-            echo "name=$name"
-            echo "version=$version"
-          } >> "$GITHUB_OUTPUT"
+          echo "name=$(node -p \"require('./package.json').name\")" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
 
       - name: Publish to npm
         env:
