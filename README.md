@@ -120,6 +120,9 @@ npx spec-flow init
 
 # Or specify target directory
 npx spec-flow init --target ./my-project
+
+# Configure interactively (prompts for project type, roadmap, design inspirations)
+npx spec-flow configure
 ```
 
 ### Option 2: Manual Installation
@@ -144,13 +147,27 @@ powershell -File .spec-flow/scripts/powershell/install-wizard.ps1
 - ✅ `CLAUDE.md` - Workflow documentation
 - ✅ Memory files initialized (constitution, roadmap, design-inspirations)
 
-**Then start planning features:**
+**Configuration Options:**
+
+1. **During Installation** - Answer prompts to configure interactively
+2. **After Installation** - Run `npx spec-flow configure` anytime
+3. **In Claude Code** - Use slash commands to customize individually
+
 ```bash
-# In Claude Code (in your project directory)
+# Option 1: All-in-one configuration
+npx spec-flow configure
+
+# Option 2: Configure in Claude Code (one at a time)
 /constitution         # Customize engineering standards
 /roadmap              # Build your feature roadmap
+/design-inspiration   # Curate visual references
+```
+
+**Then start building features:**
+```bash
+# In Claude Code (in your project directory)
 /spec-flow "my-feature"  # Create specification
-/flow "my-feature"    # Automate full workflow
+/flow "my-feature"       # Automate full workflow
 ```
 
 👉 **Full guide**: [QUICKSTART.md](QUICKSTART.md) | **Detailed tutorial**: [Getting Started](docs/getting-started.md)

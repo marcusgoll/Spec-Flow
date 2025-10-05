@@ -54,5 +54,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - All placeholder URLs updated to actual repository: `https://github.com/marcusgoll/Spec-Flow`
 
+## [1.1.0] - 2025-10-04
+
+### Added
+- **Interactive configuration wizard** (`spec-flow configure`):
+  - One question at a time with multiple choice options
+  - Customizes constitution (project type, test coverage, performance targets, accessibility level)
+  - Builds initial roadmap with ICE scoring (Impact × Confidence ÷ Effort)
+  - Curates design inspirations (colors, typography, components, layouts)
+  - Generates customized memory files based on user answers
+- **Post-install configuration prompt** in install wizard:
+  - Option to configure during installation or later
+  - Automatically launches interactive wizard if user chooses "yes"
+  - Shows configuration instructions if user skips
+- **Initialization marker** (`.spec-flow/memory/.initialized`):
+  - Tracks whether interactive configuration has been completed
+  - Prevents duplicate configuration prompts
+  - Enables smart MODE DETECTION in slash commands
+
+### Changed
+- Install wizard now prompts for configuration after file copy completes
+- Constitution, roadmap, and design-inspirations memory files generated with user-specific values
+- Help command updated to include `configure` command documentation
+- Next steps in installation now context-aware (shows different steps based on configuration state)
+
+### Improved
+- Better first-run experience with guided setup
+- Memory files start with meaningful defaults instead of placeholders
+- Reduced manual configuration time from ~15 minutes to ~3 minutes
+
 ## [Unreleased]
 - Future enhancements and features will be listed here
