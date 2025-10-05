@@ -240,6 +240,9 @@ Every automation script is provided in both PowerShell (`.ps1`) and shell (`.sh`
 | 8 | `/phase-1-ship` | Staging deployment ritual |
 | 9 | `/validate-staging` | Sign-off for staging |
 | 10 | `/phase-2-ship` | Production launch and follow-up |
+| - | `/compact [phase]` | **Optional:** Reduce token usage between phases |
+
+**Context Management**: The `/compact` command is optional and reduces token usage by summarizing verbose artifacts. Use it between phases when context feels heavy or when suggested by auto-progression. In `/flow` mode, compaction happens automatically.
 
 ## Prerequisites
 

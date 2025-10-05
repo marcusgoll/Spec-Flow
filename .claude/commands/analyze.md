@@ -72,19 +72,10 @@ Write to `specs/NNN-feature/artifacts/analysis-report.md`:
 - [ ] `/plan` update (if scope drift detected)
 ```
 
-## TOKEN MANAGEMENT
-
-After writing the report, update token usage:
-```bash
-pwsh -NoProfile -File .spec-flow/scripts/powershell/calculate-tokens.ps1 -FeatureDir specs/NNN-feature -Phase implementation
-# or
-.spec-flow/scripts/bash/calculate-tokens.sh --feature-dir specs/NNN-feature --phase implementation
-```
-
-If usage exceeds the threshold, run `compact-context` for the feature.
-
 ## AUTO-PROGRESSION
 
 Summarise findings and recommend the next command. If blockers remain, stop the workflow until they are addressed; otherwise suggest `/implement` or `/flow continue`.
+
+Optional: `/compact implementation` (if context feels heavy before implementation)
 
 

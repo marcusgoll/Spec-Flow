@@ -1,9 +1,8 @@
 # Engineering Constitution
 
 **Version**: 1.0.0
-**Last Updated**: 2025-10-05
-**Status**: Active
-**Project Type**: Web App
+**Last Updated**: 2025-10-03
+**Status**: Draft
 
 > This document defines the core engineering principles that govern all feature development in this project. Every specification, plan, and implementation must align with these principles.
 
@@ -63,6 +62,7 @@ The Engineering Constitution serves as the Single Source of Truth (SSOT) for eng
 **Why**: Performance is a feature, not an optimization task. Users abandon slow experiences.
 
 **Implementation**:
+- API responses: <200ms p50, <500ms p95
 - Page loads: <2s First Contentful Paint, <3s Largest Contentful Paint
 - Database queries: <50ms for reads, <100ms for writes
 - Define thresholds in spec, measure in `/optimize` phase
@@ -95,21 +95,7 @@ The Engineering Constitution serves as the Single Source of Truth (SSOT) for eng
 
 ---
 
-### 5. Mobile-first design
-
-**Principle**: [Customize this principle based on your project needs]
-
-**Why**: [Explain why this principle matters for your project]
-
-**Implementation**:
-- [Add specific implementation guidelines]
-
-**Violations**:
-- ❌ [Define what violates this principle]
-
----
-
-### 6. Security Practices
+### 5. Security Practices
 
 **Principle**: Security is not optional. All features must follow secure coding practices.
 
@@ -129,7 +115,7 @@ The Engineering Constitution serves as the Single Source of Truth (SSOT) for eng
 
 ---
 
-### 7. Code Quality
+### 6. Code Quality
 
 **Principle**: Code must be readable, maintainable, and follow established patterns.
 
@@ -150,7 +136,7 @@ The Engineering Constitution serves as the Single Source of Truth (SSOT) for eng
 
 ---
 
-### 8. Documentation Standards
+### 7. Documentation Standards
 
 **Principle**: Document decisions, not just code. Future you will thank you.
 
@@ -170,7 +156,7 @@ The Engineering Constitution serves as the Single Source of Truth (SSOT) for eng
 
 ---
 
-### 9. Do Not Overengineer
+### 8. Do Not Overengineer
 
 **Principle**: Ship the simplest solution that meets requirements. Iterate later.
 

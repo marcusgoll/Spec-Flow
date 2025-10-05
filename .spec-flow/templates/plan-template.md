@@ -57,15 +57,6 @@ api/, ios/ or android/
 
 **Structure Decision**: [DEFAULT to Option 1 unless Technical Context indicates web/mobile]
 
-## Context Engineering Plan
-
-- **Context budget**: [Max tokens, tool output trims, when to compact]
-- **Token triage**: [What stays resident vs. retrieved on demand]
-- **Retrieval strategy**: [JIT tools, identifiers, caching heuristics]
-- **Memory artifacts**: [NOTES.md / TODO.md cadence, retention policy]
-- **Compaction & resets**: [Summaries, tool log pruning, restart triggers]
-- **Sub-agent handoffs**: [Scopes, shared state, summary contract]
-
 ## Phase 0: Codebase Scan & Research
 
 ### [EXISTING INFRASTRUCTURE - REUSE]
@@ -167,7 +158,6 @@ Existing code to reuse: [from codebase scan]
 - [ ] Phase 1: Design complete  `data-model.md`, `contracts/`, `quickstart.md`
 - [ ] Phase 2: Task approach documented  Ready for `/tasks`
 - [ ] Error ritual entry added after latest failure (if any)
-- [ ] Context plan documented (budget, retrieval, memory)
 
 **Quality Gates**:
 - [ ] Initial Constitution Check: PASS
@@ -175,6 +165,5 @@ Existing code to reuse: [from codebase scan]
 - [ ] All NEEDS CLARIFICATION resolved
 - [ ] Complexity justified (if any)
 - [ ] Stack alignment confirmed
-- [ ] Context engineering plan documented
 
 

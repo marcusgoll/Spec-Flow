@@ -252,45 +252,6 @@ grep -c "getByRole\|getByText" apps/app/tests/ vs grep -c "getByTestId"
   - Committed: ghi9012
 ```
 
-## AUTO-COMPACTION (Implementation Phase)
-
-**Implementation Phase Budget (Phase 3-4):**
-- **Budget**: 100k tokens
-- **Compact at**: 80k tokens (80% threshold)
-- **Strategy**: Moderate (60% reduction - keep 20 checkpoints)
-
-**Check context after every 10 tasks:**
-
-```bash
-# Calculate current context (auto-detects implementation phase)
-# POSIX: replace 'pwsh -File' with matching .spec-flow/scripts/bash/*.sh helper
-FEATURE_DIR=$(find specs -maxdepth 1 -type d -name "*-*" | sort -n | tail -1)
-CONTEXT_CHECK=$(pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 \
-  -FeatureDir "$FEATURE_DIR" -Phase "implementation" -Json)
-
-CONTEXT_TOKENS=$(echo "$CONTEXT_CHECK" | jq -r '.totalTokens')
-SHOULD_COMPACT=$(echo "$CONTEXT_CHECK" | jq -r '.shouldCompact')
-
-if [ "$SHOULD_COMPACT" = "true" ]; then
-  echo "  Context: ${CONTEXT_TOKENS}/100,000 tokens (implementation phase)"
-  echo "Auto-compacting with moderate strategy (60% reduction, preserve 20 checkpoints)..."
-
-  pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 \
-    -FeatureDir "$FEATURE_DIR" \
-    -Phase "implementation"
-
-  # Verify compaction
-  NEW_TOKENS=$(pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 \
-    -FeatureDir "$FEATURE_DIR" -Phase "implementation" -Json | jq -r '.totalTokens')
-  echo " Compacted: ${CONTEXT_TOKENS}  ${NEW_TOKENS} tokens"
-fi
-```
-
-**What gets compacted (moderate strategy):**
--  Detailed research notes  headings only
--  Old task descriptions  keep last 20 checkpoints
--  Preserve: Recent progress, error log, decisions, architecture
-
 ## CONSTRAINTS
 
 **TDD Workflow (strict):**
@@ -416,10 +377,10 @@ After all tasks:
 
 Tasks: NN/NN completed
 Tests: NNN passing, coverage NN%
-Context: NN,NNN tokens (compacted: Y/N)
 Phase: Implementation (3-4)
 
 Next: /optimize
+Optional: /compact implementation (to reduce context before optimize)
 ```
 
 

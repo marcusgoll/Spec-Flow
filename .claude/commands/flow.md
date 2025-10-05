@@ -86,17 +86,14 @@ echo " Spec clear, proceeding to plan"
 # Generate implementation plan
 /plan
 
-# Context check after planning (Phase 0-2 budget: 75k, compact at 60k)
+# Auto-compact after planning if needed
 FEATURE_DIR=$(find specs -maxdepth 1 -type d -name "*-*" | sort -n | tail -1)
 CONTEXT_CHECK=$(pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 \
   -FeatureDir "$FEATURE_DIR" -Phase "planning" -Json)
 
-CONTEXT_TOKENS=$(echo "$CONTEXT_CHECK" | jq -r '.totalTokens')
 SHOULD_COMPACT=$(echo "$CONTEXT_CHECK" | jq -r '.shouldCompact')
 
 if [ "$SHOULD_COMPACT" = "true" ]; then
-  echo "  Context: ${CONTEXT_TOKENS}/75,000 tokens (planning phase)"
-  echo "Auto-compacting with aggressive strategy (90% reduction)..."
   pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 \
     -FeatureDir "$FEATURE_DIR" \
     -Phase "planning"
@@ -134,26 +131,17 @@ echo " Analysis passed, proceeding to implement"
 # Execute all tasks with agent routing
 /implement
 
-# Context compaction check (Phase 3-4 budget: 100k, compact at 80k)
+# Auto-compact after implementation if needed
 FEATURE_DIR=$(find specs -maxdepth 1 -type d -name "*-*" | sort -n | tail -1)
 CONTEXT_CHECK=$(pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 \
   -FeatureDir "$FEATURE_DIR" -Phase "implementation" -Json)
 
-CONTEXT_TOKENS=$(echo "$CONTEXT_CHECK" | jq -r '.totalTokens')
 SHOULD_COMPACT=$(echo "$CONTEXT_CHECK" | jq -r '.shouldCompact')
 
 if [ "$SHOULD_COMPACT" = "true" ]; then
-  echo "  Context budget: ${CONTEXT_TOKENS}/100,000 tokens (implementation phase)"
-  echo "Auto-compacting with moderate strategy (60% reduction, preserve 20 checkpoints)..."
-
   pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 \
     -FeatureDir "$FEATURE_DIR" \
     -Phase "implementation"
-
-  # Verify compaction success
-  NEW_TOKENS=$(pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 \
-    -FeatureDir "$FEATURE_DIR" -Phase "implementation" -Json | jq -r '.totalTokens')
-  echo " Compacted: ${CONTEXT_TOKENS}  ${NEW_TOKENS} tokens"
 fi
 
 echo " Implementation complete, proceeding to optimize"
@@ -278,90 +266,6 @@ echo ""
 echo "Release created with version tag"
 echo "Roadmap updated (moved to 'Shipped')"
 ```
-
-## CONTEXT COMPACTION (Phase-Aware)
-
-Adaptive budgets based on workflow phase:
-
-### Phase Budgets & Thresholds
-
-| Phase | Workflow Stage | Budget | Compact At | Reduction | Strategy |
-|-------|---------------|--------|------------|-----------|----------|
-| Planning (0-2) | spec-flow, Clarify, Plan, Tasks | 75k tokens | 60k (80%) | 90% | Aggressive (decisions only) |
-| Implementation (3-4) | Analyze, Implement | 100k tokens | 80k (80%) | 60% | Moderate (20 checkpoints) |
-| Optimization (5-7) | Optimize, Ship, Validate | 125k tokens | 100k (80%) | 30% | Minimal (preserve review) |
-
-### Trigger Points (Automatic)
-- **After /plan** (Phase 1): If >60k tokens  aggressive compaction
-- **After /implement** (Phase 4): If >80k tokens  moderate compaction
-- **Before /optimize** (Phase 5): Auto-detect phase, use appropriate strategy
-
-### Compaction Process
-```bash
-# Auto-detect phase and calculate tokens
-FEATURE_DIR=$(find specs -maxdepth 1 -type d -name "*-*" | sort -n | tail -1)
-CONTEXT_CHECK=$(pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 \
-  -FeatureDir "$FEATURE_DIR" -Json)
-
-# Check if compaction needed
-SHOULD_COMPACT=$(echo "$CONTEXT_CHECK" | jq -r '.shouldCompact')
-PHASE=$(echo "$CONTEXT_CHECK" | jq -r '.phase')
-
-if [ "$SHOULD_COMPACT" = "true" ]; then
-  # Run phase-aware compaction
-  pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 \
-    -FeatureDir "$FEATURE_DIR" \
-    -Phase "$PHASE"
-fi
-```
-
-### Phase-Specific Strategies
-
-**Planning Phase (90% reduction):**
--  Keep: Decisions and rationale only
--  Keep: Architecture headings
--  Keep: Last 5 task checkpoints
--  Keep: Full error log
--  Remove: Detailed research notes
--  Remove: Full task descriptions
-
-**Implementation Phase (60% reduction):**
--  Keep: Decisions and rationale
--  Keep: Architecture headings
--  Keep: Last 20 task checkpoints
--  Keep: Full error log
--  Remove: Intermediate research notes
--  Remove: Verbose task descriptions
-
-**Optimization Phase (30% reduction):**
--  Keep: All decisions and rationale
--  Keep: Architecture headings
--  Keep: All task checkpoints
--  Keep: Full error log
--  Keep: **Code review report** (critical for review context)
--  Remove: Only redundant research details
-
-### Context Budget Principles
-
-**Why adaptive budgets?** (Anthropic research)
-- Diminishing returns with excessive context
-- Attention degradation beyond optimal window
-- Phase-specific context needs vary significantly
-
-**Planning needs less context:**
-- Decisions over details
-- Architecture over implementation
-- Quick iteration over full history
-
-**Implementation needs moderate context:**
-- Recent checkpoints for continuity
-- Error history for learning
-- Not all research notes
-
-**Optimization needs maximum context:**
-- Full review history (code-review-report.md)
-- All checkpoints for traceability
-- Complete error log for patterns
 
 ## PAUSE POINTS (Manual Intervention)
 
@@ -503,7 +407,6 @@ Choose (A/B/C):
 - **One feature at a time**: Workflow tracks single feature directory
 - **Sequential phases**: Cannot skip phases (analysis before implementation)
 - **Manual gates are mandatory**: Preview and staging validation required
-- **Context budget enforced**: Auto-compact at 40k tokens
 - **Rollback capability**: Git commits at each phase for safety
 
 ## USAGE EXAMPLES
@@ -518,7 +421,6 @@ Choose (A/B/C):
 #  Phase 1: Plan generated (research + architecture)
 #  Phase 2: Tasks created (28 tasks)
 #  Phase 3: Analysis passed (0 critical issues)
-#   Context compacted: 45k  12k tokens
 #  Phase 4: Implementation complete (28/28 tasks)
 #  Phase 5: Optimization passed (0 blockers)
 #  MANUAL GATE: Run /preview
@@ -568,7 +470,6 @@ Timeline:
 
 Metrics:
 - Tasks completed: N/N
-- Context used: NN,NNN tokens (compacted: Y/N)
 - Auto-fixes applied: N
 
 Deployments:

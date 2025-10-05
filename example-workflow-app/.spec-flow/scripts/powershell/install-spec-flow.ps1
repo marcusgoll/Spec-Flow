@@ -246,6 +246,35 @@ if (Test-Path -LiteralPath $claudeMdSource -PathType Leaf) {
     }
 }
 
+# --- Copy QUICKSTART.md (Optional) -----------------------------------------
+$quickstartSource = Join-Path -Path $sourceRoot -ChildPath 'QUICKSTART.md'
+if (Test-Path -LiteralPath $quickstartSource -PathType Leaf) {
+    Write-Step "Copying QUICKSTART.md..."
+    $quickstartTarget = Join-Path -Path $targetAbsolute -ChildPath 'QUICKSTART.md'
+
+    try {
+        if (Test-Path -LiteralPath $quickstartTarget -PathType Leaf) {
+            if (Confirm-Overwrite -Path $quickstartTarget) {
+                Copy-Item -LiteralPath $quickstartSource -Destination $quickstartTarget -Force
+                $results.copied += 'QUICKSTART.md'
+                Write-Success "Copied QUICKSTART.md (overwritten)"
+            } else {
+                $results.skipped += 'QUICKSTART.md'
+                Write-Warn "Skipped QUICKSTART.md (already exists)"
+            }
+        } else {
+            Copy-Item -LiteralPath $quickstartSource -Destination $quickstartTarget -Force
+            $results.copied += 'QUICKSTART.md'
+            Write-Success "Copied QUICKSTART.md"
+        }
+    } catch {
+        $results.errors += @{ item = 'QUICKSTART.md'; error = $_.Exception.Message }
+        if (-not $Json) {
+            Write-Warning "Failed to copy QUICKSTART.md: $($_.Exception.Message)"
+        }
+    }
+}
+
 # Settings files are copied as-is from source .claude/ directory
 # Users should manually configure .claude/settings.local.json per the documentation
 

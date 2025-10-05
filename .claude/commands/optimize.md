@@ -518,58 +518,6 @@ All must pass before `/ship`:
 - [ ] All tests passing (80%+ coverage)
 ```
 
-## CONTEXT BUDGET TRACKING
-
-**Optimization Phase Budget (Phase 5-7):**
-- **Budget**: 125k tokens
-- **Compact at**: 100k tokens (80% threshold)
-- **Strategy**: Minimal (30% reduction - preserve code review + all checkpoints)
-
-**After optimization phases complete:**
-
-```bash
-# Calculate current context (auto-detects optimization phase)
-# POSIX: replace 'pwsh -File' with matching .spec-flow/scripts/bash/*.sh helper
-FEATURE_DIR=$(find specs -maxdepth 1 -type d -name "*-*" | sort -n | tail -1)
-CONTEXT_CHECK=$(pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 \
-  -FeatureDir "$FEATURE_DIR" -Phase "optimization" -Json)
-
-CONTEXT_TOKENS=$(echo "$CONTEXT_CHECK" | jq -r '.totalTokens')
-SHOULD_COMPACT=$(echo "$CONTEXT_CHECK" | jq -r '.shouldCompact')
-BUDGET=$(echo "$CONTEXT_CHECK" | jq -r '.budget')
-THRESHOLD=$(echo "$CONTEXT_CHECK" | jq -r '.threshold')
-
-echo "Context: ${CONTEXT_TOKENS}/${BUDGET} tokens (optimization phase)"
-
-if [ "$SHOULD_COMPACT" = "true" ]; then
-  echo "  Exceeds threshold (${THRESHOLD} tokens)"
-  echo "Auto-compacting with minimal strategy (30% reduction, preserve code review)..."
-
-  pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 \
-    -FeatureDir "$FEATURE_DIR" \
-    -Phase "optimization"
-
-  # Verify compaction
-  NEW_TOKENS=$(pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 \
-    -FeatureDir "$FEATURE_DIR" -Phase "optimization" -Json | jq -r '.totalTokens')
-  echo " Compacted: ${CONTEXT_TOKENS}  ${NEW_TOKENS} tokens"
-fi
-```
-
-**What gets preserved (minimal strategy):**
--  All decisions and rationale
--  All architecture decisions
--  All task checkpoints (no limit)
--  Full error log
--  **Complete code review report** (critical for review context)
--  Only redundant research details removed
-
-**Why minimal compaction in optimization?**
-- Code review needs full context for accurate analysis
-- All checkpoints preserve feature history
-- Error log shows patterns and learnings
-- Optimization phase is final quality gate
-
 ## WRITE OPTIMIZATION REPORT
 
 Create artifacts directory and write comprehensive report:
@@ -690,4 +638,5 @@ Brief summary:
 -  Code Quality: Senior review passed, tests passing XX% coverage
 -   Blockers: N issues found (fix before /preview) OR 0 (ready for /preview)
 - Next: `/preview` (manual UI/UX testing before shipping)
+- Optional: `/compact optimization` (minimal compaction, preserves code review)
 

@@ -144,6 +144,7 @@ Brief summary:
 - NOTES.md: Phase 2 checkpoint
 
  Next: /analyze
+Optional: /compact planning (if needed before analysis)
 ```
 
 

@@ -26,7 +26,6 @@ See `./visuals/README.md` for UI research and design patterns (if applicable)
 - **System prompt altitude**: [Describe cue level and rationale]
 - **Tool surface**: [Essential tools + why token-efficient]
 - **Examples in scope**: [3 canonical examples]
-- **Context budget**: [Target tokens + compaction trigger]
 - **Retrieval strategy**: [JIT vs. upfront; identifiers]
 - **Memory artifacts**: [NOTES.md, TODO.md update cadence]
 - **Compaction cadence**: [Summaries every N turns]

@@ -108,4 +108,5 @@ Details:
 - Session log: Added to spec.md
 
 Next: /plan
+Optional: /compact planning (if context feels heavy)
 ```

@@ -60,14 +60,6 @@ Reviewed 15 popular design systems (Material UI, Chakra, Ant Design). Common pat
 - Toggle button needs aria-label and keyboard support
 - Avoid relying solely on color to convey information
 
-## Token Budget
-
-- **Spec phase**: 8.5k tokens
-- **Planning phase**: 12k tokens (compacted to 4k)
-- **Implementation phase**: 35k tokens (compacted to 14k)
-- **Review phase**: 18k tokens
-- **Total context used**: ~73k tokens (with compaction)
-
 ## Lessons Learned
 
 1. **Start with accessibility** - Adding it later is harder. Built WCAG compliance from the start.

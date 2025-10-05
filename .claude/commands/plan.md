@@ -63,52 +63,6 @@ Design implementation for: specs/$FEATURE/spec.md
 - Use `.spec-flow/templates/error-log-template.md`
 - Pre-implementation entry for failure tracking
 
-## CONTEXT BUDGET TRACKING
-
-**Planning Phase Budget (Phase 0-2):**
-- **Budget**: 75k tokens
-- **Compact at**: 60k tokens (80% threshold)
-- **Strategy**: Aggressive (90% reduction - keep decisions only)
-
-**After completing design artifacts:**
-
-```bash
-# Calculate current context (auto-detects planning phase)
-# POSIX: replace 'pwsh -File' with matching .spec-flow/scripts/bash/*.sh helper
-FEATURE_DIR=$(find specs -maxdepth 1 -type d -name "*-*" | sort -n | tail -1)
-CONTEXT_CHECK=$(pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 \
-  -FeatureDir "$FEATURE_DIR" -Phase "planning" -Json)
-
-CONTEXT_TOKENS=$(echo "$CONTEXT_CHECK" | jq -r '.totalTokens')
-SHOULD_COMPACT=$(echo "$CONTEXT_CHECK" | jq -r '.shouldCompact')
-BUDGET=$(echo "$CONTEXT_CHECK" | jq -r '.budget')
-THRESHOLD=$(echo "$CONTEXT_CHECK" | jq -r '.threshold')
-
-echo "Context: ${CONTEXT_TOKENS}/${BUDGET} tokens (planning phase)"
-
-if [ "$SHOULD_COMPACT" = "true" ]; then
-  echo "  Exceeds threshold (${THRESHOLD} tokens)"
-  echo "Auto-compacting with aggressive strategy (90% reduction)..."
-
-  pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 \
-    -FeatureDir "$FEATURE_DIR" \
-    -Phase "planning"
-
-  # Verify compaction
-  NEW_TOKENS=$(pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 \
-    -FeatureDir "$FEATURE_DIR" -Phase "planning" -Json | jq -r '.totalTokens')
-  echo " Compacted: ${CONTEXT_TOKENS}  ${NEW_TOKENS} tokens"
-
-  # Update NOTES.md checkpoint
-  echo "-  Context compacted (planning): ${CONTEXT_TOKENS}  ${NEW_TOKENS} tokens" >> "$FEATURE_DIR/NOTES.md"
-fi
-```
-
-**If budget still exceeded after compaction:**
-- Feature may be too large for single spec
-- Suggest breaking into smaller features by domain/area
-- Example: "Dashboard"  "Dashboard Layout" + "Dashboard Widgets" + "Dashboard Analytics"
-
 ## GIT COMMIT
 
 ```bash
@@ -140,10 +94,10 @@ Details:
 - Research: N decisions, N alternatives
 - Existing: N modules/services to REUSE
 - New: N capabilities to CREATE
-- Context: NN,NNN tokens (compacted: Y/N)
 - error-log.md: Initialized
 - NOTES.md: Phase 1 checkpoint
 
 Next: /tasks
+Optional: /compact planning (to reduce context before tasks)
 ```
 

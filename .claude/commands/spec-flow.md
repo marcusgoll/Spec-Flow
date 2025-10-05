@@ -83,9 +83,6 @@ Create specification for: $ARGUMENTS
 ## Checkpoints
 - Phase 0 (spec-flow): [date]
 
-## Context Budget
-- Phase 0: N tokens
-
 ## Last Updated
 [ISO timestamp]
 ```
@@ -155,6 +152,8 @@ else
   echo ""
   echo "Recommended: /plan"
   echo "Alternative: /flow continue (automates plan  tasks  implement  ship)"
+  echo ""
+  echo "Optional: /compact planning (if context feels heavy)"
 fi
 ```
 
