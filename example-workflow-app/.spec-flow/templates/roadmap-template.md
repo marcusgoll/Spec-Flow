@@ -1,6 +1,6 @@
-# Spec-Flow Product Roadmap
+﻿# Spec-Flow Product Roadmap
 
-**Last updated**: 2025-10-03
+**Last updated**: [auto-generated on save]
 
 > Features from brainstorm  shipped. Managed via `/roadmap`
 

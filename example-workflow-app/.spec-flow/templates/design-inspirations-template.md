@@ -1,8 +1,8 @@
-# Spec-Flow Design Inspirations
+﻿# Spec-Flow Design Inspirations
 
 **Purpose**: Global mood board of design patterns, styles, and interactions we admire. Reference this when creating specs or implementing UI features.
 
-**Last updated**: 2025-10-03
+**Last updated**: [ISO timestamp]
 
 ---
 

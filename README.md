@@ -110,33 +110,50 @@ Spec-Driven Development flips the traditional model: specifications become execu
 
 ## 🚀 Quick Start
 
+### Option 1: NPM (Recommended)
+
+Install Spec-Flow with a single command:
+
 ```bash
-# 1. Clone the repository
+# Initialize in current directory
+npx spec-flow init
+
+# Or specify target directory
+npx spec-flow init --target ./my-project
+```
+
+### Option 2: Manual Installation
+
+Clone and run the interactive wizard:
+
+```bash
+# 1. Clone Spec-Flow repository
 git clone https://github.com/marcusgoll/Spec-Flow.git
 cd Spec-Flow
 
-# 2. Configure Claude Code permissions
-cp .claude/settings.example.json .claude/settings.local.json
-# Edit .claude/settings.local.json and add your project paths
+# 2. Run the installation wizard (Windows)
+powershell -File .spec-flow/scripts/powershell/install-wizard.ps1
 
-# 3. Verify prerequisites
-pwsh -File .spec-flow/scripts/powershell/check-prerequisites.ps1 -Json
 # OR (macOS/Linux)
-.spec-flow/scripts/bash/check-prerequisites.sh --json
-
-# 4. Plan your roadmap (add features and prioritize)
-# In Claude Code:
-/roadmap
-
-# 5. Build a feature from your roadmap
-/spec-flow "dark-mode-toggle"  # References roadmap entry
-/plan
-/tasks
-/implement
-# ... follow the workflow phases
+./.spec-flow/scripts/bash/install-wizard.sh
 ```
 
-**Next**: Follow the [**Getting Started Tutorial**](docs/getting-started.md) for a step-by-step walkthrough.
+**What gets installed:**
+- ✅ `.claude/` - Agents, commands, and settings
+- ✅ `.spec-flow/` - Scripts, templates, and memory
+- ✅ `CLAUDE.md` - Workflow documentation
+- ✅ Memory files initialized (constitution, roadmap, design-inspirations)
+
+**Then start planning features:**
+```bash
+# In Claude Code (in your project directory)
+/constitution         # Customize engineering standards
+/roadmap              # Build your feature roadmap
+/spec-flow "my-feature"  # Create specification
+/flow "my-feature"    # Automate full workflow
+```
+
+👉 **Full guide**: [QUICKSTART.md](QUICKSTART.md) | **Detailed tutorial**: [Getting Started](docs/getting-started.md)
 
 ---
 

@@ -1,7 +1,7 @@
 # Engineering Constitution
 
 **Version**: 1.0.0
-**Last Updated**: 2025-10-03
+**Last Updated**: [YYYY-MM-DD]
 **Status**: Draft
 
 > This document defines the core engineering principles that govern all feature development in this project. Every specification, plan, and implementation must align with these principles.

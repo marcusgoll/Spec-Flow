@@ -1,0 +1,56 @@
+{
+  "name": "spec-flow",
+  "version": "1.0.0",
+  "description": "Spec-Driven Development workflow toolkit for Claude Code - Build high-quality features faster with repeatable AI workflows",
+  "keywords": [
+    "claude",
+    "ai",
+    "workflow",
+    "spec-driven",
+    "development",
+    "roadmap",
+    "planning",
+    "automation"
+  ],
+  "homepage": "https://github.com/marcusgoll/Spec-Flow#readme",
+  "bugs": {
+    "url": "https://github.com/marcusgoll/Spec-Flow/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marcusgoll/Spec-Flow.git"
+  },
+  "license": "MIT",
+  "author": "Marcus Gollahon <marcus@example.com>",
+  "bin": {
+    "spec-flow": "bin/cli.js"
+  },
+  "files": [
+    ".claude/",
+    ".spec-flow/",
+    "CLAUDE.md",
+    "bin/",
+    "LICENSE",
+    "README.md",
+    "QUICKSTART.md"
+  ],
+  "scripts": {
+    "postinstall": "node bin/postinstall.js"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "dependencies": {
+    "commander": "^11.1.0",
+    "chalk": "^4.1.2",
+    "inquirer": "^8.2.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6"
+  }
+}
