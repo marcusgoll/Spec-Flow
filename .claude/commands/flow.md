@@ -122,8 +122,8 @@ PHASE 7.5: FINALIZE → Update docs (CHANGELOG, README, help), manage milestones
    - Set `status = "in_progress"`
    - Record start timestamp
 
-2. **Run \spec-flow command:**
-   - INVOKE: `\spec-flow "$ARGUMENTS"` (use SlashCommand tool)
+2. **Run /spec-flow command:**
+   - INVOKE: `/spec-flow "$ARGUMENTS"` (use SlashCommand tool)
    - WAIT: For completion
    - VERIFY: `specs/[feature-slug]/spec.md` created
 

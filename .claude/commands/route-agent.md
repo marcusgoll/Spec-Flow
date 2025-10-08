@@ -29,6 +29,10 @@ Else: Set TASK_DESCRIPTION = $ARGUMENTS
 - Agent receives minimal, focused context
 - No token waste on irrelevant codebase scanning
 
+**Parallel execution**:
+- Multiple Task() calls in single message = parallel execution
+- Used by /implement for batched task processing
+
 **Tool used**: Claude Code's Task tool (available in this environment)
 
 ## ANALYZE TASK
@@ -57,7 +61,7 @@ Else: Set TASK_DESCRIPTION = $ARGUMENTS
 
 **Score each agent based on triggers, then select highest score:**
 
-### Backend API/Services → `cfipros-backend-dev`
+### Backend API/Services → `backend-dev`
 
 **Triggers (+10 points each)**:
 - File paths: `api/**/*.py`, `app/**/*.py`
@@ -71,7 +75,7 @@ Else: Set TASK_DESCRIPTION = $ARGUMENTS
 
 ---
 
-### Frontend UI/Components → `cfipros-frontend-shipper`
+### Frontend UI/Components → `frontend-shipper`
 
 **Triggers (+10 points each)**:
 - File paths: `apps/**/*.tsx`, `apps/**/*.ts`, `components/**`
@@ -85,7 +89,7 @@ Else: Set TASK_DESCRIPTION = $ARGUMENTS
 
 ---
 
-### Database Schema/Queries → `cfipros-database-architect`
+### Database Schema/Queries → `database-architect`
 
 **Triggers (+10 points each)**:
 - File paths: `api/alembic/**`, `api/app/models/**`
@@ -101,7 +105,7 @@ Else: Set TASK_DESCRIPTION = $ARGUMENTS
 
 ---
 
-### Tests/QA → `cfipros-qa-test`
+### Tests/QA → `qa-test`
 
 **Triggers (+10 points each)**:
 - File paths: `**/tests/**`, `**/test_*.py`, `**/*.test.ts`
@@ -115,7 +119,7 @@ Else: Set TASK_DESCRIPTION = $ARGUMENTS
 
 ---
 
-### Debugging/Error Fixing → `cfipros-debugger`
+### Debugging/Error Fixing → `debugger`
 
 **Triggers (+10 points each)**:
 - Keywords: "bug", "error", "failing", "broken", "fix", "debug", "crash"
@@ -155,7 +159,7 @@ Else: Set TASK_DESCRIPTION = $ARGUMENTS
    - If database AND backend both match: database wins
    - If debugger AND qa both match on "test": qa wins
 4. Select agent with highest score
-5. If all scores = 0: Default to `cfipros-debugger`
+5. If all scores = 0: Default to `debugger`
 
 **Display routing decision**:
 ```
@@ -167,7 +171,7 @@ Routing analysis:
   Debug: 10 points
   Review: 0 points
 
-Selected: cfipros-backend-dev (20 points)
+Selected: backend-dev (20 points)
 ```
 
 ## GATHER CONTEXT
@@ -214,7 +218,7 @@ Selected: cfipros-backend-dev (20 points)
 
 ```python
 Task(
-  subagent_type="[agent-name]",  # e.g., "cfipros-backend-dev"
+  subagent_type="[agent-name]",  # e.g., "backend-dev"
   description="[5-10 word summary]",  # e.g., "Implement user endpoint with validation"
   prompt=f"""[Domain] task: {TASK_DESCRIPTION}
 
@@ -239,7 +243,7 @@ Summary of changes, test evidence, verification status, next steps."""
 ```
 
 **Task tool parameters**:
-- `subagent_type`: One of the 6 specialist agents (cfipros-backend-dev, cfipros-frontend-shipper, etc.)
+- `subagent_type`: One of the 6 specialist agents (backend-dev, frontend-shipper, etc.)
 - `description`: Short task summary (5-10 words) for progress tracking
 - `prompt`: Detailed task description with context, requirements, and expected outputs
 
@@ -300,7 +304,7 @@ Analysis:
   - Domain: Backend API
   - Keywords: "endpoint", "POST", "api"
   - File paths: None explicit (will be api/app/routes/)
-Route: cfipros-backend-dev
+Route: backend-dev
 Context: spec.md requirements, data-model.md User schema, REUSE: validation_service
 ```
 
@@ -311,7 +315,7 @@ Analysis:
   - Domain: Frontend UI
   - Keywords: "component", "avatar", "upload"
   - File paths: None explicit (will be apps/app/components/)
-Route: cfipros-frontend-shipper
+Route: frontend-shipper
 Context: visuals/README.md patterns, design system colors, REUSE: ImageUpload component
 ```
 
@@ -322,7 +326,7 @@ Analysis:
   - Domain: Database
   - Keywords: "migration", "table"
   - File paths: None explicit (will be api/alembic/versions/)
-Route: cfipros-database-architect
+Route: database-architect
 Context: data-model.md ERD, existing migrations, RLS requirements from plan.md
 ```
 
@@ -333,7 +337,7 @@ Analysis:
   - Domain: Debugging
   - Keywords: "fix", "failing", "error"
   - File paths: test_user_creation (implies api/tests/)
-Route: cfipros-debugger
+Route: debugger
 Context: error-log.md recent entries, test file, User model definition
 ```
 
@@ -347,7 +351,7 @@ Context: error-log.md recent entries, test file, User model definition
 
 Task: [task description]
 
-Defaulting to: cfipros-debugger (general-purpose)
+Defaulting to: debugger (general-purpose)
 
 Reason: No domain-specific keywords detected
 ```
@@ -362,7 +366,7 @@ Scores:
 
 Applying specificity rules:
   → Database is more specific than Backend
-  → Routing to: cfipros-database-architect
+  → Routing to: database-architect
 ```
 
 ### Agent Timeout (if Task tool supports)
