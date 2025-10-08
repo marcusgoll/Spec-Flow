@@ -135,12 +135,12 @@ No CI pipeline yet. Validate locally before submitting:
 ## Agent Briefs
 
 Specialist agents are defined in `.claude/agents/`:
-- `spec-flow-backend-dev.md` — Backend implementation
-- `spec-flow-frontend-shipper.md` — Frontend implementation
-- `spec-flow-qa-test.md` — QA and testing
-- `spec-flow-senior-code-reviewer.md` — Code review
-- `spec-flow-debugger.md` — Error triage
-- `spec-flow-ci-cd-release.md` — CI/CD and deployment
+- `backend-dev.md` — Backend implementation
+- `frontend-shipper.md` — Frontend implementation
+- `qa-test.md` — QA and testing
+- `senior-code-reviewer.md` — Code review
+- `debugger.md` — Error triage
+- `ci-cd-release.md` — CI/CD and deployment
 
 When working with agents, load the relevant brief for context on capabilities and responsibilities.
 

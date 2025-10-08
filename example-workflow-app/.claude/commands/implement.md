@@ -326,11 +326,11 @@ TASK_DOMAIN=$(analyze-task-domain "$TASK_ID" "$TASK_DESCRIPTION")
 ```
 
 **Routing decision tree** (from `/route-agent`):
-- `api/**/*.py`  spec-flow-backend-dev
-- `apps/**/*.tsx`  spec-flow-frontend-shipper
-- `api/alembic/**`  spec-flow-database-architect
-- `**/tests/**`  spec-flow-qa-test
-- "bug"|"error"|"fix"  spec-flow-debugger
+- `api/**/*.py`  backend-dev
+- `apps/**/*.tsx`  frontend-shipper
+- `api/alembic/**`  database-architect
+- `**/tests/**`  qa-test
+- "bug"|"error"|"fix"  debugger
 
 **Context provided to agent:**
 - Task description with REUSE markers
@@ -342,7 +342,7 @@ TASK_DOMAIN=$(analyze-task-domain "$TASK_ID" "$TASK_DESCRIPTION")
 **Agent returns structured result:**
 ```json
 {
-  "agent": "spec-flow-backend-dev",
+  "agent": "backend-dev",
   "task_completed": true,
   "files_changed": ["api/app/routes/users.py"],
   "tests_added": ["api/tests/test_users.py"],

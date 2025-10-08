@@ -20,7 +20,7 @@ Install Spec-Flow with a single command using npx:
 # Initialize in current directory (interactive wizard)
 npx spec-flow init
 
-# Or specify target directory
+# Or\spec-flow target directory
 npx spec-flow init --target ./my-project
 
 # Non-interactive mode (uses defaults)
@@ -58,7 +58,7 @@ cd Spec-Flow
 # Interactive wizard
 powershell -File .spec-flow/scripts/powershell/install-wizard.ps1
 
-# Or specify target directory
+# Or\spec-flow target directory
 powershell -File .spec-flow/scripts/powershell/install-wizard.ps1 -TargetDir ../my-project
 ```
 
@@ -67,7 +67,7 @@ powershell -File .spec-flow/scripts/powershell/install-wizard.ps1 -TargetDir ../
 # Interactive wizard
 ./.spec-flow/scripts/bash/install-wizard.sh
 
-# Or specify target directory
+# Or\spec-flow target directory
 ./.spec-flow/scripts/bash/install-wizard.sh --target-dir ../my-project
 ```
 
@@ -358,3 +358,4 @@ See the full [Troubleshooting Guide](docs/troubleshooting.md) or [file an issue]
 **Happy building!** 🚀
 
 For detailed documentation, visit [docs/getting-started.md](docs/getting-started.md).
+

@@ -1,0 +1,174 @@
+# Feature Specification: [FEATURE NAME]
+
+<metadata>
+**Branch**: `[###-feature-name]`
+**Created**: [DATE]
+**Status**: Draft
+**Input**: "$ARGUMENTS"
+</metadata>
+
+<execution_flow>
+Planning is 80% of success - clarity amplifies AI effectiveness
+
+1. Parse user description → Extract: actors, actions, data, constraints
+2. Mark ambiguities → Use [NEEDS CLARIFICATION: specific question]
+3. Define user scenarios → If unclear: ERROR "Cannot determine user flow"
+4. Generate testable requirements → Mark any assumptions
+5. Identify entities (if data involved)
+6. Validate against checklist → Must pass all gates
+7. Ready for `/plan` phase
+</execution_flow>
+
+<ai_guidelines>
+**Core Principles:**
+- Focus on WHAT/WHY, never HOW (no tech stack, APIs, code)
+- Write for business stakeholders, not developers
+- One feature per spec (no mixing features)
+- Screenshots provide 10x more context than text
+- Treat context as a finite budget; prefer high-signal cues over exhaustive dumps
+
+**Specification Rules:**
+- Mark ALL ambiguities - don't guess
+- Think like a tester - every requirement must be testable
+- Remove unused sections entirely (no "N/A")
+- Common gaps: permissions, performance, error handling, security
+</ai_guidelines>
+
+## Stack Alignment *(stay within the knowledge horizon)*
+
+<stack_alignment>
+Prefer mainstream frameworks for velocity and predictability:
+- Frontend: React 18 with Next.js 15 unless deviation noted
+- Backend: FastAPI or Flask delivering RESTful APIs
+- Data layer: PostgreSQL + Redis for caching when required
+Document any deviation as `Deviation:` bullet with rationale and mitigation.
+</stack_alignment>
+
+## Context Strategy & Signal Design
+
+<context_strategy>
+Design the minimal, high-signal context for this feature:
+- **System prompt altitude**: [Describe the cue level (heuristics vs. hard rules) and why]
+- **Tool surface**: [List essential tools + why each is token-efficient]
+- **Examples in scope**: [Curate <=3 canonical examples and what they teach]
+- **Context budget**: [Target max tokens + compaction trigger]
+- **Guardrails**: [Ambiguities to exclude, stale docs to prune, monitoring hooks]
+</context_strategy>
+
+<context_runtime>
+Runtime context plan:
+- **Retrieval strategy**: [Just-in-time vs. upfront preload; identifiers to fetch]
+- **Memory artifacts**: [Files like NOTES.md, TODO.md updated each loop]
+- **Compaction cadence**: [Summaries every N turns; what to retain/drop]
+- **Sub-agents / delegation**: [If used, name scope + handoff contract]
+</context_runtime>
+
+
+## User Scenarios & Testing *(mandatory)*
+
+### Primary User Story
+[Describe the main user journey in plain language]
+
+### Acceptance Scenarios
+1. **Given** [initial state], **When** [action], **Then** [expected outcome]
+2. **Given** [initial state], **When** [action], **Then** [expected outcome]
+
+### Edge Cases
+- What happens when [boundary condition]?
+- How does system handle [error scenario]?
+
+## Visual References *(optional - screenshots provide 10x context)*
+
+<visual_assets>
+Store in `./visuals/` subdirectory for planning alignment
+
+- [ ] `./visuals/<filename>.png` - [description]
+- [ ] External reference: [URL with description]
+- [ ] No visuals provided [remove unused bullets]
+</visual_assets>
+
+## Error Ritual & Recovery *(log every failed run)*
+
+<error_ritual>
+Maintain `error-log.md` in the feature directory. After any failing build/test run, append:
+- **Failure**: command or scenario
+- **Symptom**: concise error summary
+- **Learning**: distilled fix or guardrail
+- **Ghost Context Cleanup**: what stale files/assumptions were removed before retry
+Plans or specs referencing retired context MUST be updated immediately.
+</error_ritual>
+
+## Requirements *(mandatory - write tests BEFORE code)*
+
+<functional_requirements>
+Each requirement MUST be testable and unambiguous
+
+- **FR-001**: System MUST [specific capability]
+- **FR-002**: Users MUST be able to [key interaction]
+- **FR-003**: System MUST [data requirement]
+- **FR-004**: System MUST [behavior/validation]
+
+*Mark ambiguities - don't guess:*
+- **FR-XXX**: [NEEDS CLARIFICATION: specific question about requirement]
+</functional_requirements>
+
+<non_functional_requirements>
+Include when applicable - performance/accessibility/mobile/errors
+
+- **NFR-001**: Performance: [specific target with metrics]
+- **NFR-002**: Accessibility: [compliance standard]
+- **NFR-003**: Mobile: [responsive requirements]
+- **NFR-004**: Error Handling: [user experience requirements]
+</non_functional_requirements>
+
+<key_entities>
+Include if feature involves data - what not how
+
+- **[Entity]**: [Purpose, key attributes, relationships]
+</key_entities>
+
+---
+
+## Quality Gates *(all must pass before `/plan`)*
+
+<content_validation>
+Stop after validation - prevent runaway changes
+
+- [ ] No implementation details (tech stack, APIs, code)
+- [ ] Business stakeholder focused
+- [ ] All mandatory sections completed
+- [ ] Stack alignment section completed or deviation noted
+- [ ] Context strategy documented (budget, tools, examples)
+- [ ] One feature only (no mixing)
+</content_validation>
+
+<requirement_validation>
+Loop until actually testable - "should work" means it doesn't
+
+- [ ] No [NEEDS CLARIFICATION] markers
+- [ ] Requirements testable and unambiguous
+- [ ] Success criteria measurable
+- [ ] Scope clearly bounded
+- [ ] Error ritual documented (see `error-log.md`)
+- [ ] Ghost context cleaned before each retry
+- [ ] Dependencies identified
+- [ ] Context runtime plan covers retrieval/compaction/memory
+</requirement_validation>
+
+<constitution_alignment>
+CFIpros Constitution v1.1.0 compliance
+
+- [ ] Performance: <10s extraction (Principle XII)
+- [ ] UX: Consistency, accessibility (Principle XI)
+- [ ] Data: Minimal storage (Principle III)
+- [ ] Access: Tiered visibility (Principle V)
+</constitution_alignment>
+
+<execution_status>
+Track completion - git commit after working feature
+
+- [ ] Description parsed → Key concepts extracted
+- [ ] Ambiguities marked → User scenarios defined
+- [ ] Requirements generated → Entities identified
+- [ ] Quality gates passed → Ready for planning
+</execution_status>

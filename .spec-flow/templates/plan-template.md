@@ -1,4 +1,4 @@
-﻿# Implementation Plan: [FEATURE]
+# Implementation Plan: [FEATURE]
 
 **Branch**: `[###-feature-name]`
 **Date**: [DATE]
@@ -22,14 +22,19 @@
 
 ## Constitution Check
 
-**Spec-Flow Workflow Principles**:
-- [ ] Alignment: Spec, plan, and tasks describe the same outcomes
-- [ ] Simplicity: Ship the smallest change that satisfies the requirement
-- [ ] Contract-first: APIs, events, and schemas documented before code lands
-- [ ] Quality gates: Lint, type checks, tests, and coverage thresholds met
-- [ ] Observability: Logging/metrics/traces updated for new behaviour
-- [ ] Accessibility & performance budgets respected
-- [ ] Security & privacy reviewed for new data flows
+**CFIpros Core Principles**:
+- [ ] I. Extractor-First: <10s extraction results
+- [ ] II. Hybrid Extraction: Regex + Vision LLM appropriately
+- [ ] III. Minimal Data: No file storage post-extraction
+- [ ] IV. Transparent Mapping: ACS DB authoritative source
+- [ ] V. Tiered Visibility: Free/paid separation enforced
+- [ ] VI. Rolling Stats: Privacy-preserving aggregation
+- [ ] VII. Accuracy Loop: Correction mechanism included
+- [ ] VIII. No Overengineering: Simple MVP approach
+- [ ] IX. Code Quality: Type safety, linting, DRY
+- [ ] X. Testing: 80% coverage, integration planned
+- [ ] XI. UX Consistency: Design system, accessibility
+- [ ] XII. Performance: <10s P95, <500ms API thresholds
 
 ## Project Structure
 
@@ -57,20 +62,29 @@ api/, ios/ or android/
 
 **Structure Decision**: [DEFAULT to Option 1 unless Technical Context indicates web/mobile]
 
+## Context Engineering Plan
+
+- **Context budget**: [Max tokens, tool output trims, when to compact]
+- **Token triage**: [What stays resident vs. retrieved on demand]
+- **Retrieval strategy**: [JIT tools, identifiers, caching heuristics]
+- **Memory artifacts**: [NOTES.md / TODO.md cadence, retention policy]
+- **Compaction & resets**: [Summaries, tool log pruning, restart triggers]
+- **Sub-agent handoffs**: [Scopes, shared state, summary contract]
+
 ## Phase 0: Codebase Scan & Research
 
 ### [EXISTING INFRASTRUCTURE - REUSE]
 
 From codebase scan:
--  [ExistingService] ([path])
--  [ExistingMiddleware] ([path])
--  Similar pattern: [path] (follow this structure)
+- ✅ [ExistingService] ([path])
+- ✅ [ExistingMiddleware] ([path])
+- ✅ Similar pattern: [path] (follow this structure)
 
 ### [NEW INFRASTRUCTURE - CREATE]
 
 No existing alternatives:
--  [NewService] (new capability)
--  [NewIntegration] (new integration)
+- 🆕 [NewService] (new capability)
+- 🆕 [NewIntegration] (new integration)
 
 ### Research Findings
 
@@ -131,11 +145,11 @@ Existing code to reuse: [from codebase scan]
 *This section describes what the /tasks command will do - DO NOT execute during /plan*
 
 **Task Generation Strategy**:
-- Load `.spec-flow/templates/tasks-template.md` as base
+- Load `\spec-flow/templates/tasks-template.md` as base
 - Generate tasks from Phase 1 design docs
-- Each contract  contract test task [P]
-- Each entity  model creation task [P]
-- Each user story  integration test task
+- Each contract → contract test task [P]
+- Each entity → model creation task [P]
+- Each user story → integration test task
 - Implementation tasks to make tests pass
 
 **Ordering Strategy**:
@@ -154,10 +168,11 @@ Existing code to reuse: [from codebase scan]
 ## Progress Tracking
 
 **Phase Gates**:
-- [ ] Phase 0: Research complete  `research.md` generated
-- [ ] Phase 1: Design complete  `data-model.md`, `contracts/`, `quickstart.md`
-- [ ] Phase 2: Task approach documented  Ready for `/tasks`
+- [ ] Phase 0: Research complete → `research.md` generated
+- [ ] Phase 1: Design complete → `data-model.md`, `contracts/`, `quickstart.md`
+- [ ] Phase 2: Task approach documented → Ready for `/tasks`
 - [ ] Error ritual entry added after latest failure (if any)
+- [ ] Context plan documented (budget, retrieval, memory)
 
 **Quality Gates**:
 - [ ] Initial Constitution Check: PASS
@@ -165,5 +180,5 @@ Existing code to reuse: [from codebase scan]
 - [ ] All NEEDS CLARIFICATION resolved
 - [ ] Complexity justified (if any)
 - [ ] Stack alignment confirmed
-
+- [ ] Context engineering plan documented
 

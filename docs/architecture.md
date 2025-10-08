@@ -148,12 +148,12 @@ spec-flow-workflow-kit/
 │
 ├── .claude/                          # Claude Code configuration
 │   ├── agents/                       # Agent persona briefs
-│   │   ├── spec-flow-backend-dev.md
-│   │   ├── spec-flow-frontend-shipper.md
-│   │   ├── spec-flow-qa-test.md
-│   │   ├── spec-flow-senior-code-reviewer.md
-│   │   ├── spec-flow-debugger.md
-│   │   └── spec-flow-ci-cd-release.md
+│   │   ├── backend-dev.md
+│   │   ├── frontend-shipper.md
+│   │   ├── qa-test.md
+│   │   ├── senior-code-reviewer.md
+│   │   ├── debugger.md
+│   │   └── ci-cd-release.md
 │   │
 │   ├── commands/                     # Slash command definitions
 │   │   ├── spec-flow.md              # Phase 0: Create specification

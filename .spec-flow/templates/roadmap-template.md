@@ -1,8 +1,8 @@
-﻿# Spec-Flow Product Roadmap
+# CFIPros Product Roadmap
 
 **Last updated**: [auto-generated on save]
 
-> Features from brainstorm  shipped. Managed via `/roadmap`
+> Features from brainstorm → shipped. Managed via `/roadmap`
 
 ## Shipped
 
@@ -24,6 +24,7 @@
 - **Title**: Feature name
 - **Area**: marketing|app|api|infra|design
 - **Role**: free|student|cfi|school|all
+- **Intra**: Yes|No
 - **Phase**: 0-12 (optional)
 - **Impact**: 1-5 | **Effort**: 1-5 | **Confidence**: 0-1 | **Score**: X.XX
 - **Requirements**:
@@ -50,6 +51,7 @@
 - **Title**: Feature name
 - **Area**: marketing|app|api
 - **Role**: student|cfi|school|all
+- **Intra**: Yes|No
 - **Impact**: 1-5 | **Effort**: 1-5 | **Confidence**: 0-1 | **Score**: X.XX
 - **Requirements**: [CLARIFY: questions] or brief bullets
 -->
@@ -68,7 +70,7 @@
 
 ## Scoring Guide
 
-**ICE** = Impact  Confidence  Effort
+**ICE** = Impact × Confidence ÷ Effort
 
 - **Impact** (1-5): 1=nice-to-have, 3=useful, 5=critical
 - **Effort** (1-5): 1=<1 day, 3=1-2 weeks, 5=4+ weeks
@@ -79,14 +81,14 @@ Higher score = higher priority
 ## Status Flow
 
 ```
-Backlog  Later  Next  In Progress  Shipped
-                               
+Backlog → Later → Next → In Progress → Shipped
+                               ↓
                           Archive
 ```
 
 ## Feature Sizing
 
-**/spec-flow-sized**: 30 tasks, one screen/flow/API, 1-2 weeks
+**\spec-flow-sized**: ≤30 tasks, one screen/flow/API, 1-2 weeks
 
 If larger: Break into multiple features by area or domain
 

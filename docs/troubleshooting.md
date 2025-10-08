@@ -414,7 +414,7 @@ Ensure NOTES.md has checkpoints in this format:
 
 **Solution**:
 
-**Explicitly specify phase**:
+**Explicitly\spec-flow phase**:
 ```powershell
 # Windows
 pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 `
@@ -723,3 +723,4 @@ uname -a  # or systeminfo on Windows
 ---
 
 **Last Updated**: 2025-10-03
+

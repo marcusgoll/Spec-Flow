@@ -86,35 +86,35 @@ When `--from-optimize` flag is present:
 Based on issue category, route to appropriate specialist agent:
 
 **Contract Violation**:
-- Backend contracts  spec-flow-backend-dev
-- Frontend contracts  spec-flow-frontend-shipper
+- Backend contracts  backend-dev
+- Frontend contracts  frontend-shipper
 - Fix: Update schema/endpoint to match OpenAPI contract
 
 **KISS (Keep It Simple)**:
-- Backend  spec-flow-backend-dev
-- Frontend  spec-flow-frontend-shipper
+- Backend  backend-dev
+- Frontend  frontend-shipper
 - Fix: Simplify complex code, remove unnecessary abstraction
 
 **DRY (Don't Repeat Yourself)**:
-- Backend  spec-flow-backend-dev
-- Frontend  spec-flow-frontend-shipper
+- Backend  backend-dev
+- Frontend  frontend-shipper
 - Fix: Extract duplicate code into shared utility/service
 
 **Security**:
-- Backend/Frontend  spec-flow-debugger
+- Backend/Frontend  debugger
 - Fix: Apply security patch, add validation, fix vulnerability
 
 **Type Safety**:
-- Backend  spec-flow-backend-dev (add Python types)
-- Frontend  spec-flow-frontend-shipper (add TypeScript types)
+- Backend  backend-dev (add Python types)
+- Frontend  frontend-shipper (add TypeScript types)
 - Fix: Add missing type annotations, fix type errors
 
 **Test Coverage**:
-- All  spec-flow-qa-test
+- All  qa-test
 - Fix: Add missing unit/integration tests
 
 **Database**:
-- Schema/queries  spec-flow-database-architect
+- Schema/queries  database-architect
 - Fix: Update schema, optimize query, fix migration
 
 ### Structured Agent Invocation
@@ -122,7 +122,7 @@ Based on issue category, route to appropriate specialist agent:
 ```bash
 # Example for Contract Violation
 Task tool with:
-  subagent_type: "spec-flow-backend-dev"  # or appropriate agent
+  subagent_type: "backend-dev"  # or appropriate agent
   description: "Fix $CATEGORY issue: $ISSUE_ID"
   prompt: "Fix the following $SEVERITY code review issue:
 
@@ -208,11 +208,11 @@ ERROR_DOMAIN=$(analyze-error-domain "$ERROR_TYPE" "$COMPONENT" "$FILE_PATHS")
 ```
 
 **Routing decision tree** (from `/route-agent`):
-- Backend API/Services  spec-flow-debugger or spec-flow-backend-dev
-- Frontend UI/Components  spec-flow-debugger or spec-flow-frontend-shipper
-- Database Issues  spec-flow-database-architect
-- Test Failures  spec-flow-qa-test
-- Performance Issues  Use Chrome DevTools MCP + spec-flow-debugger
+- Backend API/Services  debugger or backend-dev
+- Frontend UI/Components  debugger or frontend-shipper
+- Database Issues  database-architect
+- Test Failures  qa-test
+- Performance Issues  Use Chrome DevTools MCP + debugger
 
 ### Routing Examples
 
@@ -223,7 +223,7 @@ Analysis:
   - Domain: Backend API
   - Component: api/app/routes/users.py
   - Error type: Runtime error
-Route: spec-flow-debugger
+Route: debugger
 Context: error-log.md, stack trace, recent commits
 ```
 
@@ -234,7 +234,7 @@ Analysis:
   - Domain: Frontend UI
   - Component: apps/app/components/Button.tsx
   - Error type: UI bug
-Route: spec-flow-debugger + Chrome DevTools MCP
+Route: debugger + Chrome DevTools MCP
 Context: CSS styles, responsive design specs, visuals/README.md
 ```
 
@@ -245,7 +245,7 @@ Analysis:
   - Domain: Database
   - Component: api/alembic/versions/
   - Error type: Migration error
-Route: spec-flow-database-architect
+Route: database-architect
 Context: data-model.md, existing migrations, schema definitions
 ```
 
@@ -282,7 +282,7 @@ mcp__chrome-devtools__performance_analyze_insight --insightName="[insight]"
 
 **Backend Performance**:
 ```bash
-# Use spec-flow-debugger with performance focus
+# Use debugger with performance focus
 Task tool with performance profiling instructions
 ```
 
@@ -339,7 +339,7 @@ User: "Test test_create_message is failing"
 1. Load error-log.md (check for similar past failures)
 2. Run pytest with verbose output to capture full error
 3. Identify error type: Test failure (backend)
-4. Route to spec-flow-debugger agent
+4. Route to debugger agent
 5. Agent reproduces, identifies missing FK constraint
 6. Agent applies fix, verifies tests pass
 7. Update error-log.md:
@@ -382,7 +382,7 @@ User: "Dashboard loading very slow after last merge"
    - Analyze LCP/CLS insights
    - Check network waterfall
 4. Identify issue: Synchronous API calls, no code splitting
-5. Route to spec-flow-debugger for code-level fix
+5. Route to debugger for code-level fix
 6. Agent applies async/await, adds dynamic imports
 7. Update error-log.md:
    - Failure: "Dashboard FCP >5s (target: <1.5s)"

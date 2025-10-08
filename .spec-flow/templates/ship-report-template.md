@@ -1,16 +1,16 @@
-﻿# Ship Report
+# Ship Report
 
 **Date**: [YYYY-MM-DD HH:MM]
 **Feature**: [NNN-feature-name]
-**Phase**: [Staging (feature  staging) / Production (staging  main)]
+**Phase**: [Staging (feature → staging) / Production (staging → main)]
 **Staging PR**: #[NNN] (if applicable)
 **Production PR**: #[MMM] (if applicable)
 **Tag**: v[X.Y.Z] (production only)
 
 ## Deployment Workflow
 
-- [ ] **Phase 1 Only**: Staging deployment (feature  staging)
-- [ ] **Phase 2 Only**: Production deployment (staging  main)
+- [ ] **Phase 1 Only**: Staging deployment (feature → staging)
+- [ ] **Phase 2 Only**: Production deployment (staging → main)
 - [ ] **Complete Workflow**: Both phases
 
 ---
@@ -21,38 +21,38 @@
 
 ### Pre-flight Checks
 
-- [/] On feature branch (not main/staging)
-- [/] Working tree clean
-- [/] /optimize quality gate passed
-- [/] All tasks completed
-- [/] No duplicate release
+- [✅/❌] On feature branch (not main/staging)
+- [✅/❌] Working tree clean
+- [✅/❌] /optimize quality gate passed
+- [✅/❌] All tasks completed
+- [✅/❌] No duplicate release
 
 ### Staging Pull Request
 
 - **PR**: #[NNN] - [title]
 - **URL**: [staging-PR-URL]
 - **Target**: staging branch
-- **CI Checks**: [/] All passing
-- **E2E Tests**: [/] Passed
-- **Review**: [/] Approved by [@reviewer]
+- **CI Checks**: [✅/❌] All passing
+- **E2E Tests**: [✅/❌] Passed
+- **Review**: [✅/❌] Approved by [@reviewer]
 - **Merge Method**: [Squash/Merge/Rebase]
 - **Merge Commit**: [commit-sha]
 
 ### Staging Deployment
 
-- [/] Merged to staging at [commit-sha]
--  **Deployed**:
-  - Marketing: [staging marketing URL]
-  - App: [staging app URL]
-  - API: [staging API URL]
+- [✅/❌] Merged to staging at [commit-sha]
+- 🚀 **Deployed**:
+  - Marketing: https://cfipros-staging.vercel.app
+  - App: https://app-staging.cfipros.vercel.app
+  - API: https://api-staging.railway.app
 
 ### Staging Validation
 
 - **Report**: specs/[NNN-feature]/artifacts/staging-validation-report.md
-- **E2E Results**: [ All Passed /  N Failed /  Critical Failures]
-- **Manual Testing**: [/] Complete
-- **Health Checks**: [/] Operational
-- **Ready for Production**: [ Yes /  No]
+- **E2E Results**: [✅ All Passed / ⚠️ N Failed / ❌ Critical Failures]
+- **Manual Testing**: [✅/❌] Complete
+- **Health Checks**: [✅/❌] Operational
+- **Ready for Production**: [✅ Yes / ❌ No]
 
 **Blockers** (if any):
 - [ ] [Blocker 1]
@@ -65,32 +65,32 @@
 
 ### Pre-flight Checks
 
-- [/] On staging branch
-- [/] Working tree clean
-- [/] /optimize passed
-- [/] Staging validation passed
-- [/] No critical blockers
+- [✅/❌] On staging branch
+- [✅/❌] Working tree clean
+- [✅/❌] /optimize passed
+- [✅/❌] Staging validation passed
+- [✅/❌] No critical blockers
 
 ### Production Pull Request
 
 - **PR**: #[MMM] - [title]
 - **URL**: [production-PR-URL]
 - **Target**: main branch
-- **CI Checks**: [/] All passing
-- **Smoke Tests**: [/] Passed
-- **Review**: [/] Approved by [@senior-reviewer]
+- **CI Checks**: [✅/❌] All passing
+- **Smoke Tests**: [✅/❌] Passed
+- **Review**: [✅/❌] Approved by [@senior-reviewer]
 - **Merge Method**: [Squash/Merge/Rebase]
 - **Merge Commit**: [commit-sha]
 
 ### Production Deployment
 
-- [/] Merged to main at [commit-sha]
-- [/] Tag created: v[X.Y.Z]
-- [/] GitHub release published
--  **Deployed**:
-  - Marketing: [production marketing URL]
-  - App: [production app URL]
-  - API: [production API URL]
+- [✅/❌] Merged to main at [commit-sha]
+- [✅/❌] Tag created: v[X.Y.Z]
+- [✅/❌] GitHub release published
+- 🚀 **Deployed**:
+  - Marketing: https://cfipros.com
+  - App: https://app.cfipros.com
+  - API: https://api.cfipros.com
 
 ---
 
@@ -118,10 +118,10 @@
 
 ## Cleanup
 
-- [/] Local feature branch deleted
-- [/] Remote feature branch deleted
-- [/] NOTES.md updated with Phase 6 checkpoint
-- [/] Worktree removed (if used)
+- [✅/❌] Local feature branch deleted
+- [✅/❌] Remote feature branch deleted
+- [✅/❌] NOTES.md updated with Phase 6 checkpoint
+- [✅/❌] Worktree removed (if used)
 
 ## Metrics
 
@@ -151,29 +151,28 @@ git push origin :refs/tags/v[X.Y.Z]
 ## Next Steps
 
 **If Staging (Phase 1)**:
-1.  Complete manual validation
-2.  Fill out staging-validation-report.md
-3.  Monitor staging [24-48 hours]
-4.  Run `/ship` from staging for Phase 2
+1. ✅ Complete manual validation
+2. ✅ Fill out staging-validation-report.md
+3. ⏳ Monitor staging [24-48 hours]
+4. 🚀 Run `/ship` from staging for Phase 2
 
 **If Production (Phase 2)**:
--  Celebrate deployment!
--  Monitor for [24 hours minimum]
--  Watch error rates, performance, feedback
--  Document learnings in DONT_DO.md (if failures)
--  Start next feature with `/spec-flow`
+- 🎉 Celebrate deployment!
+- 📊 Monitor for [24 hours minimum]
+- 🔍 Watch error rates, performance, feedback
+- 📝 Document learnings in DONT_DO.md (if failures)
+- 🚀 Start next feature with `\spec-flow`
 
 **Production URLs**:
-- Marketing: [production marketing URL]
-- App: [production app URL]
-- API: [production API docs URL]
+- Marketing: https://cfipros.com
+- App: https://app.cfipros.com
+- API: https://api.cfipros.com/docs
 
 **Staging URLs**:
-- Marketing: [staging marketing URL]
-- App: [staging app URL]
-- API: [staging API docs URL]
+- Marketing: https://cfipros-staging.vercel.app
+- App: https://app-staging.cfipros.vercel.app
+- API: https://api-staging.railway.app/docs
 
 ---
 *Generated by `/ship` command*
-
 

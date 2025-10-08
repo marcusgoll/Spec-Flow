@@ -81,22 +81,22 @@ Use GitHub MCP to gather full PR context:
 **Delegate to agents:**
 ```bash
 # Test failures
-Task(spec-flow-debugger): "PR #${PR_NUMBER}: Fix test in ${FILE}
+Task(debugger): "PR #${PR_NUMBER}: Fix test in ${FILE}
 Error: ${MESSAGE}
 Reproduce: ${COMMAND}"
 
 # Backend bugs
-Task(spec-flow-backend-dev): "PR #${PR_NUMBER}: Fix ${ENDPOINT}
+Task(backend-dev): "PR #${PR_NUMBER}: Fix ${ENDPOINT}
 Error: ${STACK_TRACE}
 Files: ${FILES}"
 
 # Frontend bugs
-Task(spec-flow-frontend-shipper): "PR #${PR_NUMBER}: Fix ${COMPONENT}
+Task(frontend-shipper): "PR #${PR_NUMBER}: Fix ${COMPONENT}
 TypeScript: ${ERROR}
 Context: ${CODE}"
 
 # Review feedback
-Task(spec-flow-senior-code-reviewer): "PR #${PR_NUMBER}: Address review
+Task(senior-code-reviewer): "PR #${PR_NUMBER}: Address review
 Comments: ${FEEDBACK}
 Files: ${FILES}"
 ```

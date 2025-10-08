@@ -1,4 +1,4 @@
-﻿# Manual Testing Checklist
+# Manual Testing Checklist
 
 **Feature**: [Feature Name]
 **Tester**: [Your Name]
@@ -76,7 +76,7 @@
 ### Screen Reader
 - [ ] Alt text on images
 - [ ] ARIA labels where needed
-- [ ] Headings hierarchical (h1  h2  h3)
+- [ ] Headings hierarchical (h1 → h2 → h3)
 - [ ] Form fields labeled
 
 ### Color & Contrast
@@ -116,4 +116,3 @@
 ---
 
 *This checklist was generated from template because no testing checklist was found in spec.md*
-

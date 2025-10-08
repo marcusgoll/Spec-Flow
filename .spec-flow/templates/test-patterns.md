@@ -1,6 +1,6 @@
-﻿# Test Patterns for Spec-Flow
+# Test Patterns for CFIPros
 
-**Purpose**: Copy-paste templates for TDD workflow (RED  GREEN  REFACTOR)
+**Purpose**: Copy-paste templates for TDD workflow (RED → GREEN → REFACTOR)
 
 **Guardrails:**
 - Unit tests: <2s each
@@ -330,7 +330,7 @@ describe('MessageList Integration', () => {
 
 ## Anti-Patterns to Avoid
 
-###  Prop-Mirror Test (Tests Implementation)
+### ❌ Prop-Mirror Test (Tests Implementation)
 
 ```typescript
 // DON'T: Tests component props (implementation detail)
@@ -340,7 +340,7 @@ it('sets isOpen to true', () => {
 })
 ```
 
-###  Behavior Test (Tests User Outcome)
+### ✅ Behavior Test (Tests User Outcome)
 
 ```typescript
 // DO: Tests visible behavior
@@ -350,7 +350,7 @@ it('shows modal dialog when opened', () => {
 })
 ```
 
-###  Snapshot Test (Fragile)
+### ❌ Snapshot Test (Fragile)
 
 ```typescript
 // DON'T: Breaks on any CSS/markup change
@@ -360,7 +360,7 @@ it('renders correctly', () => {
 })
 ```
 
-###  Semantic Test (Resilient)
+### ✅ Semantic Test (Resilient)
 
 ```typescript
 // DO: Tests actual content and behavior
@@ -371,7 +371,7 @@ it('renders primary button with correct text', () => {
 })
 ```
 
-###  Testing Implementation (White Box)
+### ❌ Testing Implementation (White Box)
 
 ```typescript
 // DON'T: Tests internal state
@@ -382,7 +382,7 @@ it('updates internal counter', () => {
 })
 ```
 
-###  Testing Behavior (Black Box)
+### ✅ Testing Behavior (Black Box)
 
 ```typescript
 // DO: Tests user-visible outcome
@@ -399,7 +399,7 @@ it('increments displayed count when button clicked', async () => {
 
 ### Slow Tests (>2s) - Fix With Mocks
 
- **Before** (slow: 3.2s):
+❌ **Before** (slow: 3.2s):
 ```python
 def test_message_creation():
     # Real DB connection
@@ -407,7 +407,7 @@ def test_message_creation():
     assert message.id is not None
 ```
 
- **After** (fast: 0.3s):
+✅ **After** (fast: 0.3s):
 ```python
 @patch('app.models.message.db.session')
 def test_message_creation(mock_session):
@@ -441,4 +441,3 @@ npm test -- --maxWorkers=4
 **Quality over Quantity:**
 - 80% coverage with behavior tests > 100% with prop-mirror tests
 - Test what users do, not how code works
-

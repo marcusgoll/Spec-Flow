@@ -2,16 +2,273 @@
 description: Production readiness validation (performance, security, a11y, code review)
 ---
 
-Validate production readiness for: specs/$FEATURE
+Validate production readiness for feature.
+
+## LOAD FEATURE
+
+**Get feature from argument or current branch:**
+
+```bash
+if [ -n "$ARGUMENTS" ]; then
+  SLUG="$ARGUMENTS"
+else
+  SLUG=$(git branch --show-current)
+fi
+
+FEATURE_DIR="specs/$SLUG"
+PLAN_FILE="$FEATURE_DIR/plan.md"
+TASKS_FILE="$FEATURE_DIR/tasks.md"
+ERROR_LOG="$FEATURE_DIR/error-log.md"
+```
+
+**Validate feature exists:**
+
+```bash
+if [ ! -d "$FEATURE_DIR" ]; then
+  echo "❌ Feature not found: $FEATURE_DIR"
+  exit 1
+fi
+```
+
+**Validate implementation complete:**
+
+```bash
+if ! grep -q "✅ Phase 3 (Implementation): Complete" "$FEATURE_DIR/NOTES.md" 2>/dev/null; then
+  echo "❌ Implementation not complete"
+  echo "Run /implement first"
+  exit 1
+fi
+
+echo "✅ Feature loaded: $SLUG"
+echo "✅ Implementation complete, starting optimization..."
+echo ""
+```
 
 ## LOAD TARGETS
 
-Read from `specs/NNN-feature/plan.md`:
-- **[PERFORMANCE TARGETS]**  response times, bundle sizes, FCP/TTI
-- **[SECURITY]**  authentication, authorization, input validation
-- **[ACCESSIBILITY]**  WCAG level required
+**Read from plan.md:**
 
-## PHASE 5.1: PERFORMANCE
+```bash
+# Extract performance targets
+PERF_TARGETS=$(sed -n '/## \[PERFORMANCE TARGETS\]/,/## \[/p' "$PLAN_FILE")
+
+# Extract security requirements
+SECURITY=$(sed -n '/## \[SECURITY\]/,/## \[/p' "$PLAN_FILE")
+
+# Extract accessibility level
+A11Y_LEVEL=$(echo "$SECURITY" | grep -i "WCAG" | head -1)
+
+echo "Targets loaded from plan.md"
+echo "  Performance: $(echo "$PERF_TARGETS" | grep -o "p95.*" | head -1)"
+echo "  Security: $(echo "$SECURITY" | grep -o "authentication.*" | head -1)"
+echo "  Accessibility: $A11Y_LEVEL"
+echo ""
+```
+
+## VALIDATE UI IMPLEMENTATION (if UI feature)
+
+**Check if polished designs were implemented:**
+
+```bash
+if [ -d "apps/web/mock/$SLUG" ]; then
+  echo "Validating UI implementation..."
+  echo ""
+
+  # List polished screens
+  POLISHED_SCREENS=$(find apps/web/mock/$SLUG -path "*/polished/page.tsx" | \
+                     sed 's|.*/\([^/]*\)/polished/.*|\1|' | \
+                     sort -u)
+
+  UNIMPLEMENTED=()
+
+  while IFS= read -r screen; do
+    # Check if production route exists
+    PROD_ROUTE="apps/app/$SLUG/$screen/page.tsx"
+
+    if [ ! -f "$PROD_ROUTE" ]; then
+      UNIMPLEMENTED+=("$screen")
+      echo "  ❌ $screen: No production route found"
+    else
+      echo "  ✅ $screen: Implemented at $PROD_ROUTE"
+
+      # Check if route imports from polished mockup (should NOT)
+      if grep -q "apps/web/mock" "$PROD_ROUTE"; then
+        echo "     ⚠️  Imports from mockup (should be standalone)"
+      fi
+
+      # Check if route has real API integration (not mock data)
+      if grep -q "console.log.*Mock\|// TODO.*API" "$PROD_ROUTE"; then
+        echo "     ⚠️  Contains mock data or TODOs"
+      fi
+    fi
+  done <<< "$POLISHED_SCREENS"
+
+  if [ ${#UNIMPLEMENTED[@]} -gt 0 ]; then
+    echo ""
+    echo "❌ BLOCKER: ${#UNIMPLEMENTED[@]} screen(s) not implemented"
+    echo ""
+    echo "Missing production routes:"
+    for screen in "${UNIMPLEMENTED[@]}"; do
+      echo "  - apps/app/$SLUG/$screen/page.tsx"
+    done
+    echo ""
+    echo "Run /implement to build production routes from polished mockups"
+    exit 1
+  fi
+
+  echo ""
+  echo "✅ All polished screens implemented in production routes"
+  echo ""
+else
+  echo "ℹ️  No polished mockups (backend-only or direct implementation)"
+  echo ""
+fi
+```
+
+## VALIDATE DESIGN SYSTEM COMPLIANCE (if UI feature)
+
+**Check production routes use design tokens:**
+
+```bash
+if [ -d "apps/app/$SLUG" ]; then
+  echo "Validating design system compliance..."
+  echo ""
+
+  PROD_ROUTES=$(find apps/app/$SLUG -name "page.tsx" -o -name "*.tsx")
+
+  VIOLATIONS=()
+
+  while IFS= read -r route; do
+    # Check for hardcoded colors
+    HARDCODED=$(grep -nE "#[0-9A-Fa-f]{3,8}|rgb\(|rgba\(" "$route" | \
+                grep -v "// Design token:" | \
+                wc -l)
+
+    if [ "$HARDCODED" -gt 0 ]; then
+      VIOLATIONS+=("$route: $HARDCODED hardcoded color(s)")
+    fi
+
+    # Check for arbitrary spacing
+    ARBITRARY=$(grep -nE "p-\[|m-\[|space-\[|gap-\[" "$route" | wc -l)
+
+    if [ "$ARBITRARY" -gt 0 ]; then
+      VIOLATIONS+=("$route: $ARBITRARY arbitrary spacing value(s)")
+    fi
+  done <<< "$PROD_ROUTES"
+
+  if [ ${#VIOLATIONS[@]} -gt 0 ]; then
+    echo "⚠️  Design system violations:"
+    for violation in "${VIOLATIONS[@]}"; do
+      echo "    - $violation"
+    done
+    echo ""
+    echo "Recommendation: Replace with design tokens"
+    echo "  Colors: bg-brand-primary, text-neutral-600"
+    echo "  Spacing: p-4, m-6 (system scale)"
+    echo ""
+  else
+    echo "✅ All routes use design tokens"
+    echo ""
+  fi
+fi
+```
+
+## PHASE 5.1: FRONTEND PERFORMANCE
+
+**Local Lighthouse validation:**
+
+```bash
+echo "Running local Lighthouse checks..."
+echo ""
+
+# Check if dev server running
+if ! lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+  echo "Starting dev server..."
+  cd apps/app
+  pnpm dev &
+  DEV_PID=$!
+  sleep 10
+else
+  echo "✅ Dev server running on port 3000"
+fi
+
+# Run Lighthouse on main routes
+if command -v lighthouse &> /dev/null; then
+  # Check if polished designs exist
+  if [ -d "apps/web/mock/$SLUG" ]; then
+    SCREENS=$(find apps/web/mock/$SLUG -path "*/polished/page.tsx" | \
+              sed 's|.*/\([^/]*\)/polished/.*|\1|' | \
+              sort -u)
+
+    echo "Running Lighthouse on implemented screens..."
+
+    while IFS= read -r screen; do
+      URL="http://localhost:3000/$SLUG/$screen"
+
+      echo "  Testing: $URL"
+
+      lighthouse "$URL" \
+        --output=json \
+        --output-path="$FEATURE_DIR/lighthouse-$screen-local.json" \
+        --only-categories=performance,accessibility \
+        --preset=desktop \
+        --quiet \
+        --chrome-flags="--headless"
+
+      # Parse scores
+      PERF=$(jq '.categories.performance.score * 100' "$FEATURE_DIR/lighthouse-$screen-local.json")
+      A11Y=$(jq '.categories.accessibility.score * 100' "$FEATURE_DIR/lighthouse-$screen-local.json")
+
+      echo "    Performance: $PERF / 100"
+      echo "    A11y: $A11Y / 100"
+
+      # Check against targets
+      if (( $(echo "$PERF < 90" | bc -l) )); then
+        echo "    ⚠️  Performance below 90"
+      fi
+
+      if (( $(echo "$A11Y < 95" | bc -l) )); then
+        echo "    ❌ Accessibility below 95 (BLOCKER)"
+        BLOCKERS+=("Lighthouse a11y score <95 on $screen")
+      fi
+
+    done <<< "$SCREENS"
+  else
+    echo "ℹ️  No UI screens (backend-only feature)"
+  fi
+else
+  echo "⚠️  Lighthouse not installed"
+  echo "Install: npm install -g lighthouse"
+  echo ""
+  echo "Skipping local Lighthouse checks"
+  echo "Will validate in staging after /phase-1-ship"
+fi
+
+# Stop dev server if we started it
+if [ -n "$DEV_PID" ]; then
+  kill $DEV_PID 2>/dev/null
+fi
+
+echo ""
+```
+
+**Note**: Full Lighthouse CI runs in staging deployment. This local check catches major issues early.
+
+**Validation checklist:**
+
+### Frontend Performance
+
+**Local validation** (pre-deployment):
+- [ ] Lighthouse performance ≥90 (local dev server)
+- [ ] Lighthouse a11y ≥95 (local dev server)
+- [ ] Bundle size < target from plan.md
+- [ ] No console errors/warnings
+
+**Staging validation** (post /phase-1-ship):
+- [ ] Lighthouse CI in deploy-staging.yml
+- [ ] Results in GitHub Actions artifacts
+- [ ] FCP < 1.5s, TTI < 3s, LCP < 2.5s
+- [ ] Performance score ≥90, A11y ≥95
 
 ### Backend Performance
 
@@ -21,7 +278,7 @@ cd api
 uv run pytest tests/performance/ -v
 
 # Check response times against targets
-grep "p95" specs/NNN-feature/plan.md
+grep "p95" "$PLAN_FILE"
 # Example target: API <500ms p95, extraction <10s p95
 ```
 
@@ -31,25 +288,6 @@ grep "p95" specs/NNN-feature/plan.md
 - [ ] Response time targets met (p50, p95, p99)
 - [ ] Batch operations use concurrency
 - [ ] Redis caching where appropriate
-
-### Frontend Performance
-
-**Note**: Frontend performance metrics are collected during staging deployment via Lighthouse CI (see `.github/workflows/deploy-staging.yml`).
-
-**Local validation checklist:**
-- [ ] Bundle size < target (from plan.md)
-- [ ] Images optimized (Next.js Image, lazy loading)
-- [ ] Code splitting for large components
-- [ ] No console errors/warnings in browser
-
-**Staging metrics** (captured after /ship Phase 1):
-- FCP < 1.5s (First Contentful Paint)
-- TTI < 3s (Time to Interactive)
-- LCP < 2.5s (Largest Contentful Paint)
-- Lighthouse Performance > 90
-- Lighthouse Accessibility > 95
-
-Review Lighthouse results in GitHub Actions artifacts after staging deployment.
 
 ## PHASE 5.2: SECURITY
 
@@ -61,10 +299,9 @@ cd api
 uv run bandit -r app/ -ll
 uv run safety check
 
-# Frontend
-cd frontend
-pnpm audit
-pnpm run security:scan
+# Frontend packages
+pnpm --filter @cfipros/marketing audit
+pnpm --filter @cfipros/app audit
 ```
 
 **Validation checklist:**
@@ -96,12 +333,9 @@ grep "require_auth" api/app/api/v1/
 ## PHASE 5.3: ACCESSIBILITY
 
 ```bash
-# Frontend a11y tests
-cd frontend
-pnpm run test:a11y
-
-# Lighthouse accessibility score
-pnpm run lighthouse:a11y
+# Frontend a11y smoke tests
+pnpm --filter @cfipros/marketing test -- --runInBand
+pnpm --filter @cfipros/app test -- --runInBand
 ```
 
 **Validation checklist:**
@@ -113,10 +347,8 @@ pnpm run lighthouse:a11y
 - [ ] Focus indicators visible
 
 **Auto-fix common issues:**
-```bash
-# Add missing alt text
-pnpm run fix:a11y
-```
+- Add or update `jest-axe` assertions in relevant Vitest suites
+- Use `pnpm format` to normalize accessible markup helpers
 
 ## PHASE 5.4: ERROR HANDLING
 
@@ -128,8 +360,8 @@ cd api
 uv run pytest tests/integration/test_error_handling.py -v
 
 # Frontend error boundaries
-cd frontend
-pnpm run test -- ErrorBoundary
+pnpm --filter @cfipros/marketing test -- --runInBand ErrorBoundary
+pnpm --filter @cfipros/app test -- --runInBand ErrorBoundary
 ```
 
 **Validation checklist:**
@@ -147,7 +379,7 @@ pnpm run test -- ErrorBoundary
 grep -r "logger\." api/app/ | wc -l
 
 # Metrics instrumentation
-grep -r "track\|posthog" frontend/
+grep -r "track\|posthog" apps/app/ apps/marketing/
 ```
 
 **Validation checklist:**
@@ -159,14 +391,14 @@ grep -r "track\|posthog" frontend/
 
 ## PHASE 5.5: SENIOR CODE REVIEW
 
-Delegate comprehensive code review to spec-flow-senior-code-reviewer agent:
+Delegate comprehensive code review to senior-code-reviewer agent:
 
 ```bash
 # Launch senior code reviewer agent
 Task tool with:
-  subagent_type: "spec-flow-senior-code-reviewer"
+  subagent_type: "senior-code-reviewer"
   description: "Review feature for contract compliance and quality gates"
-  prompt: "Review feature at specs/$FEATURE for:
+  prompt: "Review feature at $FEATURE_DIR for:
 
   1. API contract compliance (OpenAPI spec alignment)
   2. KISS/DRY principle violations
@@ -176,8 +408,8 @@ Task tool with:
 
   Focus on:
   - Files changed since last merge to main
-  - Contract alignment with specs/$FEATURE/api-contracts/*.yaml (if exists)
-  - Test completeness per specs/$FEATURE/spec.md
+  - Contract alignment with $FEATURE_DIR/api-contracts/*.yaml (if exists)
+  - Test completeness per $FEATURE_DIR/spec.md
 
   Provide review summary with:
   - Critical issues (must fix before ship)
@@ -185,25 +417,26 @@ Task tool with:
   - Minor suggestions (consider)
   - Quality metrics (lint, types, tests, coverage)
 
-  Write detailed findings to specs/$FEATURE/artifacts/code-review-report.md"
+  Write detailed findings to $FEATURE_DIR/code-review.md"
 ```
 
 **Validation checklist:**
 - [ ] Senior code reviewer completed analysis
-- [ ] Code review report generated at artifacts/code-review-report.md
+- [ ] Code review report generated at code-review.md
 - [ ] No critical contract violations
 - [ ] Quality gates passing (lint, types, tests)
-- [ ] Test coverage 80% (or approved exception)
+- [ ] Test coverage ≥80% (or approved exception)
 - [ ] KISS/DRY principles followed
 - [ ] Security issues addressed
 
 **If critical issues found:**
 - Offer AUTO-FIX (see Phase 5.6 below)
 - If user declines auto-fix or auto-fix fails:
+
 ```bash
 # Block optimization until fixed
-echo " CRITICAL ISSUES FOUND - Cannot proceed to /ship"
-echo "Review: specs/$FEATURE/artifacts/code-review-report.md"
+echo "❌ CRITICAL ISSUES FOUND - Cannot proceed to /phase-1-ship"
+echo "Review: $FEATURE_DIR/code-review.md"
 echo ""
 echo "Fix critical issues then re-run /optimize"
 exit 1
@@ -217,9 +450,9 @@ After code review finds issues, offer automatic fixing via `/debug`:
 
 ```bash
 # Count issues by severity
-CRITICAL=$(grep -c "Severity: CRITICAL" specs/$FEATURE/artifacts/code-review-report.md || echo 0)
-HIGH=$(grep -c "Severity: HIGH" specs/$FEATURE/artifacts/code-review-report.md || echo 0)
-MEDIUM=$(grep -c "Severity: MEDIUM" specs/$FEATURE/artifacts/code-review-report.md || echo 0)
+CRITICAL=$(grep -c "Severity: CRITICAL" "$FEATURE_DIR/code-review.md" || echo 0)
+HIGH=$(grep -c "Severity: HIGH" "$FEATURE_DIR/code-review.md" || echo 0)
+MEDIUM=$(grep -c "Severity: MEDIUM" "$FEATURE_DIR/code-review.md" || echo 0)
 ```
 
 ### Offer Auto-Fix
@@ -241,9 +474,86 @@ C) No - show report and exit for manual fixes
 
 If user selects A or B:
 
+```bash
+echo ""
+echo "Starting auto-fix ($AUTO_FIX_MODE mode)..."
+echo ""
+
+ITERATION=1
+MAX_ITERATIONS=3
+ISSUES_FIXED=0
+
+# Extract issues from code-review.md
+ISSUES=$(grep -A 10 "^### Issue" "$FEATURE_DIR/code-review.md")
+
+while [ $ITERATION -le $MAX_ITERATIONS ]; do
+  echo "Auto-fix iteration $ITERATION/$MAX_ITERATIONS"
+  echo ""
+
+  # Get next issue to fix
+  NEXT_ISSUE=$(parse_next_issue "$ISSUES" "$AUTO_FIX_MODE")
+
+  if [ -z "$NEXT_ISSUE" ]; then
+    echo "✅ All auto-fixable issues resolved"
+    break
+  fi
+
+  ISSUE_ID=$(echo "$NEXT_ISSUE" | grep "ID:" | sed 's/ID: //')
+  SEVERITY=$(echo "$NEXT_ISSUE" | grep "Severity:" | sed 's/Severity: //')
+  CATEGORY=$(echo "$NEXT_ISSUE" | grep "Category:" | sed 's/Category: //')
+  FILE=$(echo "$NEXT_ISSUE" | grep "File:" | sed 's/File: //')
+
+  echo "Fixing: $ISSUE_ID ($SEVERITY)"
+  echo "  Category: $CATEGORY"
+  echo "  File: $FILE"
+  echo ""
+
+  # Analyze with think tool
+  # (Claude performs analysis, determines fix strategy)
+
+  # Route to appropriate fix method
+  case "$CATEGORY" in
+    "Contract Violation"|"KISS"|"DRY")
+      # Call /debug with issue context
+      /debug --from-optimize \
+        --issue-id="$ISSUE_ID" \
+        --file="$FILE" \
+        --category="$CATEGORY"
+      ;;
+    "Security")
+      # Delegate to security specialist
+      /route-agent security-specialist "$FILE" \
+        --issue="$NEXT_ISSUE"
+      ;;
+    *)
+      # General fix
+      /debug --from-optimize --issue-id="$ISSUE_ID"
+      ;;
+  esac
+
+  if [ $? -eq 0 ]; then
+    echo "  ✅ Fixed"
+    ((ISSUES_FIXED++))
+  else
+    echo "  ⚠️  Manual review required"
+  fi
+
+  echo ""
+  ((ITERATION++))
+done
+
+echo ""
+echo "Auto-fix complete: $ISSUES_FIXED issue(s) fixed"
+echo ""
+
+# Re-run code review
+echo "Re-running code review to verify fixes..."
+# (Re-invoke senior-code-reviewer agent)
+```
+
 **For each auto-fixable issue:**
 
-1. **Parse issue from code-review-report.md**:
+1. **Parse issue from code-review.md**:
    ```bash
    # Extract structured fields:
    ISSUE_ID     # e.g., CR001
@@ -296,49 +606,12 @@ If user selects A or B:
    else
      # Manual review needed
      FIX_METHOD="manual"
-     echo "  Issue $ISSUE_ID requires manual review (complexity: $COMPLEXITY, risk: $RISK)"
+     echo "⏸️  Issue $ISSUE_ID requires manual review (complexity: $COMPLEXITY, risk: $RISK)"
      continue
    fi
    ```
 
-4. **Invoke fix method:**
-
-   **Option A: Direct fix via /debug:**
-   ```bash
-   # Call /debug command with --from-optimize flag
-   /debug --from-optimize \
-     --issue-id="$ISSUE_ID" \
-     --severity="$SEVERITY" \
-     --category="$CATEGORY" \
-     --file="$FILE" \
-     --line="$LINE" \
-     --description="$DESCRIPTION" \
-     --recommendation="$RECOMMENDATION"
-   ```
-
-   **Option B: Delegate to specialist agent:**
-   ```bash
-   # Use /route-agent for complex fixes
-   /route-agent "$CATEGORY" "$FILE" \
-     --issue-id="$ISSUE_ID" \
-     --description="$DESCRIPTION" \
-     --recommendation="$RECOMMENDATION"
-   ```
-
-5. **Invoke /debug with structured input** (DEPRECATED - see above):
-   ```bash
-   # Call /debug command with --from-optimize flag
-   /debug --from-optimize \
-     --issue-id="$ISSUE_ID" \
-     --severity="$SEVERITY" \
-     --category="$CATEGORY" \
-     --file="$FILE" \
-     --line="$LINE" \
-     --description="$DESCRIPTION" \
-     --recommendation="$RECOMMENDATION"
-   ```
-
-3. **Verify fix**:
+4. **Verify fix**:
    ```bash
    # Run quality gates after each fix
    if [ "$FILE" = api/* ]; then
@@ -348,96 +621,10 @@ If user selects A or B:
    fi
    ```
 
-4. **Track progress**:
+5. **Track progress**:
    - Update error-log.md with fix details
-   - Mark issue as fixed in code-review-report.md
+   - Mark issue as fixed in code-review.md
    - Commit fix with reference to issue ID
-
-### Iteration Limits
-
-**MAX 3 iterations** to prevent infinite loops:
-
-```bash
-ITERATION=1
-MAX_ITERATIONS=3
-ISSUES_FIXED=0
-
-while [ $ITERATION -le $MAX_ITERATIONS ]; do
-  echo "Auto-fix iteration $ITERATION/$MAX_ITERATIONS"
-
-  # Get next critical/high issue
-  NEXT_ISSUE=$(get_next_auto_fixable_issue)
-
-  if [ -z "$NEXT_ISSUE" ]; then
-    echo " All auto-fixable issues resolved"
-    break
-  fi
-
-  # Attempt fix via /debug
-  if /debug --from-optimize $NEXT_ISSUE; then
-    echo " Issue $ISSUE_ID fixed"
-    ISSUES_FIXED=$((ISSUES_FIXED + 1))
-  else
-    echo " Issue $ISSUE_ID requires manual review"
-  fi
-
-  ITERATION=$((ITERATION + 1))
-done
-```
-
-### Re-run Code Review
-
-After auto-fix completes:
-
-```bash
-# Re-run spec-flow-senior-code-reviewer to verify fixes
-echo "Re-running senior code review to verify fixes..."
-
-Task tool with spec-flow-senior-code-reviewer (same prompt as Phase 5.5)
-
-# Compare before/after
-CRITICAL_AFTER=$(grep -c "Severity: CRITICAL" specs/$FEATURE/artifacts/code-review-report.md || echo 0)
-HIGH_AFTER=$(grep -c "Severity: HIGH" specs/$FEATURE/artifacts/code-review-report.md || echo 0)
-
-echo "Auto-fix results:"
-echo "  Critical: $CRITICAL  $CRITICAL_AFTER"
-echo "  High: $HIGH  $HIGH_AFTER"
-echo "  Issues fixed: $ISSUES_FIXED"
-```
-
-### Update Optimization Report
-
-Add Auto-Fix Summary to optimization-report.md:
-
-```markdown
-## Auto-Fix Summary
-
-**Auto-fix enabled**: Yes
-**Iterations**: $ITERATION/$MAX_ITERATIONS
-**Issues fixed**: $ISSUES_FIXED
-
-**Before/After**:
-- Critical: $CRITICAL  $CRITICAL_AFTER
-- High: $HIGH  $HIGH_AFTER
-
-**Issues Fixed**:
-- CR001: Contract Violation in User Response [ Fixed]
-- CR002: DRY Violation in validation logic [ Fixed]
-- CR003: Missing test coverage for auth flow [ Fixed]
-
-**Issues Remaining**:
-- CR005: Performance optimization [Manual review needed]
-
-**Error Log Entries**: [N entries added]
-- Entry 5: Fixed contract violation
-- Entry 6: Refactored validation logic
-- Entry 7: Added missing tests
-
-**Verification**:
-- All fixes passed quality gates: [/]
-- Code review re-run: [$CRITICAL critical  $CRITICAL_AFTER critical]
-- Ready for ship: [/]
-```
 
 ### Safety Guardrails
 
@@ -447,6 +634,588 @@ Add Auto-Fix Summary to optimization-report.md:
 - **Manual fallback**: If 3 iterations fail, exit to manual
 - **User control**: Optional auto-fix, can decline at any time
 
+## VALIDATE MIGRATIONS (if schema changes)
+
+**Check migrations match plan.md schema:**
+
+```bash
+if grep -q "## \[SCHEMA\]" "$PLAN_FILE"; then
+  echo "Validating database migrations..."
+  echo ""
+
+  # Extract entities from plan.md
+  ENTITIES=$(sed -n '/## \[SCHEMA\]/,/## \[/p' "$PLAN_FILE" | \
+             grep -E "^-|^\*" | \
+             grep -oE "[A-Z][a-z]+" | \
+             sort -u)
+
+  ENTITY_COUNT=$(echo "$ENTITIES" | wc -l)
+
+  echo "Entities in plan.md: $ENTITY_COUNT"
+  echo ""
+
+  # Check each entity has migration
+  MISSING_MIGRATIONS=()
+
+  while IFS= read -r entity; do
+    # Check if migration file exists
+    MIGRATION=$(find api/alembic/versions -name "*${entity,,}*" 2>/dev/null | head -1)
+
+    if [ -z "$MIGRATION" ]; then
+      MISSING_MIGRATIONS+=("$entity")
+      echo "  ❌ $entity: No migration file"
+    else
+      echo "  ✅ $entity: $(basename "$MIGRATION")"
+
+      # Check reversibility
+      if ! grep -q "def downgrade" "$MIGRATION"; then
+        echo "     ⚠️  Not reversible (missing downgrade())"
+      fi
+    fi
+  done <<< "$ENTITIES"
+
+  if [ ${#MISSING_MIGRATIONS[@]} -gt 0 ]; then
+    echo ""
+    echo "❌ BLOCKER: ${#MISSING_MIGRATIONS[@]} entities without migrations"
+    echo ""
+    echo "Missing migrations for:"
+    for entity in "${MISSING_MIGRATIONS[@]}"; do
+      echo "  - $entity"
+    done
+    echo ""
+    echo "Generate: alembic revision -m \"Add $entity table\""
+    exit 1
+  fi
+
+  echo ""
+  echo "✅ All entities have migrations"
+  echo ""
+fi
+```
+
+### Migration Safety
+
+**Validate database migrations are reversible and safe:**
+
+```bash
+if [ -f "$FEATURE_DIR/migration-plan.md" ]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🗄️  DATABASE MIGRATION VALIDATION"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  cd api
+
+  # Find migrations created for this feature
+  MIGRATIONS=$(find alembic/versions -name "*.py" -newer "$FEATURE_DIR/migration-plan.md" 2>/dev/null || echo "")
+
+  if [ -z "$MIGRATIONS" ]; then
+    echo "⚠️  migration-plan.md exists but no migrations found"
+    echo "Run: alembic revision -m 'description'"
+  else
+    # Check each migration for reversibility
+    for migration in $MIGRATIONS; do
+      if ! grep -q "def downgrade()" "$migration"; then
+        echo "  ❌ Missing downgrade() in $migration"
+        echo "     Migrations must be reversible for safe rollback"
+        exit 1
+      fi
+      echo "  ✅ Reversible: $(basename $migration)"
+    done
+
+    # Test migration upgrade/downgrade cycle
+    echo ""
+    echo "Testing migration reversibility..."
+    uv run alembic upgrade head
+    uv run alembic downgrade -1
+    uv run alembic upgrade +1
+    echo "  ✅ Migration upgrade/downgrade cycle works"
+
+    # Check for schema drift
+    uv run alembic check
+    if [ $? -eq 0 ]; then
+      echo "  ✅ No schema drift detected"
+    else
+      echo "  ❌ Schema drift detected - models don't match migrations"
+      exit 1
+    fi
+  fi
+
+  cd ..
+  echo ""
+fi
+```
+
+**Validation checklist:**
+- [ ] All migrations have `downgrade()` function (reversible)
+- [ ] Migration upgrade/downgrade cycle tested
+- [ ] No schema drift (`alembic check` passes)
+- [ ] Migrations use expand-contract pattern (backward compatible)
+- [ ] Code handles both old and new schema during migration window
+
+## VALIDATE SMOKE TESTS
+
+**Check smoke tests cover critical user flows:**
+
+```bash
+echo "Validating smoke test coverage..."
+echo ""
+
+# Check smoke tests exist
+SMOKE_TESTS=$(find tests/smoke -name "*.spec.ts" -o -name "test_*.py" 2>/dev/null)
+
+if [ -z "$SMOKE_TESTS" ]; then
+  echo "❌ BLOCKER: No smoke tests found"
+  echo ""
+  echo "Create smoke tests for critical flows:"
+  echo "  - tests/smoke/critical-flow.spec.ts"
+  echo "  - Tag with @smoke (Playwright) or @pytest.mark.smoke (Python)"
+  exit 1
+fi
+
+SMOKE_COUNT=$(echo "$SMOKE_TESTS" | wc -l)
+echo "Found $SMOKE_COUNT smoke test file(s)"
+echo ""
+
+# Extract critical flows from spec.md
+CRITICAL_FLOWS=$(sed -n '/## User Scenarios/,/^## /p' "$FEATURE_DIR/spec.md" | \
+                 grep "^- " | \
+                 sed 's/^- //')
+
+if [ -z "$CRITICAL_FLOWS" ]; then
+  echo "⚠️  No user scenarios in spec.md"
+  echo "Recommendation: Document critical flows to validate smoke test coverage"
+else
+  FLOW_COUNT=$(echo "$CRITICAL_FLOWS" | wc -l)
+  echo "Critical flows in spec.md: $FLOW_COUNT"
+  echo ""
+
+  # Check each flow has smoke test
+  UNCOVERED=()
+
+  while IFS= read -r flow; do
+    # Extract key terms
+    KEY_TERMS=$(echo "$flow" | grep -oE "[A-Z][a-z]+" | head -2 | tr '\n' ' ')
+
+    # Search smoke tests for coverage
+    if grep -qi "$KEY_TERMS" $SMOKE_TESTS 2>/dev/null; then
+      echo "  ✅ $flow"
+    else
+      UNCOVERED+=("$flow")
+      echo "  ⚠️  $flow (no smoke test found)"
+    fi
+  done <<< "$CRITICAL_FLOWS"
+
+  if [ ${#UNCOVERED[@]} -gt 0 ]; then
+    echo ""
+    echo "⚠️  ${#UNCOVERED[@]} critical flow(s) without smoke tests"
+    echo "Recommendation: Add smoke tests for full coverage"
+  fi
+fi
+
+echo ""
+
+# Run smoke tests
+echo "Running smoke tests..."
+
+# Frontend
+cd apps/app
+pnpm playwright test -g "@smoke"
+FRONTEND_RESULT=$?
+
+# Backend
+cd ../../api
+pytest -m smoke
+BACKEND_RESULT=$?
+
+if [ $FRONTEND_RESULT -ne 0 ] || [ $BACKEND_RESULT -ne 0 ]; then
+  echo ""
+  echo "❌ BLOCKER: Smoke tests failed"
+  exit 1
+fi
+
+echo ""
+echo "✅ All smoke tests passed"
+echo ""
+```
+
+## VALIDATE ANALYTICS INSTRUMENTATION (if UI feature)
+
+**Check analytics events are implemented:**
+
+```bash
+if [ -f "$FEATURE_DIR/design/analytics.md" ]; then
+  echo "Validating analytics instrumentation..."
+  echo ""
+
+  # Extract expected events
+  EXPECTED_EVENTS=$(grep -oE "[a-z_]+\.[a-z_]+" "$FEATURE_DIR/design/analytics.md" | sort -u)
+
+  EVENT_COUNT=$(echo "$EXPECTED_EVENTS" | wc -l)
+
+  echo "Expected events in analytics.md: $EVENT_COUNT"
+  echo ""
+
+  # Check production routes for instrumentation
+  PROD_ROUTES=$(find apps/app/$SLUG -name "*.tsx")
+
+  MISSING_EVENTS=()
+
+  while IFS= read -r event; do
+    # Search for event in production code
+    if grep -q "$event" $PROD_ROUTES 2>/dev/null; then
+      echo "  ✅ $event"
+    else
+      MISSING_EVENTS+=("$event")
+      echo "  ❌ $event (not instrumented)"
+    fi
+  done <<< "$EXPECTED_EVENTS"
+
+  if [ ${#MISSING_EVENTS[@]} -gt 0 ]; then
+    echo ""
+    echo "⚠️  ${#MISSING_EVENTS[@]} event(s) not instrumented"
+    echo "Recommendation: Add analytics.track() calls"
+  else
+    echo ""
+    echo "✅ All analytics events instrumented"
+  fi
+
+  echo ""
+else
+  echo "ℹ️  No analytics.md (skipping analytics validation)"
+  echo ""
+fi
+```
+
+## VALIDATE FEATURE FLAGS (if required)
+
+**Check feature flag implementation:**
+
+```bash
+if grep -q "Feature flag:" "$PLAN_FILE"; then
+  echo "Validating feature flag implementation..."
+  echo ""
+
+  # Extract flag name
+  FLAG_NAME=$(grep "Feature flag:" "$PLAN_FILE" | sed 's/.*Feature flag: //' | sed 's/ .*//')
+
+  echo "Expected flag: $FLAG_NAME"
+  echo ""
+
+  # Check implementation
+  if grep -q "useFeatureFlag.*$FLAG_NAME" apps/app/**/*.tsx 2>/dev/null; then
+    echo "  ✅ Flag check implemented"
+  else
+    echo "  ❌ Flag check not found in code"
+  fi
+
+  # Check environment variable exists
+  ENV_VAR="NEXT_PUBLIC_${FLAG_NAME^^}_ENABLED"
+
+  if grep -q "$ENV_VAR" .env.example 2>/dev/null; then
+    echo "  ✅ Environment variable documented"
+  else
+    echo "  ⚠️  $ENV_VAR not in .env.example"
+  fi
+
+  # Check rollout percentage variable
+  PERCENT_VAR="NEXT_PUBLIC_${FLAG_NAME^^}_PERCENT"
+
+  if grep -q "$PERCENT_VAR" .env.example 2>/dev/null; then
+    echo "  ✅ Rollout percentage variable documented"
+  else
+    echo "  ⚠️  $PERCENT_VAR not in .env.example"
+  fi
+
+  echo ""
+else
+  echo "ℹ️  No feature flags required"
+  echo ""
+fi
+```
+
+## PHASE 5.8: DEPLOYMENT READINESS
+
+### Build Validation
+
+**Local build smoke test before deploying:**
+
+```bash
+# Frontend build check
+cd apps/app
+pnpm build
+if [ $? -ne 0 ]; then
+  echo "❌ Frontend build failed - fix before deploying"
+  exit 1
+fi
+echo "✅ Frontend builds successfully"
+
+# Backend Docker build check
+cd ../../api
+docker build -t cfipros-api:test .
+if [ $? -ne 0 ]; then
+  echo "❌ API Docker build failed - fix before deploying"
+  exit 1
+fi
+echo "✅ API Docker image builds successfully"
+
+# Scripts executable check
+chmod +x scripts/*.sh
+echo "✅ Scripts are executable"
+```
+
+**Validation checklist:**
+- [ ] `pnpm build` succeeds in apps/app
+- [ ] `docker build api/` succeeds
+- [ ] All scripts in scripts/ are executable
+- [ ] No build warnings that indicate errors
+
+### Environment Variables
+
+**Validate secrets schema and required environment variables:**
+
+```bash
+# Check secrets.schema.json exists and is updated
+if [ ! -f "secrets.schema.json" ]; then
+  echo "❌ secrets.schema.json not found"
+  echo "Create schema documenting all required environment variables"
+  exit 1
+fi
+
+# Validate current environment against schema
+node scripts/require-env.js $(jq -r '.required[]' secrets.schema.json 2>/dev/null)
+if [ $? -ne 0 ]; then
+  echo "❌ Missing required environment variables"
+  echo "See secrets.schema.json for required variables"
+  exit 1
+fi
+echo "✅ All required environment variables present"
+
+# Check if feature added new variables
+NEW_VARS=$(grep "New required:" "$PLAN_FILE" 2>/dev/null || echo "")
+
+if [ -n "$NEW_VARS" ]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🔐 NEW ENVIRONMENT VARIABLES"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "$NEW_VARS"
+  echo ""
+  echo "Validation:"
+  echo "  [ ] Added to secrets.schema.json"
+  echo "  [ ] Staging values configured in Vercel/Railway"
+  echo "  [ ] Production values prepared (not applied yet)"
+  echo "  [ ] verify.yml validates schema with require-env.js"
+  echo ""
+fi
+```
+
+**Validation checklist:**
+- [ ] `secrets.schema.json` exists and documents all required variables
+- [ ] `node scripts/require-env.js` passes (all vars present)
+- [ ] New variables (if any) added to secrets.schema.json
+- [ ] Staging environment configured with new variables
+- [ ] Production values documented (not applied until promotion)
+
+### Validate Portable Artifacts
+
+**Guardrail #1: Build-once, promote-many**
+
+Check that feature uses portable artifacts (not rebuild per environment):
+
+```bash
+# Check plan.md for artifact strategy
+ARTIFACT_STRATEGY=$(grep -A 10 "Artifact Strategy" "$PLAN_FILE" || echo "")
+
+if [[ -z "$ARTIFACT_STRATEGY" ]]; then
+  echo "⚠️  No artifact strategy documented in plan.md"
+  echo "Feature should document portable artifacts:"
+  echo "  - Web apps: Vercel .vercel/output/ (via 'vercel build')"
+  echo "  - API: Docker image with commit SHA tag (NOT :latest)"
+  echo ""
+  echo "See: standards/deploy-acceptance.md (Artifact Strategy section)"
+else
+  echo "✅ Artifact strategy documented in plan.md"
+fi
+```
+
+**Validation checklist:**
+- [ ] Artifact strategy in plan.md [DEPLOYMENT ACCEPTANCE]
+- [ ] Web apps use `vercel build` (not `vercel deploy --prod`)
+- [ ] API uses commit SHA tags: `ghcr.io/.../api:$COMMIT_SHA`
+- [ ] Artifacts uploaded to GitHub Actions artifacts (verify.yml)
+
+### Validate Drift Protection
+
+**Guardrail #3: Env/schema drift blockers**
+
+Check environment variables and migration alignment:
+
+```bash
+# Check for new environment variables
+NEW_ENV_VARS=$(grep -h "New required:" "$PLAN_FILE" | sed 's/.*: //' || echo "")
+
+if [[ -n "$NEW_ENV_VARS" ]]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🔐 ENVIRONMENT VARIABLES CHANGED"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "New variables documented: $NEW_ENV_VARS"
+  echo ""
+  echo "Validation checklist:"
+  echo "  [ ] Added to secrets.schema.json"
+  echo "  [ ] Staging values documented in plan.md"
+  echo "  [ ] Production values documented in plan.md"
+  echo "  [ ] verify.yml validates schema (require-env.js)"
+  echo ""
+fi
+
+# Check migration alignment
+if [[ -f "$FEATURE_DIR/migration-plan.md" ]]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🗄️  DATABASE MIGRATION DETECTED"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "Migration validation:"
+  cd api
+
+  # Check migration reversibility
+  MIGRATIONS=$(find alembic/versions -name "*.py" -newer "$FEATURE_DIR/migration-plan.md" 2>/dev/null || echo "")
+
+  if [[ -n "$MIGRATIONS" ]]; then
+    for migration in $MIGRATIONS; do
+      if ! grep -q "def downgrade()" "$migration"; then
+        echo "  ❌ Missing downgrade() in $migration"
+      else
+        echo "  ✅ Reversible migration: $migration"
+      fi
+    done
+  fi
+
+  # Check Alembic alignment
+  uv run alembic check
+  if [[ $? -eq 0 ]]; then
+    echo "  ✅ No schema drift detected"
+  else
+    echo "  ❌ Schema drift detected - run 'alembic upgrade head'"
+  fi
+
+  cd ..
+  echo ""
+fi
+```
+
+**Validation checklist:**
+- [ ] Environment schema updated (secrets.schema.json)
+- [ ] Migration has downgrade() (reversible)
+- [ ] No schema drift (alembic check passes)
+- [ ] verify.yml checks env schema and migration alignment
+
+### Validate Rollback Readiness
+
+**Guardrail #2: Promotion gate with instant rollback**
+
+Ensure NOTES.md tracks deployment metadata for 3-command rollback:
+
+```bash
+# Check if NOTES.md has Deployment Metadata section
+if ! grep -q "## Deployment Metadata" "$FEATURE_DIR/NOTES.md"; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📝 ROLLBACK TRACKING REQUIRED"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "Adding Deployment Metadata section to NOTES.md..."
+  echo ""
+
+  cat >> "$FEATURE_DIR/NOTES.md" << 'METADATA'
+
+## Deployment Metadata
+
+**Purpose**: Track deploy IDs for instant 3-command rollback (see runbook/rollback.md)
+
+### Staging Deploys
+
+| Date | Marketing Deploy ID | App Deploy ID | API Image SHA | Status |
+|------|---------------------|---------------|---------------|--------|
+| YYYY-MM-DD | marketing-xyz123.vercel.app | app-abc456.vercel.app | ghcr.io/.../api:sha123 | ✅ Validated |
+
+### Production Deploys
+
+| Date | Marketing Deploy ID | App Deploy ID | API Image SHA | Status |
+|------|---------------------|---------------|---------------|--------|
+| YYYY-MM-DD | marketing-prod789.vercel.app | app-prod012.vercel.app | ghcr.io/.../api:sha789 | ✅ Live |
+
+**Rollback Commands** (from runbook/rollback.md):
+```bash
+# 1. Get deploy ID from table above
+# 2. Set alias to previous deploy
+vercel alias set <previous-deploy-id> cfipros.com --token=$VERCEL_TOKEN
+
+# 3. Update API image
+railway service update --image ghcr.io/.../api:<previous-sha> --environment production
+```
+METADATA
+
+  echo "✅ Deployment Metadata section added to NOTES.md"
+  echo ""
+else
+  echo "✅ Deployment Metadata section exists in NOTES.md"
+fi
+```
+
+**Validation checklist:**
+- [ ] NOTES.md has Deployment Metadata section
+- [ ] Table structure ready for deploy IDs
+- [ ] Rollback commands documented
+- [ ] promote.yml outputs deploy IDs (captured in workflow logs)
+
+### Validate Deployment Strategy
+
+**Check if feature modifies CI/CD workflows:**
+
+```bash
+MODIFIED_WORKFLOWS=$(git diff staging...HEAD --name-only | grep "\.github/workflows" || echo "")
+
+if [[ -n "$MODIFIED_WORKFLOWS" ]]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🚀 DEPLOYMENT WORKFLOW CHANGES DETECTED"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "Modified workflows:"
+  echo "$MODIFIED_WORKFLOWS" | sed 's/^/  - /'
+  echo ""
+  echo "✅ Rate Limit Prevention Checklist:"
+  echo ""
+  echo "  [ ] Workflow supports preview mode (no --prod flag by default)"
+  echo "  [ ] Workflow defaults to preview (deployment_mode: 'preview')"
+  echo "  [ ] Local testing documented (act dry-run, vercel build)"
+  echo "  [ ] Concurrency controls configured (cancel-in-progress)"
+  echo "  [ ] Retry logic uses exponential backoff (not aggressive)"
+  echo ""
+  echo "⚠️  Vercel Rate Limits: 100 deployments/day"
+  echo "    Manual trigger = 2 apps × 3 retries = 6 deployments"
+  echo "    17 manual triggers = 102 deployments = RATE LIMIT ❌"
+  echo ""
+  echo "📖 Reference: docs/CI-CD-GUIDE.md (CI Debugging Without Burning Deployments)"
+  echo ""
+fi
+```
+
+**Validation steps:**
+
+1. **Detect workflow changes** - Check git diff for .github/workflows modifications
+2. **Show checklist** - Display rate limit prevention requirements
+3. **Reference docs** - Point to CI-CD-GUIDE.md for complete guidance
+4. **Non-blocking** - Informational only, doesn't block /optimize
+
+**Workflow best practices:**
+
+- **Default to preview mode**: `deployment_mode: 'preview'` for manual triggers
+- **Gate production deploys**: Only use `staging` mode when explicitly selected
+- **Local testing first**: Run `pnpm run ci:validate` before triggering workflows
+- **Concurrency controls**: Use `cancel-in-progress: true` to stop duplicate builds
+- **Label-gated previews**: Only deploy PR previews when labeled 'preview'
+
 ### Type Coverage
 
 ```bash
@@ -455,8 +1224,8 @@ cd api
 uv run mypy app/ --strict
 
 # Frontend: TypeScript strict
-cd frontend
-pnpm run type-check
+pnpm --filter @cfipros/marketing run type-check
+pnpm --filter @cfipros/app run type-check
 ```
 
 **Validation checklist:**
@@ -471,7 +1240,7 @@ pnpm run type-check
 - **pnpm audit fails**: Log vulnerabilities, continue if only low/moderate, block on high/critical
 - **Test timeout (>5min)**: Cancel test run, ask "Debug failing test or skip validation?"
 - **Type-check crashes**: Show error, suggest fixing incrementally, don't block on single file
-- **Build fails**: Critical blocker, must fix before proceeding to /ship
+- **Build fails**: Critical blocker, must fix before proceeding to `/phase-1-ship`
 
 ## ERROR RECOVERY
 
@@ -483,7 +1252,7 @@ pnpm run type-check
 
 ## QUALITY GATE
 
-All must pass before `/ship`:
+All must pass before `/phase-1-ship`:
 
 ```markdown
 ## Optimization Checklist
@@ -491,7 +1260,7 @@ All must pass before `/ship`:
 ### Performance
 - [ ] Backend: p95 < target from plan.md
 - [ ] Frontend: Bundle size < target, images optimized
-- [ ] Lighthouse metrics: Validated in staging deployment (see GitHub Actions artifacts)
+- [ ] Lighthouse metrics: Validated locally (or in staging deployment)
 
 ### Security
 - [ ] Zero high/critical vulnerabilities
@@ -503,7 +1272,7 @@ All must pass before `/ship`:
 - [ ] WCAG level met (from plan.md)
 - [ ] Keyboard navigation works
 - [ ] Screen reader compatible
-- [ ] Lighthouse a11y score: Validated in staging deployment (see GitHub Actions artifacts)
+- [ ] Lighthouse a11y score: ≥95
 
 ### Error Handling
 - [ ] Graceful degradation implemented
@@ -511,53 +1280,103 @@ All must pass before `/ship`:
 - [ ] Error tracking configured
 
 ### Code Quality
-- [ ] Senior code review completed (see artifacts/code-review-report.md)
+- [ ] Senior code review completed (see code-review.md)
 - [ ] Auto-fix applied (if critical/high issues found)
 - [ ] Contract compliance verified
 - [ ] KISS/DRY principles followed
 - [ ] All tests passing (80%+ coverage)
+
+### Deployment Readiness
+- [ ] Build validation: `pnpm build` and `docker build` succeed
+- [ ] Smoke tests: `@smoke` tagged tests pass in <90s
+- [ ] Environment variables: All required vars in secrets.schema.json
+- [ ] Migration safety: Reversible migrations with downgrade()
+- [ ] Portable artifacts: Build-once strategy documented in plan.md
+- [ ] Drift protection: No schema drift, env vars validated
+- [ ] Rollback tracking: Deployment Metadata section in NOTES.md
+- [ ] Workflow changes follow rate limit prevention (if workflows modified)
+- [ ] CI/CD validation complete (see docs/CI-CD-GUIDE.md)
+
+### UI Implementation (if UI feature)
+- [ ] All polished screens implemented in production routes
+- [ ] Design tokens used (no hardcoded colors/spacing)
+- [ ] Analytics events instrumented (if analytics.md exists)
+- [ ] Feature flags implemented (if required)
 ```
+
+## CONTEXT BUDGET TRACKING
+
+**Optimization Phase Budget (Phase 5-7):**
+- **Budget**: 125k tokens
+- **Compact at**: 100k tokens (80% threshold)
+- **Strategy**: Minimal (30% reduction - preserve code review + all checkpoints)
+
+**After optimization phases complete:**
+
+```bash
+# Token tracking is automatic via Claude Code hooks
+# Hooks update $FEATURE_DIR/NOTES.md after each response
+# Check NOTES.md for "Context Budget Update" sections
+
+# Check if compaction warning exists in NOTES.md
+if grep -q "Compaction needed: true" "$FEATURE_DIR/NOTES.md" 2>/dev/null; then
+  echo "⚠️  Token threshold exceeded (see NOTES.md for details)"
+  echo "Run: /compact or compact-context.ps1 -Phase optimization"
+fi
+```
+
+**What gets preserved (minimal strategy):**
+- ✅ All decisions and rationale
+- ✅ All architecture decisions
+- ✅ All task checkpoints (no limit)
+- ✅ Full error log
+- ✅ **Complete code review report** (critical for review context)
+- ❌ Only redundant research details removed
+
+**Why minimal compaction in optimization?**
+- Code review needs full context for accurate analysis
+- All checkpoints preserve feature history
+- Error log shows patterns and learnings
+- Optimization phase is final quality gate
 
 ## WRITE OPTIMIZATION REPORT
 
-Create artifacts directory and write comprehensive report:
+Create optimization report:
 
 ```bash
-mkdir -p specs/$FEATURE/artifacts
-
-cat > specs/$FEATURE/artifacts/optimization-report.md << 'EOF'
+cat > "$FEATURE_DIR/optimization-report.md" << 'EOF'
 # Production Readiness Report
 **Date**: $(date +%Y-%m-%d\ %H:%M)
-**Feature**: $FEATURE
+**Feature**: $SLUG
 
 ## Performance
-- Backend p95: XXXms (target: XXXms) /
-- Bundle size: XXkB (target: XXkB) /
-- Lighthouse metrics: See staging deployment artifacts (GitHub Actions)
+- Backend p95: XXXms (target: XXXms) ✅/❌
+- Bundle size: XXkB (target: XXkB) ✅/❌
+- Lighthouse metrics: See local results or staging deployment artifacts
 
 ## Security
 - Critical vulnerabilities: N
 - High vulnerabilities: N
 - Medium/Low vulnerabilities: N
-- Auth/authz enforced: /
-- Rate limiting configured: /
+- Auth/authz enforced: ✅/❌
+- Rate limiting configured: ✅/❌
 
 ## Accessibility
-- WCAG level: AA /
+- WCAG level: AA ✅/❌
 - Lighthouse a11y score: XX/100
-- Keyboard navigation: /
-- Screen reader compatible: /
+- Keyboard navigation: ✅/❌
+- Screen reader compatible: ✅/❌
 
 ## Code Quality
-- Senior code review:  Passed /  Critical issues found
-- Auto-fix applied:  N issues fixed /  Skipped / N/A
-- Contract compliance: /
+- Senior code review: ✅ Passed / ❌ Critical issues found
+- Auto-fix applied: ✅ N issues fixed / ⏭️ Skipped / N/A
+- Contract compliance: ✅/❌
 - KISS/DRY violations: N issues
 - Type coverage: NN%
 - Test coverage: NN%
-- ESLint compliance: /
+- ESLint compliance: ✅/❌
 
-**Code Review Report**: specs/$FEATURE/artifacts/code-review-report.md
+**Code Review Report**: $FEATURE_DIR/code-review.md
 
 ## Auto-Fix Summary
 
@@ -568,24 +1387,24 @@ cat > specs/$FEATURE/artifacts/optimization-report.md << 'EOF'
 **Issues fixed**: [N]
 
 **Before/After**:
-- Critical: [N  N]
-- High: [N  N]
+- Critical: [N → N]
+- High: [N → N]
 
-**Error Log Entries**: [N entries added] (see specs/$FEATURE/error-log.md)
+**Error Log Entries**: [N entries added] (see $FEATURE_DIR/error-log.md)
 
 ## Blockers
-[List specific issues or "None - ready for /ship"]
+[List specific issues or "None - ready for `/phase-1-ship`"]
 
 ## Next Steps
 - [ ] Fix remaining blockers (if any)
-- [ ] Run /ship to deploy
+- [ ] Run `/phase-1-ship` to deploy to staging
 EOF
 ```
 
 Display summary to user:
-- Path to report: `specs/$FEATURE/artifacts/optimization-report.md`
+- Path to report: `$FEATURE_DIR/optimization-report.md`
 - Blocker count
-- Ready for /ship? Y/N
+- Ready for `/phase-1-ship`? Y/N
 
 ## GIT COMMIT
 
@@ -595,48 +1414,74 @@ git add .
 git commit -m "polish:optimize: production readiness validation
 
 Performance:
-- Backend p95: XXXms (target: XXXms) 
-- Frontend FCP: X.Xs (target: 1.5s) 
-- Bundle size: XXkB (target: XXkB) 
+- Backend p95: XXXms (target: XXXms) ✅
+- Frontend FCP: X.Xs (target: 1.5s) ✅
+- Bundle size: XXkB (target: XXkB) ✅
 
 Security:
-- Zero critical vulnerabilities 
-- Auth/authz enforced 
-- Rate limiting configured 
+- Zero critical vulnerabilities ✅
+- Auth/authz enforced ✅
+- Rate limiting configured ✅
 
 Accessibility:
-- WCAG 2.1 AA compliance 
-- Lighthouse a11y score: XX 
+- WCAG 2.1 AA compliance ✅
+- Lighthouse a11y score: XX ✅
 
 Code Quality:
-- JSDoc/TSDoc on all exports 
-- Type coverage: 100% 
-- Test coverage: XX% 
+- Senior code review: ✅ Passed
+- Type coverage: 100% ✅
+- Test coverage: XX% ✅
 
- Generated with Claude Code
+🤖 Generated with Claude Code
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 ## UPDATE NOTES.md
 
-```markdown
-## Checkpoints
--  Phase 5 (Optimize): Completed [date]
-  - Performance: All targets met
-  - Security: Zero vulnerabilities
-  - Accessibility: WCAG AA compliant
-  - JSDoc: 100% coverage
-  - Ready for production
+After completing optimization, update NOTES.md with Phase 5 checkpoint:
+
+```bash
+# Source the template
+source \spec-flow/templates/notes-update-template.sh
+
+# Collect optimization results
+PERF_STATUS=$(grep -q "Performance: ✅" "$OPTIMIZATION_REPORT" && echo "All targets met" || echo "Issues found")
+SECURITY_STATUS=$(grep -q "Security: ✅" "$OPTIMIZATION_REPORT" && echo "Zero vulnerabilities" || echo "Issues found")
+A11Y_STATUS=$(grep -q "Accessibility: ✅" "$OPTIMIZATION_REPORT" && echo "WCAG AA compliant" || echo "Issues found")
+REVIEW_STATUS=$(grep -q "Senior Code Review: ✅" "$OPTIMIZATION_REPORT" && echo "Passed" || echo "Issues found")
+
+# Add Phase 5 checkpoint
+update_notes_checkpoint "$FEATURE_DIR" "5" "Optimize" \
+  "Performance: $PERF_STATUS" \
+  "Security: $SECURITY_STATUS" \
+  "Accessibility: $A11Y_STATUS" \
+  "Senior code review: $REVIEW_STATUS" \
+  "Ready for: /preview"
+
+update_notes_timestamp "$FEATURE_DIR"
 ```
+
+## CONTEXT MANAGEMENT
+
+Check if compaction needed before proceeding:
+
+```bash
+if grep -q "Compaction needed: true" "$FEATURE_DIR/NOTES.md" 2>/dev/null; then
+  echo "⚠️  Context compaction recommended before /preview"
+  echo ""
+  echo "Run: /compact \"preserve code review report, all quality metrics, and all checkpoints\""
+fi
+```
+
+**If compaction not needed**, proceed directly to `/preview`.
 
 ## RETURN
 
 Brief summary:
--  Performance: Backend XXXms p95, bundle size optimized
--  Security: 0 critical vulnerabilities, auth enforced
--  Accessibility: WCAG level met
--  Code Quality: Senior review passed, tests passing XX% coverage
--   Blockers: N issues found (fix before /preview) OR 0 (ready for /preview)
-- Next: `/preview` (manual UI/UX testing before shipping)
-- Optional: `/compact optimization` (minimal compaction, preserves code review)
+- ✅ Performance: Backend XXXms p95, bundle size optimized
+- 🔒 Security: 0 critical vulnerabilities, auth enforced
+- ♿ Accessibility: WCAG level met
+- 📋 Code Quality: Senior review passed, tests passing XX% coverage
+- ⚠️  Blockers: N issues found (fix before /preview) OR 0 (ready for /preview)
+- Next: `/preview` (manual UI/UX testing before shipping) (or /compact if threshold exceeded)
 

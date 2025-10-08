@@ -1,0 +1,167 @@
+# Screens Inventory: [Feature Name]
+# Used by /design-variations to generate UI variants
+
+feature: "[feature-slug]"  # e.g., "aktr-upload"
+created: "[DATE]"
+
+# Screen definitions
+screens:
+  - id: "[screen-id]"  # e.g., "upload"
+    name: "[Screen Display Name]"  # e.g., "Upload Screen"
+    route: "/[path]"  # e.g., "/aktr/upload"
+    purpose: "[1-sentence user goal]"  # e.g., "Upload AKTR PDF or image for extraction"
+
+    # Primary user action on this screen
+    primary_action:
+      label: "[Button text]"  # e.g., "Select File"
+      event: "[analytics-event]"  # e.g., "upload.file_selected"
+      outcome: "[next-screen or result]"  # e.g., "Navigate to preview"
+
+    # All possible states this screen can be in
+    states:
+      - id: "default"
+        description: "Initial empty state"
+        copy: "[Main message]"  # e.g., "Drop your AKTR report here"
+
+      - id: "uploading"
+        description: "File upload in progress"
+        copy: "[Progress message]"  # e.g., "Uploading your report..."
+        progress: true  # Show progress indicator
+
+      - id: "error"
+        description: "Upload failed"
+        copy: "[Error message]"  # e.g., "Upload failed. Please try again."
+        error_type: "[client|server|validation]"
+        recovery: "[What user should do]"  # e.g., "Check file size (<50MB) and try again"
+
+      - id: "success"
+        description: "Upload completed successfully"
+        copy: "[Success message]"
+        transition: "[next-state or screen]"
+
+    # Components needed (from ui-inventory.md)
+    components:
+      - "Button (primary)"
+      - "FileUpload"
+      - "ProgressBar"
+      - "Alert (error)"
+      - "Card"
+
+    # Copy for this screen (real content, not Lorem Ipsum)
+    copy:
+      heading: "[Main heading]"
+      subheading: "[Supporting text]"
+      cta_primary: "[Primary button text]"
+      cta_secondary: "[Secondary button text]"
+      help_text: "[Inline help or tooltip]"
+      error_messages:
+        - code: "FILE_TOO_LARGE"
+          message: "[User-friendly error]"
+        - code: "INVALID_FORMAT"
+          message: "[User-friendly error]"
+
+    # Accessibility requirements
+    a11y:
+      - "File input has visible label (not placeholder-only)"
+      - "Error messages announced to screen readers"
+      - "Progress updates announced (aria-live)"
+      - "Keyboard: Tab to upload, Enter/Space to trigger"
+      - "Focus visible on all interactive elements"
+
+    # Performance budget
+    performance:
+      fcp: "1.5s"  # First Contentful Paint
+      tti: "3.0s"  # Time to Interactive
+      bundle: "50kb"  # Max JS bundle size
+
+# Example: AKTR Upload Redesign
+example:
+  feature: "aktr-upload-inline"
+  screens:
+    - id: "upload"
+      name: "Upload Screen"
+      route: "/aktr/upload"
+      purpose: "User uploads AKTR PDF or image for ACS extraction"
+
+      primary_action:
+        label: "Select File"
+        event: "upload.file_selected"
+        outcome: "Show inline preview (no redirect)"
+
+      states:
+        - id: "default"
+          description: "Drag-drop zone, empty"
+          copy: "Drop your AKTR report here or click to browse"
+
+        - id: "uploading"
+          description: "File uploading with progress"
+          copy: "Uploading {filename}..."
+          progress: true
+
+        - id: "preview"
+          description: "Inline preview with extract button"
+          copy: "Preview: {filename} ({size})"
+
+        - id: "extracting"
+          description: "Extraction in progress"
+          copy: "Extracting ACS codes..."
+          progress: true
+
+        - id: "error"
+          description: "Upload or extraction failed"
+          copy: "Something went wrong"
+          error_type: "server"
+          recovery: "Check your connection and try again"
+
+      components:
+        - "FileUpload (drag-drop)"
+        - "Button (primary, secondary)"
+        - "ProgressBar (linear)"
+        - "Alert (error, info)"
+        - "Card (preview)"
+        - "Skeleton (loading)"
+
+      copy:
+        heading: "Upload Your AKTR Report"
+        subheading: "Get ACS-mapped weak areas in seconds"
+        cta_primary: "Extract ACS Codes"
+        cta_secondary: "Cancel"
+        help_text: "Accepts PDF or image files up to 50MB"
+        error_messages:
+          - code: "FILE_TOO_LARGE"
+            message: "File exceeds 50MB limit. Try compressing or splitting the file."
+          - code: "INVALID_FORMAT"
+            message: "Only PDF, JPG, and PNG files are supported."
+          - code: "EXTRACTION_FAILED"
+            message: "Could not extract codes. Check the file contains AKTR results."
+
+      a11y:
+        - "File input labeled 'Select AKTR report file'"
+        - "Drag-drop zone has keyboard alternative"
+        - "Upload progress announced via aria-live='polite'"
+        - "Errors shown inline + announced"
+        - "Focus returns to upload button after error dismissal"
+
+      performance:
+        fcp: "1.2s"
+        tti: "2.8s"
+        bundle: "45kb"
+
+# Notes for Claude Code
+
+# /design-variations will:
+# 1. Read this file + design/systems/ui-inventory.md
+# 2. Generate 3-5 grayscale variants per screen
+# 3. Implement states via ?state= query param
+# 4. Use ONLY components from ui-inventory.md (system-first)
+# 5. Output to: /apps/web/mock/[feature]/[screen]/v1...v5
+
+# Variant criteria:
+# - Layout variations (stacked vs. side-by-side)
+# - Interaction patterns (inline vs. modal)
+# - Copy variations (concise vs. descriptive)
+# - Component choices (different primitives from inventory)
+# - State handling (inline vs. redirect)
+
+# Human selects winner in crit.md
+# /design-functional merges selected variants → /mock/[feature]/[screen]/main

@@ -216,18 +216,18 @@ function Get-RecommendedAgent {
 
     # Analyze file paths for agent routing
     foreach ($path in $FilePaths) {
-        if ($path -match "apps/api") { return "spec-flow-backend-dev" }
-        if ($path -match "apps/web") { return "spec-flow-frontend-shipper" }
-        if ($path -match "contracts/") { return "spec-flow-contracts-sdk" }
-        if ($path -match "migrations|alembic") { return "spec-flow-database-architect" }
-        if ($path -match "\.github/workflows") { return "spec-flow-ci-cd-release" }
+        if ($path -match "apps/api") { return "backend-dev" }
+        if ($path -match "apps/web") { return "frontend-shipper" }
+        if ($path -match "contracts/") { return "contracts-sdk" }
+        if ($path -match "migrations|alembic") { return "database-architect" }
+        if ($path -match "\.github/workflows") { return "ci-cd-release" }
     }
 
     # Analyze description for task type
-    if ($Description -match "test|spec") { return "spec-flow-qa-test" }
-    if ($Description -match "debug|fix|error") { return "spec-flow-debugger" }
-    if ($Description -match "coverage") { return "spec-flow-coverage-enhancer" }
-    if ($Description -match "database|schema|migration") { return "spec-flow-database-architect" }
+    if ($Description -match "test|spec") { return "qa-test" }
+    if ($Description -match "debug|fix|error") { return "debugger" }
+    if ($Description -match "coverage") { return "coverage-enhancer" }
+    if ($Description -match "database|schema|migration") { return "database-architect" }
 
     return "general-purpose"
 }

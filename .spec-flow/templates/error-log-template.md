@@ -1,4 +1,4 @@
-﻿# Error Log: [FEATURE_NAME]
+# Error Log: [FEATURE_NAME]
 
 **Feature**: [NNN-feature-name]
 **Created**: [YYYY-MM-DD]

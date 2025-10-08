@@ -1,0 +1,211 @@
+# Tasks: [FEATURE NAME]
+
+<metadata>
+**Input**: Design documents from `/specs/[###-feature-name]/`
+**Prerequisites**: plan.md (required), data-model.md, contracts/, research.md with [EXISTING/NEW]
+</metadata>
+
+<execution_flow>
+Write tests BEFORE code - TDD with AI prevents debugging nightmares
+
+1. Load plan.md → Extract [EXISTING INFRASTRUCTURE - REUSE] and [NEW INFRASTRUCTURE - CREATE]
+2. Load design artifacts → entities, contracts, decisions, scenarios
+3. Scan codebase → Identify exact files to REUSE (from plan.md)
+4. Generate concrete tasks → No [Entity] placeholders, exact paths/fields/methods
+5. Add REUSE markers → Each task references existing code to import
+6. Add pattern references → Each task references similar file to follow
+7. Apply parallelization → Different files [P], same file sequential
+8. Number sequentially → T001, T002... (max 25-30 for focus)
+9. Validate completeness → All contracts tested, entities modeled, no duplication
+10. Ready for execution → Each task LLM-executable with exact paths
+</execution_flow>
+
+## [CODEBASE REUSE ANALYSIS]
+
+**From plan.md [EXISTING INFRASTRUCTURE - REUSE]:**
+
+Scanned: api/src/**/*.py, frontend/**/*.tsx
+
+**[EXISTING - REUSE]**
+- ✅ DatabaseService (api/src/services/database_service.py)
+- ✅ AuthMiddleware (api/src/middleware/auth.py)
+- ✅ UserModel (api/src/models/user.py) - has email, role fields
+- ✅ Pattern: api/src/modules/notifications/ (follow structure)
+
+**[NEW - CREATE]**
+- 🆕 MessageService (no existing)
+- 🆕 WebSocketGateway (no existing)
+- 🆕 MessageQueue (Redis pub/sub)
+
+## Format: `[ID] [P?] Description`
+- **[P]**: Can run in parallel (different files, no dependencies)
+- Include exact file paths in descriptions
+
+## Path Conventions
+- **Single project**: `src/`, `tests/` at repository root
+- **Web app**: `backend/src/`, `frontend/src/`
+- **Mobile**: `api/src/`, `ios/src/` or `android/src/`
+- Paths shown below assume single project - adjust based on plan.md structure
+
+## Phase 3.1: Setup & Quality Gates
+- [ ] T001 Create project structure per implementation plan
+- [ ] T002 Initialize [language] project with [framework] dependencies
+- [ ] T003 [P] Configure linting and formatting tools (ESLint/Prettier or Black/Ruff)
+- [ ] T004 [P] Set up type checking (TypeScript or Python type hints)
+- [ ] T005 [P] Configure test coverage reporting (target: 80% minimum)
+
+<phase_tests>
+Tests First (TDD) - Loop until actually works, "should work" means it doesn't
+
+**CRITICAL: Tests MUST be written CONCRETE and MUST FAIL before implementation**
+
+Example (NOT generic):
+❌ `T006 [P] Contract test POST /api/[endpoint] in tests/contract/test_[endpoint]_post.py`
+
+✅ `T006 [P] Contract test POST /api/chat/messages in tests/contract/test_messages_post.py`
+```
+- Request: {channel_id: str, content: str}
+- Response: {id: UUID, channel_id: str, user_id: str, content: str, created_at: datetime}
+- Status: 201 Created
+- Auth: Requires valid JWT token
+- REUSE: api/tests/contract/test_auth.py (JWT test patterns)
+- Must FAIL (no implementation yet)
+```
+
+**CONCRETE EXAMPLES:**
+
+- [ ] T006 [P] WebSocket connection test in `api/tests/integration/test_ws_connection.py`
+      REUSE: api/tests/integration/test_auth.py (JWT test patterns)
+      Test: Connect with valid token → receive welcome event
+      Must FAIL (no implementation yet)
+
+- [ ] T007 [P] Message creation test in `api/tests/unit/test_message_model.py`
+      Test: Create message with valid data → saves to DB
+      Test: Create with invalid content (>4000 chars) → raises ValidationError
+      Must FAIL initially
+
+- [ ] T008 [P] Integration test POST /api/chat/messages in `api/tests/integration/test_send_message.py`
+      REUSE: api/tests/integration/test_auth.py (auth headers)
+      Test: Authenticated user sends message → 201 Created
+      Test: Unauthenticated → 401 Unauthorized
+      Must FAIL initially
+</phase_tests>
+
+<phase_implementation>
+Core Implementation - Write code your future self can modify
+
+**CONCRETE EXAMPLES (not generic):**
+
+- [ ] T011 [P] Create Message model in `api/src/modules/chat/models/message.py`
+      Fields: id (UUID), channel_id (FK), user_id (FK), content (str, max 4000), created_at (timestamp)
+      Relationships: belongs_to Channel, belongs_to User
+      REUSE: Base model from api/src/models/base.py (SQLAlchemy setup)
+      Pattern: Follow api/src/models/notification.py structure (similar domain)
+      Validation: content not empty, max 4000 chars (use existing validators)
+      From: data-model.md Message entity
+
+- [ ] T012 [P] Create MessageService in `api/src/modules/chat/services/message_service.py`
+      REUSE: DatabaseService (api/src/services/database_service.py)
+      REUSE: CacheService (api/src/services/cache_service.py)
+      Pattern: Follow api/src/modules/notifications/services/notification_service.py (similar domain)
+      Methods:
+        - send_message(channel_id, user_id, content) -> Message
+        - get_messages(channel_id, limit=50, before=None) -> List[Message]
+      JSDoc: Add @see tags to DatabaseService, CacheService
+      From: contracts/chat-api.yaml
+
+- [ ] T013 [P] Create WebSocketGateway in `api/src/modules/chat/gateway/ws_gateway.py`
+      REUSE: AuthMiddleware (api/src/middleware/auth.py)
+      NEW: WebSocket connection handler (no existing)
+      Methods:
+        - handle_connect(websocket, token) -> Connection
+        - handle_message(connection, data) -> None
+        - broadcast(channel_id, message) -> None
+      Events: connect, disconnect, message, error
+      From: contracts/websocket-events.yaml
+
+- [ ] T014 POST /api/chat/messages endpoint in `api/src/api/v1/chat.py`
+      REUSE: MessageService (from T012)
+      REUSE: AuthMiddleware (api/src/middleware/auth.py)
+      Request: {channel_id: str, content: str}
+      Response: {id: UUID, ...} 201 Created
+      Error handling: 400 validation, 401 auth, 404 channel not found
+      Performance: <500ms p95 response time
+      From: contracts/chat-api.yaml POST /api/chat/messages
+</phase_implementation>
+
+<phase_integration>
+Integration - Fix without changing anything else
+
+- [ ] T018 Connect [Service] to database in `src/services/[service].py`
+- [ ] T019 Auth middleware in `src/middleware/auth.py`
+- [ ] T020 Request/response logging in `src/middleware/logging.py`
+- [ ] T021 CORS and security headers in `src/config/security.py`
+</phase_integration>
+
+<phase_polish>
+Polish - Git commit after EVERY working feature
+
+- [ ] T022 [P] Unit tests 80% coverage in `tests/unit/`
+- [ ] T023 Performance validation API <500ms, extraction <10s P95
+- [ ] T024 [P] Accessibility audit WCAG 2.1 AA compliance
+- [ ] T025 [P] Mobile responsiveness testing
+- [ ] T026 [P] Update API documentation
+- [ ] T027 Remove code duplication (DRY principle)
+- [ ] T028 Run linting and type checking
+- [ ] T029 Execute `quickstart.md` for validation
+</phase_polish>
+
+<dependencies>
+Stop after X and wait - prevent runaway changes
+
+**Sequential Dependencies:**
+- Setup (T001-T005) → Tests (T006-T010) → Implementation (T011-T017) → Integration (T018-T021) → Polish (T022-T029)
+- Tests MUST fail before any implementation begins
+- Commit after each working task
+
+**Parallel Safety:**
+- [P] tasks = different files, no shared dependencies
+- Max 2-3 concurrent [P] tasks for focus
+- Same file modifications = sequential only
+</dependencies>
+
+<task_generation_rules>
+Stop building one mega task - many specialized ones
+
+**From Design Artifacts:**
+- Each contract file → contract test [P] + implementation task with REUSE markers
+- Each entity → model creation [P] + service layer tasks with REUSE from existing models
+- Each user story → integration test [P] + validation tasks
+- Each visual → UI component [P] + responsive testing
+
+**Concrete Task Requirements:**
+- NO generic placeholders like [Entity], [Service], [endpoint]
+- EXACT file paths: `api/src/modules/chat/models/message.py`
+- EXACT fields: `id (UUID), channel_id (FK), user_id (FK), content (str, max 4000)`
+- EXACT methods: `send_message(channel_id, user_id, content) -> Message`
+- REUSE markers: `REUSE: DatabaseService (api/src/services/database_service.py)`
+- Pattern references: `Pattern: Follow api/src/models/notification.py structure`
+- From references: `From: data-model.md Message entity`
+
+**Ordering Strategy:**
+- Setup → Tests (failing) → Models → Services → Endpoints → Polish
+- TDD order prevents debugging nightmares
+- Dependencies block parallel execution
+- Each task includes what to REUSE vs CREATE
+</task_generation_rules>
+
+<validation_checklist>
+Review your work and list what might be broken
+
+- [ ] All contracts have corresponding tests
+- [ ] All entities have model tasks
+- [ ] All tests come before implementation (TDD)
+- [ ] Parallel tasks truly independent ([P] = different files)
+- [ ] Each task specifies exact file path
+- [ ] Quality gates configured (linting, type checking, 80% coverage)
+- [ ] Performance tests included (<10s extraction, <500ms API)
+- [ ] Accessibility requirements (WCAG 2.1 AA)
+- [ ] Error messages actionable
+- [ ] Max 25-30 tasks for maintainability
+</validation_checklist>

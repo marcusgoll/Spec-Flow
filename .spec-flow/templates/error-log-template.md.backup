@@ -1,0 +1,37 @@
+# Error Log: [FEATURE_NAME]
+
+**Feature**: [NNN-feature-name]
+**Created**: [YYYY-MM-DD]
+
+This log tracks failures, learnings, and ghost context cleanup during implementation.
+
+---
+
+## Entry Format
+
+Each entry should include:
+- **Failure**: What broke or failed
+- **Symptom**: Observable behavior (error messages, incorrect behavior, test failures, etc.)
+- **Learning**: Root cause and key insights
+- **Ghost Context Cleanup**: Retired artifacts, corrected assumptions, or removed dead code
+
+---
+
+## Entries
+
+### Entry 1: [YYYY-MM-DD] - Initial Setup (No Failures Yet)
+
+**Failure**: N/A (feature not yet implemented)
+**Symptom**: N/A
+**Learning**: Pre-implementation log created per constitution requirement
+**Ghost Context Cleanup**: N/A
+
+---
+
+## Guidelines
+
+- Add entries IMMEDIATELY when failures occur during implementation
+- Include timestamps and task IDs (e.g., "During T023 middleware update")
+- Be specific about ghost context: mention file paths, variable names, or assumptions
+- Update during /implement phase as issues arise
+- Use /debug command to systematically debug and update this log

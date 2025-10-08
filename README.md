@@ -122,7 +122,7 @@ Install Spec-Flow with a single command:
 # Initialize in current directory
 npx spec-flow init
 
-# Or specify target directory
+# Or\spec-flow target directory
 npx spec-flow init --target ./my-project
 ```
 
@@ -347,6 +347,7 @@ specs/001-example-feature/
 ## License
 
 Released under the [MIT License](LICENSE).
+
 
 
 

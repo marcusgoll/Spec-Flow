@@ -159,12 +159,12 @@ grep -r "track\|posthog" frontend/
 
 ## PHASE 5.5: SENIOR CODE REVIEW
 
-Delegate comprehensive code review to spec-flow-senior-code-reviewer agent:
+Delegate comprehensive code review to senior-code-reviewer agent:
 
 ```bash
 # Launch senior code reviewer agent
 Task tool with:
-  subagent_type: "spec-flow-senior-code-reviewer"
+  subagent_type: "senior-code-reviewer"
   description: "Review feature for contract compliance and quality gates"
   prompt: "Review feature at specs/$FEATURE for:
 
@@ -390,10 +390,10 @@ done
 After auto-fix completes:
 
 ```bash
-# Re-run spec-flow-senior-code-reviewer to verify fixes
+# Re-run senior-code-reviewer to verify fixes
 echo "Re-running senior code review to verify fixes..."
 
-Task tool with spec-flow-senior-code-reviewer (same prompt as Phase 5.5)
+Task tool with senior-code-reviewer (same prompt as Phase 5.5)
 
 # Compare before/after
 CRITICAL_AFTER=$(grep -c "Severity: CRITICAL" specs/$FEATURE/artifacts/code-review-report.md || echo 0)

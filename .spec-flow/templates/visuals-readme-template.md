@@ -1,4 +1,4 @@
-﻿# Visual References for [Feature Name]
+# Visual References for [Feature Name]
 
 ## Overview
 [1-paragraph summary: sites analyzed, patterns discovered, key insights]
@@ -9,7 +9,7 @@
 
 ### [Site Name] - [Component/Feature]
 **URL**: [live link]
-**Status**:  Analyzed via mcp__chrome-devtools on [date]
+**Status**: ✅ Analyzed via mcp__chrome-devtools on [date]
 
 **Layout**:
 - Header: [height]px, [describe layout]
@@ -69,7 +69,7 @@
 - [Site]: [specific instance]
 - [Site]: [specific instance]
 
-**Apply to Spec-Flow**:
+**Apply to CFIPros**:
 - [Specific recommendation]
 - [Component where applies]
 
@@ -123,7 +123,7 @@
 - [ ] Color contrast meets WCAG 2.1 AA (4.5:1 normal, 3:1 large text)
 - [ ] Error states use icon + text, not color alone
 - [ ] Form labels always visible (not placeholder-only)
-- [ ] Touch targets 44x44px for mobile
+- [ ] Touch targets ≥44x44px for mobile
 - [ ] Keyboard navigation follows logical tab order
 - [ ] Motion can be disabled (prefers-reduced-motion)
 - [ ] Images have alt text
@@ -141,7 +141,7 @@
 - Tablet: [XXX]px to [XXX]px
 - Desktop: [XXX]px and above
 
-**Spec-Flow priorities**:
+**CFIPros priorities**:
 1. [Priority #1 - e.g., "Auth flow perfect on mobile"]
 2. [Priority #2]
 3. [Priority #3]
@@ -162,4 +162,3 @@
 
 **Last Updated**: [ISO timestamp]
 **Analyzed By**: Claude Code via mcp__chrome-devtools
-

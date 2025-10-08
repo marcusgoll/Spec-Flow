@@ -1,277 +1,446 @@
-﻿---
+---
 description: Orchestrate full feature workflow from idea to staging (with manual gates)
 ---
 
-Orchestrate full feature workflow: $ARGUMENTS
+## PARSE ARGUMENTS
+
+**Get feature description or continue mode:**
+
+If $ARGUMENTS is empty, show usage:
+```
+Usage: /flow [feature description]
+   or: /flow continue
+
+Examples:
+  /flow "Student progress tracking dashboard"
+  /flow continue
+```
+
+If $ARGUMENTS is "continue":
+- Set CONTINUE_MODE = true
+- Load workflow state from `\spec-flow/workflow-state.json`
+- Resume from last completed phase
+
+Else:
+- Set CONTINUE_MODE = false
+- Set FEATURE_DESCRIPTION = $ARGUMENTS
+- Initialize new workflow
+
+## INITIALIZE WORKFLOW STATE
+
+**Create or load workflow state file:**
+
+State file location: `\spec-flow/workflow-state.json`
+
+**For new workflows:**
+Create state file with:
+```json
+{
+  "feature": "[feature-slug]",
+  "current_phase": 0,
+  "phases_completed": [],
+  "started_at": "[ISO timestamp]",
+  "last_updated": "[ISO timestamp]",
+  "status": "in_progress",
+  "manual_gates": {
+    "preview": false,
+    "validate_staging": false
+  },
+  "timings": {}
+}
+```
+
+**For continue mode:**
+Read existing state file to determine next phase.
 
 ## MENTAL MODEL
 
-**Workflow**: Feature idea -> Staging deployment (automated with manual checkpoints)
+**Workflow**: Feature idea → Staging deployment (**YOLO mode** - fully automated)
 
 **Pattern**: Orchestrator-Workers (from Anthropic best practices)
 - **Orchestrator**: /flow tracks progress, manages context, handles errors
 - **Workers**: Individual slash commands are specialists
-- **Checkpoints**: Manual gates at critical decision points
+- **YOLO mode**: Full automation, only stops for:
+  - User questions (clarifications during \spec-flow)
+  - Manual testing gates (/preview, /validate-staging)
 
 **Context management**:
-- Adaptive phase-based budgets (75k/100k/125k tokens)
-- Auto-compact at 80% threshold (60k/80k/100k)
+- Auto-compact after each phase with phase-specific instructions
 - Just-in-time loading of artifacts
-> Platform note: On macOS/Linux replace `pwsh -File` calls with the matching `.spec-flow/scripts/bash/*.sh` helper.
-- Phase-aware compression strategies (90%/60%/30% reduction)
+- Phase-aware compression strategies (aggressive/moderate/minimal)
 
 ## STATE MACHINE
 
 ```
 IDEA/DESCRIPTION
-  
-PHASE 0: spec-flow -> spec.md created
-   [auto-check for clarifications]
-   If [NEEDS CLARIFICATION] -> PHASE 0.5: CLARIFY
-   Else -> PHASE 1: PLAN
-  
-PHASE 1: PLAN -> plan.md, research.md created
-  
-PHASE 2: TASKS -> tasks.md (20-30 tasks) created
-  
-PHASE 3: ANALYZE -> analysis-report.md
-   [check for CRITICAL issues]
-   If CRITICAL -> PAUSE: User must fix
-   Else -> PHASE 4: IMPLEMENT
-  
-PHASE 4: IMPLEMENT -> All tasks completed
-   [context check: >80k tokens? (implementation phase)]
-   If >80k -> Auto-compact (60% reduction to context-delta.md)
-   Continue
-  
-PHASE 5: OPTIMIZE -> optimization-report.md
-   [auto-fix enabled?]
-   If critical issues -> Auto-fix loop (max 3 iterations)
-   If blockers remain -> PAUSE: User must fix
-  
-MANUAL GATE 1: PREVIEW -> User validates UI/UX
-   User confirms quality
-  
-PHASE 6: PHASE-1-SHIP -> PR to staging, auto-merge
-   [wait for CI, auto-merge when green]
-  
-MANUAL GATE 2: VALIDATE-STAGING -> User validates staging deployment
-   User approves for production
-  
-PHASE 7: PHASE-2-SHIP -> PR to main, auto-merge, release
-  
-DONE: Feature shipped to production
+  ↓
+PHASE 0:\spec-flow → spec.md created → /compact (preserve spec decisions)
+  ↓ [auto-check for clarifications]
+  ├─ If [NEEDS CLARIFICATION] → PHASE 0.5: CLARIFY → /compact
+  └─ Else → PHASE 1: PLAN
+  ↓
+PHASE 1: PLAN → plan.md, research.md created → /compact (preserve research decisions)
+  ↓
+PHASE 2: TASKS → tasks.md (20-30 tasks) created → /compact (keep task breakdown)
+  ↓
+PHASE 3: ANALYZE → analysis-report.md → /compact (preserve critical issues)
+  ↓ [check for CRITICAL issues]
+  ├─ If CRITICAL → PAUSE: User must fix
+  └─ Else → PHASE 4: IMPLEMENT
+  ↓
+PHASE 4: IMPLEMENT → All tasks completed → /compact (keep last 20 checkpoints)
+  ↓
+PHASE 5: OPTIMIZE → optimization-report.md → /compact (preserve code review)
+  ↓ [auto-fix enabled?]
+  ├─ If critical issues → Auto-fix loop (max 3 iterations)
+  └─ If blockers remain → PAUSE: User must fix
+  ↓
+MANUAL GATE 1: PREVIEW → User validates UI/UX
+  ↓ User confirms quality
+  ↓
+PHASE 6: PHASE-1-SHIP → PR to staging, auto-merge
+  ↓ [wait for CI, auto-merge when green]
+  ↓
+MANUAL GATE 2: VALIDATE-STAGING → User validates staging deployment
+  ↓ User approves for production
+  ↓
+PHASE 7: PHASE-2-SHIP → PR to main, auto-merge, release
+  ↓
+PHASE 7.5: FINALIZE → Update docs (CHANGELOG, README, help), manage milestones
+  ↓
+✅ DONE: Feature shipped to production with documentation complete
 ```
 
 ## EXECUTION STRATEGY
 
 ### Phase 0: Specification (DESIGN)
-```bash
-# 1. Create feature specification
-/spec-flow "$ARGUMENTS"
 
-# 2. Check for clarification needs
-if grep -q "\\[NEEDS CLARIFICATION" specs/NNN-*/spec.md; then
-  echo " Clarifications needed"
-  /clarify
-  # After clarify, continue to plan
-fi
+**EXECUTE in sequence:**
 
-# 3. Continue to planning
-echo " Spec clear, proceeding to plan"
-```
+1. **Update state (start phase 0):**
+   - Set `current_phase = 0`
+   - Set `status = "in_progress"`
+   - Record start timestamp
+
+2. **Run \spec-flow command:**
+   - INVOKE: `\spec-flow "$ARGUMENTS"` (use SlashCommand tool)
+   - WAIT: For completion
+   - VERIFY: `specs/[feature-slug]/spec.md` created
+
+3. **Run /compact command (if available):**
+   - TRY: `/compact "preserve spec decisions, requirements, and UX research"`
+   - If command not found: Skip with log message
+
+4. **Check for clarifications:**
+   - READ: `specs/[feature-slug]/spec.md`
+   - SCAN: For `[NEEDS CLARIFICATION]` markers
+   - IF FOUND:
+     - LOG: "📋 Clarifications needed"
+     - INVOKE: `/clarify` (use SlashCommand tool)
+     - WAIT: For completion
+     - TRY: `/compact "preserve spec decisions and clarifications"`
+
+5. **Update state (complete phase 0):**
+   - Add 0 to `phases_completed`
+   - Record end timestamp
+   - Update `last_updated`
+
+6. **Auto-progress to Phase 1:**
+   - LOG: "✅ Spec clear, proceeding to plan"
+   - CONTINUE to Phase 1 (no user input needed)
 
 ### Phase 1: Planning (DESIGN)
-```bash
-# Generate implementation plan
-/plan
 
-# Auto-compact after planning if needed
-FEATURE_DIR=$(find specs -maxdepth 1 -type d -name "*-*" | sort -n | tail -1)
-CONTEXT_CHECK=$(pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 \
-  -FeatureDir "$FEATURE_DIR" -Phase "planning" -Json)
+**EXECUTE in sequence:**
 
-SHOULD_COMPACT=$(echo "$CONTEXT_CHECK" | jq -r '.shouldCompact')
+1. **Run /plan command:**
+   - INVOKE: `/plan` (use SlashCommand tool)
+   - WAIT: For completion
+   - VERIFY: `specs/NNN-*/plan.md` created
 
-if [ "$SHOULD_COMPACT" = "true" ]; then
-  pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 \
-    -FeatureDir "$FEATURE_DIR" \
-    -Phase "planning"
-fi
-```
+2. **Run /compact command:**
+   - INVOKE: `/compact "preserve research decisions, architecture headings, and reuse analysis"`
+   - WAIT: For completion
+
+3. **Auto-progress to Phase 2:**
+   - LOG: "✅ Plan complete, proceeding to tasks"
+   - CONTINUE to Phase 2 (no user input needed)
 
 ### Phase 2: Task Breakdown (DESIGN)
-```bash
-# Generate task list (20-30 tasks)
-/tasks
 
-# Auto-trigger analysis
-echo " Tasks generated, proceeding to analyze"
-```
+**EXECUTE in sequence:**
+
+1. **Run /tasks command:**
+   - INVOKE: `/tasks` (use SlashCommand tool)
+   - WAIT: For completion
+   - VERIFY: `specs/NNN-*/tasks.md` created
+
+2. **Run /compact command:**
+   - INVOKE: `/compact "keep task breakdown, priorities, and error log"`
+   - WAIT: For completion
+
+3. **Auto-progress to Phase 3:**
+   - LOG: "✅ Tasks generated, proceeding to analyze"
+   - CONTINUE to Phase 3 (no user input needed)
 
 ### Phase 3: Analysis (VALIDATION)
-```bash
-# Cross-artifact consistency check
-/analyze
 
-# Check for blockers
-if grep -q "Critical: [1-9]" specs/NNN-*/artifacts/analysis-report.md; then
-  echo " CRITICAL ISSUES FOUND"
-  echo "Review: specs/NNN-*/artifacts/analysis-report.md"
-  echo ""
-  echo "Fix critical issues, then run: /flow continue"
-  exit 1
-fi
+**EXECUTE in sequence:**
 
-echo " Analysis passed, proceeding to implement"
-```
+1. **Run /analyze command:**
+   - INVOKE: `/analyze` (use SlashCommand tool)
+   - WAIT: For completion
+   - VERIFY: `specs/NNN-*/artifacts/analysis-report.md` created
+
+2. **Run /compact command:**
+   - INVOKE: `/compact "preserve critical issues, blocking concerns, and analysis findings"`
+   - WAIT: For completion
+
+3. **Check for blockers:**
+   - READ: `specs/NNN-*/artifacts/analysis-report.md`
+   - SCAN: For `"Critical: [1-9]"` pattern
+   - IF CRITICAL ISSUES FOUND:
+     - LOG: "❌ CRITICAL ISSUES FOUND"
+     - LOG: "Review: specs/NNN-*/artifacts/analysis-report.md"
+     - LOG: ""
+     - LOG: "Fix critical issues, then run: /flow continue"
+     - PAUSE: Exit workflow, return control to user
+   - ELSE:
+     - LOG: "✅ Analysis passed, proceeding to implement"
+     - CONTINUE to Phase 4 (no user input needed)
 
 ### Phase 4: Implementation (EXECUTION)
-```bash
-# Execute all tasks with agent routing
-/implement
 
-# Auto-compact after implementation if needed
-FEATURE_DIR=$(find specs -maxdepth 1 -type d -name "*-*" | sort -n | tail -1)
-CONTEXT_CHECK=$(pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 \
-  -FeatureDir "$FEATURE_DIR" -Phase "implementation" -Json)
+**EXECUTE in sequence:**
 
-SHOULD_COMPACT=$(echo "$CONTEXT_CHECK" | jq -r '.shouldCompact')
+1. **Run /implement command:**
+   - INVOKE: `/implement` (use SlashCommand tool)
+   - WAIT: For completion
+   - VERIFY: All tasks completed
 
-if [ "$SHOULD_COMPACT" = "true" ]; then
-  pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 \
-    -FeatureDir "$FEATURE_DIR" \
-    -Phase "implementation"
-fi
+2. **Run /compact command:**
+   - INVOKE: `/compact "keep last 20 task checkpoints, full error log, and implementation notes"`
+   - WAIT: For completion
 
-echo " Implementation complete, proceeding to optimize"
-```
+3. **Auto-progress to Phase 5:**
+   - LOG: "✅ Implementation complete, proceeding to optimize"
+   - CONTINUE to Phase 5 (no user input needed)
 
 ### Phase 5: Optimization (VALIDATION)
-```bash
-# Production readiness validation
-/optimize
 
-# Check for blockers
-if grep -q "Blockers: [1-9]" specs/NNN-*/artifacts/optimization-report.md; then
-  echo "  Blockers found in optimization"
-  echo "Review: specs/NNN-*/artifacts/optimization-report.md"
-  echo ""
-  echo "Auto-fix available? Check code-review-report.md"
+**EXECUTE in sequence:**
 
-  # Offer auto-fix if critical issues found
-  if grep -q "Severity: CRITICAL" specs/NNN-*/artifacts/code-review-report.md; then
-    read -p "Auto-fix critical issues? (y/n): " AUTOFIX
-    if [ "$AUTOFIX" = "y" ]; then
-      # Auto-fix loop (handled by /optimize internally)
-      echo "Running auto-fix..."
-      # /optimize already includes auto-fix loop
-    else
-      echo "Manual fixes required. Fix blockers, then run: /flow continue"
-      exit 1
-    fi
-  fi
-fi
+1. **Update state (start phase 5):**
+   - Set `current_phase = 5`
+   - Set `status = "in_progress"`
+   - Record start timestamp
 
-echo " Optimization complete, ready for preview"
-```
+2. **Run /optimize command:**
+   - INVOKE: `/optimize` (use SlashCommand tool)
+   - WAIT: For completion
+   - VERIFY: `specs/[feature-slug]/artifacts/optimization-report.md` created
+
+3. **Run /compact command (if available):**
+   - TRY: `/compact "preserve code review report, all quality metrics, and all checkpoints"`
+   - If command not found: Skip with log message
+
+4. **Check for blockers (see BLOCKER DETECTION section):**
+   - READ: `specs/[feature-slug]/artifacts/optimization-report.md`
+   - COUNT: "❌ BLOCKER" occurrences
+   - IF BLOCKERS FOUND:
+     - Display blockers to user
+     - Check `specs/[feature-slug]/artifacts/code-review-report.md` for auto-fixable issues
+     - IF AUTO-FIXABLE:
+       - ASK: "Auto-fix critical issues? (y/n)"
+       - IF YES: /optimize handles auto-fix internally, then re-check
+       - IF NO: PAUSE workflow
+     - ELSE:
+       - LOG: "Manual fixes required"
+       - PAUSE: Set `status = "blocked"`, exit workflow
+
+5. **Update state (complete phase 5):**
+   - Add 5 to `phases_completed`
+   - Record end timestamp
+   - Update `last_updated`
+
+6. **Auto-progress to MANUAL GATE 1:**
+   - LOG: "✅ Optimization complete, ready for preview"
+   - CONTINUE to MANUAL GATE 1 (no user input needed)
 
 ### MANUAL GATE 1: Preview (USER VALIDATION)
-```bash
-echo ""
-echo ""
-echo " MANUAL GATE: UI/UX PREVIEW"
-echo ""
-echo ""
-echo "Next: /preview"
-echo ""
-echo "Action required:"
-echo "1. Run local dev server"
-echo "2. Test UI/UX manually"
-echo "3. Verify against spec.md requirements"
-echo "4. Check visuals/README.md patterns followed"
-echo ""
-read -p "Preview complete and validated? (y/n): " PREVIEW_OK
 
-if [ "$PREVIEW_OK" != "y" ]; then
-  echo "Continue with /preview, then run: /flow continue"
-  exit 0
-fi
+**PAUSE for user validation:**
 
-echo " Preview validated, proceeding to ship"
-```
+1. **Update state:**
+   - Set `status = "awaiting_preview"`
+   - Record gate reached timestamp
+
+2. **Display preview gate:**
+   - LOG: ""
+   - LOG: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+   - LOG: "🎨 MANUAL GATE: UI/UX PREVIEW"
+   - LOG: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+   - LOG: ""
+   - LOG: "Next: /preview"
+   - LOG: ""
+   - LOG: "Action required:"
+   - LOG: "1. Run local dev server"
+   - LOG: "2. Test UI/UX manually"
+   - LOG: "3. Verify against spec.md requirements"
+   - LOG: "4. Check visuals/README.md patterns followed"
+   - LOG: ""
+   - LOG: "Then continue with: /flow continue"
+   - PAUSE: Exit workflow, return control to user
+
+3. **Resume after /preview (when user runs /flow continue):**
+   - Check for preview completion markers (see MANUAL GATE DETECTION)
+   - If preview not complete: Display error, require /preview first
+   - If preview complete:
+     - Set `manual_gates.preview = true`
+     - CONTINUE to Phase 6 (Ship to Staging)
 
 ### Phase 6: Ship to Staging (DEPLOYMENT)
-```bash
-# Create PR to staging with auto-merge
-/phase-1-ship
 
-# Wait for CI (handled by phase-1-ship internally)
-echo " Waiting for CI checks and auto-merge..."
+**EXECUTE in sequence (after /preview completed):**
 
-# After auto-merge, deployment to staging happens automatically
-echo " Deployed to staging"
-echo ""
-echo "Staging URLs:"
-echo "  - Marketing: ${STAGING_MARKETING_URL:-<staging marketing url>}"
-echo "  - App: ${STAGING_APP_URL:-<staging app url>}"
-echo "  - API: ${STAGING_API_URL:-<staging api url>}"
-```
+1. **Update state (start phase 6):**
+   - Set `current_phase = 6`
+   - Set `status = "in_progress"`
+   - Record start timestamp
+
+2. **Run /phase-1-ship command:**
+   - INVOKE: `/phase-1-ship` (use SlashCommand tool)
+   - WAIT: For completion (includes CI wait + auto-merge)
+   - VERIFY: PR created, CI passing, auto-merged to main
+
+3. **Log deployment success:**
+   - LOG: "⏳ Waiting for CI checks and auto-merge..."
+   - LOG: "✅ Deployed to staging environment"
+   - LOG: ""
+   - LOG: "Staging URLs:"
+   - LOG: "  - Marketing: https://staging.cfipros.com"
+   - LOG: "  - App: https://app.staging.cfipros.com"
+   - LOG: "  - API: https://api.staging.cfipros.com"
+
+4. **Update state (complete phase 6):**
+   - Add 6 to `phases_completed`
+   - Record end timestamp
+   - Update `last_updated`
+
+5. **Auto-progress to MANUAL GATE 2:**
+   - CONTINUE to MANUAL GATE 2 (no user input needed)
 
 ### MANUAL GATE 2: Validate Staging (USER VALIDATION)
-```bash
-echo ""
-echo ""
-echo " MANUAL GATE: STAGING VALIDATION"
-echo ""
-echo ""
-echo "Next: /validate-staging"
-echo ""
-echo "Action required:"
-echo "1. Test feature on staging environment"
-echo "2. Verify E2E tests passed (GitHub Actions)"
-echo "3. Check Lighthouse CI scores (Performance >90, A11y >95)"
-echo "4. Confirm no regressions"
-echo ""
-read -p "Staging validated and approved for production? (y/n): " STAGING_OK
 
-if [ "$STAGING_OK" != "y" ]; then
-  echo "Continue with /validate-staging, then run: /flow continue"
-  exit 0
-fi
+**PAUSE for user validation:**
 
-echo " Staging validated, ready for production"
-```
+1. **Update state:**
+   - Set `status = "awaiting_staging_validation"`
+   - Record gate reached timestamp
+
+2. **Display staging validation gate:**
+   - LOG: ""
+   - LOG: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+   - LOG: "🧪 MANUAL GATE: STAGING VALIDATION"
+   - LOG: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+   - LOG: ""
+   - LOG: "Next: /validate-staging"
+   - LOG: ""
+   - LOG: "Action required:"
+   - LOG: "1. Test feature on staging environment"
+   - LOG: "2. Verify E2E tests passed (GitHub Actions)"
+   - LOG: "3. Check Lighthouse CI scores (Performance >90, A11y >95)"
+   - LOG: "4. Confirm no regressions"
+   - LOG: ""
+   - LOG: "Then continue with: /flow continue"
+   - PAUSE: Exit workflow, return control to user
+
+3. **Resume after /validate-staging (when user runs /flow continue):**
+   - Check for staging validation completion (see MANUAL GATE DETECTION)
+   - If validation not complete: Display error, require /validate-staging first
+   - If validation complete:
+     - Set `manual_gates.validate_staging = true`
+     - CONTINUE to Phase 7 (Ship to Production)
 
 ### Phase 7: Ship to Production (DEPLOYMENT)
-```bash
-# Switch to staging branch (required for phase-2-ship)
-git checkout staging
-git pull origin staging
 
-# Create PR to main with auto-merge
-/phase-2-ship
+**EXECUTE in sequence (after /validate-staging completed):**
 
-# Wait for CI (handled by phase-2-ship internally)
-echo " Waiting for CI checks and auto-merge..."
+1. **Ensure on main branch:**
+   - VERIFY: Current branch is `main` (staging is an environment, not a branch)
+   - If not on main: `git checkout main && git pull origin main`
 
-# After auto-merge, deployment to production happens automatically
-echo " SHIPPED TO PRODUCTION "
-echo ""
-echo "Production URLs:"
-echo "  - Marketing: ${PROD_MARKETING_URL:-<production marketing url>}"
-echo "  - App: ${PROD_APP_URL:-<production app url>}"
-echo "  - API: ${PROD_API_URL:-<production api url>}"
-echo ""
-echo "Release created with version tag"
-echo "Roadmap updated (moved to 'Shipped')"
-```
+2. **Run /phase-2-ship command:**
+   - INVOKE: `/phase-2-ship` (use SlashCommand tool)
+   - WAIT: For completion (promotes staging artifacts to production)
+   - VERIFY: Artifacts promoted, release created
+
+3. **Run /finalize command (documentation housekeeping):**
+   - INVOKE: `/finalize` (use SlashCommand tool)
+   - WAIT: For completion
+   - Updates CHANGELOG.md, README.md, help docs
+   - Manages GitHub milestones
+   - Commits documentation changes
+
+4. **Update workflow state:**
+   - Mark phase 7 as complete
+   - Set status to "completed"
+   - Record completion timestamp
+
+5. **Complete workflow:**
+   - LOG: "✅ SHIPPED TO PRODUCTION 🎉"
+   - LOG: ""
+   - LOG: "Production URLs:"
+   - LOG: "  - Marketing: https://cfipros.com"
+   - LOG: "  - App: https://app.cfipros.com"
+   - LOG: "  - API: https://api.cfipros.com"
+   - LOG: ""
+   - LOG: "Release created with version tag"
+   - LOG: "Roadmap updated (moved to 'Shipped')"
+   - LOG: "Documentation updated (CHANGELOG, README, help)"
+   - DONE: Workflow complete
+
+## CONTEXT COMPACTION (Auto After Each Phase)
+
+The `/flow` command automatically runs `/compact` after each phase with phase-specific instructions.
+
+**Note**: If `/compact` command doesn't exist, skip compaction and continue workflow.
+
+### Compaction Triggers (Automatic in YOLO Mode)
+
+Try to invoke `/compact` after each phase:
+
+- **After \spec-flow**: `/compact "preserve spec decisions, requirements, and UX research"`
+- **After /clarify**: `/compact "preserve spec decisions and clarifications"`
+- **After /plan**: `/compact "preserve research decisions, architecture headings, and reuse analysis"`
+- **After /tasks**: `/compact "keep task breakdown, priorities, and error log"`
+- **After /analyze**: `/compact "preserve critical issues, blocking concerns, and analysis findings"`
+- **After /implement**: `/compact "keep last 20 task checkpoints, full error log, and implementation notes"`
+- **After /optimize**: `/compact "preserve code review report, all quality metrics, and all checkpoints"`
+
+If `/compact` command is not available:
+- Log: "⚡ Compaction skipped (command not available)"
+- Continue to next phase
+
+### Phase-Specific Strategies
+
+**Planning (Aggressive):**
+- ✅ Keep: Decisions, architecture, last 5 checkpoints, error log
+- ❌ Remove: Detailed research notes, full task descriptions
+
+**Implementation (Moderate):**
+- ✅ Keep: Decisions, architecture, last 20 checkpoints, error log
+- ❌ Remove: Old research, verbose task descriptions
+
+**Optimization (Minimal):**
+- ✅ Keep: All decisions, all checkpoints, error log, **code review report**
+- ❌ Remove: Only redundant research
 
 ## PAUSE POINTS (Manual Intervention)
 
 ### Critical Issues After /analyze
 ```
- PAUSE: Critical issues found in analysis
+❌ PAUSE: Critical issues found in analysis
 
 Review: specs/NNN-*/artifacts/analysis-report.md
 
@@ -284,7 +453,7 @@ Then continue: /flow continue
 
 ### Blockers After /optimize
 ```
-  PAUSE: Optimization blockers found
+⚠️  PAUSE: Optimization blockers found
 
 Review: specs/NNN-*/artifacts/optimization-report.md
 
@@ -296,7 +465,7 @@ If no: Fix manually, then: /flow continue
 
 ### Preview Gate
 ```
- MANUAL GATE: UI/UX Preview
+🎨 MANUAL GATE: UI/UX Preview
 
 Run: /preview
 
@@ -311,7 +480,7 @@ Then continue: /flow continue
 
 ### Staging Validation Gate
 ```
- MANUAL GATE: Staging Validation
+🧪 MANUAL GATE: Staging Validation
 
 Run: /validate-staging
 
@@ -330,76 +499,291 @@ Resume workflow after manual intervention:
 
 ```bash
 /flow continue
-
-# Detects last completed phase from NOTES.md
-# Resumes from next phase
 ```
 
 ### Resume Logic
-```bash
-# Read last checkpoint from NOTES.md
-LAST_PHASE=$(grep "Phase [0-9]: Completed" specs/NNN-*/NOTES.md | tail -n 1)
 
-case "$LAST_PHASE" in
-  *"Phase 0"*) NEXT="/plan" ;;
-  *"Phase 1"*) NEXT="/tasks" ;;
-  *"Phase 2"*) NEXT="/analyze" ;;
-  *"Phase 3"*) NEXT="/implement" ;;
-  *"Phase 4"*) NEXT="/optimize" ;;
-  *"Phase 5"*) NEXT="/preview (manual gate)" ;;
-  *"Phase 6"*) NEXT="/validate-staging (manual gate)" ;;
-  *"Phase 7"*) NEXT="DONE - Feature shipped" ;;
-  *) NEXT="Unknown - check NOTES.md" ;;
-esac
+**Load workflow state:**
 
-echo "Resuming from: $NEXT"
+1. Read `\spec-flow/workflow-state.json`
+2. Extract current phase, manual gate status, and feature slug
+3. Determine next action based on state
+
+**Decision tree:**
+
 ```
+If current_phase = 0:
+  → Check if clarifications resolved → Next: /plan
+
+If current_phase = 1:
+  → Next: /tasks
+
+If current_phase = 2:
+  → Next: /analyze
+
+If current_phase = 3:
+  → Check if critical issues exist → Next: /implement or PAUSE
+
+If current_phase = 4:
+  → Next: /optimize
+
+If current_phase = 5:
+  → Check manual_gates.preview status
+    → If false: PAUSE "Run /preview first"
+    → If true: Next: /phase-1-ship
+
+If current_phase = 6:
+  → Check manual_gates.validate_staging status
+    → If false: PAUSE "Run /validate-staging first"
+    → If true: Next: /phase-2-ship
+
+If current_phase = 7:
+  → Workflow complete
+```
+
+**Display progress:**
+
+Show user:
+- Current phase completed
+- Next phase to execute
+- Time spent so far
+- Tasks completed / total
+
+## STATE MANAGEMENT
+
+**Update workflow state after each phase:**
+
+1. **Start phase:**
+   - Update `current_phase` in state file
+   - Record start timestamp in `timings[phase]`
+   - Set `status` to "in_progress"
+
+2. **Complete phase:**
+   - Add phase to `phases_completed` array
+   - Record end timestamp and duration
+   - Update `last_updated` timestamp
+
+3. **Manual gate reached:**
+   - Set `status` to "awaiting_[gate_name]"
+   - Display gate requirements
+   - Pause workflow
+
+4. **Manual gate completed:**
+   - When /preview completes: Set `manual_gates.preview = true`
+   - When /validate-staging completes: Set `manual_gates.validate_staging = true`
+   - Update state file
+
+**State file operations:**
+
+Use JSON manipulation:
+- Read: Parse `\spec-flow/workflow-state.json`
+- Write: Update and save back to file
+- Atomic: Ensure writes don't corrupt state
+
+## MANUAL GATE DETECTION
+
+**Preview gate completion:**
+
+Check if user has completed /preview:
+1. Look for `specs/[feature-slug]/artifacts/preview-notes.md`
+2. Check for "✅ Preview complete" marker in NOTES.md
+3. If found: Set `manual_gates.preview = true`
+
+**Staging validation gate completion:**
+
+Check if user has completed /validate-staging:
+1. Look for `specs/[feature-slug]/artifacts/staging-validation-report.md`
+2. Check for "Ready for production: ✅ Yes" in report
+3. If found: Set `manual_gates.validate_staging = true`
+
+**Gate status display:**
+
+When pausing at gate:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎨 MANUAL GATE: [Gate Name]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Status: ⏳ Waiting for validation
+
+Action required:
+  1. [Step 1]
+  2. [Step 2]
+  3. [Step 3]
+
+Then: /flow continue
+```
+
+## COMMAND INVOCATION
+
+**Execute slash commands:**
+
+Use SlashCommand tool to invoke other commands:
+
+```
+\spec-flow "[feature description]"
+/clarify
+/plan
+/tasks
+/analyze
+/implement
+/optimize
+/preview
+/phase-1-ship
+/validate-staging
+/phase-2-ship
+```
+
+**Wait for completion:**
+- Each command runs synchronously
+- Wait for command to complete before next phase
+- Check exit status / completion markers
+
+**Error handling:**
+- If command fails: Offer debug/skip/abort options
+- If critical issues found: Pause workflow
+- If auto-fix available: Offer to run
+
+## BLOCKER DETECTION
+
+**After /analyze (Phase 3):**
+
+Check for critical issues:
+1. Read `specs/[feature-slug]/artifacts/analysis-report.md`
+2. Look for "Critical:" markers
+3. Count critical issues
+4. If count > 0:
+   - Display critical issues
+   - PAUSE workflow
+   - Show: "Fix critical issues, then: /flow continue"
+
+**After /optimize (Phase 5):**
+
+Check for blockers:
+1. Read `specs/[feature-slug]/artifacts/optimization-report.md`
+2. Look for "❌ BLOCKER" markers
+3. Count blockers
+4. If count > 0:
+   - Check if auto-fix available (look for "Severity: CRITICAL" in code-review-report.md)
+   - If auto-fix available:
+     - Offer: "Auto-fix critical issues? (y/n)"
+     - If yes: /optimize handles auto-fix internally
+   - If no auto-fix or user declines:
+     - PAUSE workflow
+     - Show: "Fix blockers, then: /flow continue"
 
 ## ERROR HANDLING
 
-### Command Failure
+**When command fails:**
+
+1. Display error context:
+   - Phase number and command name
+   - Error message
+   - Relevant logs from NOTES.md or error-log.md
+
+2. Offer recovery options:
+   ```
+   ❌ Error in Phase N: [command]
+
+   Error: [error message]
+
+   Options:
+     A) Debug with /debug
+     B) Skip phase (with warning - may cause downstream issues)
+     C) Abort workflow
+
+   Choose option:
+   ```
+
+3. Execute chosen option:
+   - **Debug**: Invoke /debug command, then ask if ready to continue
+   - **Skip**: Mark phase as skipped, continue to next phase with warning
+   - **Abort**: Exit workflow, preserve state for later resume
+
+**When CI fails:**
+
+1. Detect CI failure in /phase-1-ship or /phase-2-ship
+2. Offer auto-fix via /checks:
+   ```
+   ❌ CI checks failed
+
+   Failed checks: [list]
+
+   Auto-fix available: /checks pr [number]
+
+   Options:
+     A) Run /checks to auto-fix
+     B) Fix manually
+     C) Abort deployment
+
+   Choose option:
+   ```
+
+**When agent times out:**
+
+1. Display timeout context
+2. Offer retry with explanation:
+   ```
+   ⏱️  Agent timeout in Phase N
+
+   Agent: [agent-name]
+   Task: [task-description]
+
+   Options:
+     A) Retry (may take longer)
+     B) Manual implementation
+     C) Skip task
+
+   Choose option:
+   ```
+
+## WORKFLOW COMPLETION
+
+**When Phase 7 completes successfully:**
+
+1. **Update state:**
+   - Set `current_phase = 7`
+   - Set `status = "completed"`
+   - Add 7 to `phases_completed`
+   - Record completion timestamp
+
+2. **Calculate metrics:**
+   - Total duration: completion timestamp - started_at
+   - Phase durations: from timings object
+   - Total tasks completed
+   - Auto-compactions run
+   - Auto-fixes applied
+
+3. **Display completion summary:**
+   - See RETURN section for format
+   - Show timeline, metrics, URLs, release info
+
+4. **Cleanup (optional):**
+   - Archive workflow state to `specs/[feature-slug]/.workflow-state.json`
+   - Remove `\spec-flow/workflow-state.json`
+   - Allow starting new workflow
+
+## PROGRESS VISUALIZATION
+
+**Display progress bar when requested:**
+
 ```
- Error in Phase N: [command]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Workflow Progress
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Error: [error message]
+✅ Phase 0:\spec-flow
+✅ Phase 1: Plan
+✅ Phase 2: Tasks
+✅ Phase 3: Analyze
+⏳ Phase 4: Implement (in progress)
+⏭️  Phase 5: Optimize
+⏭️  Phase 6: Ship to Staging
+⏭️  Phase 7: Ship to Production
 
-Options:
-  A) Debug with /debug
-  B) Skip phase (with warning)
-  C) Abort workflow
-
-Choose (A/B/C):
-```
-
-### Agent Timeout
-```
-  Agent timeout in Phase N
-
-Agent: [agent-name]
-Task: [task-description]
-
-Options:
-  A) Retry with extended timeout
-  B) Manual implementation
-  C) Skip task
-
-Choose (A/B/C):
-```
-
-### CI Failure
-```
- CI checks failed in Phase N: [phase-1-ship | phase-2-ship]
-
-Failed checks: [list]
-
-Auto-fix available: /checks pr [number]
-
-Options:
-  A) Run /checks to auto-fix
-  B) Fix manually
-  C) Abort
-
-Choose (A/B/C):
+Progress: 50% (4/8 phases complete)
+Time elapsed: 2h 15m
+Estimated remaining: 2h 30m
 ```
 
 ## CONSTRAINTS
@@ -407,7 +791,9 @@ Choose (A/B/C):
 - **One feature at a time**: Workflow tracks single feature directory
 - **Sequential phases**: Cannot skip phases (analysis before implementation)
 - **Manual gates are mandatory**: Preview and staging validation required
-- **Rollback capability**: Git commits at each phase for safety
+- **Auto-compaction**: Runs after each phase (if /compact available)
+- **State persistence**: All state in `\spec-flow/workflow-state.json`
+- **Resumable**: Can pause/continue at any phase or gate
 
 ## USAGE EXAMPLES
 
@@ -416,14 +802,21 @@ Choose (A/B/C):
 /flow "Student progress tracking dashboard"
 
 # Output:
-#  Phase 0: Spec created (specs/015-student-progress-dashboard)
-#  Phase 0.5: Clarifications resolved
-#  Phase 1: Plan generated (research + architecture)
-#  Phase 2: Tasks created (28 tasks)
-#  Phase 3: Analysis passed (0 critical issues)
-#  Phase 4: Implementation complete (28/28 tasks)
-#  Phase 5: Optimization passed (0 blockers)
-#  MANUAL GATE: Run /preview
+# ✅ Phase 0: Spec created (specs/015-student-progress-dashboard)
+# ⚡ Auto-compacted (preserved spec decisions)
+# ✅ Phase 0.5: Clarifications resolved
+# ⚡ Auto-compacted (preserved clarifications)
+# ✅ Phase 1: Plan generated (research + architecture)
+# ⚡ Auto-compacted (preserved research decisions)
+# ✅ Phase 2: Tasks created (28 tasks)
+# ⚡ Auto-compacted (preserved task breakdown)
+# ✅ Phase 3: Analysis passed (0 critical issues)
+# ⚡ Auto-compacted (preserved analysis findings)
+# ✅ Phase 4: Implementation complete (28/28 tasks)
+# ⚡ Auto-compacted (preserved last 20 checkpoints)
+# ✅ Phase 5: Optimization passed (0 blockers)
+# ⚡ Auto-compacted (preserved code review)
+# 🎨 MANUAL GATE: Run /preview
 ```
 
 ### Example 2: Resume After Preview
@@ -433,10 +826,10 @@ Choose (A/B/C):
 
 # Output:
 # Resuming from: Phase 6 (Ship to Staging)
-#  PR created: #123
-#  Waiting for CI...
-#  Auto-merged to staging
-#  MANUAL GATE: Run /validate-staging
+# ✅ PR created: #123
+# ⏳ Waiting for CI...
+# ✅ Auto-merged to staging
+# 🧪 MANUAL GATE: Run /validate-staging
 ```
 
 ### Example 3: Resume After Fixes
@@ -446,21 +839,21 @@ Choose (A/B/C):
 
 # Output:
 # Resuming from: Phase 4 (Implementation)
-#  Tasks completed: 28/28
-#  Optimization complete
-#  MANUAL GATE: Run /preview
+# ✅ Tasks completed: 28/28
+# ✅ Optimization complete
+# 🎨 MANUAL GATE: Run /preview
 ```
 
 ## RETURN
 
 ### On Complete
 ```
-
- WORKFLOW COMPLETE
-
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎉 WORKFLOW COMPLETE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Feature: [feature-name]
-Shipped:  Production
+Shipped: ✅ Production
 
 Timeline:
 - Spec created: [date]
@@ -470,11 +863,12 @@ Timeline:
 
 Metrics:
 - Tasks completed: N/N
+- Auto-compactions: N phases
 - Auto-fixes applied: N
 
 Deployments:
-- Staging: [staging marketing URL]
-- Production: [production marketing URL]
+- Staging: https://staging.cfipros.com
+- Production: https://cfipros.com
 
 Release: v[version] ([GitHub release URL])
 Roadmap: Updated (moved to 'Shipped')
@@ -482,9 +876,9 @@ Roadmap: Updated (moved to 'Shipped')
 
 ### On Pause (Manual Gate)
 ```
-
-  WORKFLOW PAUSED
-
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏸️  WORKFLOW PAUSED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Phase: [phase-name] (Manual Gate)
 
@@ -496,7 +890,7 @@ Next: /flow continue (after validation complete)
 
 ### On Error
 ```
- WORKFLOW ERROR
+❌ WORKFLOW ERROR
 
 Phase: [phase-name]
 Error: [error-description]
@@ -509,7 +903,4 @@ Options:
 
 Logs: specs/NNN-*/NOTES.md
 ```
-
-
-
 

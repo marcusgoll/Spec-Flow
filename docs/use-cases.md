@@ -26,7 +26,7 @@ Spec-Flow adapts to different project types and team structures. This guide show
 
 1. **Specification Phase** (`/spec-flow`):
    - Define user flows (login, dashboard, settings)
-   - Specify API contracts between frontend and backend
+   -\spec-flow API contracts between frontend and backend
    - Document data models and relationships
    - Include responsive design requirements (mobile, tablet, desktop)
 
@@ -45,8 +45,8 @@ Spec-Flow adapts to different project types and team structures. This guide show
      - T026-T028: E2E tests
 
 4. **Implementation** (`/implement`):
-   - Route backend tasks to `spec-flow-backend-dev` agent
-   - Route frontend tasks to `spec-flow-frontend-shipper` agent
+   - Route backend tasks to `backend-dev` agent
+   - Route frontend tasks to `frontend-shipper` agent
    - Parallel development of API and UI
 
 **Agent Configuration**:
@@ -87,7 +87,7 @@ Specializes in:
 1. **Specification Phase**:
    - **API Contract First**: Define OpenAPI/Swagger spec
    - Document endpoints, request/response schemas, error codes
-   - Specify rate limits, authentication requirements
+   -\spec-flow rate limits, authentication requirements
    - Define SLAs (uptime, response time)
 
 2. **Planning Phase**:
@@ -134,7 +134,7 @@ Specializes in:
 
 1. **Specification Phase**:
    - Define command structure (`migrate up`, `migrate down`, `backup create`)
-   - Specify flags and options (`--verbose`, `--dry-run`, `--config`)
+   -\spec-flow flags and options (`--verbose`, `--dry-run`, `--config`)
    - Document exit codes and error messages
    - Define configuration file format (YAML, JSON)
 
@@ -191,7 +191,7 @@ Specializes in:
 
 1. **Specification Phase**:
    - Define platform-specific behaviors (iOS vs Android)
-   - Specify offline-first architecture (data sync strategy)
+   -\spec-flow offline-first architecture (data sync strategy)
    - Document push notification scenarios
    - Include native module requirements (camera, GPS, biometrics)
 
@@ -244,7 +244,7 @@ Specializes in:
 
 1. **Specification Phase**:
    - Define design tokens (colors, spacing, typography)
-   - Specify component API (props, events, slots)
+   -\spec-flow component API (props, events, slots)
    - Document accessibility requirements (ARIA, keyboard nav)
    - Define browser support matrix
 
@@ -285,7 +285,7 @@ Specializes in:
 
 1. **Specification Phase**:
    - Define infrastructure components (VPC, EC2, RDS, S3)
-   - Specify regions and availability zones
+   -\spec-flow regions and availability zones
    - Document security requirements (IAM, security groups)
    - Define cost constraints
 
@@ -319,7 +319,7 @@ Specializes in:
 
 1. **Specification Phase**:
    - Define information architecture (guides, API reference, tutorials)
-   - Specify search functionality
+   -\spec-flow search functionality
    - Document versioning strategy (docs for each API version)
    - Define contribution workflow (external contributors)
 
@@ -357,7 +357,7 @@ Specializes in:
 
 1. **Specification Phase**:
    - Define model requirements (accuracy, latency, input/output)
-   - Specify training data requirements (size, labels, format)
+   -\spec-flow training data requirements (size, labels, format)
    - Document evaluation metrics (precision, recall, F1)
    - Define inference environment (GPU, batch vs real-time)
 
@@ -486,9 +486,9 @@ Create project-specific agents:
 
 ```bash
 # Backend specialist for your stack
-cp .claude/agents/spec-flow-backend-dev.md .claude/agents/project-api-dev.md
+cp .claude/agents/backend-dev.md .claude/agents/project-api-dev.md
 
-# Edit to specify:
+# Edit to\spec-flow:
 # - Your stack (FastAPI, PostgreSQL, Redis)
 # - Your patterns (repository pattern, service layer)
 # - Your testing tools (pytest, pytest-asyncio)
@@ -531,3 +531,4 @@ For more guidance:
 - [Contributing](../CONTRIBUTING.md) - Customization guidelines
 
 Happy building! 🚀
+

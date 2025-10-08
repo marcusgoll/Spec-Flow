@@ -26,7 +26,7 @@ From `$ARGUMENTS`, extract:
 ## ROUTING DECISION TREE
 
 ### Backend API/Services
-**Agent**: `spec-flow-backend-dev`
+**Agent**: `backend-dev`
 
 **Triggers**:
 - File paths: `api/**/*.py`, `app/**/*.py`
@@ -42,7 +42,7 @@ From `$ARGUMENTS`, extract:
 ---
 
 ### Frontend UI/Components
-**Agent**: `spec-flow-frontend-shipper`
+**Agent**: `frontend-shipper`
 
 **Triggers**:
 - File paths: `apps/**/*.tsx`, `apps/**/*.ts`, `components/**`
@@ -58,7 +58,7 @@ From `$ARGUMENTS`, extract:
 ---
 
 ### Database Schema/Queries
-**Agent**: `spec-flow-database-architect`
+**Agent**: `database-architect`
 
 **Triggers**:
 - File paths: `api/alembic/**`, `api/app/models/**`
@@ -74,7 +74,7 @@ From `$ARGUMENTS`, extract:
 ---
 
 ### Tests/QA
-**Agent**: `spec-flow-qa-test`
+**Agent**: `qa-test`
 
 **Triggers**:
 - File paths: `**/tests/**`, `**/test_*.py`, `**/*.test.ts`
@@ -90,7 +90,7 @@ From `$ARGUMENTS`, extract:
 ---
 
 ### Debugging/Error Fixing
-**Agent**: `spec-flow-debugger`
+**Agent**: `debugger`
 
 **Triggers**:
 - Keywords: "bug", "error", "failing", "broken", "fix", "debug", "crash"
@@ -105,7 +105,7 @@ From `$ARGUMENTS`, extract:
 ---
 
 ### Code Review/Quality
-**Agent**: `spec-flow-senior-code-reviewer`
+**Agent**: `senior-code-reviewer`
 
 **Triggers**:
 - Keywords: "review", "quality", "contract", "KISS", "DRY", "security", "compliance"
@@ -162,7 +162,7 @@ Task({
 Agent should return:
 ```json
 {
-  "agent": "spec-flow-backend-dev",
+  "agent": "backend-dev",
   "task_completed": true,
   "files_changed": ["api/app/routes/users.py", "api/app/schemas/user.py"],
   "tests_added": ["api/tests/test_users.py"],
@@ -187,7 +187,7 @@ Analysis:
   - Domain: Backend API
   - Keywords: "endpoint", "POST", "api"
   - File paths: None explicit (will be api/app/routes/)
-Route: spec-flow-backend-dev
+Route: backend-dev
 Context: spec.md requirements, data-model.md User schema, REUSE: validation_service
 ```
 
@@ -198,7 +198,7 @@ Analysis:
   - Domain: Frontend UI
   - Keywords: "component", "avatar", "upload"
   - File paths: None explicit (will be apps/app/components/)
-Route: spec-flow-frontend-shipper
+Route: frontend-shipper
 Context: visuals/README.md patterns, design system colors, REUSE: ImageUpload component
 ```
 
@@ -209,7 +209,7 @@ Analysis:
   - Domain: Database
   - Keywords: "migration", "table"
   - File paths: None explicit (will be api/alembic/versions/)
-Route: spec-flow-database-architect
+Route: database-architect
 Context: data-model.md ERD, existing migrations, RLS requirements from plan.md
 ```
 
@@ -220,13 +220,13 @@ Analysis:
   - Domain: Debugging
   - Keywords: "fix", "failing", "error"
   - File paths: test_user_creation (implies api/tests/)
-Route: spec-flow-debugger
+Route: debugger
 Context: error-log.md recent entries, test file, User model definition
 ```
 
 ## ERROR HANDLING
 
-- **No clear match**: Default to spec-flow-debugger (most general)
+- **No clear match**: Default to debugger (most general)
 - **Multiple matches**: Prefer most specific (Database > Backend > Debugger)
 - **Agent unavailable**: Return error, suggest manual implementation
 - **Agent timeout**: Cancel after 5 minutes, suggest retry or manual
@@ -236,7 +236,7 @@ Context: error-log.md recent entries, test file, User model definition
 
 - Always provide minimal, focused context (avoid full codebase dumps)
 - Include REUSE markers when available (prevent duplication)
-- Specify expected deliverables clearly
+-\spec-flow expected deliverables clearly
 - Require evidence for test execution (no "tests should pass" without proof)
 
 ## RETURN
@@ -252,6 +252,7 @@ Context provided:
 
 Agent working on: [task description]
 ```
+
 
 
 

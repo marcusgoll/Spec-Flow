@@ -1,0 +1,106 @@
+# CFIPros Product Roadmap
+
+**Last updated**: [auto-generated on save]
+
+> This roadmap tracks features from brainstorm → shipped. Use `/roadmap` to manage.
+
+## Shipped
+
+<!-- Features that have been released to production -->
+<!-- Format:
+### slug-name
+- **Title**: Feature name
+- **Area**: marketing|app|api|infra|design
+- **Role**: free|student|cfi|school|all
+- **Date**: YYYY-MM-DD
+- **Release**: vX.Y.Z - One-line release notes
+-->
+
+## In Progress
+
+<!-- Features currently being implemented (linked to active branches) -->
+<!-- Format:
+### slug-name
+- **Title**: Feature name
+- **Area**: marketing|app|api|infra|design
+- **Role**: free|student|cfi|school|all
+- **Phase**: 0-12 (optional)
+- **Impact**: 1-5 | **Effort**: 1-5 | **Confidence**: 0-1 | **Score**: X.XX
+- **Requirements**:
+  - Requirement 1
+  - Requirement 2
+- **Branch**: NNN-feature-name
+- **Owner**: @username (optional)
+-->
+
+## Next
+
+<!-- Top 5-10 features prioritized for next sprint (sorted by score) -->
+<!-- Same format as In Progress, no Branch/Owner -->
+
+## Later
+
+<!-- Features planned for future (10-20 items, sorted by score) -->
+<!-- Same format as Next -->
+
+## Backlog
+
+<!-- All other feature ideas (unlimited, sorted by score) -->
+<!-- Minimal format:
+### slug-name
+- **Title**: Feature name
+- **Area**: marketing|app|api
+- **Role**: student|cfi|school|all
+- **Impact**: 1-5 | **Effort**: 1-5 | **Confidence**: 0-1 | **Score**: X.XX
+- **Requirements**: [CLARIFY: questions] or brief bullets
+-->
+
+## Archive
+
+<!-- Deprecated features or ideas that won't be implemented -->
+<!-- Format:
+### slug-name
+- **Title**: Feature name
+- **Reason**: Why archived (e.g., "superseded by X", "no longer needed", "out of scope")
+- **Date**: YYYY-MM-DD
+-->
+
+---
+
+## Scoring Guide
+
+**ICE Score** = Impact × Confidence ÷ Effort
+
+- **Impact** (1-5): User value
+  - 1 = Nice-to-have polish
+  - 3 = Useful improvement
+  - 5 = Critical for user success
+- **Effort** (1-5): Implementation complexity
+  - 1 = Trivial (< 1 day)
+  - 3 = Medium (1-2 weeks)
+  - 5 = Epic (4+ weeks)
+- **Confidence** (0-1): Estimate certainty
+  - 0.5 = Very uncertain
+  - 0.7 = Some unknowns
+  - 0.9 = High confidence
+  - 1.0 = Certain
+
+Higher score = higher priority
+
+## Status Flow
+
+```
+Backlog → Later → Next → In Progress → Shipped
+                               ↓
+                          Archive (if deprecated)
+```
+
+## Feature Sizing
+
+Keep features **\spec-flow-sized**:
+- ≤ 30 implementation tasks
+- One screen/flow/API surface
+- 1-2 weeks implementation time
+
+If larger: Break into multiple features by area (marketing/app/api) or domain.
+

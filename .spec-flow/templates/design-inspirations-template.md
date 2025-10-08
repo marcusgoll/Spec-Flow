@@ -1,4 +1,4 @@
-﻿# Spec-Flow Design Inspirations
+# CFIPros Design Inspirations
 
 **Purpose**: Global mood board of design patterns, styles, and interactions we admire. Reference this when creating specs or implementing UI features.
 
@@ -11,7 +11,7 @@
 ### [Site Name]
 **URL**: [link]
 **What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
+**Why relevant**: [how it applies to CFIPros audience/use cases]
 
 ---
 
@@ -20,7 +20,7 @@
 ### [Site Name]
 **URL**: [link]
 **What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
+**Why relevant**: [how it applies to CFIPros audience/use cases]
 
 ---
 
@@ -29,7 +29,7 @@
 ### [Site Name]
 **URL**: [link]
 **What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
+**Why relevant**: [how it applies to CFIPros audience/use cases]
 
 ---
 
@@ -38,7 +38,7 @@
 ### [Site Name]
 **URL**: [link]
 **What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
+**Why relevant**: [how it applies to CFIPros audience/use cases]
 
 ---
 
@@ -47,7 +47,7 @@
 ### [Site Name]
 **URL**: [link]
 **What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
+**Why relevant**: [how it applies to CFIPros audience/use cases]
 
 ---
 
@@ -56,7 +56,7 @@
 ### [Site Name]
 **URL**: [link]
 **What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
+**Why relevant**: [how it applies to CFIPros audience/use cases]
 
 ---
 
@@ -65,7 +65,7 @@
 ### [Site Name]
 **URL**: [link]
 **What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
+**Why relevant**: [how it applies to CFIPros audience/use cases]
 
 ---
 
@@ -74,7 +74,7 @@
 ### [Site Name]
 **URL**: [link]
 **What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
+**Why relevant**: [how it applies to CFIPros audience/use cases]
 
 ---
 
@@ -83,7 +83,7 @@
 ### [Site Name]
 **URL**: [link]
 **What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
+**Why relevant**: [how it applies to CFIPros audience/use cases]
 
 ---
 
@@ -92,7 +92,7 @@
 ### [Site Name]
 **URL**: [link]
 **What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
+**Why relevant**: [how it applies to CFIPros audience/use cases]
 
 ---
 
@@ -101,7 +101,7 @@
 ### [Site Name]
 **URL**: [link]
 **What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
+**Why relevant**: [how it applies to CFIPros audience/use cases]
 
 ---
 
@@ -110,7 +110,7 @@
 ### [Site Name]
 **URL**: [link]
 **What we like**: [specific patterns, style, interactions]
-**Why relevant**: [how it applies to Spec-Flow audience/use cases]
+**Why relevant**: [how it applies to CFIPros audience/use cases]
 
 ---
 
@@ -119,7 +119,7 @@
 **When to add entries:**
 - Found inspiring design during research
 - User or team member shares good example
-- Discovered pattern that solves a real user problem we face
+- Discovered pattern that solves CFIPros problem
 
 **What to capture:**
 - Quick observations (not exhaustive analysis)
@@ -129,7 +129,7 @@
 **What NOT to do:**
 - Don't duplicate feature-specific visuals/README.md (use that for deep dives)
 - Don't add every site you see (quality > quantity)
-- Don't capture patterns that conflict with our principles (simplicity, clarity, accessibility)
+- Don't capture patterns that don't align with CFIPros values (simplicity, education-focused)
 
 ---
 
