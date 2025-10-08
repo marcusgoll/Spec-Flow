@@ -1,6 +1,6 @@
 {
   "name": "spec-flow",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Spec-Driven Development workflow toolkit for Claude Code - Build high-quality features faster with repeatable AI workflows",
   "keywords": [
     "claude",
@@ -48,7 +48,9 @@
   "dependencies": {
     "commander": "^11.1.0",
     "chalk": "^4.1.2",
-    "inquirer": "^8.2.6"
+    "inquirer": "^8.2.6",
+    "fs-extra": "^11.2.0",
+    "ora": "^5.4.1"
   },
   "devDependencies": {
     "@types/node": "^20.10.6"

@@ -8,7 +8,7 @@ console.log(chalk.cyan.bold('═════════════════
 
 console.log(chalk.white('Quick Start:'));
 console.log(chalk.green('  npx spec-flow init') + chalk.gray('        # Initialize in current directory'));
-console.log(chalk.green('  npx spec-flow init --target ./my-project') + chalk.gray(' # Or\spec-flow directory\n'));
+console.log(chalk.green('  npx spec-flow init --target ./my-project') + chalk.gray(' # Or spec-flow directory\n'));
 
 console.log(chalk.white('After installation:'));
 console.log(chalk.gray('  1. Read QUICKSTART.md (copied to your project)'));

@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 
 const { program } = require('commander');
-const { execSync } = require('child_process');
 const path = require('path');
-const fs = require('fs');
 const chalk = require('chalk');
+const { runWizard } = require('./install-wizard');
+const { update } = require('./install');
+const { healthCheck } = require('./validate');
+const { printHeader, printSuccess, printError, printWarning } = require('./utils');
+const { STRATEGIES } = require('./conflicts');
 
-const PACKAGE_ROOT = path.resolve(__dirname, '..');
 const VERSION = require('../package.json').version;
 
 program
@@ -14,126 +16,124 @@ program
   .description('Spec-Driven Development workflow toolkit for Claude Code')
   .version(VERSION);
 
-// Install command - copies Spec-Flow to current directory
+// Init command - run installation wizard
 program
   .command('init')
   .description('Initialize Spec-Flow in current directory')
   .option('-t, --target <path>', 'Target directory (defaults to current directory)')
   .option('--non-interactive', 'Skip interactive prompts, use defaults')
+  .option('-s, --strategy <mode>', 'Conflict resolution strategy: merge|backup|skip|force (default: merge)')
   .action(async (options) => {
     const targetDir = options.target ? path.resolve(options.target) : process.cwd();
 
-    console.log(chalk.cyan.bold('\n═══════════════════════════════════════════════════════════════════'));
-    console.log(chalk.cyan.bold(' Spec-Flow Installation Wizard'));
-    console.log(chalk.cyan.bold('═══════════════════════════════════════════════════════════════════\n'));
-
-    // Determine which installer to use based on platform
-    const isWindows = process.platform === 'win32';
-    const installerScript = isWindows
-      ? path.join(PACKAGE_ROOT, '.spec-flow', 'scripts', 'powershell', 'install-wizard.ps1')
-      : path.join(PACKAGE_ROOT, '.spec-flow', 'scripts', 'bash', 'install-wizard.sh');
+    // Validate strategy if provided
+    if (options.strategy) {
+      const validStrategies = Object.values(STRATEGIES);
+      if (!validStrategies.includes(options.strategy)) {
+        printError(`Invalid strategy: ${options.strategy}`);
+        console.log(chalk.white('Valid strategies:'));
+        console.log(chalk.gray(`  ${validStrategies.join(', ')}\n`));
+        process.exit(1);
+      }
+    }
 
     try {
-      let command;
-      if (isWindows) {
-        // Windows: Use PowerShell
-        const args = [
-          '-TargetDir', `"${targetDir}"`
-        ];
-        if (options.nonInteractive) {
-          args.push('-NonInteractive');
-        }
-        command = `powershell -NoLogo -NoProfile -File "${installerScript}" ${args.join(' ')}`;
-      } else {
-        // macOS/Linux: Use bash
-        const args = [
-          '--target-dir', targetDir
-        ];
-        if (options.nonInteractive) {
-          args.push('--non-interactive');
-        }
-        // Make script executable
-        fs.chmodSync(installerScript, '755');
-        command = `"${installerScript}" ${args.join(' ')}`;
+      const result = await runWizard({
+        targetDir,
+        nonInteractive: options.nonInteractive,
+        conflictStrategy: options.strategy
+      });
+
+      if (!result.success) {
+        printError(result.error);
+        process.exit(1);
       }
-
-      execSync(command, { stdio: 'inherit' });
-
-      console.log(chalk.green('\n✓ Installation complete!\n'));
-      console.log(chalk.white('Next steps:'));
-      console.log(chalk.gray('  1. cd ' + targetDir));
-      console.log(chalk.gray('  2. Open in Claude Code'));
-      console.log(chalk.green('  3. Run /constitution') + chalk.gray(' to customize your standards'));
-      console.log(chalk.green('  4. Run /roadmap') + chalk.gray(' to plan your first features\n'));
     } catch (error) {
-      console.error(chalk.red('\n✗ Installation failed:'), error.message);
+      printError(`Installation failed: ${error.message}`);
+      if (error.stack && process.env.DEBUG) {
+        console.error(error.stack);
+      }
       process.exit(1);
     }
   });
 
-// Update command - updates existing Spec-Flow installation
+// Update command - update existing installation
 program
   .command('update')
   .description('Update Spec-Flow to latest version')
   .option('-t, --target <path>', 'Target directory (defaults to current directory)')
+  .option('-f, --force', 'Skip backup creation')
   .action(async (options) => {
     const targetDir = options.target ? path.resolve(options.target) : process.cwd();
 
-    console.log(chalk.cyan.bold('\n═══════════════════════════════════════════════════════════════════'));
-    console.log(chalk.cyan.bold(' Updating Spec-Flow'));
-    console.log(chalk.cyan.bold('═══════════════════════════════════════════════════════════════════\n'));
-
-    // Check if Spec-Flow is installed
-    const claudeDir = path.join(targetDir, '.claude');
-    const specFlowDir = path.join(targetDir, '.spec-flow');
-
-    if (!fs.existsSync(claudeDir) && !fs.existsSync(specFlowDir)) {
-      console.error(chalk.red('✗ Spec-Flow not found in this directory.'));
-      console.log(chalk.gray('  Run ' + chalk.green('spec-flow init') + ' to install.\n'));
-      process.exit(1);
-    }
-
-    // Backup existing memory files
-    const memoryDir = path.join(specFlowDir, 'memory');
-    const backupDir = path.join(specFlowDir, 'memory-backup-' + Date.now());
-
-    if (fs.existsSync(memoryDir)) {
-      console.log(chalk.yellow('  Backing up memory files...'));
-      fs.cpSync(memoryDir, backupDir, { recursive: true });
-      console.log(chalk.green('  ✓ Backup created: ' + path.basename(backupDir)));
-    }
-
-    // Run installation (will overwrite files but preserve memory)
-    const isWindows = process.platform === 'win32';
-    const installerScript = isWindows
-      ? path.join(PACKAGE_ROOT, '.spec-flow', 'scripts', 'powershell', 'install-spec-flow.ps1')
-      : path.join(PACKAGE_ROOT, '.spec-flow', 'scripts', 'bash', 'install-spec-flow.sh');
+    printHeader('Updating Spec-Flow');
 
     try {
-      let command;
-      if (isWindows) {
-        command = `powershell -NoLogo -NoProfile -File "${installerScript}" -TargetDir "${targetDir}"`;
-      } else {
-        fs.chmodSync(installerScript, '755');
-        command = `"${installerScript}" --target-dir "${targetDir}"`;
+      const result = await update({
+        targetDir,
+        force: options.force,
+        verbose: true
+      });
+
+      if (!result.success) {
+        printError(result.error);
+        process.exit(1);
       }
 
-      execSync(command, { stdio: 'inherit' });
+      printSuccess('\nUpdate complete!');
 
-      console.log(chalk.green('\n✓ Update complete!'));
-      console.log(chalk.gray('\n  Memory files were preserved.'));
-      console.log(chalk.gray('  Backup available at: ' + backupDir + '\n'));
+      if (result.backupPath) {
+        console.log(chalk.gray(`\nMemory backup saved at: ${result.backupPath}`));
+      }
+
+      console.log('');
     } catch (error) {
-      console.error(chalk.red('\n✗ Update failed:'), error.message);
+      printError(`Update failed: ${error.message}`);
+      if (error.stack && process.env.DEBUG) {
+        console.error(error.stack);
+      }
+      process.exit(1);
+    }
+  });
 
-      // Restore backup if update failed
-      if (fs.existsSync(backupDir)) {
-        console.log(chalk.yellow('  Restoring backup...'));
-        fs.rmSync(memoryDir, { recursive: true, force: true });
-        fs.cpSync(backupDir, memoryDir, { recursive: true });
-        console.log(chalk.green('  ✓ Backup restored'));
+// Status command - check installation health
+program
+  .command('status')
+  .description('Check Spec-Flow installation status')
+  .option('-t, --target <path>', 'Target directory (defaults to current directory)')
+  .action(async (options) => {
+    const targetDir = options.target ? path.resolve(options.target) : process.cwd();
+
+    printHeader('Spec-Flow Status');
+
+    try {
+      const health = await healthCheck(targetDir);
+
+      if (health.healthy) {
+        printSuccess('Installation is healthy');
+      } else {
+        printWarning('Installation has issues');
       }
 
+      if (health.issues.length > 0) {
+        console.log(chalk.red('\nIssues:'));
+        health.issues.forEach(issue => console.log(chalk.red(`  ✗ ${issue}`)));
+      }
+
+      if (health.warnings.length > 0) {
+        console.log(chalk.yellow('\nWarnings:'));
+        health.warnings.forEach(warning => console.log(chalk.yellow(`  ⚠ ${warning}`)));
+      }
+
+      console.log('');
+
+      if (!health.healthy) {
+        console.log(chalk.white('To fix:'));
+        console.log(chalk.green('  npx spec-flow update') + chalk.gray('  # Re-install missing files\n'));
+        process.exit(1);
+      }
+    } catch (error) {
+      printError(`Status check failed: ${error.message}`);
       process.exit(1);
     }
   });
@@ -150,11 +150,14 @@ program
     console.log(chalk.white('Commands:'));
     console.log(chalk.green('  init') + chalk.gray('        Initialize Spec-Flow in current directory'));
     console.log(chalk.green('  update') + chalk.gray('      Update existing Spec-Flow installation'));
+    console.log(chalk.green('  status') + chalk.gray('      Check installation health'));
     console.log(chalk.green('  help') + chalk.gray('        Show this help message\n'));
 
     console.log(chalk.white('Options:'));
     console.log(chalk.gray('  -t, --target <path>        Target directory (default: current directory)'));
     console.log(chalk.gray('  --non-interactive          Skip prompts, use defaults (init only)'));
+    console.log(chalk.gray('  -s, --strategy <mode>      Conflict resolution: merge|backup|skip|force (init only)'));
+    console.log(chalk.gray('  -f, --force                Skip backup (update only)'));
     console.log(chalk.gray('  -V, --version              Output version number\n'));
 
     console.log(chalk.white('Examples:'));
@@ -162,8 +165,12 @@ program
     console.log(chalk.green('  npx spec-flow init\n'));
     console.log(chalk.gray('  # Initialize in specific directory'));
     console.log(chalk.green('  npx spec-flow init --target ./my-project\n'));
+    console.log(chalk.gray('  # Initialize with conflict resolution strategy'));
+    console.log(chalk.green('  npx spec-flow init --strategy merge --non-interactive\n'));
     console.log(chalk.gray('  # Update existing installation'));
     console.log(chalk.green('  npx spec-flow update\n'));
+    console.log(chalk.gray('  # Check installation status'));
+    console.log(chalk.green('  npx spec-flow status\n'));
 
     console.log(chalk.white('Documentation:'));
     console.log(chalk.gray('  https://github.com/marcusgoll/Spec-Flow\n'));

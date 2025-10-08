@@ -58,6 +58,50 @@ echo ""
 
 ## PRE-FLIGHT VALIDATION
 
+### Check Remote Repository
+
+```bash
+echo "Checking remote repository configuration..."
+echo ""
+
+# Check if remote origin exists
+if ! git remote -v | grep -q "origin"; then
+  echo "❌ No remote repository configured"
+  echo ""
+  echo "This command requires a remote repository with staging workflow."
+  echo ""
+  echo "Options:"
+  echo "  1. Add remote repository:"
+  echo "     git remote add origin <repository-url>"
+  echo "     git push -u origin main"
+  echo ""
+  echo "  2. For local-only projects:"
+  echo "     Use manual deployment (see /flow output for instructions)"
+  echo ""
+  echo "  3. Update project configuration:"
+  echo "     See .spec-flow/memory/constitution.md"
+  exit 1
+fi
+
+# Check if staging branch exists
+if ! git show-ref --verify --quiet refs/heads/staging && \
+   ! git show-ref --verify --quiet refs/remotes/origin/staging; then
+  echo "❌ No 'staging' branch found"
+  echo ""
+  echo "Create staging branch for deployment workflow:"
+  echo "  git checkout -b staging main"
+  echo "  git push -u origin staging"
+  echo ""
+  echo "Or use direct-to-main workflow (skip staging):"
+  echo "  git checkout main && git merge $SLUG"
+  exit 1
+fi
+
+echo "✅ Remote repository configured"
+echo "✅ Staging branch exists"
+echo ""
+```
+
 ### Check Clean Working Tree
 
 ```bash

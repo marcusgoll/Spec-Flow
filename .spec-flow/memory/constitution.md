@@ -14,6 +14,33 @@ The Engineering Constitution serves as the Single Source of Truth (SSOT) for eng
 
 ---
 
+## Project Configuration
+
+**Project Type**: Auto-detected on first `/flow` run
+
+**Deployment Model**:
+- `local-only` - No remote repo, manual deployment only
+- `remote-staging-prod` - Full staging → production workflow with `/phase-1-ship` and `/phase-2-ship`
+- `remote-direct` - Remote repo, direct to main branch (no staging)
+
+**Detection Logic**:
+```bash
+# Remote repo check
+git remote -v | grep origin
+
+# Staging branch check
+git show-ref refs/heads/staging || git show-ref refs/remotes/origin/staging
+```
+
+**Workflow Adjustments**:
+- **Local-only projects**: Workflow ends at `/optimize` with manual commit instructions. Commands `/phase-1-ship`, `/phase-2-ship`, and `/finalize` are skipped.
+- **Remote-staging-prod**: Full workflow with automated staging deployment and production promotion.
+- **Remote-direct**: Simplified workflow with direct merge to main (no staging step).
+
+**Quick Changes**: For small bug fixes, refactors, or enhancements (<100 LOC), use `/quick "description"` instead of full `/flow` workflow.
+
+---
+
 ## Core Principles
 
 ### 1. Specification First
