@@ -387,7 +387,7 @@ specs/001-example-feature/
 
 ## Maintainers
 
-- Marcus Gollahon (@marcusgoll)
+* Marcus Gollahon ([@marcusgoll](https://x.com/marcusgoll))
 - Community contributors  join via pull requests!
 
 ## License
