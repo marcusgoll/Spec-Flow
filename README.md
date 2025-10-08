@@ -128,8 +128,10 @@ Spec-Flow now features an **optimized orchestrator** (`/spec-flow`) that runs ea
   ├→ spec-phase-agent → /specify → Returns summary
   ├→ plan-phase-agent → /plan → Returns summary
   ├→ tasks-phase-agent → /tasks → Returns summary
-  ├→ implement-phase-agent → /implement → Returns summary
+  ├→ /implement → Spawns worker agents directly (bypasses phase agent*)
   └→ ... (each phase isolated, efficient handoffs)
+
+  * Phase 4 calls /implement directly due to sub-agent spawning limits
 ```
 
 **Choose your workflow:**

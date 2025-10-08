@@ -9,7 +9,8 @@ Orchestrate feature delivery through isolated phase agents for maximum efficienc
 **Architecture**: Orchestrator-Workers with Phase Isolation
 - **Orchestrator** (`/spec-flow`): Lightweight state tracking, phase progression
 - **Phase Agents**: Isolated contexts, call slash commands, return summaries
-- **Worker Agents**: Called by implement-phase-agent (backend-dev, frontend-shipper, etc.)
+- **Implementation**: `/implement` called directly (spawns worker agents: backend-dev, frontend-shipper, etc.)
+  - Note: Phase 4 bypasses phase agent due to sub-agent spawning limits
 
 **Benefits**:
 - 67% token reduction (240k → 80k per feature)
@@ -263,30 +264,63 @@ Refer to your agent brief for full instructions.
 
 ### Phase 4: Implementation (EXECUTION)
 
-**Invoke phase agent:**
+**Call /implement directly (cannot use phase agent due to sub-agent spawning limits):**
 
+```bash
+# Update state (start phase 4)
+# Set current_phase = 4, status = "in_progress", record start timestamp
+
+# Execute /implement slash command directly
+# This command spawns parallel worker agents internally
+# Cannot use implement-phase-agent because sub-agents can't spawn sub-agents
+echo "⏳ Phase 4: Implementation"
+echo ""
 ```
-Task(
-  subagent_type="implement-phase-agent",
-  description="Phase 4: Execute Implementation",
-  prompt=f"""
-Execute Phase 4: Implementation in isolated context.
 
-Feature Slug: {SLUG}
-Previous Phase Summary: {TASKS_SUMMARY}
+**Execute in sequence:**
 
-Your task:
-1. Call /implement slash command (handles parallel worker agents internally)
-2. Extract implementation statistics
-3. Return structured JSON summary
+1. **Run /implement command:**
+   - INVOKE: `/implement` (use SlashCommand tool)
+   - WAIT: For completion
+   - NOTE: This command handles parallel worker agents (backend-dev, frontend-shipper, etc.)
+   - VERIFY: All tasks completed
 
-Refer to your agent brief for full instructions.
-  """
-)
+2. **Extract implementation statistics:**
+   ```bash
+   FEATURE_DIR="specs/$SLUG"
+   NOTES_FILE="$FEATURE_DIR/NOTES.md"
+   TASKS_FILE="$FEATURE_DIR/tasks.md"
+   ERROR_LOG="$FEATURE_DIR/error-log.md"
 
-# Check for incomplete tasks (block if found)
-# Validate, store summary, log progress with stats
-```
+   # Count completed tasks
+   COMPLETED_COUNT=$(grep -c "^✅ T[0-9]\{3\}" "$NOTES_FILE" || echo "0")
+   TOTAL_TASKS=$(grep -c "^T[0-9]\{3\}" "$TASKS_FILE" || echo "0")
+
+   # Get files changed
+   FILES_CHANGED=$(git diff --name-only main | wc -l)
+
+   # Check for errors
+   ERROR_COUNT=$(grep -c "❌\|⚠️" "$ERROR_LOG" 2>/dev/null || echo "0")
+   ```
+
+3. **Create phase summary:**
+   - Build summary: "Implemented {COMPLETED_COUNT}/{TOTAL_TASKS} tasks. Changed {FILES_CHANGED} files."
+   - Extract key decisions from NOTES.md
+   - Store in workflow-state.json phase_summaries
+
+4. **Check for blockers:**
+   - IF COMPLETED_COUNT < TOTAL_TASKS:
+     - LOG: "❌ Implementation incomplete: {COMPLETED_COUNT}/{TOTAL_TASKS} tasks completed"
+     - LOG: "Review: {ERROR_LOG}"
+     - PAUSE: Exit workflow, return control to user
+   - ELSE:
+     - LOG: "✅ Implementation complete ({COMPLETED_COUNT}/{TOTAL_TASKS} tasks)"
+     - CONTINUE to Phase 5 (no user input needed)
+
+5. **Update state (complete phase 4):**
+   - Add 4 to phases_completed
+   - Record end timestamp
+   - Update last_updated
 
 ### Phase 5: Optimization (QUALITY)
 

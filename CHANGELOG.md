@@ -5,6 +5,17 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2025-10-08
+
+### Fixed
+
+**Phase 4 Implementation Architecture:**
+- Fixed sub-agent spawning limitation in `/spec-flow` workflow
+- Phase 4 now calls `/implement` slash command directly instead of using `implement-phase-agent`
+- Reason: Sub-agents cannot spawn other sub-agents, and `/implement` needs to spawn parallel worker agents (backend-dev, frontend-shipper, etc.)
+- Updated documentation in `spec-flow.md`, `README.md`, and architecture diagrams
+- Note: `implement-phase-agent.md` remains in codebase for reference but is bypassed in the workflow
+
 ## [1.5.0] - 2025-10-08
 
 ### Added - Phase Agent Architecture & Performance Optimizations
@@ -71,6 +82,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed old `spec-flow.md` → `specify.md` (specification creation)
 - New `spec-flow.md` is now the optimized orchestrator
 - `/flow` remains unchanged as backup
+
+**Phase 4 Implementation Architecture:**
+- Phase 4 now calls `/implement` directly instead of using `implement-phase-agent`
+- Reason: Sub-agents cannot spawn other sub-agents, and `/implement` needs to spawn parallel worker agents
+- Note: `implement-phase-agent.md` remains in codebase but is bypassed in actual workflow
 
 **Parallel Execution:**
 - Enhanced `/implement` to use parallel agent execution via batch processing
