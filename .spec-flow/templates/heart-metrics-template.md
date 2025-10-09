@@ -6,6 +6,27 @@
 
 ---
 
+## When to Use This Template
+
+> **SKIP IF**: No user behavior tracking needed
+
+**Use HEART metrics when:**
+- ✅ Feature affects user behavior (engagement, conversion, retention)
+- ✅ You need to measure improvement over baseline
+- ✅ Running A/B tests or experiments
+- ✅ Feature has measurable outcomes (task completion, time savings)
+
+**Skip HEART metrics for:**
+- ❌ Backend/API infrastructure (no user interaction)
+- ❌ Internal tools (no product metrics)
+- ❌ Database migrations (no user behavior)
+- ❌ Configuration changes (no user impact)
+- ❌ Documentation updates (no user tracking)
+
+**For simple features**: Define 1-2 key metrics only (e.g., Task Success + Error Rate)
+
+---
+
 ## HEART Framework
 
 > **Goal**: Define measurable success criteria using Google's HEART framework.

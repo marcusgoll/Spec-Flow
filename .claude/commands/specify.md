@@ -250,62 +250,90 @@ echo "Analyzing: $ARGUMENTS"
 echo ""
 
 # Feature type (determines UI artifacts)
+# Requires UI-specific keywords to avoid false positives
 HAS_UI=false
-if [[ "$ARGUMENTS" =~ (screen|page|UI|component|dashboard|form|modal) ]]; then
+if [[ "$ARGUMENTS" =~ (screen|page|component|dashboard|form|modal|frontend|interface) ]] &&
+   [[ ! "$ARGUMENTS" =~ (API|endpoint|service|backend|database|migration|health.*check|cron|job|worker) ]]; then
   HAS_UI=true
 fi
 
 # Change type (determines hypothesis)
+# Only true if explicitly about improving/optimizing something
 IS_IMPROVEMENT=false
-if [[ "$ARGUMENTS" =~ (improve|optimize|reduce|increase|faster) ]]; then
+if [[ "$ARGUMENTS" =~ (improve|optimize|enhance|speed.*up|reduce.*time|increase.*performance) ]] &&
+   [[ "$ARGUMENTS" =~ (existing|current|slow|faster|better) ]]; then
   IS_IMPROVEMENT=true
 fi
 
 # Measurable outcomes (determines HEART metrics)
+# Only true if explicitly about user behavior/metrics tracking
 HAS_METRICS=false
-if [[ "$ARGUMENTS" =~ (user|engagement|retention|conversion|completion) ]]; then
+if [[ "$ARGUMENTS" =~ (track|measure|metric|analytic).*user ]] ||
+   [[ "$ARGUMENTS" =~ user.*(engagement|retention|conversion|behavior|journey|adoption) ]] ||
+   [[ "$ARGUMENTS" =~ (A/B.*test|experiment|funnel|cohort) ]]; then
   HAS_METRICS=true
 fi
 
 # Deployment complexity (determines deployment section)
+# Only for actual infrastructure/platform changes
 HAS_DEPLOYMENT_IMPACT=false
-if [[ "$ARGUMENTS" =~ (migration|env|breaking|platform|infrastructure) ]]; then
+if [[ "$ARGUMENTS" =~ (migration|alembic|schema.*change|env.*variable|environment.*var) ]] ||
+   [[ "$ARGUMENTS" =~ (breaking.*change|platform.*change|infrastructure|docker|deploy.*config) ]]; then
   HAS_DEPLOYMENT_IMPACT=true
 fi
 
-# Ask user to confirm classification
-echo "Detected classification:"
-echo "  UI screens: ${HAS_UI} (generates screens.yaml, copy.md, system check)"
-echo "  Improvement: ${IS_IMPROVEMENT} (generates hypothesis)"
-echo "  Measurable: ${HAS_METRICS} (generates HEART metrics)"
-echo "  Deployment impact: ${HAS_DEPLOYMENT_IMPACT} (prompts deployment questions)"
-echo ""
-echo "Is this correct? (Y/n/customize)"
-read -p "Choice: " classification_choice
+# Count flags to determine if classification is clear
+FLAG_COUNT=0
+[ "$HAS_UI" = true ] && FLAG_COUNT=$((FLAG_COUNT + 1))
+[ "$IS_IMPROVEMENT" = true ] && FLAG_COUNT=$((FLAG_COUNT + 1))
+[ "$HAS_METRICS" = true ] && FLAG_COUNT=$((FLAG_COUNT + 1))
+[ "$HAS_DEPLOYMENT_IMPACT" = true ] && FLAG_COUNT=$((FLAG_COUNT + 1))
 
-case $classification_choice in
-  n|N)
-    # Manual classification
-    read -p "Has UI screens? (y/n): " has_ui_input
-    [[ "$has_ui_input" =~ ^[Yy]$ ]] && HAS_UI=true || HAS_UI=false
+# Auto-skip prompt if classification is clear (0-1 flags)
+if [ "$FLAG_COUNT" -le 1 ]; then
+  # Clear case - auto-proceed without asking
+  echo "✓ Auto-classified: Simple feature"
+  [ "$HAS_UI" = true ] && echo "  → UI feature detected"
+  [ "$IS_IMPROVEMENT" = true ] && echo "  → Improvement feature detected"
+  [ "$HAS_METRICS" = true ] && echo "  → Metrics tracking detected"
+  [ "$HAS_DEPLOYMENT_IMPACT" = true ] && echo "  → Deployment impact detected"
+  [ "$FLAG_COUNT" -eq 0 ] && echo "  → Backend/API feature (no special artifacts)"
+  echo ""
+else
+  # Ambiguous case - ask for confirmation
+  echo "Detected classification (multiple signals):"
+  echo "  UI screens: ${HAS_UI} (generates screens.yaml, copy.md, system check)"
+  echo "  Improvement: ${IS_IMPROVEMENT} (generates hypothesis)"
+  echo "  Measurable: ${HAS_METRICS} (generates HEART metrics)"
+  echo "  Deployment impact: ${HAS_DEPLOYMENT_IMPACT} (prompts deployment questions)"
+  echo ""
+  echo "Is this correct? (Y/n/customize)"
+  read -p "Choice: " classification_choice
 
-    read -p "Improvement feature? (y/n): " is_improvement_input
-    [[ "$is_improvement_input" =~ ^[Yy]$ ]] && IS_IMPROVEMENT=true || IS_IMPROVEMENT=false
+  case $classification_choice in
+    n|N)
+      # Manual classification
+      read -p "Has UI screens? (y/n): " has_ui_input
+      [[ "$has_ui_input" =~ ^[Yy]$ ]] && HAS_UI=true || HAS_UI=false
 
-    read -p "Has measurable outcomes? (y/n): " has_metrics_input
-    [[ "$has_metrics_input" =~ ^[Yy]$ ]] && HAS_METRICS=true || HAS_METRICS=false
+      read -p "Improvement feature? (y/n): " is_improvement_input
+      [[ "$is_improvement_input" =~ ^[Yy]$ ]] && IS_IMPROVEMENT=true || IS_IMPROVEMENT=false
 
-    read -p "Deployment impact? (y/n): " has_deployment_input
-    [[ "$has_deployment_input" =~ ^[Yy]$ ]] && HAS_DEPLOYMENT_IMPACT=true || HAS_DEPLOYMENT_IMPACT=false
-    ;;
-  customize|c|C)
-    # Let user customize each
-    # (same as 'n' flow above)
-    ;;
-  *)
-    # Accept auto-detected classification
-    ;;
-esac
+      read -p "Has measurable outcomes? (y/n): " has_metrics_input
+      [[ "$has_metrics_input" =~ ^[Yy]$ ]] && HAS_METRICS=true || HAS_METRICS=false
+
+      read -p "Deployment impact? (y/n): " has_deployment_input
+      [[ "$has_deployment_input" =~ ^[Yy]$ ]] && HAS_DEPLOYMENT_IMPACT=true || HAS_DEPLOYMENT_IMPACT=false
+      ;;
+    customize|c|C)
+      # Let user customize each
+      # (same as 'n' flow above)
+      ;;
+    *)
+      # Accept auto-detected classification
+      ;;
+  esac
+fi
 
 # Store in NOTES.md for reference
 cat >> $NOTES_FILE <<EOF
@@ -320,21 +348,40 @@ EOF
 
 **Result**: Single decision tree evaluated once, determines which artifacts to generate.
 
-## RESEARCH (3-8 tool calls)
+## RESEARCH (Scaled: 1-8 tool calls)
 
-**Gather context before writing:**
+**Determine research depth based on feature complexity:**
 
-**Always read** (1-3 tools):
+```bash
+# Minimal research for simple backend features (1-2 tools)
+if [ "$FLAG_COUNT" -eq 0 ]; then
+  RESEARCH_MODE="minimal"
+  echo "Research mode: Minimal (backend/API feature)"
+# Standard research for single-aspect features (3-5 tools)
+elif [ "$FLAG_COUNT" -eq 1 ]; then
+  RESEARCH_MODE="standard"
+  echo "Research mode: Standard (single-aspect feature)"
+# Full research for complex features (5-8 tools)
+else
+  RESEARCH_MODE="full"
+  echo "Research mode: Full (multi-aspect feature)"
+fi
+echo ""
+```
+
+**Minimal research** (1-2 tools):
 1. `$CONSTITUTION_FILE` → Check compliance with mission/values
-2. `$UI_INVENTORY_FILE` → List reusable components (if `$HAS_UI = true`)
-3. `$BUDGETS_FILE` → Performance targets (if `$HAS_UI = true`)
+2. `Grep codebase` → If integrating with existing code (infer from $ARGUMENTS keywords)
 
-**Conditionally read** (0-3 tools):
-4. `Glob specs/**/spec.md` → If similar feature exists (search by keyword in $ARGUMENTS)
-5. `$INSPIRATIONS_FILE` → If UX pattern needed (`$HAS_UI = true`)
-6. `Grep codebase` → If integrating with existing code (infer from $ARGUMENTS keywords)
+**Standard research** (3-5 tools):
+1-2. Minimal research tools (above)
+3. `$UI_INVENTORY_FILE` → List reusable components (if `$HAS_UI = true`)
+4. `$BUDGETS_FILE` → Performance targets (if `$HAS_UI = true`)
+5. `Glob specs/**/spec.md` → If similar feature exists (search by keyword in $ARGUMENTS)
 
-**External research** (0-2 tools):
+**Full research** (5-8 tools):
+1-5. Standard research tools (above)
+6. `$INSPIRATIONS_FILE` → If UX pattern needed (`$HAS_UI = true`)
 7. `WebSearch "UX pattern [feature-type] 2025"` → If `$HAS_UI = true` and no internal pattern found
 8. `chrome-devtools [URL]` → If user provided reference site in $ARGUMENTS
 

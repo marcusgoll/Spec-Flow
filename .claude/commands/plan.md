@@ -110,7 +110,7 @@ echo "SCREEN_COUNT=$SCREEN_COUNT" >> "$FEATURE_DIR/.planning-context"
 - At least 1 screen? UI feature = true
 - No screens.yaml or empty? Backend feature = false
 
-## RESEARCH CODEBASE (5-15 tool calls)
+## RESEARCH CODEBASE (Scaled: 2-15 tool calls)
 
 **Prevent duplication - scan before designing:**
 
@@ -121,22 +121,36 @@ NEW_COMPONENTS=()
 RESEARCH_DECISIONS=()
 ```
 
-**Always** (2-3 tools):
-1. **Glob modules**: `api/src/modules/*`, `api/src/services/*`, `apps/*/components/**`, `apps/*/lib/**`
-2. **Read spec**: Extract requirements, NFRs, deployment considerations
-3. **Read visuals/README.md**: UX patterns (if exists)
+**Determine research depth based on feature classification:**
+```bash
+# Check if simple feature (from NOTES.md classification)
+if grep -q "Backend/API feature (no special artifacts)" "$NOTES_FILE" ||
+   grep -q "Auto-classified: Simple feature" "$NOTES_FILE"; then
+  RESEARCH_MODE="minimal"
+  echo "Research mode: Minimal (simple feature)"
+else
+  RESEARCH_MODE="full"
+  echo "Research mode: Full (complex feature)"
+fi
+echo ""
+```
 
-**Conditionally** (3-10 tools):
-4. **Grep keywords**: Search codebase for similar functionality from spec keywords
+**Minimal research** (2-3 tools for simple features):
+1. **Read spec**: Extract requirements, NFRs, deployment considerations
+2. **Grep keywords**: Quick scan for similar patterns to reuse
+3. **Glob modules** (optional): If integration needed with existing code
+
+**Full research** (5-15 tools for complex features):
+1-3. Minimal research (above)
+4. **Glob modules**: `api/src/modules/*`, `api/src/services/*`, `apps/*/components/**`, `apps/*/lib/**`
 5-6. **Read similar modules**: Study patterns, categorize as reusable or inspiration
    - If reusable: `REUSABLE_COMPONENTS+=("api/src/services/auth: JWT validation")`
    - If new needed: `NEW_COMPONENTS+=("api/src/services/csv-parser: New capability")`
 7. **WebSearch best practices**: If novel pattern (not in codebase)
 8. **Read design-inspirations.md**: If UI-heavy feature
 9-10. **Read integration points**: Auth, billing, storage services (if complex integration)
-
-**Deep dive** (0-5 tools):
-11-15. **Read related modules**: If complex integration across multiple systems
+11-15. **Deep dive - Read related modules**: If complex integration across multiple systems
+16. **Read visuals/README.md**: UX patterns (if exists)
 
 **Document decisions:**
 ```bash

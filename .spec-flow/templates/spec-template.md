@@ -23,6 +23,7 @@ See `./visuals/README.md` for UI research and design patterns (if applicable)
 
 ## Success Metrics (HEART Framework)
 
+> **SKIP IF**: No user behavior tracking needed (internal tools, infrastructure)
 > **Purpose**: Define quantified success criteria using Google's HEART framework.
 > **Constraint**: All metrics MUST be Claude Code-measurable (SQL, logs, Lighthouse).
 
@@ -42,8 +43,8 @@ See `.spec-flow/templates/heart-metrics-template.md` for full measurement plan.
 
 ## Screens Inventory (UI Features Only)
 
+> **SKIP IF**: Backend-only feature (no UI components)
 > **Purpose**: Define screens for `/design-variations` workflow (Phase 1).
-> **Skip if**: Feature has no UI components.
 
 Screens to design:
 1. **[screen-id]**: [Purpose] - Primary action: [CTA]
@@ -55,6 +56,7 @@ See `.spec-flow/templates/screens-yaml-template.yaml` for full screen definition
 
 ## Hypothesis
 
+> **SKIP IF**: New feature (not improving an existing flow)
 > **Purpose**: State the problem, solution, and predicted improvement.
 > **Format**: Problem → Solution → Prediction (with magnitude)
 
@@ -108,8 +110,8 @@ See `.spec-flow/templates/screens-yaml-template.yaml` for full screen definition
 
 ## Deployment Considerations
 
+> **SKIP IF**: No infrastructure changes (cosmetic UI, documentation-only)
 > **Purpose**: Document deployment constraints and dependencies for planning phase.
-> **Skip if**: Purely cosmetic UI changes or documentation-only changes.
 
 ### Platform Dependencies
 
@@ -230,37 +232,22 @@ See `.spec-flow/templates/experiment-design-template.md` for full plan.
 
 ---
 
-## Quality Gates *(all must pass before `/plan`)*
+## Quality Gates *(Must pass before `/plan`)*
 
-### Core Requirements
-- [ ] No implementation details (tech stack, APIs, code)
-- [ ] Requirements testable and unambiguous
-- [ ] Context strategy documented
-- [ ] No [NEEDS CLARIFICATION] markers
+### Core (Always Required)
+- [ ] Requirements testable, no [NEEDS CLARIFICATION] markers
 - [ ] Constitution aligned (performance, UX, data, access)
+- [ ] No implementation details (tech stack, APIs, code)
 
-### Success Metrics (HEART)
-- [ ] All 5 HEART dimensions have targets defined
-- [ ] Metrics are Claude Code-measurable (SQL, logs, Lighthouse)
-- [ ] Hypothesis is specific and testable
-- [ ] Performance targets from budgets.md specified
+### Conditional: Success Metrics (Skip if no user tracking)
+- [ ] HEART metrics defined with Claude Code-measurable sources
+- [ ] Hypothesis stated (Problem → Solution → Prediction)
 
-### Screens (UI Features Only)
-- [ ] All screens identified with primary actions
-- [ ] States documented (default, loading, error, empty)
+### Conditional: UI Features (Skip if backend-only)
+- [ ] All screens identified with states (default, loading, error)
 - [ ] System components from ui-inventory.md planned
-- [ ] Skip if feature has no UI
 
-### Measurement Plan
-- [ ] Analytics events defined (PostHog + logs + DB)
-- [ ] SQL queries drafted for key metrics
-- [ ] Experiment design complete (control, treatment, ramp)
-- [ ] Measurement sources are Claude Code-accessible
-
-### Deployment Considerations
-- [ ] Platform dependencies documented (Vercel, Railway, build tools)
-- [ ] Environment variables listed (new/changed, with staging/production values)
-- [ ] Breaking changes identified (API, schema, auth, client compatibility)
-- [ ] Migration requirements documented (database, backfill, RLS, reversibility)
-- [ ] Rollback plan specified (standard or special considerations)
-- [ ] Skip if purely cosmetic UI changes or docs-only
+### Conditional: Deployment Impact (Skip if no infrastructure changes)
+- [ ] Breaking changes identified (API, schema, migrations)
+- [ ] Environment variables documented (staging + production values)
+- [ ] Rollback plan specified
