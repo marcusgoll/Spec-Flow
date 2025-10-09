@@ -5,6 +5,25 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.3] - 2025-10-08
+
+### Fixed - Complete Installation Safety for Brownfield Projects
+
+**Problem**: The `npx spec-flow init` command (both interactive and non-interactive modes) was missing user data protection, potentially overwriting existing directories in brownfield projects.
+
+**Solution - Universal Data Protection**:
+- Added `excludeDirectories: USER_DATA_DIRECTORIES` to both installation modes in `install-wizard.js`
+- Non-interactive mode (line 33): Now protects user directories during automated installations
+- Interactive mode (line 183): Now protects user directories during guided installations
+- Ensures identical protection across `init` and `update` commands
+
+**Changes**:
+- `bin/install.js`: Exported `USER_DATA_DIRECTORIES` constant for use in wizard
+- `bin/install-wizard.js`: Imported and applied `USER_DATA_DIRECTORIES` to both install() calls
+- Both greenfield and brownfield installations now safe by default
+
+**Safety**: All npx commands (`init`, `update`) now respect user data boundaries. Directories like `specs/`, `node_modules/`, `.git/`, etc. are never touched during installation or updates.
+
 ## [1.5.2] - 2025-10-08
 
 ### Fixed - CRITICAL: Data Loss Prevention in Update Command

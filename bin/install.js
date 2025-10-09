@@ -287,5 +287,6 @@ async function update(options) {
 
 module.exports = {
   install,
-  update
+  update,
+  USER_DATA_DIRECTORIES
 };

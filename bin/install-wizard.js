@@ -2,7 +2,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const inquirer = require('inquirer');
 const chalk = require('chalk');
-const { install } = require('./install');
+const { install, USER_DATA_DIRECTORIES } = require('./install');
 const { printHeader, printSuccess, printStep, printWarning } = require('./utils');
 const { detectConflicts, formatConflicts, formatActions, STRATEGIES } = require('./conflicts');
 
@@ -24,11 +24,13 @@ async function runWizard(options) {
     console.log('');
 
     // Run installation with defaults (merge strategy or provided strategy)
+    // CRITICAL: excludeDirectories protects user data in brownfield projects
     return await install({
       targetDir,
       preserveMemory: false,
       verbose: true,
-      conflictStrategy: providedStrategy || STRATEGIES.MERGE
+      conflictStrategy: providedStrategy || STRATEGIES.MERGE,
+      excludeDirectories: USER_DATA_DIRECTORIES
     });
   }
 
@@ -177,7 +179,8 @@ async function runWizard(options) {
     targetDir,
     preserveMemory: false,
     verbose: true,
-    conflictStrategy
+    conflictStrategy,
+    excludeDirectories: USER_DATA_DIRECTORIES
   });
 
   if (!result.success) {
