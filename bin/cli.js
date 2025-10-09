@@ -82,8 +82,13 @@ program
 
       printSuccess('\nUpdate complete!');
 
-      if (result.backupPath) {
-        console.log(chalk.gray(`\nMemory backup saved at: ${result.backupPath}`));
+      // Show backup information
+      if (result.backupPaths && Object.keys(result.backupPaths).length > 0) {
+        console.log(chalk.cyan('\nBackups created:'));
+        for (const [dir, backupPath] of Object.entries(result.backupPaths)) {
+          console.log(chalk.gray(`  ${dir}: ${path.basename(backupPath)}`));
+        }
+        console.log(chalk.yellow('\nNote: Backups preserved for safety. Remove *-backup-* folders when confident.'));
       }
 
       console.log('');

@@ -24,10 +24,11 @@ function getISOTimestamp() {
  * @param {Object} options - Options
  * @param {boolean} options.preserveMemory - Whether to preserve memory files
  * @param {string} options.conflictStrategy - Conflict resolution strategy
+ * @param {Array<string>} options.excludeDirectories - Directories to exclude from copying
  * @param {Function} options.onProgress - Progress callback
  */
 async function copyDirectory(src, dest, options = {}) {
-  const { preserveMemory = false, conflictStrategy = 'force', onProgress } = options;
+  const { preserveMemory = false, conflictStrategy = 'force', excludeDirectories = [], onProgress } = options;
 
   await fs.ensureDir(dest);
   const entries = await fs.readdir(src, { withFileTypes: true });
@@ -35,6 +36,12 @@ async function copyDirectory(src, dest, options = {}) {
   for (const entry of entries) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
+
+    // Skip excluded directories (CRITICAL: prevents data loss)
+    if (entry.isDirectory() && excludeDirectories.includes(entry.name)) {
+      if (onProgress) onProgress(`Skipping ${entry.name} (user data - excluded)`);
+      continue;
+    }
 
     // Skip memory directory if preserving
     if (preserveMemory && entry.name === 'memory' && entry.isDirectory()) {

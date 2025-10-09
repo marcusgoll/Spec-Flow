@@ -5,6 +5,28 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2025-10-08
+
+### Fixed - CRITICAL: Data Loss Prevention in Update Command
+
+**Problem**: Running `npx spec-flow update` in brownfield projects could potentially overwrite user-generated content, including the `specs/` directory containing all feature work.
+
+**Solution - Comprehensive User Data Protection**:
+- Added explicit exclusion list for user-generated directories (`specs/`, `node_modules/`, `.git/`, `dist/`, etc.)
+- Enhanced backup system to backup ALL user directories before update, not just memory files
+- Updated `copyDirectory()` to skip excluded directories entirely (prevents any accidental overwrites)
+- Improved restore mechanism to restore all backed-up directories if update fails
+- Added user-friendly backup reporting in CLI (shows which directories were backed up)
+
+**Changes**:
+- `bin/install.js`: Added `USER_DATA_DIRECTORIES` constant with critical exclusions
+- `bin/install.js`: Updated `update()` to backup all user data before proceeding
+- `bin/install.js`: Enhanced error handling to restore ALL backups on failure
+- `bin/utils.js`: Updated `copyDirectory()` to honor `excludeDirectories` option
+- `bin/cli.js`: Updated CLI to display backup information to user
+
+**Safety**: Backups now created with timestamps and preserved after update. Users can safely remove `*-backup-*` folders when confident.
+
 ## [1.5.1] - 2025-10-08
 
 ### Fixed

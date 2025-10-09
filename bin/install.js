@@ -15,16 +15,33 @@ const { checkExistingInstallation, runPreflightChecks } = require('./validate');
 const { resolveConflict, STRATEGIES } = require('./conflicts');
 
 /**
+ * User-generated directories that must NEVER be touched during install/update
+ * These contain valuable user work and must be explicitly preserved
+ */
+const USER_DATA_DIRECTORIES = [
+  'specs',           // Feature specifications (user's primary work)
+  'node_modules',    // Dependencies
+  '.git',            // Git repository
+  'dist',            // Build output
+  'build',           // Build output
+  'coverage',        // Test coverage
+  '.next',           // Next.js build
+  '.nuxt',           // Nuxt build
+  'out'              // Output directories
+];
+
+/**
  * Install spec-flow to target directory
  * @param {Object} options - Installation options
  * @param {string} options.targetDir - Target directory
  * @param {boolean} options.preserveMemory - Whether to preserve memory files
  * @param {boolean} options.verbose - Show detailed output
  * @param {string} options.conflictStrategy - Conflict resolution strategy (merge|backup|skip|force)
+ * @param {Array<string>} options.excludeDirectories - Directories to exclude from copying
  * @returns {Promise<Object>} { success: boolean, error: string|null, conflictActions: Array }
  */
 async function install(options) {
-  const { targetDir, preserveMemory = false, verbose = false, conflictStrategy = STRATEGIES.MERGE } = options;
+  const { targetDir, preserveMemory = false, verbose = false, conflictStrategy = STRATEGIES.MERGE, excludeDirectories = [] } = options;
   const packageRoot = getPackageRoot();
 
   // Pre-flight checks
@@ -69,6 +86,7 @@ async function install(options) {
     await copyDirectory(claudeSource, claudeDest, {
       preserveMemory: false,
       conflictStrategy,
+      excludeDirectories,
       onProgress: (msg) => {
         if (verbose) spinner.text = msg;
       }
@@ -83,6 +101,7 @@ async function install(options) {
     await copyDirectory(specFlowSource, specFlowDest, {
       preserveMemory,
       conflictStrategy,
+      excludeDirectories,
       onProgress: (msg) => {
         if (verbose) spinner.text = msg;
       }
@@ -136,7 +155,7 @@ async function install(options) {
  * @param {string} options.targetDir - Target directory
  * @param {boolean} options.force - Skip backup
  * @param {boolean} options.verbose - Show detailed output
- * @returns {Promise<Object>} { success: boolean, backupPath: string|null, error: string|null }
+ * @returns {Promise<Object>} { success: boolean, backupPaths: Object, error: string|null }
  */
 async function update(options) {
   const { targetDir, force = false, verbose = false } = options;
@@ -147,68 +166,120 @@ async function update(options) {
   if (!existing.installed) {
     return {
       success: false,
-      backupPath: null,
+      backupPaths: {},
       error: 'Spec-Flow not found in this directory. Use init command to install.'
     };
   }
 
-  let backupPath = null;
+  const backupPaths = {};
   let spinner;
 
   try {
-    // Create backup of memory directory
-    if (!force && existing.hasSpecFlowDir) {
-      const memoryDir = path.join(targetDir, '.spec-flow', 'memory');
+    // Create comprehensive backup of ALL user-generated content
+    if (!force) {
+      spinner = ora('Creating backup of user data...').start();
 
-      if (await fs.pathExists(memoryDir)) {
-        spinner = ora('Creating backup of memory files...').start();
-        backupPath = await createBackup(memoryDir);
-        spinner.succeed(`Backup created: ${path.basename(backupPath)}`);
+      // Backup memory directory
+      if (existing.hasSpecFlowDir) {
+        const memoryDir = path.join(targetDir, '.spec-flow', 'memory');
+        if (await fs.pathExists(memoryDir)) {
+          backupPaths.memory = await createBackup(memoryDir);
+          if (verbose) spinner.text = `Backed up memory: ${path.basename(backupPaths.memory)}`;
+        }
+      }
+
+      // Backup ALL user-generated directories (CRITICAL: prevents data loss)
+      for (const userDir of USER_DATA_DIRECTORIES) {
+        const dirPath = path.join(targetDir, userDir);
+        if (await fs.pathExists(dirPath)) {
+          backupPaths[userDir] = await createBackup(dirPath);
+          if (verbose) spinner.text = `Backed up ${userDir}: ${path.basename(backupPaths[userDir])}`;
+        }
+      }
+
+      const backupCount = Object.keys(backupPaths).length;
+      if (backupCount > 0) {
+        spinner.succeed(`Created ${backupCount} backup(s) of user data`);
+      } else {
+        spinner.info('No user data to backup');
       }
     }
 
-    // Run installation with memory preservation
+    // Run installation with memory preservation and user directory exclusion
     const result = await install({
       targetDir,
       preserveMemory: true,
-      verbose
+      verbose,
+      excludeDirectories: USER_DATA_DIRECTORIES
     });
 
     if (!result.success) {
-      // Restore backup if update failed
-      if (backupPath) {
-        spinner = ora('Restoring backup...').start();
-        await restoreBackup(backupPath, path.join(targetDir, '.spec-flow', 'memory'));
-        spinner.succeed('Backup restored');
+      // Restore ALL backups if update failed
+      if (Object.keys(backupPaths).length > 0) {
+        spinner = ora('Restoring backups...').start();
+
+        // Restore memory
+        if (backupPaths.memory) {
+          await restoreBackup(backupPaths.memory, path.join(targetDir, '.spec-flow', 'memory'));
+        }
+
+        // Restore user directories
+        for (const userDir of USER_DATA_DIRECTORIES) {
+          if (backupPaths[userDir]) {
+            await restoreBackup(backupPaths[userDir], path.join(targetDir, userDir));
+          }
+        }
+
+        spinner.succeed('All backups restored');
       }
+
       return {
         success: false,
-        backupPath: null,
+        backupPaths: {},
         error: result.error
       };
     }
 
+    // Clean up backups after successful update
+    if (Object.keys(backupPaths).length > 0 && verbose) {
+      printSuccess('Update complete! Backups preserved in case of issues.');
+    }
+
     return {
       success: true,
-      backupPath,
+      backupPaths,
       error: null
     };
   } catch (error) {
     if (spinner) spinner.fail('Update failed');
 
-    // Restore backup on error
-    if (backupPath) {
+    // Restore ALL backups on error
+    if (Object.keys(backupPaths).length > 0) {
       try {
-        await restoreBackup(backupPath, path.join(targetDir, '.spec-flow', 'memory'));
-        printSuccess('Backup restored');
+        spinner = ora('Restoring backups...').start();
+
+        // Restore memory
+        if (backupPaths.memory) {
+          await restoreBackup(backupPaths.memory, path.join(targetDir, '.spec-flow', 'memory'));
+        }
+
+        // Restore user directories
+        for (const userDir of USER_DATA_DIRECTORIES) {
+          if (backupPaths[userDir]) {
+            await restoreBackup(backupPaths[userDir], path.join(targetDir, userDir));
+          }
+        }
+
+        spinner.succeed('All backups restored');
       } catch (restoreError) {
-        printError(`Failed to restore backup: ${restoreError.message}`);
+        printError(`Failed to restore backups: ${restoreError.message}`);
+        printWarning('Your data may be in backup directories. Check for *-backup-* folders.');
       }
     }
 
     return {
       success: false,
-      backupPath: null,
+      backupPaths: {},
       error: `Update error: ${error.message}`
     };
   }
