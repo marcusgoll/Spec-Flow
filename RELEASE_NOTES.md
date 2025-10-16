@@ -1,5 +1,60 @@
 # Release Notes
 
+## v1.6.3 (2025-10-16)
+
+### 🛠️ Code Quality Improvements
+
+#### Resolved All Shellcheck Warnings in Bash Scripts
+
+**Changes:**
+Fixed all code quality issues identified by shellcheck static analysis tool in bash scripts.
+
+**Issues Fixed:**
+
+1. **SC2162 (info)**: `read` without `-r` will mangle backslashes
+   - Added `-r` flag to all `read` commands
+   - Prevents unexpected behavior with backslash escaping
+   - Affected: roadmap-manager.sh (1 fix), version-manager.sh (5 fixes)
+
+2. **SC2125 (warning)**: Brace expansions and globs are literal in assignments
+   - Changed glob pattern assignment to use `find` command
+   - Before: `local ship_report="$feature_dir"/*-ship-report.md`
+   - After: `ship_report=$(find "$feature_dir" -name "*-ship-report.md" -type f | head -1)`
+   - Location: version-manager.sh line 67
+
+3. **SC2181 (style)**: Check exit code directly, not indirectly with `$?`
+   - Changed to direct command check in if statement
+   - Before: `current_version=$(get_current_version); if [ $? -ne 0 ]; then`
+   - After: `if ! current_version=$(get_current_version); then`
+   - Location: version-manager.sh line 103-105
+
+### 📝 Files Changed
+
+- **.spec-flow/scripts/bash/roadmap-manager.sh**: Added -r flag to read command
+- **.spec-flow/scripts/bash/version-manager.sh**: Fixed 3 types of warnings (8 total fixes)
+- **package.json**: Version bump to 1.6.3
+
+### 🎯 Impact
+
+- ✅ All shellcheck warnings resolved (zero warnings/errors)
+- ✅ More robust error handling
+- ✅ Safer string handling (no backslash mangling)
+- ✅ Cleaner, more maintainable bash code
+- ✅ Follows shellcheck best practices
+
+### 📦 Installation
+
+```bash
+npm install -g spec-flow@1.6.3
+```
+
+Or upgrade:
+```bash
+npm update -g spec-flow
+```
+
+---
+
 ## v1.6.2 (2025-10-16)
 
 ### 🐛 Critical Bug Fix
