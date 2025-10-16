@@ -2,9 +2,10 @@ const fs = require('fs-extra');
 const path = require('path');
 const inquirer = require('inquirer');
 const chalk = require('chalk');
-const { install, USER_DATA_DIRECTORIES } = require('./install');
-const { printHeader, printSuccess, printStep, printWarning } = require('./utils');
+const { install, update, USER_DATA_DIRECTORIES } = require('./install');
+const { printHeader, printSuccess, printStep, printWarning, printError } = require('./utils');
 const { detectConflicts, formatConflicts, formatActions, STRATEGIES } = require('./conflicts');
+const { checkExistingInstallation } = require('./validate');
 
 /**
  * Run interactive installation wizard
@@ -19,6 +20,108 @@ async function runWizard(options) {
 
   printHeader('Spec-Flow Installation Wizard');
 
+  // Check if already installed BEFORE starting wizard
+  const existing = await checkExistingInstallation(targetDir);
+
+  if (existing.installed) {
+    printWarning('Spec-Flow is already installed in this directory');
+    console.log(chalk.gray('  .claude directory: ') + (existing.hasClaudeDir ? chalk.green('✓') : chalk.gray('✗')));
+    console.log(chalk.gray('  .spec-flow directory: ') + (existing.hasSpecFlowDir ? chalk.green('✓') : chalk.gray('✗')));
+    console.log('');
+
+    if (nonInteractive) {
+      // Auto-update in non-interactive mode
+      printStep('Auto-updating existing installation...');
+      console.log('');
+
+      const updateResult = await update({
+        targetDir,
+        force: false,
+        verbose: true
+      });
+
+      if (!updateResult.success) {
+        return updateResult;
+      }
+
+      printSuccess('\nUpdate complete!');
+
+      // Show backup information
+      if (updateResult.backupPaths && Object.keys(updateResult.backupPaths).length > 0) {
+        console.log(chalk.cyan('\nBackups created:'));
+        for (const [dir, backupPath] of Object.entries(updateResult.backupPaths)) {
+          console.log(chalk.gray(`  ${dir}: ${path.basename(backupPath)}`));
+        }
+        console.log(chalk.yellow('\nNote: Backups preserved for safety. Remove *-backup-* folders when confident.\n'));
+      }
+
+      return { success: true, error: null };
+    }
+
+    // Interactive mode - ask user what to do
+    const { action } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'action',
+        message: 'What would you like to do?',
+        default: 'update',
+        choices: [
+          {
+            name: 'Update existing installation (recommended) - Preserves your data',
+            value: 'update'
+          },
+          {
+            name: 'Cancel installation',
+            value: 'cancel'
+          }
+        ]
+      }
+    ]);
+
+    if (action === 'cancel') {
+      return {
+        success: false,
+        error: 'Installation cancelled by user'
+      };
+    }
+
+    if (action === 'update') {
+      console.log('');
+      printStep('Updating Spec-Flow');
+      console.log('');
+
+      const updateResult = await update({
+        targetDir,
+        force: false,
+        verbose: true
+      });
+
+      if (!updateResult.success) {
+        return updateResult;
+      }
+
+      printSuccess('\nUpdate complete!');
+
+      // Show backup information
+      if (updateResult.backupPaths && Object.keys(updateResult.backupPaths).length > 0) {
+        console.log(chalk.cyan('\nBackups created:'));
+        for (const [dir, backupPath] of Object.entries(updateResult.backupPaths)) {
+          console.log(chalk.gray(`  ${dir}: ${path.basename(backupPath)}`));
+        }
+        console.log(chalk.yellow('\nNote: Backups preserved for safety. Remove *-backup-* folders when confident.'));
+      }
+
+      console.log('');
+      console.log(chalk.white('Next steps:'));
+      console.log(chalk.green('  1. Open project in Claude Code'));
+      console.log(chalk.green('  2. Run /roadmap') + chalk.gray(' to plan features'));
+      console.log(chalk.green('  3. Run /spec-flow "feature-name"') + chalk.gray(' to start building\n'));
+
+      return { success: true, error: null };
+    }
+  }
+
+  // Fresh installation for non-existing installations
   if (nonInteractive) {
     printStep('Running in non-interactive mode (using defaults)');
     console.log('');

@@ -62,15 +62,22 @@ async function install(options) {
     };
   }
 
-  // Check if already installed
+  // Check if already installed (only block if preserveMemory is false)
+  // Note: The wizard handles this check earlier and offers to update,
+  // so this is primarily a safety net for direct calls to install()
   const existing = await checkExistingInstallation(targetDir);
 
   if (existing.installed && !preserveMemory) {
-    printWarning('Spec-Flow is already installed in this directory');
-    printWarning('Use update command to preserve memory, or remove .claude/.spec-flow directories first');
+    if (verbose) {
+      printWarning('Spec-Flow is already installed in this directory');
+      console.log('\nTo update existing installation:');
+      console.log('  npx spec-flow update');
+      console.log('\nOr run init again to be guided through the update process:');
+      console.log('  npx spec-flow init\n');
+    }
     return {
       success: false,
-      error: 'Already installed. Use update command or remove existing installation.'
+      error: 'Already installed. Run "npx spec-flow init" or "npx spec-flow update" to upgrade.'
     };
   }
 
