@@ -1,5 +1,88 @@
 # Release Notes
 
+## v1.6.1 (2025-10-16)
+
+### 🐛 Bug Fixes
+
+#### Improved Brownfield Project Onboarding
+
+**Problem:**
+Running `npx spec-flow init` in brownfield projects with existing `.claude` or `.spec-flow` directories would fail with an unhelpful error message, forcing users to manually discover and run `npx spec-flow update`. This created a poor onboarding experience where the installation wizard felt "just for show."
+
+**Solution:**
+The `init` command now intelligently detects existing installations and seamlessly guides users through the update process:
+
+**Interactive Mode:**
+- Detects existing Spec-Flow installation
+- Shows current installation status (`.claude`, `.spec-flow` directories)
+- Prompts user: "Update existing installation (recommended)" or "Cancel"
+- Automatically runs update workflow with proper backups
+- Displays clear next steps after successful update
+
+**Non-Interactive Mode:**
+- Auto-detects existing installation
+- Automatically runs update without user intervention
+- Perfect for CI/CD pipelines and automation scripts
+
+**Before:**
+```bash
+$ npx spec-flow init
+✗ Already installed. Use update command or remove existing installation.
+# User forced to know about separate update command
+```
+
+**After (Interactive):**
+```bash
+$ npx spec-flow init
+⚠ Spec-Flow is already installed in this directory
+  .claude directory: ✓
+  .spec-flow directory: ✓
+
+? What would you like to do?
+  ❯ Update existing installation (recommended) - Preserves your data
+    Cancel installation
+
+✓ Update complete!
+
+Next steps:
+  1. Open project in Claude Code
+  2. Run /roadmap to plan features
+  3. Run /spec-flow "feature-name" to start building
+```
+
+**After (Non-Interactive):**
+```bash
+$ npx spec-flow init --non-interactive
+Auto-updating existing installation...
+✓ Update complete!
+```
+
+### 📝 Files Changed
+
+- **bin/install-wizard.js**: Added early installation detection and guided update flow
+- **bin/install.js**: Improved error messages with actionable guidance
+- **package.json**: Version bump to 1.6.1
+
+### 🎯 Impact
+
+- ✅ Brownfield projects can now use `init` command without being blocked
+- ✅ Non-interactive mode (CI/automation) auto-updates seamlessly
+- ✅ Users get clear, actionable guidance instead of cryptic errors
+- ✅ Onboarding is fully functional, not "just for show"
+
+### 📦 Installation
+
+```bash
+npm install -g spec-flow@1.6.1
+```
+
+Or upgrade from 1.6.0:
+```bash
+npm update -g spec-flow
+```
+
+---
+
 ## v1.6.0 (2025-10-16)
 
 ### 🎉 Major Features
