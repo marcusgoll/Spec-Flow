@@ -1,5 +1,65 @@
 # Release Notes
 
+## v1.6.2 (2025-10-16)
+
+### 🐛 Critical Bug Fix
+
+#### Fixed EPERM Errors on Windows During Updates
+
+**Problem:**
+The update command was failing on Windows with `EPERM: operation not permitted` errors when trying to back up `node_modules`, especially in pnpm projects that use symlinks extensively. On Windows, creating symlinks requires administrator privileges, causing the backup/restore operations to fail catastrophically:
+
+```bash
+✖ Update failed
+✗ Update error: EPERM: operation not permitted, symlink
+  'node_modules\.pnpm\concurrently@9.2.1\node_modules\concurrently' ->
+  'node_modules-backup-2025-10-16T18-33-03\concurrently'
+```
+
+**Root Cause:**
+The update function was incorrectly backing up ALL directories in `USER_DATA_DIRECTORIES`, including:
+- `node_modules` (managed by package managers, contains symlinks)
+- `.git` (managed by git)
+- `dist`, `build`, `coverage`, `.next`, `.nuxt`, `out` (build artifacts)
+
+These directories should be **excluded** from operations, not backed up. The only directories that need backup are those spec-flow manages and users customize.
+
+**Solution:**
+Separated concerns with two constants:
+
+1. **`USER_DATA_DIRECTORIES`** - Directories to EXCLUDE from install/copy operations
+2. **`BACKUP_DIRECTORIES`** - Directories to back up during updates (only `specs` + `.spec-flow/memory`)
+
+Now updates only back up truly valuable user data:
+- `.spec-flow/memory` (roadmap, constitution, design inspirations)
+- `specs` (feature specifications)
+
+### 🎯 Impact
+
+- ✅ Updates work on Windows without admin privileges
+- ✅ No EPERM errors from symlink operations
+- ✅ Faster updates (not backing up massive node_modules)
+- ✅ Cleaner backups (only valuable user data)
+- ✅ Works with pnpm, npm, yarn equally well
+
+### 📝 Files Changed
+
+- **bin/install.js**: Added `BACKUP_DIRECTORIES` constant, updated backup/restore logic (3 locations)
+- **package.json**: Version bump to 1.6.2
+
+### 📦 Installation
+
+```bash
+npm install -g spec-flow@1.6.2
+```
+
+Or upgrade:
+```bash
+npm update -g spec-flow
+```
+
+---
+
 ## v1.6.1 (2025-10-16)
 
 ### 🐛 Bug Fixes
