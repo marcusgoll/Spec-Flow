@@ -16,11 +16,11 @@ const { resolveConflict, STRATEGIES } = require('./conflicts');
 
 /**
  * User-generated directories that must NEVER be touched during install/update
- * These contain valuable user work and must be explicitly preserved
+ * These are excluded from all copy/install operations
  */
 const USER_DATA_DIRECTORIES = [
   'specs',           // Feature specifications (user's primary work)
-  'node_modules',    // Dependencies
+  'node_modules',    // Dependencies (managed by package manager)
   '.git',            // Git repository
   'dist',            // Build output
   'build',           // Build output
@@ -28,6 +28,15 @@ const USER_DATA_DIRECTORIES = [
   '.next',           // Next.js build
   '.nuxt',           // Nuxt build
   'out'              // Output directories
+];
+
+/**
+ * Directories containing valuable user data that should be backed up during updates
+ * Only includes directories that spec-flow manages and users customize
+ */
+const BACKUP_DIRECTORIES = [
+  'specs'            // Feature specifications and user's work
+  // Note: .spec-flow/memory is backed up separately
 ];
 
 /**
@@ -182,11 +191,11 @@ async function update(options) {
   let spinner;
 
   try {
-    // Create comprehensive backup of ALL user-generated content
+    // Create backup of valuable user content (memory and specs only)
     if (!force) {
       spinner = ora('Creating backup of user data...').start();
 
-      // Backup memory directory
+      // Backup memory directory (roadmap, constitution, design inspirations)
       if (existing.hasSpecFlowDir) {
         const memoryDir = path.join(targetDir, '.spec-flow', 'memory');
         if (await fs.pathExists(memoryDir)) {
@@ -195,8 +204,9 @@ async function update(options) {
         }
       }
 
-      // Backup ALL user-generated directories (CRITICAL: prevents data loss)
-      for (const userDir of USER_DATA_DIRECTORIES) {
+      // Backup ONLY valuable user-generated directories (not node_modules, build artifacts, etc.)
+      // CRITICAL: Only backup spec-flow managed content to prevent EPERM errors on Windows
+      for (const userDir of BACKUP_DIRECTORIES) {
         const dirPath = path.join(targetDir, userDir);
         if (await fs.pathExists(dirPath)) {
           backupPaths[userDir] = await createBackup(dirPath);
@@ -221,7 +231,7 @@ async function update(options) {
     });
 
     if (!result.success) {
-      // Restore ALL backups if update failed
+      // Restore backups if update failed
       if (Object.keys(backupPaths).length > 0) {
         spinner = ora('Restoring backups...').start();
 
@@ -230,8 +240,8 @@ async function update(options) {
           await restoreBackup(backupPaths.memory, path.join(targetDir, '.spec-flow', 'memory'));
         }
 
-        // Restore user directories
-        for (const userDir of USER_DATA_DIRECTORIES) {
+        // Restore user directories (only those we backed up)
+        for (const userDir of BACKUP_DIRECTORIES) {
           if (backupPaths[userDir]) {
             await restoreBackup(backupPaths[userDir], path.join(targetDir, userDir));
           }
@@ -260,7 +270,7 @@ async function update(options) {
   } catch (error) {
     if (spinner) spinner.fail('Update failed');
 
-    // Restore ALL backups on error
+    // Restore backups on error
     if (Object.keys(backupPaths).length > 0) {
       try {
         spinner = ora('Restoring backups...').start();
@@ -270,8 +280,8 @@ async function update(options) {
           await restoreBackup(backupPaths.memory, path.join(targetDir, '.spec-flow', 'memory'));
         }
 
-        // Restore user directories
-        for (const userDir of USER_DATA_DIRECTORIES) {
+        // Restore user directories (only those we backed up)
+        for (const userDir of BACKUP_DIRECTORIES) {
           if (backupPaths[userDir]) {
             await restoreBackup(backupPaths[userDir], path.join(targetDir, userDir));
           }
@@ -295,5 +305,6 @@ async function update(options) {
 module.exports = {
   install,
   update,
-  USER_DATA_DIRECTORIES
+  USER_DATA_DIRECTORIES,
+  BACKUP_DIRECTORIES
 };
