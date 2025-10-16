@@ -230,8 +230,8 @@ fi
 EXISTING_PR=$(gh pr list --head "$CURRENT_BRANCH" --json number,url -q '.[0]')
 
 if [ -n "$EXISTING_PR" ]; then
-  PR_NUMBER=$(echo "$EXISTING_PR" | jq -r '.number')
-  PR_URL=$(echo "$EXISTING_PR" | jq -r '.url')
+  PR_NUMBER=$(echo "$EXISTING_PR" | yq eval '.number')
+  PR_URL=$(echo "$EXISTING_PR" | yq eval '.url')
 
   echo "⚠️  PR already exists for this branch"
   echo "   #$PR_NUMBER: $PR_URL"
@@ -355,69 +355,6 @@ if [ -f ".env.example" ]; then
 else
   echo "⚠️  .env.example not found"
   echo ""
-fi
-```
-
----
-
-### Run Pre-Flight Checks
-
-```bash
-# Check if user wants to skip preflight
-SKIP_PREFLIGHT=false
-
-if [[ "$ARGUMENTS" =~ --skip-preflight ]]; then
-  SKIP_PREFLIGHT=true
-  echo "⚠️  Skipping pre-flight checks (--skip-preflight flag)"
-  echo ""
-else
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "Pre-Flight Validation"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-
-  echo "Run pre-flight checks to validate deployment readiness?"
-  echo ""
-  echo "Pre-flight validates:"
-  echo "  ✅ Environment variables"
-  echo "  ✅ Production builds (marketing + app)"
-  echo "  ✅ Docker image (API)"
-  echo "  ✅ Database migrations"
-  echo "  ✅ Type checking"
-  echo "  ✅ Bundle sizes"
-  echo ""
-  echo "Recommended: Always run before deploying"
-  echo "Duration: ~2-3 minutes"
-  echo ""
-
-  read -p "Run pre-flight checks? (Y/n): " RUN_PREFLIGHT
-
-  if [ "$RUN_PREFLIGHT" != "n" ] && [ "$RUN_PREFLIGHT" != "N" ]; then
-    echo ""
-    echo "Running pre-flight checks..."
-    echo ""
-
-    # Note: In production, this would invoke /preflight command
-    # For now, provide informational output
-
-    echo "→ /preflight would run the following:"
-    echo "  • Environment variable validation"
-    echo "  • Production build tests"
-    echo "  • Docker image build + health check"
-    echo "  • Migration testing"
-    echo "  • TypeScript type checks"
-    echo "  • Bundle size validation"
-    echo ""
-    echo "✅ Pre-flight checks complete (simulated)"
-    echo "   In production: Run '/preflight' manually before '/phase-1-ship'"
-    echo ""
-  else
-    echo ""
-    echo "⚠️  Skipping pre-flight checks"
-    echo "   Deployment may fail if issues exist"
-    echo "   To skip this prompt: /phase-1-ship --skip-preflight"
-    echo ""
-  fi
 fi
 ```
 
@@ -761,6 +698,126 @@ if [ "$CI_PASSED" != true ]; then
 fi
 ```
 
+## EXTRACT DEPLOYMENT IDS (FIX #3: Deployment ID Verification)
+
+**Parse workflow logs to extract deployment IDs for rollback:**
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Extracting Deployment IDs"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Find the staging deployment workflow run
+STAGING_RUN=$(gh run list \
+  --workflow=deploy-staging.yml \
+  --branch=main \
+  --limit=5 \
+  --json databaseId,headSha,conclusion \
+  --jq ".[] | select(.headSha==\"$(git rev-parse origin/main)\") | .databaseId" | head -1)
+
+if [ -z "$STAGING_RUN" ]; then
+  echo "⚠️  Could not find staging deployment run"
+  echo "   Deployment IDs will need to be extracted manually"
+  echo ""
+
+  MARKETING_ID=""
+  APP_ID=""
+  API_IMAGE=""
+else
+  echo "Found staging deployment: Run #$STAGING_RUN"
+  echo "Extracting deployment IDs from logs..."
+  echo ""
+
+  # Get workflow logs
+  DEPLOY_LOGS=$(gh run view "$STAGING_RUN" --log 2>/dev/null || echo "")
+
+  if [ -z "$DEPLOY_LOGS" ]; then
+    echo "⚠️  Could not fetch workflow logs"
+    MARKETING_ID=""
+    APP_ID=""
+    API_IMAGE=""
+  else
+    # Extract Vercel deployment IDs
+    # Pattern: marketing-abc123.vercel.app or https://marketing-abc123.vercel.app
+    MARKETING_ID=$(echo "$DEPLOY_LOGS" | grep -oE "(https://)?[a-z]+-marketing-[a-z0-9]+\.vercel\.app" | sed 's|https://||' | head -1 || echo "")
+
+    # Pattern: app-abc123.vercel.app or https://app-abc123.vercel.app
+    APP_ID=$(echo "$DEPLOY_LOGS" | grep -oE "(https://)?app-[a-z0-9-]+\.vercel\.app" | sed 's|https://||' | head -1 || echo "")
+
+    # Extract Railway/Docker image
+    # Pattern: ghcr.io/org/api:sha123 or ghcr.io/org/api:abc123def456
+    API_IMAGE=$(echo "$DEPLOY_LOGS" | grep -oE "ghcr\.io/[^/]+/[^:]+:[a-f0-9]{7,40}" | head -1 || echo "")
+
+    echo "Extracted IDs:"
+    echo "  Marketing: ${MARKETING_ID:-[not found]}"
+    echo "  App: ${APP_ID:-[not found]}"
+    echo "  API: ${API_IMAGE:-[not found]}"
+    echo ""
+  fi
+fi
+
+# Verify we got all required IDs
+MISSING_IDS=()
+[ -z "$MARKETING_ID" ] && MISSING_IDS+=("marketing")
+[ -z "$APP_ID" ] && MISSING_IDS+=("app")
+[ -z "$API_IMAGE" ] && MISSING_IDS+=("API")
+
+if [ ${#MISSING_IDS[@]} -gt 0 ]; then
+  echo "⚠️  Missing deployment IDs: ${MISSING_IDS[*]}"
+  echo ""
+  echo "Rollback information incomplete. Manual extraction required:"
+  echo "  1. View workflow logs: https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions/runs/$STAGING_RUN"
+  echo "  2. Search logs for deployment URLs"
+  echo "  3. Record IDs in workflow-state.yaml manually"
+  echo ""
+  echo "⚠️  Continuing with incomplete rollback metadata"
+  echo ""
+else
+  echo "✅ All deployment IDs captured"
+  echo ""
+
+  # Store in workflow state if state management is available
+  if [ -f ".spec-flow/scripts/bash/workflow-state.sh" ]; then
+    source .spec-flow/scripts/bash/workflow-state.sh
+
+    # Update deployment state
+    update_deployment_state "$FEATURE_DIR" "staging" "$(git rev-parse origin/main)" "$STAGING_RUN"
+    update_deployment_ids "$FEATURE_DIR" "staging" "$MARKETING_ID" "$APP_ID" "$API_IMAGE"
+
+    echo "✅ Deployment IDs saved to workflow-state.yaml"
+    echo ""
+  fi
+
+  # Store in separate JSON file for easy rollback reference
+  cat > "$FEATURE_DIR/deployment-metadata.json" <<EOF
+{
+  "staging": {
+    "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+    "commit_sha": "$(git rev-parse origin/main)",
+    "run_id": "$STAGING_RUN",
+    "pr_number": "$PR_NUMBER",
+    "deployments": {
+      "marketing": "$MARKETING_ID",
+      "app": "$APP_ID",
+      "api": "$API_IMAGE"
+    },
+    "urls": {
+      "marketing": "https://staging.cfipros.com",
+      "app": "https://app.staging.cfipros.com",
+      "api": "https://api.staging.cfipros.com"
+    }
+  }
+}
+EOF
+
+  echo "✅ Rollback metadata saved: $FEATURE_DIR/deployment-metadata.json"
+  echo ""
+fi
+```
+
+---
+
 ## CREATE STAGING SHIP REPORT
 
 **Generate report with deployment metadata:**
@@ -787,12 +844,12 @@ cat > "$FEATURE_DIR/staging-ship-report.md" <<EOF
 - API: https://api.staging.cfipros.com
 
 **Deployment IDs** (for rollback):
-- Marketing: [Will be populated by deploy-staging.yml]
-- App: [Will be populated by deploy-staging.yml]
-- API: [Will be populated by deploy-staging.yml]
+- Marketing: ${MARKETING_ID:-[Extraction failed - see logs]}
+- App: ${APP_ID:-[Extraction failed - see logs]}
+- API: ${API_IMAGE:-[Extraction failed - see logs]}
 
-**Note**: Deployment IDs captured in GitHub Actions logs
-          View at: $PR_URL/checks
+**Rollback metadata**: $FEATURE_DIR/deployment-metadata.json
+**GitHub Actions logs**: $PR_URL/checks
 
 ---
 

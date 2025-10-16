@@ -313,6 +313,12 @@ Every automation script is provided in both PowerShell (`.ps1`) and shell (`.sh`
 - PowerShell 7.3+ (`pwsh`) for Windows scripts
 - Bash 5+ (or Zsh) for shell scripts
 - Claude Code access with slash-command support
+- **yq 4.0+** for YAML state management:
+  - macOS: `brew install yq`
+  - Linux: See [mikefarah/yq releases](https://github.com/mikefarah/yq/releases)
+  - Windows: `choco install yq`
+- PowerShell-yaml module for PowerShell scripts:
+  - `Install-Module -Name powershell-yaml -Scope CurrentUser`
 
 Optional:
 - GitHub CLI (`gh`) for auto-merge helpers

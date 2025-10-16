@@ -17,6 +17,40 @@
 - What happens when [boundary condition]?
 - How does system handle [error scenario]?
 
+## User Stories (Prioritized)
+
+> **Purpose**: Break down feature into independently deliverable stories for MVP-first delivery.
+> **Format**: [P1] = MVP (ship first), [P2] = Enhancement, [P3] = Nice-to-have
+
+### Story Prioritization
+
+**Priority 1 (MVP) 🎯**
+- **US1** [P1]: As a [role], I want to [action] so that [benefit]
+  - **Acceptance**: [Specific, testable criteria]
+  - **Independent test**: [How to verify this story works standalone]
+  - **Effort**: [XS/S/M/L/XL]
+
+**Priority 2 (Enhancement)**
+- **US2** [P2]: As a [role], I want to [action] so that [benefit]
+  - **Acceptance**: [Specific, testable criteria]
+  - **Depends on**: US1
+  - **Effort**: [XS/S/M/L/XL]
+
+**Priority 3 (Nice-to-have)**
+- **US3** [P3]: As a [role], I want to [action] so that [benefit]
+  - **Acceptance**: [Specific, testable criteria]
+  - **Depends on**: US1, US2
+  - **Effort**: [XS/S/M/L/XL]
+
+**Effort Scale**:
+- XS: <2 hours
+- S: 2-4 hours
+- M: 4-8 hours (½ day)
+- L: 8-16 hours (1-2 days)
+- XL: 16+ hours (>2 days, consider breaking down)
+
+**MVP Strategy**: Ship US1 first, validate with users, then incrementally add US2, US3 based on feedback.
+
 ## Visual References
 
 See `./visuals/README.md` for UI research and design patterns (if applicable)

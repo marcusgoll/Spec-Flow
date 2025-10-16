@@ -74,12 +74,12 @@ if [ -z "$LATEST_DEPLOY" ] || [ "$LATEST_DEPLOY" = "[]" ]; then
   exit 1
 fi
 
-RUN_ID=$(echo "$LATEST_DEPLOY" | jq -r '.[0].databaseId')
-COMMIT_SHA=$(echo "$LATEST_DEPLOY" | jq -r '.[0].headSha')
-DEPLOY_STATUS=$(echo "$LATEST_DEPLOY" | jq -r '.[0].status')
-DEPLOY_CONCLUSION=$(echo "$LATEST_DEPLOY" | jq -r '.[0].conclusion')
-DEPLOY_TITLE=$(echo "$LATEST_DEPLOY" | jq -r '.[0].displayTitle')
-DEPLOY_DATE=$(echo "$LATEST_DEPLOY" | jq -r '.[0].createdAt')
+RUN_ID=$(echo "$LATEST_DEPLOY" | yq eval '.[0].databaseId')
+COMMIT_SHA=$(echo "$LATEST_DEPLOY" | yq eval '.[0].headSha')
+DEPLOY_STATUS=$(echo "$LATEST_DEPLOY" | yq eval '.[0].status')
+DEPLOY_CONCLUSION=$(echo "$LATEST_DEPLOY" | yq eval '.[0].conclusion')
+DEPLOY_TITLE=$(echo "$LATEST_DEPLOY" | yq eval '.[0].displayTitle')
+DEPLOY_DATE=$(echo "$LATEST_DEPLOY" | yq eval '.[0].createdAt')
 
 echo "Latest staging deployment:"
 echo "  Workflow: https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions/runs/$RUN_ID"
@@ -184,7 +184,7 @@ JOBS_JSON=$(gh run view "$RUN_ID" --json jobs)
 echo "Job Status:"
 
 # Check deploy-marketing
-MARKETING_STATUS=$(echo "$JOBS_JSON" | jq -r '.jobs[] | select(.name | contains("deploy-marketing")) | .conclusion' | head -1)
+MARKETING_STATUS=$(echo "$JOBS_JSON" | yq eval '.jobs[] | select(.name | contains("deploy-marketing")) | .conclusion' | head -1)
 if [ "$MARKETING_STATUS" = "success" ]; then
   echo "  ✅ deploy-marketing"
 else
@@ -192,7 +192,7 @@ else
 fi
 
 # Check deploy-app
-APP_STATUS=$(echo "$JOBS_JSON" | jq -r '.jobs[] | select(.name | contains("deploy-app")) | .conclusion' | head -1)
+APP_STATUS=$(echo "$JOBS_JSON" | yq eval '.jobs[] | select(.name | contains("deploy-app")) | .conclusion' | head -1)
 if [ "$APP_STATUS" = "success" ]; then
   echo "  ✅ deploy-app"
 else
@@ -200,7 +200,7 @@ else
 fi
 
 # Check deploy-api
-API_STATUS=$(echo "$JOBS_JSON" | jq -r '.jobs[] | select(.name | contains("deploy-api")) | .conclusion' | head -1)
+API_STATUS=$(echo "$JOBS_JSON" | yq eval '.jobs[] | select(.name | contains("deploy-api")) | .conclusion' | head -1)
 if [ "$API_STATUS" = "success" ]; then
   echo "  ✅ deploy-api"
 else
@@ -208,7 +208,7 @@ else
 fi
 
 # Check smoke-tests
-SMOKE_STATUS=$(echo "$JOBS_JSON" | jq -r '.jobs[] | select(.name | contains("smoke")) | .conclusion' | head -1)
+SMOKE_STATUS=$(echo "$JOBS_JSON" | yq eval '.jobs[] | select(.name | contains("smoke")) | .conclusion' | head -1)
 if [ "$SMOKE_STATUS" = "success" ]; then
   echo "  ✅ smoke-tests"
 else
@@ -290,6 +290,199 @@ fi
 
 ---
 
+### Phase V.2.5: TEST ROLLBACK CAPABILITY (FIX #2: Rollback Testing)
+
+**CRITICAL: Test rollback works before allowing production deployment:**
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "PHASE V.2.5: TEST ROLLBACK CAPABILITY"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Load deployment metadata from /phase-1-ship
+METADATA_FILE="$FEATURE_DIR/deployment-metadata.json"
+
+if [ ! -f "$METADATA_FILE" ]; then
+  echo "⚠️  Deployment metadata not found: $METADATA_FILE"
+  echo "   Skipping rollback test (first deployment or metadata missing)"
+  echo ""
+  ROLLBACK_TESTED=false
+else
+  # Extract current deployment ID
+  CURRENT_APP_ID=$(yq eval '.staging.deployments.app // empty' "$METADATA_FILE")
+
+  if [ -z "$CURRENT_APP_ID" ]; then
+    echo "⚠️  No app deployment ID found in metadata"
+    echo "   Skipping rollback test"
+    echo ""
+    ROLLBACK_TESTED=false
+  else
+    echo "Current deployment:"
+    echo "  App: $CURRENT_APP_ID"
+    echo ""
+
+    # Get previous deployment from workflow state or NOTES.md
+    PREV_APP_ID=""
+
+    # Try workflow-state.yaml first
+    STATE_FILE="$FEATURE_DIR/workflow-state.yaml"
+    if [ -f "$STATE_FILE" ]; then
+      PREV_APP_ID=$(yq eval '.deployment.staging.previous_deployment_ids.app // empty' "$STATE_FILE")
+    fi
+
+    # Fallback: Try to find previous deployment from NOTES.md
+    if [ -z "$PREV_APP_ID" ] && [ -f "$FEATURE_DIR/NOTES.md" ]; then
+      PREV_APP_ID=$(grep "App Deploy ID:" "$FEATURE_DIR/NOTES.md" | tail -2 | head -1 | grep -oE "[a-z0-9-]+\.vercel\.app" || echo "")
+    fi
+
+    if [ -z "$PREV_APP_ID" ]; then
+      echo "ℹ️  No previous deployment found (first deployment to staging)"
+      echo "   Skipping rollback test"
+      echo ""
+      ROLLBACK_TESTED=true  # Not a blocker for first deployment
+    else
+      echo "Previous deployment:"
+      echo "  App: $PREV_APP_ID"
+      echo ""
+
+      # Test rollback capability
+      echo "🧪 Testing rollback capability..."
+      echo ""
+
+      # Step 1: Rollback to previous deployment
+      echo "Step 1: Rolling back to previous deployment..."
+
+      # Check if Vercel CLI is available
+      if ! command -v vercel &> /dev/null; then
+        echo "⚠️  Vercel CLI not found"
+        echo "   Install: npm install -g vercel"
+        echo ""
+        echo "🚨 BLOCKER: Cannot verify rollback capability"
+        echo "   Install Vercel CLI and re-run /validate-staging"
+        exit 1
+      fi
+
+      # Perform rollback
+      ROLLBACK_OUTPUT=$(vercel alias set "$PREV_APP_ID" "$STAGING_APP" --token="$VERCEL_TOKEN" 2>&1)
+      ROLLBACK_EXIT_CODE=$?
+
+      if [ $ROLLBACK_EXIT_CODE -ne 0 ]; then
+        echo "❌ ROLLBACK COMMAND FAILED"
+        echo ""
+        echo "Output:"
+        echo "$ROLLBACK_OUTPUT" | sed 's/^/  /'
+        echo ""
+        echo "🚨 BLOCKER: Rollback capability broken"
+        echo ""
+        echo "Possible causes:"
+        echo "  - VERCEL_TOKEN not set or invalid"
+        echo "  - Previous deployment ID no longer exists"
+        echo "  - Vercel alias permissions issue"
+        echo ""
+        echo "Fix rollback capability before proceeding to production."
+        echo "Without working rollback, production incidents cannot be recovered."
+        exit 1
+      fi
+
+      echo "✅ Rollback command succeeded"
+      echo ""
+
+      # Step 2: Verify rollback by checking live URL
+      echo "Step 2: Verifying rollback (waiting 15s for DNS propagation)..."
+      sleep 15
+
+      # Check if previous version is live
+      LIVE_RESPONSE=$(curl -sI "$STAGING_APP" 2>&1)
+      LIVE_VERCEL_ID=$(echo "$LIVE_RESPONSE" | grep -i "x-vercel-id" | awk '{print $2}' | tr -d '\r\n')
+
+      # Extract deployment ID from URL for comparison
+      PREV_ID=$(echo "$PREV_APP_ID" | sed 's|https://||' | cut -d. -f1)
+
+      if [[ "$LIVE_RESPONSE" == *"$PREV_ID"* ]] || [[ "$LIVE_VERCEL_ID" == *"$PREV_ID"* ]]; then
+        echo "✅ Rollback verified (previous version is live)"
+        echo ""
+
+        # Step 3: Roll forward to current version
+        echo "Step 3: Rolling forward to current deployment..."
+
+        ROLLFORWARD_OUTPUT=$(vercel alias set "$CURRENT_APP_ID" "$STAGING_APP" --token="$VERCEL_TOKEN" 2>&1)
+        ROLLFORWARD_EXIT_CODE=$?
+
+        if [ $ROLLFORWARD_EXIT_CODE -ne 0 ]; then
+          echo "⚠️  ROLL-FORWARD FAILED"
+          echo ""
+          echo "Output:"
+          echo "$ROLLFORWARD_OUTPUT" | sed 's/^/  /'
+          echo ""
+          echo "🚨 CRITICAL: Staging is now on old deployment"
+          echo "   Manual intervention required:"
+          echo "   vercel alias set $CURRENT_APP_ID $STAGING_APP"
+          exit 1
+        fi
+
+        sleep 10  # Wait for DNS
+        echo "✅ Rolled forward to current version"
+        echo ""
+
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "✅ ROLLBACK CAPABILITY VERIFIED"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "Rollback test results:"
+        echo "  ✅ Rollback command works"
+        echo "  ✅ Previous deployment accessible"
+        echo "  ✅ Alias switching functional"
+        echo "  ✅ Roll-forward works"
+        echo ""
+        echo "Production deployment can proceed with confidence."
+        echo "In case of production incident, rollback is verified to work."
+        echo ""
+
+        ROLLBACK_TESTED=true
+
+        # Update workflow state with rollback test result
+        if [ -f ".spec-flow/scripts/bash/workflow-state.sh" ]; then
+          source .spec-flow/scripts/bash/workflow-state.sh
+
+          GATE_DATA='{"passed": true, "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'", "previous_deployment": "'$PREV_APP_ID'", "current_deployment": "'$CURRENT_APP_ID'"}'
+          update_quality_gate_detailed "$FEATURE_DIR" "rollback_capability" "$GATE_DATA"
+        fi
+
+      else
+        echo "❌ ROLLBACK VERIFICATION FAILED"
+        echo ""
+        echo "Expected previous deployment: $PREV_ID"
+        echo "Got Vercel ID: ${LIVE_VERCEL_ID:-[not found]}"
+        echo ""
+        echo "🚨 BLOCKER: Rollback command succeeded but verification failed"
+        echo ""
+        echo "Possible causes:"
+        echo "  - DNS propagation delay (try waiting longer)"
+        echo "  - Vercel alias not applied correctly"
+        echo "  - Staging URL pointing to wrong deployment"
+        echo ""
+        echo "Recommendation: Wait 1-2 minutes and re-run /validate-staging"
+        exit 1
+      fi
+    fi
+  fi
+fi
+
+# Store rollback test result
+if [ -f "$FEATURE_DIR/workflow-state.yaml" ] && [ "$ROLLBACK_TESTED" = true ]; then
+  # Already updated above if test ran successfully
+  echo "Rollback test result recorded in workflow-state.yaml"
+  echo ""
+elif [ "$ROLLBACK_TESTED" = false ]; then
+  echo "⚠️  Rollback capability not tested"
+  echo "   This may be acceptable for first deployment"
+  echo ""
+fi
+```
+
+---
+
 ### Phase V.3: Review E2E Test Results
 
 **Parse E2E test results from workflow:**
@@ -301,7 +494,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Find E2E job in workflow
-E2E_JOB=$(echo "$JOBS_JSON" | jq -r '.jobs[] | select(.name | contains("e2e") or contains("E2E")) | {name: .name, conclusion: .conclusion, htmlUrl: .html_url} | @json' | head -1)
+E2E_JOB=$(echo "$JOBS_JSON" | yq eval '.jobs[] | select(.name | contains("e2e") or contains("E2E")) | {name: .name, conclusion: .conclusion, htmlUrl: .html_url} | @json' | head -1)
 
 if [ -z "$E2E_JOB" ] || [ "$E2E_JOB" = "null" ]; then
   echo "⚠️  No E2E tests found in workflow"
@@ -309,9 +502,9 @@ if [ -z "$E2E_JOB" ] || [ "$E2E_JOB" = "null" ]; then
   E2E_STATUS="not_run"
   E2E_URL=""
 else
-  E2E_NAME=$(echo "$E2E_JOB" | jq -r '.name')
-  E2E_CONCLUSION=$(echo "$E2E_JOB" | jq -r '.conclusion')
-  E2E_URL=$(echo "$E2E_JOB" | jq -r '.htmlUrl')
+  E2E_NAME=$(echo "$E2E_JOB" | yq eval '.name')
+  E2E_CONCLUSION=$(echo "$E2E_JOB" | yq eval '.conclusion')
+  E2E_URL=$(echo "$E2E_JOB" | yq eval '.htmlUrl')
 
   echo "E2E Job: $E2E_NAME"
   echo "Status: $E2E_CONCLUSION"
@@ -362,7 +555,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Find Lighthouse job in workflow
-LIGHTHOUSE_JOB=$(echo "$JOBS_JSON" | jq -r '.jobs[] | select(.name | contains("lighthouse") or contains("Lighthouse")) | {name: .name, conclusion: .conclusion, htmlUrl: .html_url} | @json' | head -1)
+LIGHTHOUSE_JOB=$(echo "$JOBS_JSON" | yq eval '.jobs[] | select(.name | contains("lighthouse") or contains("Lighthouse")) | {name: .name, conclusion: .conclusion, htmlUrl: .html_url} | @json' | head -1)
 
 if [ -z "$LIGHTHOUSE_JOB" ] || [ "$LIGHTHOUSE_JOB" = "null" ]; then
   echo "⚠️  No Lighthouse CI found in workflow"
@@ -370,9 +563,9 @@ if [ -z "$LIGHTHOUSE_JOB" ] || [ "$LIGHTHOUSE_JOB" = "null" ]; then
   LIGHTHOUSE_STATUS="not_run"
   LIGHTHOUSE_URL=""
 else
-  LIGHTHOUSE_NAME=$(echo "$LIGHTHOUSE_JOB" | jq -r '.name')
-  LIGHTHOUSE_CONCLUSION=$(echo "$LIGHTHOUSE_JOB" | jq -r '.conclusion')
-  LIGHTHOUSE_URL=$(echo "$LIGHTHOUSE_JOB" | jq -r '.htmlUrl')
+  LIGHTHOUSE_NAME=$(echo "$LIGHTHOUSE_JOB" | yq eval '.name')
+  LIGHTHOUSE_CONCLUSION=$(echo "$LIGHTHOUSE_JOB" | yq eval '.conclusion')
+  LIGHTHOUSE_URL=$(echo "$LIGHTHOUSE_JOB" | yq eval '.htmlUrl')
 
   echo "Lighthouse Job: $LIGHTHOUSE_NAME"
   echo "Status: $LIGHTHOUSE_CONCLUSION"

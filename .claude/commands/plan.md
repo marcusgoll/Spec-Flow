@@ -1,53 +1,74 @@
 ---
 description: Generate design artifacts from feature spec (research + design + context plan)
+scripts:
+  sh: scripts/bash/setup-plan.sh --json "{ARGS}"
+  ps: scripts/powershell/setup-plan.ps1 -Json "{ARGS}"
+agent_scripts:
+  sh: scripts/bash/update-agent-context.sh __AGENT__
+  ps: scripts/powershell/update-agent-context.ps1 -AgentType __AGENT__
 ---
 
 Design implementation for: $ARGUMENTS
 
 ## MENTAL MODEL
 
-**Workflow**:\spec-flow -> clarify -> plan -> tasks -> analyze -> implement -> optimize -> debug -> preview -> phase-1-ship -> validate-staging -> phase-2-ship
+**Workflow**: spec-flow -> clarify -> plan -> tasks -> analyze -> implement -> optimize -> debug -> preview -> phase-1-ship -> validate-staging -> phase-2-ship
+
+**Phases:**
+- Phase 0: Research & Discovery → research.md
+- Phase 1: Design & Contracts → data-model.md, contracts/, quickstart.md, plan.md
 
 **State machine:**
-- Load feature -> Research codebase -> Design artifacts -> Document plan -> Suggest next
+- Setup -> Constitution check -> Phase 0 (Research) -> Phase 1 (Design) -> Agent update -> Commit -> Suggest next
 
 **Auto-suggest:**
-- When complete -> `/tasks`
+- UI features → `/design-variations` or `/tasks`
+- Backend features → `/tasks`
 
-## USAGE
+## USER INPUT
 
-**Arguments:**
-```bash
-/plan              # Plan spec in current branch
-/plan [slug]       # Plan specific feature by slug
+```text
+$ARGUMENTS
 ```
 
-**Examples:**
-- `/plan` → Uses current git branch name as slug
-- `/plan csv-export` → Plans specs/csv-export/spec.md
+You **MUST** consider the user input before proceeding (if not empty).
 
-## LOAD FEATURE
+## SETUP
 
-**Get feature from argument or current branch:**
+**Run setup script from repo root:**
 
 ```bash
-# Determine slug
-if [ -n "$ARGUMENTS" ]; then
-  SLUG="$ARGUMENTS"
-else
-  SLUG=$(git branch --show-current)
-fi
+# Execute script and parse JSON output
+# For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot'
+# (or double-quote if possible: "I'm Groot")
 
-# Set paths
-FEATURE_DIR="specs/$SLUG"
-FEATURE_SPEC="$FEATURE_DIR/spec.md"
+OUTPUT=$({SCRIPT})
 
-# Validate spec exists
-if [ ! -f "$FEATURE_SPEC" ]; then
-  echo "Error: Spec not found at $FEATURE_SPEC"
-  echo "Run \spec-flow first"
-  exit 1
-fi
+# Parse JSON to get paths (all must be absolute)
+FEATURE_SPEC=$(echo "$OUTPUT" | jq -r '.feature_spec')
+IMPL_PLAN=$(echo "$OUTPUT" | jq -r '.impl_plan')
+SPECS_DIR=$(echo "$OUTPUT" | jq -r '.specs_dir')
+BRANCH=$(echo "$OUTPUT" | jq -r '.branch')
+FEATURE_DIR=$(dirname "$FEATURE_SPEC")
+SLUG=$(basename "$FEATURE_DIR")
+
+# Validate paths exist
+[ ! -f "$FEATURE_SPEC" ] && echo "Error: Spec not found at $FEATURE_SPEC" && exit 1
+[ ! -d "$FEATURE_DIR" ] && echo "Error: Feature dir not found at $FEATURE_DIR" && exit 1
+
+echo "Feature: $SLUG"
+echo "Spec: $FEATURE_SPEC"
+echo "Branch: $BRANCH"
+echo ""
+```
+
+## LOAD CONTEXT
+
+**Load spec and constitution:**
+
+```bash
+# Constitution file for alignment check
+CONSTITUTION_FILE=".spec-flow/memory/constitution.md"
 
 # Validate spec is clarified (optional check)
 REMAINING_CLARIFICATIONS=$(grep -c "\[NEEDS CLARIFICATION\]" "$FEATURE_SPEC" || echo 0)
@@ -64,6 +85,59 @@ if [ "$REMAINING_CLARIFICATIONS" -gt 0 ]; then
     exit 0
   fi
 fi
+
+# Read spec and constitution for planning
+echo "Loading feature spec and constitution..."
+```
+
+## CONSTITUTION CHECK (Quality Gate)
+
+**Verify feature aligns with mission and values:**
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📜 CONSTITUTION CHECK"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Read constitution if exists
+if [ -f "$CONSTITUTION_FILE" ]; then
+  echo "Checking feature against constitution.md..."
+
+  # Claude Code: Read constitution and spec, verify alignment
+  # Check for violations of:
+  # - Mission alignment
+  # - Value constraints
+  # - Technical principles
+  # - Quality standards
+
+  # Track violations
+  CONSTITUTION_VIOLATIONS=()
+
+  # Example checks (Claude Code implements actual logic):
+  # - Does feature support core mission?
+  # - Does it violate privacy principles?
+  # - Does it compromise security standards?
+  # - Does it create technical debt against principles?
+
+  # If violations found:
+  if [ ${#CONSTITUTION_VIOLATIONS[@]} -gt 0 ]; then
+    echo "⚠️  Constitution violations detected:"
+    for violation in "${CONSTITUTION_VIOLATIONS[@]}"; do
+      echo "  - $violation"
+    done
+    echo ""
+    echo "Violations must be justified or feature redesigned."
+    echo "ERROR: Cannot proceed with unjustified violations."
+    exit 1
+  else
+    echo "✅ Feature aligns with constitution"
+  fi
+else
+  echo "⚠️  No constitution.md found - skipping alignment check"
+fi
+
+echo ""
 ```
 
 ## TEMPLATE VALIDATION
@@ -72,13 +146,13 @@ fi
 
 ```bash
 REQUIRED_TEMPLATES=(
-  "\spec-flow/templates/error-log-template.md"
+  ".spec-flow/templates/error-log-template.md"
 )
 
 for template in "${REQUIRED_TEMPLATES[@]}"; do
   if [ ! -f "$template" ]; then
     echo "Error: Missing required template: $template"
-    echo "Run: git checkout main -- \spec-flow/templates/"
+    echo "Run: git checkout main -- .spec-flow/templates/"
     exit 1
   fi
 done
@@ -110,22 +184,27 @@ echo "SCREEN_COUNT=$SCREEN_COUNT" >> "$FEATURE_DIR/.planning-context"
 - At least 1 screen? UI feature = true
 - No screens.yaml or empty? Backend feature = false
 
-## RESEARCH CODEBASE (Scaled: 2-15 tool calls)
+## PHASE 0: RESEARCH & DISCOVERY
 
 **Prevent duplication - scan before designing:**
 
-**Initialize reuse tracking:**
 ```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 PHASE 0: RESEARCH & DISCOVERY"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Initialize reuse tracking
 REUSABLE_COMPONENTS=()
 NEW_COMPONENTS=()
 RESEARCH_DECISIONS=()
-```
+UNKNOWNS=()
 
-**Determine research depth based on feature classification:**
-```bash
-# Check if simple feature (from NOTES.md classification)
-if grep -q "Backend/API feature (no special artifacts)" "$NOTES_FILE" ||
-   grep -q "Auto-classified: Simple feature" "$NOTES_FILE"; then
+# Determine research depth based on feature classification
+NOTES_FILE="$FEATURE_DIR/NOTES.md"
+
+if grep -q "Backend/API feature (no special artifacts)" "$NOTES_FILE" 2>/dev/null ||
+   grep -q "Auto-classified: Simple feature" "$NOTES_FILE" 2>/dev/null; then
   RESEARCH_MODE="minimal"
   echo "Research mode: Minimal (simple feature)"
 else
@@ -136,7 +215,7 @@ echo ""
 ```
 
 **Minimal research** (2-3 tools for simple features):
-1. **Read spec**: Extract requirements, NFRs, deployment considerations
+1. **Read spec**: Extract requirements, NFRs, deployment considerations, unknowns
 2. **Grep keywords**: Quick scan for similar patterns to reuse
 3. **Glob modules** (optional): If integration needed with existing code
 
@@ -157,26 +236,256 @@ echo ""
 RESEARCH_DECISIONS+=("Stack choice: Next.js App Router (existing pattern)")
 RESEARCH_DECISIONS+=("State: SWR for data fetching (reuse apps/app/lib/swr)")
 RESEARCH_DECISIONS+=("Auth: Clerk middleware (reuse existing setup)")
+
+# Track unknowns that need clarification
+UNKNOWNS+=("Performance threshold for CSV parsing unclear")
+UNKNOWNS+=("Rate limiting strategy not specified")
 ```
 
-**Output**: Findings documented in plan.md [RESEARCH DECISIONS] section
+**Generate research.md:**
 
-## DESIGN ARTIFACTS
+```bash
+RESEARCH_FILE="$FEATURE_DIR/research.md"
 
-**Generate consolidated `plan.md`:**
+cat > "$RESEARCH_FILE" <<EOF
+# Research & Discovery: $SLUG
+
+## Research Decisions
+
+$(for decision in "${RESEARCH_DECISIONS[@]}"; do
+  echo "### Decision: $decision"
+  echo ""
+  echo "- **Decision**: [what chosen]"
+  echo "- **Rationale**: [why this over alternatives]"
+  echo "- **Alternatives**: [what rejected and why]"
+  echo "- **Source**: [link/file/research]"
+  echo ""
+done)
+
+---
+
+## Components to Reuse (${#REUSABLE_COMPONENTS[@]} found)
+
+$(for component in "${REUSABLE_COMPONENTS[@]}"; do
+  echo "- $component"
+done)
+
+---
+
+## New Components Needed (${#NEW_COMPONENTS[@]} required)
+
+$(for component in "${NEW_COMPONENTS[@]}"; do
+  echo "- $component"
+done)
+
+---
+
+## Unknowns & Questions
+
+$(if [ ${#UNKNOWNS[@]} -gt 0 ]; then
+  for unknown in "${UNKNOWNS[@]}"; do
+    echo "- ⚠️  $unknown"
+  done
+else
+  echo "None - all technical questions resolved"
+fi)
+
+EOF
+
+echo "✅ Generated research.md"
+echo ""
+```
+
+## PHASE 1: DESIGN & CONTRACTS
+
+**Prerequisites**: research.md complete, unknowns resolved
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🎨 PHASE 1: DESIGN & CONTRACTS"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+```
+
+### Step 1: Generate data-model.md
+
+**Extract entities from feature spec:**
+
+```bash
+DATA_MODEL_FILE="$FEATURE_DIR/data-model.md"
+
+cat > "$DATA_MODEL_FILE" <<'EOF'
+# Data Model: $SLUG
+
+## Entities
+
+### [Entity Name]
+**Purpose**: [description]
+
+**Fields**:
+- `id`: UUID (PK)
+- `field_name`: Type - [description]
+- `created_at`: Timestamp
+- `updated_at`: Timestamp
+
+**Relationships**:
+- Has many: [related entity]
+- Belongs to: [parent entity]
+
+**Validation Rules**:
+- [field]: [constraint] (from requirement FR-XXX)
+- [field]: [constraint] (from requirement FR-YYY)
+
+**State Transitions** (if applicable):
+- Initial → Active (on creation)
+- Active → Archived (on deletion)
+- Active → Suspended (on violation)
+
+---
+
+## Database Schema (Mermaid)
+
+\`\`\`mermaid
+erDiagram
+    users ||--o{ preferences : has
+    users {
+        uuid id PK
+        string email
+        timestamp created_at
+    }
+    preferences {
+        uuid id PK
+        uuid user_id FK
+        jsonb settings
+        timestamp updated_at
+    }
+\`\`\`
+
+---
+
+## API Schemas
+
+**Request/Response Schemas**: See contracts/api.yaml
+
+**State Shape** (frontend):
+\`\`\`typescript
+interface FeatureState {
+  data: Data | null
+  loading: boolean
+  error: Error | null
+}
+\`\`\`
+EOF
+
+echo "✅ Generated data-model.md"
+echo ""
+```
+
+### Step 2: Generate API contracts
+
+**Generate OpenAPI specs from functional requirements:**
+
+```bash
+mkdir -p "$FEATURE_DIR/contracts"
+
+cat > "$FEATURE_DIR/contracts/api.yaml" <<'EOF'
+openapi: 3.0.0
+info:
+  title: [Feature] API
+  version: 1.0.0
+paths:
+  /api/v1/[feature]:
+    get:
+      summary: [description]
+      parameters: []
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+        400:
+          description: Bad request
+        401:
+          description: Unauthorized
+        500:
+          description: Server error
+EOF
+
+echo "✅ Generated contracts/api.yaml"
+echo ""
+```
+
+### Step 3: Generate quickstart.md
+
+**Integration scenarios for developers:**
+
+```bash
+QUICKSTART_FILE="$FEATURE_DIR/quickstart.md"
+
+cat > "$QUICKSTART_FILE" <<'EOF'
+# Quickstart: $SLUG
+
+## Scenario 1: Initial Setup
+
+\`\`\`bash
+# Install dependencies
+pnpm install
+
+# Run migrations
+cd api && uv run alembic upgrade head
+
+# Seed test data
+uv run python scripts/seed_[feature].py
+
+# Start dev servers
+pnpm dev
+\`\`\`
+
+## Scenario 2: Validation
+
+\`\`\`bash
+# Run tests
+pnpm test
+cd api && uv run pytest tests/[feature]/
+
+# Check types
+pnpm type-check
+
+# Lint
+pnpm lint
+\`\`\`
+
+## Scenario 3: Manual Testing
+
+1. Navigate to: http://localhost:3000/feature
+2. Verify: [expected behavior]
+3. Check: [validation steps]
+EOF
+
+echo "✅ Generated quickstart.md"
+echo ""
+```
+
+### Step 4: Generate consolidated plan.md
+
+**Comprehensive architecture document:**
 
 ```markdown
 # Implementation Plan: [Feature Name]
 
 ## [RESEARCH DECISIONS]
 
-### Decision: [Technology/Pattern Choice]
-- **Decision**: [what chosen]
-- **Rationale**: [why this over alternatives]
-- **Alternatives**: [what rejected and why]
-- **Source**: [link/file/research]
+See: research.md for full research findings
 
-[Repeat for each major decision]
+**Summary**:
+- Stack: [choices from research.md]
+- Components to reuse: ${#REUSABLE_COMPONENTS[@]}
+- New components needed: ${#NEW_COMPONENTS[@]}
 
 ---
 
@@ -224,37 +533,14 @@ apps/app/
 
 ---
 
-## [SCHEMA]
+## [DATA MODEL]
 
-**Database Tables** (if applicable):
+See: data-model.md for complete entity definitions
 
-\`\`\`mermaid
-erDiagram
-    users ||--o{ preferences : has
-    users {
-        uuid id PK
-        string email
-        timestamp created_at
-    }
-    preferences {
-        uuid id PK
-        uuid user_id FK
-        jsonb settings
-        timestamp updated_at
-    }
-\`\`\`
-
-**API Schemas** (OpenAPI):
-- See: contracts/api.yaml
-
-**State Shape** (frontend):
-\`\`\`typescript
-interface FeatureState {
-  data: Data | null
-  loading: boolean
-  error: Error | null
-}
-\`\`\`
+**Summary**:
+- Entities: [count]
+- Relationships: [key relationships]
+- Migrations required: [Yes/No]
 
 ---
 
@@ -397,77 +683,16 @@ Then feature works without errors
 
 ## [INTEGRATION SCENARIOS]
 
-**From quickstart perspective:**
+See: quickstart.md for complete integration scenarios
 
-### Scenario 1: Initial Setup
-\`\`\`bash
-# Install dependencies
-pnpm install
+**Summary**:
+- Initial setup documented
+- Validation workflow defined
+- Manual testing steps provided
 
-# Run migrations
-cd api && uv run alembic upgrade head
+---
 
-# Seed test data
-uv run python scripts/seed_[feature].py
-
-# Start dev servers
-pnpm dev
-\`\`\`
-
-### Scenario 2: Validation
-\`\`\`bash
-# Run tests
-pnpm test
-cd api && uv run pytest tests/[feature]/
-
-# Check types
-pnpm type-check
-
-# Lint
-pnpm lint
-\`\`\`
-
-### Scenario 3: Manual Testing
-1. Navigate to: http://localhost:3000/feature
-2. Verify: [expected behavior]
-3. Check: [validation steps]
-```
-
-**Generate `contracts/` directory with API specs:**
-
-```bash
-mkdir -p "$FEATURE_DIR/contracts"
-
-cat > "$FEATURE_DIR/contracts/api.yaml" <<'EOF'
-openapi: 3.0.0
-info:
-  title: [Feature] API
-  version: 1.0.0
-paths:
-  /api/v1/[feature]:
-    get:
-      summary: [description]
-      parameters: []
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-        400:
-          description: Bad request
-        401:
-          description: Unauthorized
-        500:
-          description: Server error
-EOF
-```
-
-**Initialize `error-log.md` with structure:**
+### Step 5: Initialize error-log.md
 
 ```bash
 cat > "$FEATURE_DIR/error-log.md" <<EOF
@@ -512,6 +737,60 @@ None yet.
 - Code: [file:line]
 - Commit: [sha]
 EOF
+
+echo "✅ Generated error-log.md"
+echo ""
+```
+
+### Step 6: Update agent context
+
+**Run agent script to update agent-specific context files:**
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🤖 AGENT CONTEXT UPDATE"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Run agent context update script (detects which agent is in use)
+if [ -f "{AGENT_SCRIPT}" ]; then
+  echo "Updating agent context files with new technology..."
+  {AGENT_SCRIPT} "general-purpose"
+  echo "✅ Agent context updated"
+else
+  echo "⚠️  Agent script not found - skipping context update"
+fi
+
+echo ""
+```
+
+### Step 7: Validate unresolved questions
+
+**Check for critical unknowns before committing:**
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ VALIDATION"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Check for unresolved unknowns in research.md
+UNRESOLVED_COUNT=$(grep -c "⚠️" "$FEATURE_DIR/research.md" 2>/dev/null || echo 0)
+
+if [ "$UNRESOLVED_COUNT" -gt 0 ]; then
+  echo "⚠️  WARNING: $UNRESOLVED_COUNT unresolved questions in research.md"
+  echo ""
+  echo "Unresolved questions:"
+  grep "⚠️" "$FEATURE_DIR/research.md"
+  echo ""
+  echo "ERROR: Cannot proceed with critical unknowns."
+  echo "Resolve questions in research.md before committing."
+  exit 1
+else
+  echo "✅ All technical questions resolved"
+fi
+
+echo ""
 ```
 
 ## GIT COMMIT
@@ -551,9 +830,14 @@ done
 COMMIT_MSG="${COMMIT_MSG}
 
 Artifacts:
+- specs/${SLUG}/research.md (research decisions + component reuse analysis)
+- specs/${SLUG}/data-model.md (entity definitions + relationships)
+- specs/${SLUG}/quickstart.md (integration scenarios)
 - specs/${SLUG}/plan.md (consolidated architecture + design)
 - specs/${SLUG}/contracts/api.yaml (OpenAPI specs)
 - specs/${SLUG}/error-log.md (initialized for tracking)
+
+Agent context: Updated with new technology stack
 
 Next: /tasks
 
@@ -610,12 +894,15 @@ fi
 
 echo ""
 echo "Artifacts created:"
+echo "  - research.md (research decisions + component reuse)"
+echo "  - data-model.md (entity definitions + relationships)"
+echo "  - quickstart.md (integration scenarios)"
 echo "  - plan.md (consolidated architecture + design)"
 echo "  - contracts/api.yaml (OpenAPI specs)"
 echo "  - error-log.md (initialized for tracking)"
 
 # Update NOTES.md with Phase 1 checkpoint and summary
-source \spec-flow/templates/notes-update-template.sh
+source .spec-flow/templates/notes-update-template.sh
 
 # Calculate metrics
 RESEARCH_LINES=$(wc -l < "$FEATURE_DIR/research.md" 2>/dev/null || echo 0)
@@ -631,9 +918,10 @@ update_notes_summary "$FEATURE_DIR" "1" \
 
 # Add Phase 1 checkpoint
 update_notes_checkpoint "$FEATURE_DIR" "1" "Plan" \
-  "Artifacts: plan.md, contracts/api.yaml, error-log.md" \
+  "Artifacts: research.md, data-model.md, quickstart.md, plan.md, contracts/api.yaml, error-log.md" \
   "Research decisions: $DECISION_COUNT" \
-  "Migration required: $HAS_MIGRATION"
+  "Migration required: $HAS_MIGRATION" \
+  "Agent context: Updated"
 
 update_notes_timestamp "$FEATURE_DIR"
 

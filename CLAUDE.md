@@ -42,16 +42,115 @@ pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 -FeatureDir specs/N
 
 ## Workflow State Machine
 
-Features progress through fixed phases (see `.claude/commands/flow.md` for full detail):
+Features progress through fixed phases with automatic state tracking:
 
 ```
-/spec-flow → /clarify (if needed) → /plan → /tasks → /analyze → /implement → /optimize →
-/preview (manual gate) → /phase-1-ship → /validate-staging (manual gate) → /phase-2-ship
+/spec-flow → /clarify (if needed) → /plan → /tasks → /analyze → /implement
+  ↓
+/ship (unified deployment orchestrator)
+  ↓
+Model-specific workflow:
+  • staging-prod: /optimize → /preview → /phase-1-ship → /validate-staging → /phase-2-ship
+  • direct-prod: /optimize → /preview → /deploy-prod
+  • local-only: /optimize → /preview → /build-local
 ```
 
-- Use `/flow "Feature description"` to automate progression with manual gates
-- Use `/flow continue` to resume after manual intervention or fixes
+**Unified Deployment**:
+- Use `/ship` after `/implement` to automatically execute the appropriate deployment workflow
+- Deployment model is auto-detected (staging-prod, direct-prod, or local-only)
+- Use `/ship continue` to resume after manual gates or failures
+- Use `/ship status` to check current progress
+
+**Alternative**:
+- Use `/flow "Feature description"` for original workflow with manual phase progression
+- Use `/flow continue` to resume after manual intervention
 - Commands are defined in `.claude/commands/`
+
+## New Features (v1.1.0)
+
+### YAML State Files
+
+**What Changed**: Workflow state migrated from JSON to YAML.
+
+**Benefits**:
+- LLM-friendly (easier for Claude to edit)
+- Comments supported
+- Human-readable
+- Fewer syntax errors
+
+**Prerequisites**:
+- **macOS/Linux**: `yq` >= 4.0 (`brew install yq`)
+- **Windows**: `yq` >= 4.0 (`choco install yq`)
+
+**Files**: `specs/NNN-slug/workflow-state.yaml` (previously `.json`)
+
+**Auto-Migration**: Automatic conversion from JSON on first access
+
+**Manual Migration**:
+```bash
+# Bash (with dry-run)
+.spec-flow/scripts/bash/migrate-state-to-yaml.sh --dry-run
+.spec-flow/scripts/bash/migrate-state-to-yaml.sh
+
+# PowerShell
+.spec-flow/scripts/powershell/migrate-state-to-yaml.ps1 -DryRun
+.spec-flow/scripts/powershell/migrate-state-to-yaml.ps1
+```
+
+### Roadmap Integration
+
+**Automatic Lifecycle Tracking**: Features move through roadmap sections automatically.
+
+**Lifecycle**: `Backlog → Next → In Progress → Shipped`
+
+**Automatic Updates**:
+- `/spec-flow` → Marks feature "In Progress"
+- `/ship` (Phase S.5) → Marks feature "Shipped" with version/date
+
+**Feature Discovery**: Workflow detects potential features in code comments:
+- Patterns: "TODO", "future work", "phase 2", "out of scope"
+- Prompts: "Add to roadmap? (yes/no/later)"
+- Saves deferred to `.spec-flow/memory/discovered-features.md`
+
+**File**: `.spec-flow/memory/roadmap.md`
+
+**Scripts**:
+- `.spec-flow/scripts/bash/roadmap-manager.sh`
+- `.spec-flow/scripts/powershell/roadmap-manager.ps1`
+
+### Version Management
+
+**Automatic Semantic Versioning**: Every production deployment increments version and creates git tag.
+
+**Process** (during `/ship` Phase S.5):
+1. Read current version from `package.json`
+2. Analyze spec/ship-report for bump type:
+   - "breaking change" → MAJOR (1.2.3 → 2.0.0)
+   - "fix"/"bug"/"patch" → PATCH (1.2.3 → 1.2.4)
+   - Default → MINOR (1.2.3 → 1.3.0)
+3. Update `package.json`
+4. Create annotated git tag: `v1.3.0`
+5. Generate `RELEASE_NOTES.md`
+6. Update roadmap with version
+
+**Scripts**:
+- `.spec-flow/scripts/bash/version-manager.sh`
+- `.spec-flow/scripts/powershell/version-manager.ps1`
+
+**Manual Bump** (if needed):
+```bash
+# Bash (interactive)
+source .spec-flow/scripts/bash/version-manager.sh
+interactive_version_bump "specs/NNN-slug"
+
+# PowerShell (interactive)
+. .spec-flow/scripts/powershell/version-manager.ps1
+Invoke-InteractiveVersionBump -FeatureDir "specs/NNN-slug"
+```
+
+**Non-Blocking**: Continues with warning if `package.json` missing
+
+---
 
 ## Architecture
 
@@ -76,16 +175,86 @@ Each command produces structured outputs:
 
 | Command | Artifacts |
 |---------|-----------|
-| `/spec-flow` | `spec.md`, `NOTES.md`, `visuals/README.md` |
+| `/spec-flow` | `spec.md`, `NOTES.md`, `visuals/README.md`, `workflow-state.yaml` |
 | `/plan` | `plan.md`, `research.md` |
 | `/tasks` | `tasks.md` (20-30 tasks with acceptance criteria) |
 | `/analyze` | `analysis-report.md` |
 | `/implement` | Implementation checklist + task completion |
+| `/ship` | `ship-summary.md`, state updates, deployment orchestration |
 | `/optimize` | `optimization-report.md`, `code-review-report.md` |
 | `/preview` | `release-notes.md`, preview checklist |
-| `/phase-1-ship` | Staging deployment record |
-| `/validate-staging` | Staging sign-off summary |
-| `/phase-2-ship` | Production launch checklist |
+| `/phase-1-ship` | `staging-ship-report.md`, `deployment-metadata.json` |
+| `/validate-staging` | Staging sign-off summary, rollback test results |
+| `/phase-2-ship` | `production-ship-report.md`, release version |
+| `/deploy-prod` | `production-ship-report.md`, deployment IDs |
+| `/build-local` | `local-build-report.md`, build artifacts analysis |
+| `/ship-status` | Real-time deployment status display |
+
+**State Management**: All commands update `workflow-state.yaml` with:
+- Current phase and status
+- Completed/failed phases
+- Quality gates (pre-flight, code review, rollback capability)
+- Manual gates (preview, staging validation)
+- Deployment information (URLs, IDs, timestamps)
+- Artifact paths
+
+## Deployment Models
+
+The workflow automatically detects and adapts to three deployment models:
+
+### staging-prod (Recommended)
+- **Detection**: Git remote + staging branch + `.github/workflows/deploy-staging.yml`
+- **Workflow**: optimize → preview → phase-1-ship → validate-staging → phase-2-ship
+- **Features**: Full staging validation, rollback testing, production promotion
+- **Use for**: Production applications, team projects, critical deployments
+
+### direct-prod
+- **Detection**: Git remote + no staging branch/workflow
+- **Workflow**: optimize → preview → deploy-prod
+- **Features**: Direct production deployment, deployment ID tracking
+- **Use for**: Simple applications, solo developers, rapid iteration
+- **Risk**: Higher (no staging validation)
+
+### local-only
+- **Detection**: No git remote configured
+- **Workflow**: optimize → preview → build-local
+- **Features**: Local build validation, security scanning, artifact analysis
+- **Use for**: Local development, prototypes, desktop applications
+
+**Override**: Set deployment model explicitly in `.spec-flow/memory/constitution.md`
+
+## Quality Gates
+
+### Pre-flight Validation (Blocking)
+- Environment variables configured
+- Production build succeeds
+- Docker images build
+- CI configuration valid
+- Dependencies checked
+
+**Blocks deployment if failed**
+
+### Code Review Gate (Blocking)
+- No critical code quality issues
+- Performance benchmarks met
+- Accessibility standards (WCAG 2.1 AA)
+- Security scan completed
+
+**Blocks deployment if critical issues found**
+
+### Rollback Capability Gate (staging-prod only, Blocking)
+- Deployment IDs extracted from logs
+- Rollback test executed (actual Vercel alias change)
+- Previous deployment verified live
+- Roll-forward verified
+
+**Blocks production if rollback test fails**
+
+### Manual Gates (Pause for approval)
+- **Preview**: Manual UI/UX testing on local dev server
+- **Staging Validation**: Manual testing in staging environment (staging-prod only)
+
+**Requires `/ship continue` to proceed**
 
 ## Coding Standards
 

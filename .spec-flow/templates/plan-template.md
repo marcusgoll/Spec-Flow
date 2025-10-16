@@ -22,19 +22,19 @@
 
 ## Constitution Check
 
-**CFIpros Core Principles**:
-- [ ] I. Extractor-First: <10s extraction results
-- [ ] II. Hybrid Extraction: Regex + Vision LLM appropriately
-- [ ] III. Minimal Data: No file storage post-extraction
-- [ ] IV. Transparent Mapping: ACS DB authoritative source
-- [ ] V. Tiered Visibility: Free/paid separation enforced
-- [ ] VI. Rolling Stats: Privacy-preserving aggregation
-- [ ] VII. Accuracy Loop: Correction mechanism included
-- [ ] VIII. No Overengineering: Simple MVP approach
-- [ ] IX. Code Quality: Type safety, linting, DRY
-- [ ] X. Testing: 80% coverage, integration planned
-- [ ] XI. UX Consistency: Design system, accessibility
-- [ ] XII. Performance: <10s P95, <500ms API thresholds
+> **REMOVE THIS SECTION IF**: No project constitution file exists at `.spec-flow/memory/constitution.md`
+
+**Project Constitution Principles** (from `.spec-flow/memory/constitution.md`):
+- [ ] [Principle I]: [Description]
+- [ ] [Principle II]: [Description]
+- [ ] [Principle III]: [Description]
+- [ ] [Principle IV]: [Description]
+- [ ] [Principle V]: [Description]
+- [ ] [Principle VI]: [Description]
+- [ ] [Principle VII]: [Description]
+- [ ] [Principle VIII]: [Description]
+
+*Replace with actual principles from your project's constitution file, or remove this section entirely if no constitution exists*
 
 ## Project Structure
 
@@ -112,9 +112,12 @@ Existing code to reuse: [from codebase scan]
 
 ### [SCHEMA]
 
+> **REMOVE THIS SECTION IF**: No database changes needed (pure UI feature, config-only change)
+
 - Database tables with relationships (Mermaid ERD)
 - Migrations needed
 - Index strategy
+- RLS policies (if applicable)
 
 ### [PERFORMANCE TARGETS]
 
@@ -125,10 +128,13 @@ Existing code to reuse: [from codebase scan]
 
 ### [SECURITY]
 
+> **REMOVE THIS SECTION IF**: No security-sensitive changes (internal tool, read-only feature, cosmetic UI)
+
 - Authentication strategy (JWT/Clerk/OAuth)
 - Authorization model (RBAC/ABAC)
 - Input validation approach
 - Rate limiting rules
+- Data encryption (at rest/in transit)
 
 ### Artifacts Generated
 
@@ -161,9 +167,16 @@ Existing code to reuse: [from codebase scan]
 
 ## Complexity Tracking
 
+> **REMOVE THIS SECTION IF**: No constitution violations or complexity exceptions needed
+
+**Purpose**: Document and justify any deviations from project constitution or KISS principle.
+
 | Violation | Why Needed | Simpler Alternative Rejected |
 |-----------|------------|------------------------------|
-| [Only if constitutional violations exist] | [specific need] | [why simpler approach insufficient] |
+| [Principle violated] | [Specific business need] | [Why simpler approach insufficient] |
+| [e.g., "No file storage"] | [e.g., "User-uploaded PDFs for 7-day preview"] | [e.g., "In-memory only insufficient for multi-device access"] |
+
+*Only include this section if you need to justify complexity that violates constitution principles*
 
 ## Progress Tracking
 

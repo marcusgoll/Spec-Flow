@@ -1,8 +1,8 @@
 # Engineering Constitution
 
-**Version**: 1.0.0
-**Last Updated**: 2025-10-03
-**Status**: Draft
+**Version**: 1.1.0
+**Last Updated**: 2025-10-16
+**Status**: Active
 
 > This document defines the core engineering principles that govern all feature development in this project. Every specification, plan, and implementation must align with these principles.
 
@@ -18,26 +18,347 @@ The Engineering Constitution serves as the Single Source of Truth (SSOT) for eng
 
 **Project Type**: Auto-detected on first `/flow` run
 
-**Deployment Model**:
-- `local-only` - No remote repo, manual deployment only
-- `remote-staging-prod` - Full staging → production workflow with `/phase-1-ship` and `/phase-2-ship`
-- `remote-direct` - Remote repo, direct to main branch (no staging)
+**Deployment Model**: staging-prod _(auto-detected, can be overridden)_
 
-**Detection Logic**:
-```bash
-# Remote repo check
-git remote -v | grep origin
+**Available Models**:
+- `staging-prod` - Full staging validation before production (recommended)
+- `direct-prod` - Direct production deployment without staging
+- `local-only` - Local builds only, no remote deployment
 
-# Staging branch check
-git show-ref refs/heads/staging || git show-ref refs/remotes/origin/staging
+**Auto-Detection Logic**:
+
+The deployment model is automatically detected based on repository configuration:
+
+1. **staging-prod** - All of the following are true:
+   - Git remote configured (`git remote -v | grep origin`)
+   - Staging branch exists (`git show-ref refs/heads/staging` or `refs/remotes/origin/staging`)
+   - Staging workflow exists (`.github/workflows/deploy-staging.yml`)
+
+2. **direct-prod** - When:
+   - Git remote configured
+   - No staging branch or staging workflow
+
+3. **local-only** - When:
+   - No git remote configured
+
+**Manual Override**:
+
+To override auto-detection, set the deployment model explicitly:
+
+```
+Deployment Model: staging-prod
 ```
 
-**Workflow Adjustments**:
-- **Local-only projects**: Workflow ends at `/optimize` with manual commit instructions. Commands `/phase-1-ship`, `/phase-2-ship`, and `/finalize` are skipped.
-- **Remote-staging-prod**: Full workflow with automated staging deployment and production promotion.
-- **Remote-direct**: Simplified workflow with direct merge to main (no staging step).
+_(Write exactly one of: staging-prod, direct-prod, local-only)_
+
+**Workflow Paths by Model**:
+
+| Model | Post-Implementation Workflow |
+|-------|------------------------------|
+| staging-prod | /optimize → /preview → /phase-1-ship → /validate-staging → /phase-2-ship |
+| direct-prod | /optimize → /preview → /deploy-prod |
+| local-only | /optimize → /preview → /build-local |
+
+**Unified Command**: Use `/ship` after `/implement` to automatically execute the appropriate workflow based on deployment model.
 
 **Quick Changes**: For small bug fixes, refactors, or enhancements (<100 LOC), use `/quick "description"` instead of full `/flow` workflow.
+
+---
+
+## Roadmap Management
+
+**Philosophy**: The roadmap is the Single Source of Truth (SSOT) for feature planning and delivery status. Features move through a defined lifecycle from planning to production.
+
+### Roadmap Lifecycle
+
+**Sections**:
+1. **Backlog** - Ideas and future features (not prioritized)
+2. **Later** - Planned but low priority
+3. **Next** - Prioritized for upcoming work
+4. **In Progress** - Currently being developed
+5. **Shipped** - Deployed to production
+
+**Automatic Transitions**:
+- `/spec-flow` → Marks feature as "In Progress" in roadmap
+- `/ship` (Phase S.5) → Marks feature as "Shipped" with version and date
+
+### Feature Discovery
+
+During implementation, the workflow may discover potential features not yet in the roadmap:
+
+**Detection Patterns**:
+- Comments containing: "future work", "TODO", "later", "phase 2", "out of scope"
+- Spec sections marked as out-of-scope with future potential
+
+**User Prompt**:
+When discovered features are found, the workflow prompts:
+```
+💡 Discovered Potential Feature
+Context: [where it was found]
+Description: [feature description]
+
+Add to roadmap? (yes/no/later):
+```
+
+**Actions**:
+- **yes**: Immediately add to roadmap (prompts for /roadmap command)
+- **later**: Save to `.spec-flow/memory/discovered-features.md` for batch review
+- **no**: Skip (not tracked)
+
+### Roadmap Format
+
+Each feature in roadmap must have:
+```markdown
+### 001-feature-slug
+
+- **Title**: Human-readable feature name
+- **Area**: Component or domain (e.g., Auth, UI, API)
+- **Role**: User role or persona (e.g., End User, Admin)
+- **ICE Score**: Impact (1-10), Confidence (1-10), Ease (1-10) [only for unshipped features]
+```
+
+**Shipped Features** (additional metadata):
+```markdown
+### 001-feature-slug
+
+- **Title**: Human-readable feature name
+- **Area**: Component or domain
+- **Role**: User role or persona
+- **Date**: 2025-10-16
+- **Release**: v1.2.3
+- **URL**: https://app.example.com (optional)
+```
+
+### Roadmap Commands
+
+- `/roadmap` - Interactive roadmap management
+- `/roadmap add "Feature description"` - Add new feature
+- `/roadmap prioritize` - Re-prioritize features using ICE scores
+- `/roadmap review` - Review discovered features
+
+---
+
+## Version Management
+
+**Philosophy**: Every production deployment increments the semantic version and creates a git tag. Versions track feature releases and enable rollback.
+
+### Semantic Versioning
+
+**Format**: `MAJOR.MINOR.PATCH`
+
+- **MAJOR**: Breaking changes (user-facing API changes, data migrations)
+- **MINOR**: New features (backward-compatible enhancements)
+- **PATCH**: Bug fixes (backward-compatible corrections)
+
+**Detection Logic**:
+- Spec or ship report contains "breaking change" → MAJOR bump
+- Spec contains "fix", "bug", "patch", or "hotfix" → PATCH bump
+- Default → MINOR bump (new feature)
+
+### Automatic Version Bumping
+
+**When**: During `/ship` Phase S.5 (after deployment succeeds)
+
+**Process**:
+1. Read current version from `package.json`
+2. Analyze spec and ship report for bump type
+3. Calculate new version (e.g., 1.2.0 → 1.3.0)
+4. Update `package.json`
+5. Create annotated git tag: `v1.3.0`
+6. Generate release notes from ship report
+7. Update roadmap with version number
+
+**Non-Blocking**: If `package.json` doesn't exist or version bump fails, workflow continues with warning
+
+### Release Notes
+
+**Auto-Generated from Ship Report**:
+```markdown
+# Release v1.3.0
+
+**Date**: 2025-10-16
+
+## Features
+
+### Feature Title
+
+[Summary from ship report]
+
+## Changes
+
+[Changes from ship report]
+
+## Deployment
+
+- **Production URL**: https://app.example.com
+- **Release Tag**: v1.3.0
+- **Feature Spec**: specs/001-feature-slug/spec.md
+```
+
+**Location**: `RELEASE_NOTES.md` (root directory)
+
+### Git Tags
+
+**Format**: `v1.3.0` (annotated tags)
+
+**Message**: `Release v1.3.0 - Auto-bumped (minor)`
+
+**Pushing Tags**:
+- Tags created locally during `/ship`
+- Push to remote: `git push origin v1.3.0`
+- Tags enable rollback and release tracking
+
+### Version Policies
+
+1. **Never manually edit versions** - Always use `/ship` workflow
+2. **Never skip versions** - Sequential increments only
+3. **Tag before pushing** - Create tag locally, verify, then push
+4. **Breaking changes require planning** - Major bumps need stakeholder approval
+
+---
+
+## Deployment Quality Gates
+
+**Quality gates** are automated checks that must pass before deployment can proceed.
+
+### Pre-flight Validation
+
+**When**: Before any deployment (staging or production)
+
+**Checks**:
+- ✅ Environment variables configured in GitHub secrets
+- ✅ Production build succeeds locally
+- ✅ Docker images build successfully
+- ✅ CI workflow configuration valid
+- ✅ Dependencies checked for outdated packages
+
+**Blocking**: Yes - deployment fails if pre-flight fails
+
+**Override**: Not recommended - fix issues and retry
+
+### Code Review Gate
+
+**When**: During `/optimize` phase
+
+**Checks**:
+- ✅ No critical code quality issues
+- ✅ Performance benchmarks met
+- ✅ Accessibility standards (WCAG 2.1 AA)
+- ✅ Security scan completed
+
+**Blocking**: Yes - critical issues must be resolved
+
+### Rollback Capability Gate
+
+**When**: After staging deployment, before production (staging-prod model only)
+
+**Checks**:
+- ✅ Deployment IDs extracted from staging logs
+- ✅ Rollback test executed (actual Vercel alias change)
+- ✅ Previous deployment verified live
+- ✅ Roll-forward to current deployment verified
+
+**Blocking**: Yes - production deployment fails if rollback test fails
+
+**Purpose**: Ensures ability to quickly rollback if production deployment causes issues
+
+---
+
+## Manual Gates
+
+**Manual gates** require human approval before proceeding. The workflow pauses for testing and validation.
+
+### Preview Gate
+
+**Location**: After `/optimize`, before deployment
+
+**Purpose**: Manual UI/UX validation on local development server
+
+**Process**:
+1. Run `/preview` to start local dev server
+2. Test feature functionality thoroughly
+3. Verify UI/UX across different screen sizes
+4. Check keyboard navigation and accessibility
+5. Test error states and edge cases
+6. When satisfied, run `/ship continue` to proceed
+
+**Required for**: All deployment models
+
+**Rationale**: Automated tests can't catch all UX issues - human testing is essential
+
+### Staging Validation Gate
+
+**Location**: After staging deployment, before production
+
+**Applies to**: staging-prod model only
+
+**Purpose**: Validate feature in real staging environment
+
+**Process**:
+1. Staging deployed via `/phase-1-ship`
+2. Run `/validate-staging` for automated health checks
+3. Manually test feature on staging URL
+4. Verify E2E tests passed in GitHub Actions
+5. Check Lighthouse CI scores
+6. Confirm rollback capability tested
+7. When approved, run `/ship continue` for production deployment
+
+**Required for**: staging-prod model only (direct-prod and local-only skip this)
+
+**Rationale**: Production-like environment testing catches issues that local testing misses
+
+---
+
+## Rollback Strategy
+
+**Philosophy**: Every production deployment must be reversible within 5 minutes.
+
+### Deployment ID Tracking
+
+**What**: Unique identifiers for each deployment (Vercel URLs, Docker images, Railway IDs)
+
+**Storage**:
+- `specs/NNN-slug/deployment-metadata.json` - Human-readable
+- `specs/NNN-slug/workflow-state.json` - Machine-readable state
+
+**Extraction**: Automatic from GitHub Actions workflow logs
+
+### Rollback Testing (staging-prod only)
+
+**When**: During `/validate-staging` phase
+
+**Process**:
+1. Load previous deployment ID from state
+2. Execute: `vercel alias set <previous-id> <staging-url>`
+3. Wait for DNS propagation (15 seconds)
+4. Verify previous deployment is live (check HTTP headers)
+5. Roll forward: `vercel alias set <current-id> <staging-url>`
+6. Verify current deployment is live again
+
+**Blocking**: If rollback test fails, production deployment is blocked
+
+### Production Rollback
+
+**When to rollback**:
+- Critical bugs discovered post-deployment
+- Performance degradation
+- Security vulnerability
+- High error rates
+
+**How to rollback**:
+```bash
+# For Vercel deployments
+vercel alias set <previous-deployment-id> <production-url> --token=$VERCEL_TOKEN
+
+# For Railway/other platforms
+# Use platform's UI or CLI rollback feature
+
+# For manual git revert
+git revert <commit-sha>
+git push
+```
+
+**Deployment IDs**: Found in ship reports (`*-ship-report.md`) or `deployment-metadata.json`
 
 ---
 
