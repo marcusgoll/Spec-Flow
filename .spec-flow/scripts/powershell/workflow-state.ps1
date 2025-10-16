@@ -79,8 +79,11 @@ function Initialize-WorkflowState {
     .PARAMETER Title
         Feature title
 
+    .PARAMETER BranchName
+        Git branch name for this feature
+
     .EXAMPLE
-        Initialize-WorkflowState -FeatureDir "specs/001-login" -Slug "001-login" -Title "User Login"
+        Initialize-WorkflowState -FeatureDir "specs/001-login" -Slug "001-login" -Title "User Login" -BranchName "feat/001-login"
     #>
     param(
         [Parameter(Mandatory=$true)]
@@ -90,7 +93,10 @@ function Initialize-WorkflowState {
         [string]$Slug,
 
         [Parameter(Mandatory=$true)]
-        [string]$Title
+        [string]$Title,
+
+        [Parameter(Mandatory=$false)]
+        [string]$BranchName = "local"
     )
 
     $stateFile = Join-Path $FeatureDir "workflow-state.yaml"
@@ -102,6 +108,7 @@ function Initialize-WorkflowState {
         feature = @{
             slug = $Slug
             title = $Title
+            branch_name = $BranchName
             created = (Get-Date).ToUniversalTime().ToString("o")
             last_updated = (Get-Date).ToUniversalTime().ToString("o")
             roadmap_status = "in_progress"  # Options: backlog, next, in_progress, shipped
@@ -146,7 +153,7 @@ function Initialize-WorkflowState {
         }
         quality_gates = @{}
         metadata = @{
-            schema_version = "1.0.0"
+            schema_version = "2.0.0"
             workflow_version = "2.0.0"
         }
     }
@@ -154,7 +161,7 @@ function Initialize-WorkflowState {
     # Add YAML comment header
     $yamlHeader = @"
 # Spec-Flow Workflow State
-# Schema version: 1.0.0
+# Schema version: 2.0.0
 # Created: $((Get-Date).ToUniversalTime().ToString("o"))
 
 "@

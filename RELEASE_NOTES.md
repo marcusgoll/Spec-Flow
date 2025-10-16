@@ -1,5 +1,79 @@
 # Release Notes
 
+## v1.6.4 (2025-10-16)
+
+### 🎯 New Features
+
+#### Branch Management Integration
+
+**Changes:**
+Integrated comprehensive branch management into the Spec-Flow workflow to enforce git best practices and prevent accidental commits to main/master branches.
+
+**Features Added:**
+
+1. **Clean Worktree Validation**
+   - Validates working directory is clean before starting new features
+   - Checks both unstaged changes (`git diff --quiet`) and staged changes (`git diff --cached --quiet`)
+   - Prevents feature initialization with uncommitted changes
+   - Location: `.claude/commands/spec-flow.md` lines 69-139
+
+2. **Automatic Feature Branch Creation**
+   - Detects current branch (main/master detection)
+   - Auto-creates feature branches with naming convention: `feat/NNN-slug`
+   - Sequential feature numbering based on existing specs directories
+   - Conflict resolution: appends `-2`, `-3`, etc. if branch already exists
+   - Falls back to current branch name if not on main/master
+   - Location: `.claude/commands/spec-flow.md` lines 69-139
+
+3. **Branch Name State Tracking**
+   - Workflow state now tracks branch name for each feature
+   - Added `branch_name` field to feature metadata in workflow-state.yaml
+   - Default: "local" for non-git projects
+   - Updated schema version from 1.0.0 to 2.0.0
+   - Locations:
+     - `.spec-flow/scripts/bash/workflow-state.sh` (initialize_workflow_state function)
+     - `.spec-flow/scripts/powershell/workflow-state.ps1` (Initialize-WorkflowState function)
+
+4. **Automatic Branch Deletion After Merge**
+   - Branch automatically deleted after successful PR merge to main/master
+   - Uses GitHub CLI `--delete-branch` flag during auto-merge
+   - Already implemented: `.claude/commands/phase-1-ship.md` line 609
+   - Status: ✅ Verified (no changes needed)
+
+### 📝 Files Changed
+
+- **`.claude/commands/spec-flow.md`**: Added "BRANCH MANAGEMENT" section with clean worktree validation and auto-branch creation logic (71 lines added)
+- **`.spec-flow/scripts/bash/workflow-state.sh`**:
+  - Added `branch_name` parameter to `initialize_workflow_state()` function
+  - Updated YAML template to include `branch_name` field in feature metadata
+  - Updated schema version to 2.0.0
+- **`.spec-flow/scripts/powershell/workflow-state.ps1`**:
+  - Added `BranchName` parameter to `Initialize-WorkflowState` function
+  - Updated state object to include `branch_name` in feature hashtable
+  - Updated schema version to 2.0.0
+- **`package.json`**: Version bump to 1.6.4
+
+### 🎯 Impact
+
+- ✅ Prevents accidental commits to main/master branches
+- ✅ Enforces clean worktree before feature work begins
+- ✅ Automatic feature branch creation with semantic naming
+- ✅ Branch lifecycle fully managed (create → track → auto-delete after merge)
+- ✅ Improved git workflow compliance and safety
+
+### 📦 Installation
+
+```bash
+npm install -g spec-flow@1.6.4
+```
+
+Or upgrade:
+```bash
+npm update -g spec-flow
+```
+
+---
+
 ## v1.6.3 (2025-10-16)
 
 ### 🛠️ Code Quality Improvements

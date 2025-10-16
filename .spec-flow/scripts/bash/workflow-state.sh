@@ -49,6 +49,7 @@ initialize_workflow_state() {
   local feature_dir="$1"
   local slug="$2"
   local title="$3"
+  local branch_name="${4:-local}"
 
   local state_file="$feature_dir/workflow-state.yaml"
 
@@ -59,12 +60,13 @@ initialize_workflow_state() {
   # Create initial state in YAML format
   cat > "$state_file" <<EOF
 # Spec-Flow Workflow State
-# Schema version: 1.0.0
+# Schema version: 2.0.0
 # Created: $(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 feature:
   slug: $slug
   title: $title
+  branch_name: $branch_name
   created: $(date -u +%Y-%m-%dT%H:%M:%SZ)
   last_updated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
   roadmap_status: in_progress  # Options: backlog, next, in_progress, shipped
@@ -108,7 +110,7 @@ artifacts:
 quality_gates: {}
 
 metadata:
-  schema_version: "1.0.0"
+  schema_version: "2.0.0"
   workflow_version: "2.0.0"
 EOF
 

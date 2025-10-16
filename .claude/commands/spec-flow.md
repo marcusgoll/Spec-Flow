@@ -66,6 +66,78 @@ echo ""
 - `remote-staging-prod` - Full staging → production workflow
 - `remote-direct` - Remote repo, direct to main (no staging)
 
+## BRANCH MANAGEMENT
+
+**Purpose**: Ensure clean worktree and create feature branch if on main/master
+
+**Process**:
+
+```bash
+# Check if in git repository
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "⚠️  Git not detected, continuing without branch"
+  BRANCH_NAME="local"
+else
+  # Check for clean worktree
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "❌ Worktree is not clean. Please commit or stash changes first:"
+    echo ""
+    git status --short
+    echo ""
+    echo "Options:"
+    echo "  git stash          # Stash uncommitted changes"
+    echo "  git commit -am \"\" # Commit changes"
+    echo "  git reset --hard   # Discard all changes (DANGER)"
+    exit 1
+  fi
+
+  # Get current branch
+  CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+  # If on main or master, create feature branch
+  if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
+    echo "📍 Currently on $CURRENT_BRANCH"
+    echo "Creating feature branch..."
+    echo ""
+
+    # Generate branch name: feat/NNN-slug
+    # Find next feature number
+    MAX_NUM=0
+    while IFS= read -r dir; do
+      if [[ $dir =~ ([0-9]{3})- ]]; then
+        NUM=$((10#${BASH_REMATCH[1]}))
+        if (( NUM > MAX_NUM )); then
+          MAX_NUM=$NUM
+        fi
+      fi
+    done < <(find specs -maxdepth 1 -mindepth 1 -type d 2>/dev/null || true)
+
+    FEATURE_NUM=$(printf '%03d' $((MAX_NUM + 1)))
+    BASE_BRANCH_NAME="feat/$FEATURE_NUM-$SLUG"
+    BRANCH_NAME="$BASE_BRANCH_NAME"
+
+    # Check if branch exists, handle conflicts
+    COUNTER=2
+    while git rev-parse --verify --quiet "$BRANCH_NAME" >/dev/null 2>&1; do
+      BRANCH_NAME="$BASE_BRANCH_NAME-$COUNTER"
+      COUNTER=$((COUNTER + 1))
+    done
+
+    # Create and checkout new branch
+    git checkout -b "$BRANCH_NAME"
+    echo "✅ Created feature branch: $BRANCH_NAME"
+  else
+    BRANCH_NAME="$CURRENT_BRANCH"
+    echo "📍 Continuing on current branch: $BRANCH_NAME"
+  fi
+fi
+
+echo ""
+```
+
+**State Updates**:
+- Store branch name in workflow-state.yaml for tracking
+
 ## INITIALIZE WORKFLOW STATE
 
 **Create or load workflow state file:**
@@ -91,13 +163,13 @@ mkdir -p "$FEATURE_DIR"
 
 # Initialize comprehensive workflow state
 # This creates workflow-state.yaml with:
-# - Feature metadata (slug, title, timestamps, roadmap_status)
+# - Feature metadata (slug, title, branch_name, timestamps, roadmap_status)
 # - Deployment model (auto-detected: staging-prod, direct-prod, local-only)
 # - Workflow phases tracking
 # - Quality gates and manual gates
 # - Deployment state (staging, production)
 # - Artifacts paths
-initialize_workflow_state "$FEATURE_DIR" "$SLUG" "$FEATURE_DESCRIPTION"
+initialize_workflow_state "$FEATURE_DIR" "$SLUG" "$FEATURE_DESCRIPTION" "$BRANCH_NAME"
 
 echo "✅ Workflow state initialized: $FEATURE_DIR/workflow-state.yaml"
 echo ""
