@@ -186,7 +186,7 @@ suggest_feature_addition() {
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
-  read -p "Add to roadmap? (yes/no/later): " response
+  read -r -p "Add to roadmap? (yes/no/later): " response
 
   case "$response" in
     yes|y|Y)

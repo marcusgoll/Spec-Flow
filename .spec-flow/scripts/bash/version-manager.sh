@@ -64,7 +64,8 @@ parse_version() {
 suggest_version_bump() {
   local feature_dir="$1"
   local spec_file="$feature_dir/spec.md"
-  local ship_report="$feature_dir"/*-ship-report.md
+  local ship_report
+  ship_report=$(find "$feature_dir" -name "*-ship-report.md" -type f | head -1)
 
   if [ ! -f "$spec_file" ]; then
     echo "Error: Spec not found: $spec_file" >&2
@@ -74,7 +75,7 @@ suggest_version_bump() {
   # Analyze for breaking changes
   local has_breaking=false
   if grep -iq "breaking change" "$spec_file" || \
-     ([ -f "$ship_report" ] && grep -iq "breaking change" "$ship_report"); then
+     ([ -n "$ship_report" ] && [ -f "$ship_report" ] && grep -iq "breaking change" "$ship_report"); then
     has_breaking=true
   fi
 
@@ -99,9 +100,7 @@ suggest_version_bump() {
 bump_version() {
   local bump_type="$1"
   local current_version
-  current_version=$(get_current_version)
-
-  if [ $? -ne 0 ]; then
+  if ! current_version=$(get_current_version); then
     return 1
   fi
 
@@ -264,7 +263,7 @@ interactive_version_bump() {
   # Prompt for confirmation
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
-  read -p "Proceed with version bump? (yes/no/custom): " response
+  read -r -p "Proceed with version bump? (yes/no/custom): " response
 
   case "$response" in
     yes|y|Y)
@@ -274,14 +273,14 @@ interactive_version_bump() {
 
       # Ask about pushing tag
       echo ""
-      read -p "Push tag to remote? (yes/no): " push_response
+      read -r -p "Push tag to remote? (yes/no): " push_response
       if [[ "$push_response" =~ ^(yes|y|Y)$ ]]; then
         push_release_tag "$new_version"
       fi
 
       # Generate release notes
       echo ""
-      read -p "Generate release notes? (yes/no): " notes_response
+      read -r -p "Generate release notes? (yes/no): " notes_response
       if [[ "$notes_response" =~ ^(yes|y|Y)$ ]]; then
         generate_release_notes "$feature_dir" "$new_version"
       fi
@@ -290,7 +289,7 @@ interactive_version_bump() {
     custom|c|C)
       # Allow custom version input
       echo ""
-      read -p "Enter custom version (e.g., 2.1.0): " custom_version
+      read -r -p "Enter custom version (e.g., 2.1.0): " custom_version
 
       # Validate format
       if [[ ! "$custom_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -303,7 +302,7 @@ interactive_version_bump() {
 
       # Ask about pushing tag
       echo ""
-      read -p "Push tag to remote? (yes/no): " push_response
+      read -r -p "Push tag to remote? (yes/no): " push_response
       if [[ "$push_response" =~ ^(yes|y|Y)$ ]]; then
         push_release_tag "$custom_version"
       fi
