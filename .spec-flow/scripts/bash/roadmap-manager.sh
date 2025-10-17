@@ -336,6 +336,193 @@ insert_at_section_start() {
   mv "$temp_file" "$ROADMAP_FILE"
 }
 
+# Extract incomplete tasks for a specific priority from tasks.md
+extract_priority_tasks() {
+  local tasks_file="$1"
+  local priority="$2"  # e.g., "P2" or "P3"
+  local notes_file="$3"
+
+  if [ ! -f "$tasks_file" ]; then
+    return 1
+  fi
+
+  # Find all tasks with the given priority that are not completed
+  local tasks=()
+
+  while IFS= read -r line; do
+    # Match task lines with priority marker
+    if echo "$line" | grep -q "^T[0-9]\{3\}.*\[$priority\]"; then
+      TASK_ID=$(echo "$line" | grep -o "^T[0-9]\{3\}")
+
+      # Check if task is completed in NOTES.md
+      if ! grep -q "✅ $TASK_ID" "$notes_file" 2>/dev/null; then
+        # Task is incomplete, extract description
+        TASK_DESC=$(echo "$line" | sed 's/^T[0-9]\{3\} //' | sed 's/\[US[0-9]\] //' | sed 's/\[P[0-9]\] //' | sed 's/\[P\] //')
+        tasks+=("$TASK_DESC")
+      fi
+    fi
+  done < "$tasks_file"
+
+  # Output tasks as newline-separated list
+  printf '%s\n' "${tasks[@]}"
+}
+
+# Format enhancement entry for roadmap
+format_enhancement_entry() {
+  local parent_slug="$1"
+  local priority="$2"
+  local task_count="$3"
+  local task_list="$4"
+  local parent_area="${5:-app}"
+  local parent_role="${6:-all}"
+  local parent_impact="${7:-3}"
+
+  # Generate slug for enhancement
+  local enhancement_slug="${parent_slug}-${priority,,}-enhancements"
+
+  # Calculate ICE score based on parent feature and priority
+  local impact=$parent_impact
+  local effort=2  # Default: 1-2 weeks
+  local confidence="0.9"  # High confidence (already specified)
+
+  # Adjust impact based on priority
+  if [ "$priority" = "P3" ]; then
+    impact=$((impact - 1))
+    [ $impact -lt 1 ] && impact=1
+  fi
+
+  # Calculate score: Impact * Confidence / Effort
+  local score
+  score=$(awk "BEGIN {printf \"%.2f\", $impact * $confidence / $effort}")
+
+  # Build requirements list from tasks
+  local requirements=""
+  while IFS= read -r task; do
+    [ -z "$task" ] && continue
+    requirements="${requirements}  - [$priority] $task\n"
+  done <<< "$task_list"
+
+  # Format entry
+  cat <<EOF
+### $enhancement_slug
+- **Title**: $(echo "$parent_slug" | tr '-' ' ' | sed 's/\b\(.\)/\u\1/g') - $priority Enhancements
+- **Area**: $parent_area
+- **Role**: $parent_role
+- **Impact**: $impact | **Effort**: $effort | **Confidence**: $confidence | **Score**: $score
+- **Parent Feature**: $parent_slug
+- **Requirements**:
+$(echo -e "$requirements")- **Spec**: specs/$parent_slug/spec.md ($priority section)
+- **Tasks**: $task_count tasks
+EOF
+}
+
+# Add future enhancements to roadmap when shipping MVP
+add_future_enhancements_to_roadmap() {
+  local feature_dir="$1"
+  local slug="$2"
+
+  if [ ! -d "$feature_dir" ]; then
+    echo "Error: Feature directory not found: $feature_dir" >&2
+    return 1
+  fi
+
+  local tasks_file="$feature_dir/tasks.md"
+  local notes_file="$feature_dir/NOTES.md"
+  local spec_file="$feature_dir/spec.md"
+
+  if [ ! -f "$tasks_file" ]; then
+    echo "Error: tasks.md not found: $tasks_file" >&2
+    return 1
+  fi
+
+  # Extract metadata from spec if available
+  local area="app"
+  local role="all"
+  local impact="3"
+
+  if [ -f "$spec_file" ]; then
+    # Try to extract area, role, impact from spec metadata
+    area=$(grep -i "^Area:" "$spec_file" | head -1 | sed 's/Area: *//' | tr '[:upper:]' '[:lower:]' || echo "app")
+    role=$(grep -i "^Role:" "$spec_file" | head -1 | sed 's/Role: *//' | tr '[:upper:]' '[:lower:]' || echo "all")
+    impact=$(grep -i "^Impact:" "$spec_file" | head -1 | sed 's/Impact: *//' | grep -o "[0-9]" | head -1 || echo "3")
+  fi
+
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📋 Capturing Future Enhancements in Roadmap"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  local added_count=0
+
+  # Process P2 tasks
+  local p2_tasks
+  p2_tasks=$(extract_priority_tasks "$tasks_file" "P2" "$notes_file")
+
+  if [ -n "$p2_tasks" ]; then
+    local p2_count
+    p2_count=$(echo "$p2_tasks" | grep -c "." || echo 0)
+
+    if [ "$p2_count" -gt 0 ]; then
+      echo "Adding P2 enhancements to roadmap..."
+
+      local p2_entry
+      p2_entry=$(format_enhancement_entry "$slug" "P2" "$p2_count" "$p2_tasks" "$area" "$role" "$impact")
+
+      local p2_slug="${slug}-p2-enhancements"
+
+      # Add to Next section
+      add_feature_to_section "Next" "$p2_entry" "$p2_slug"
+
+      echo "  ✅ Created: $p2_slug ($p2_count tasks)"
+      echo "  ✅ Added to: Next section"
+      ((added_count++))
+    fi
+  fi
+
+  # Process P3 tasks
+  local p3_tasks
+  p3_tasks=$(extract_priority_tasks "$tasks_file" "P3" "$notes_file")
+
+  if [ -n "$p3_tasks" ]; then
+    local p3_count
+    p3_count=$(echo "$p3_tasks" | grep -c "." || echo 0)
+
+    if [ "$p3_count" -gt 0 ]; then
+      echo ""
+      echo "Adding P3 features to roadmap..."
+
+      local p3_entry
+      p3_entry=$(format_enhancement_entry "$slug" "P3" "$p3_count" "$p3_tasks" "$area" "$role" "$impact")
+
+      local p3_slug="${slug}-p3-features"
+
+      # Add to Later section
+      add_feature_to_section "Later" "$p3_entry" "$p3_slug"
+
+      echo "  ✅ Created: $p3_slug ($p3_count tasks)"
+      echo "  ✅ Added to: Later section"
+      ((added_count++))
+    fi
+  fi
+
+  echo ""
+
+  if [ "$added_count" -eq 0 ]; then
+    echo "ℹ️  No P2/P3 tasks found to add to roadmap"
+    return 0
+  fi
+
+  echo "📋 Future enhancements captured in roadmap!"
+  echo ""
+  echo "To implement later:"
+  [ -n "$p2_tasks" ] && [ "$p2_count" -gt 0 ] && echo "  /spec-flow ${slug}-p2-enhancements"
+  [ -n "$p3_tasks" ] && [ "$p3_count" -gt 0 ] && echo "  /spec-flow ${slug}-p3-features"
+  echo ""
+
+  return 0
+}
+
 # Export functions (for sourcing)
 export -f get_feature_status
 export -f mark_feature_in_progress
@@ -347,3 +534,6 @@ export -f extract_feature_basic_info
 export -f remove_feature_from_section
 export -f add_feature_to_section
 export -f insert_at_section_start
+export -f extract_priority_tasks
+export -f format_enhancement_entry
+export -f add_future_enhancements_to_roadmap

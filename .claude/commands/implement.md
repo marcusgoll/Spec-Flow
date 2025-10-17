@@ -407,11 +407,20 @@ if [ "$TASK_FORMAT" = "user-story" ]; then
       echo "USER PROMPT: Ship MVP now or continue to P2? (ship/continue)"
       echo ""
       echo "Claude Code: Wait for user response"
-      echo "  • If 'ship' or 'A': Echo 'Run /preview to validate MVP' and exit"
+      echo "  • If 'ship' or 'A':"
+      echo "    1. Call roadmap-manager to capture P2/P3 tasks"
+      echo "    2. Echo 'Run /preview to validate MVP' and exit"
       echo "  • If 'continue' or 'B': Continue to remaining batches (P2 tasks)"
       echo ""
       # Note: In actual implementation, Claude Code will pause here
       # This is a manual gate - execution stops until user responds
+      #
+      # When user chooses 'ship', execute:
+      # source .spec-flow/scripts/bash/roadmap-manager.sh
+      # add_future_enhancements_to_roadmap "$FEATURE_DIR" "$SLUG"
+      # echo ""
+      # echo "Next: /preview to validate MVP"
+      # exit 0
     fi
   fi
 fi
@@ -441,7 +450,27 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 
 1. **Parse batches** from bash logic above
 2. **For each batch**: Launch parallel Task() calls in single message
-3. **Task parameters per agent**:
+3. **MVP Gate Handling** (User Story Format Only):
+   - After P1 tasks complete, check if P2+ tasks exist
+   - If P2/P3 tasks exist:
+     - Display MVP gate message to user
+     - Ask: "Ship MVP now or continue to P2? (ship/continue)"
+     - Wait for user response
+     - If user says "ship" or "A":
+       ```bash
+       # Load roadmap manager functions
+       source .spec-flow/scripts/bash/roadmap-manager.sh
+
+       # Add future enhancements to roadmap
+       add_future_enhancements_to_roadmap "$FEATURE_DIR" "$SLUG"
+
+       # Exit with next step
+       echo ""
+       echo "Next: /preview to validate MVP"
+       exit 0
+       ```
+     - If user says "continue" or "B": Continue executing remaining P2/P3 batches
+4. **Task parameters per agent**:
 
 ```python
 # Example: 3 tasks in parallel batch (backend, frontend, database)
