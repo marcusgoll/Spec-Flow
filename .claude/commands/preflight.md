@@ -9,11 +9,13 @@ description: Pre-flight deployment validation - Catch failures before consuming 
 **Purpose**: Simulate deployment locally before pushing. Catches deployment failures before they cost quota.
 
 **When to use**:
-- Before `/phase-1-ship` (automatically invoked)
+- **MANDATORY**: Automatically invoked by `/phase-1-ship` (cannot be skipped)
 - Before manual deployments
 - After major configuration changes
 
-**Workflow position**: `optimize → preview → **preflight** → phase-1-ship`
+**Workflow position**: `optimize → preview → **preflight** (mandatory) → phase-1-ship`
+
+**Note**: As of v1.8.0, preflight checks are mandatory and cannot be bypassed. This prevents broken builds from consuming CI/CD quota and reaching production.
 
 ---
 
@@ -383,8 +385,8 @@ if [ "$PREFLIGHT_FAILED" = true ]; then
   echo ""
   echo "Fix issues above before deploying."
   echo ""
-  echo "To skip preflight (not recommended):"
-  echo "  /phase-1-ship --skip-preflight"
+  echo "Preflight checks are mandatory and cannot be skipped."
+  echo "This protects production from broken deployments."
   echo ""
 
   # Cleanup
@@ -470,6 +472,6 @@ Proceed with: /phase-1-ship
 
 Fix issues above before deploying.
 
-To skip preflight (not recommended):
-  /phase-1-ship --skip-preflight
+Preflight checks are mandatory and cannot be skipped.
+This protects production from broken deployments.
 ```

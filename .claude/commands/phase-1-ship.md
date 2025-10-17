@@ -224,6 +224,136 @@ else
 fi
 ```
 
+### Run Mandatory Preflight Check
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Mandatory Pre-Flight Validation"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+echo "Running preflight checks to catch deployment failures before CI..."
+echo ""
+
+# Check if preflight script exists
+if [ ! -f ".spec-flow/scripts/bash/preflight-check.sh" ]; then
+  echo "⚠️  Preflight script not found"
+  echo "   Creating basic preflight check..."
+
+  # Basic inline preflight for backward compatibility
+  PREFLIGHT_FAILED=false
+
+  # Check environment variables
+  echo "Checking environment variables..."
+
+  if [ -f ".env.example" ]; then
+    REQUIRED_VARS=$(grep -v "^#" .env.example | grep "=" | cut -d= -f1)
+    MISSING_COUNT=0
+
+    for var in $REQUIRED_VARS; do
+      if [ -z "${!var}" ] && [[ "$var" != *"PUBLIC"* ]]; then
+        ((MISSING_COUNT++))
+      fi
+    done
+
+    if [ "$MISSING_COUNT" -gt 0 ]; then
+      echo "  ⚠️  $MISSING_COUNT environment variable(s) missing (will be set in CI)"
+    else
+      echo "  ✅ Environment variables present"
+    fi
+  fi
+
+  echo ""
+  echo "Testing production builds..."
+
+  # Test marketing build
+  if [ -d "apps/marketing" ]; then
+    echo "Building marketing..."
+    cd apps/marketing
+    pnpm install --silent 2>/dev/null || true
+    pnpm build >/tmp/preflight-marketing.log 2>&1
+    MARKETING_BUILD=$?
+    cd ../..
+
+    if [ $MARKETING_BUILD -ne 0 ]; then
+      echo "  ❌ Marketing build failed"
+      tail -10 /tmp/preflight-marketing.log | grep -i "error" | head -5 | sed 's/^/    /'
+      PREFLIGHT_FAILED=true
+    else
+      echo "  ✅ Marketing build succeeded"
+    fi
+  fi
+
+  # Test app build
+  if [ -d "apps/app" ]; then
+    echo "Building app..."
+    cd apps/app
+    pnpm install --silent 2>/dev/null || true
+    pnpm build >/tmp/preflight-app.log 2>&1
+    APP_BUILD=$?
+    cd ../..
+
+    if [ $APP_BUILD -ne 0 ]; then
+      echo "  ❌ App build failed"
+      tail -10 /tmp/preflight-app.log | grep -i "error" | head -5 | sed 's/^/    /'
+      PREFLIGHT_FAILED=true
+    else
+      echo "  ✅ App build succeeded"
+    fi
+  fi
+
+  # Test API Docker build (if Dockerfile exists)
+  if [ -f "api/Dockerfile" ] && command -v docker &>/dev/null; then
+    echo "Testing API Docker build..."
+    docker build -t api-preflight-test -f api/Dockerfile . >/tmp/preflight-docker.log 2>&1
+    DOCKER_BUILD=$?
+
+    if [ $DOCKER_BUILD -ne 0 ]; then
+      echo "  ❌ Docker build failed"
+      tail -10 /tmp/preflight-docker.log | sed 's/^/    /'
+      PREFLIGHT_FAILED=true
+    else
+      echo "  ✅ Docker image builds"
+      docker rmi api-preflight-test 2>/dev/null || true
+    fi
+  fi
+
+  echo ""
+
+  if [ "$PREFLIGHT_FAILED" = true ]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "❌ PRE-FLIGHT FAILED"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Deployment blocked: Fix build errors before shipping"
+    echo ""
+    echo "Build logs:"
+    echo "  - Marketing: /tmp/preflight-marketing.log"
+    echo "  - App: /tmp/preflight-app.log"
+    echo "  - Docker: /tmp/preflight-docker.log"
+    echo ""
+    echo "Fix issues and re-run /phase-1-ship"
+    exit 1
+  else
+    echo "✅ Pre-flight checks passed"
+  fi
+else
+  # Run full preflight script if available
+  bash .spec-flow/scripts/bash/preflight-check.sh
+
+  if [ $? -ne 0 ]; then
+    echo "❌ Pre-flight validation failed"
+    echo ""
+    echo "Fix issues and re-run /phase-1-ship"
+    exit 1
+  fi
+
+  echo "✅ Pre-flight checks passed"
+fi
+
+echo ""
+```
+
 ### Check for Existing PR
 
 ```bash
@@ -596,6 +726,121 @@ echo "✅ Deployment mode set: $DEPLOYMENT_MODE"
 echo ""
 ```
 
+## WAIT FOR REQUIRED CHECKS TO REGISTER
+
+**Ensure all critical checks are registered before enabling auto-merge:**
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Waiting for Required CI Checks to Register"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+echo "Ensuring all critical checks start before enabling auto-merge..."
+echo "This prevents race conditions where auto-merge triggers before checks complete."
+echo ""
+
+# Define required checks based on deployment mode
+REQUIRED_CHECKS=()
+
+# Common checks for all modes
+REQUIRED_CHECKS+=("Lint")
+REQUIRED_CHECKS+=("Type Check")
+REQUIRED_CHECKS+=("Test")
+
+# Deployment-specific checks
+if [ "$DEPLOYMENT_MODE" = "staging" ] || [ "$DEPLOYMENT_MODE" = "preview" ]; then
+  REQUIRED_CHECKS+=("Build")
+  REQUIRED_CHECKS+=("Verify Build Artifacts")
+  REQUIRED_CHECKS+=("Deploy to Staging")
+fi
+
+echo "Required checks (${#REQUIRED_CHECKS[@]} total):"
+for check in "${REQUIRED_CHECKS[@]}"; do
+  echo "  - $check"
+done
+echo ""
+
+# Poll for checks to register
+REGISTRATION_TIMEOUT=300  # 5 minutes
+REGISTRATION_ELAPSED=0
+POLL_INTERVAL=10
+ALL_REGISTERED=false
+
+echo "Polling for check registration..."
+echo ""
+
+while [ $REGISTRATION_ELAPSED -lt $REGISTRATION_TIMEOUT ]; do
+  # Get current checks
+  CURRENT_CHECKS=$(gh pr checks "$PR_NUMBER" --json name -q '.[].name' 2>/dev/null || echo "")
+
+  if [ -z "$CURRENT_CHECKS" ]; then
+    echo "[$(date +%H:%M:%S)] No checks registered yet. Waiting..."
+  else
+    # Count how many required checks are registered
+    REGISTERED_COUNT=0
+
+    for required in "${REQUIRED_CHECKS[@]}"; do
+      if echo "$CURRENT_CHECKS" | grep -qi "$required"; then
+        ((REGISTERED_COUNT++))
+      fi
+    done
+
+    echo "[$(date +%H:%M:%S)] Registered: $REGISTERED_COUNT / ${#REQUIRED_CHECKS[@]}"
+
+    # Check if all required checks are registered
+    if [ "$REGISTERED_COUNT" -eq "${#REQUIRED_CHECKS[@]}" ]; then
+      echo ""
+      echo "✅ All required checks registered!"
+      echo ""
+
+      # Show registered checks
+      echo "Registered checks:"
+      echo "$CURRENT_CHECKS" | sed 's/^/  - /'
+      echo ""
+
+      ALL_REGISTERED=true
+      break
+    fi
+  fi
+
+  # Wait before next poll
+  sleep $POLL_INTERVAL
+  REGISTRATION_ELAPSED=$((REGISTRATION_ELAPSED + POLL_INTERVAL))
+done
+
+if [ "$ALL_REGISTERED" != true ]; then
+  echo ""
+  echo "⏱️  Timeout: Required checks did not register within 5 minutes"
+  echo ""
+
+  if [ -n "$CURRENT_CHECKS" ]; then
+    echo "Checks that registered:"
+    echo "$CURRENT_CHECKS" | sed 's/^/  - /'
+    echo ""
+  fi
+
+  echo "This may indicate:"
+  echo "  - CI workflow configuration issues"
+  echo "  - GitHub Actions not triggering"
+  echo "  - Branch protection rules missing"
+  echo ""
+  echo "Check CI configuration and try again"
+
+  read -p "Continue anyway? (y/N): " FORCE_CONTINUE
+  if [ "$FORCE_CONTINUE" != "y" ]; then
+    exit 1
+  fi
+
+  echo ""
+  echo "⚠️  Proceeding without full check registration (not recommended)"
+else
+  echo "Safe to enable auto-merge (all checks running)"
+fi
+
+echo ""
+```
+
 ## ENABLE AUTO-MERGE
 
 **Enable auto-merge via GitHub CLI:**
@@ -696,6 +941,157 @@ if [ "$CI_PASSED" != true ]; then
   echo "Check manually: $PR_URL"
   exit 1
 fi
+```
+
+## VERIFY BUILD ARTIFACTS
+
+**Verify that builds actually succeeded and artifacts were created:**
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Verifying Build Artifacts"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+echo "Ensuring builds succeeded and artifacts were created..."
+echo ""
+
+ARTIFACTS_VALID=true
+
+# Find the workflow run for the merged commit
+MERGE_COMMIT=$(git rev-parse origin/main)
+echo "Merged commit: $(git rev-parse --short $MERGE_COMMIT)"
+echo ""
+
+# Get the "Verify Build Artifacts" check specifically
+echo "Checking 'Verify Build Artifacts' status..."
+VERIFY_CHECK=$(gh pr checks "$PR_NUMBER" --json name,conclusion -q '.[] | select(.name | test("Verify.*Build.*Artifacts"; "i"))' 2>/dev/null)
+
+if [ -n "$VERIFY_CHECK" ]; then
+  VERIFY_CONCLUSION=$(echo "$VERIFY_CHECK" | jq -r '.conclusion')
+
+  if [ "$VERIFY_CONCLUSION" = "SUCCESS" ]; then
+    echo "  ✅ Verify Build Artifacts: PASSED"
+  else
+    echo "  ❌ Verify Build Artifacts: $VERIFY_CONCLUSION"
+    ARTIFACTS_VALID=false
+  fi
+else
+  echo "  ⚠️  Verify Build Artifacts check not found"
+  echo "     This check should validate:"
+  echo "       - Build outputs exist"
+  echo "       - No build warnings"
+  echo "       - Bundle sizes acceptable"
+  echo ""
+
+  # Fallback: Check if Build check passed
+  BUILD_CHECK=$(gh pr checks "$PR_NUMBER" --json name,conclusion -q '.[] | select(.name | test("Build"; "i"))' | head -1 2>/dev/null)
+
+  if [ -n "$BUILD_CHECK" ]; then
+    BUILD_CONCLUSION=$(echo "$BUILD_CHECK" | jq -r '.conclusion')
+
+    if [ "$BUILD_CONCLUSION" = "SUCCESS" ]; then
+      echo "  ✅ Build check: PASSED (artifact validation unavailable)"
+    else
+      echo "  ❌ Build check: $BUILD_CONCLUSION"
+      ARTIFACTS_VALID=false
+    fi
+  else
+    echo "  ⚠️  No build validation checks found"
+    ARTIFACTS_VALID=false
+  fi
+fi
+
+echo ""
+
+# Additional validation: Check for deployment artifacts in workflow logs if in staging/preview mode
+if [ "$DEPLOYMENT_MODE" = "staging" ] || [ "$DEPLOYMENT_MODE" = "preview" ]; then
+  echo "Checking deployment workflow..."
+
+  # Find deploy workflow run
+  DEPLOY_RUN=$(gh run list \
+    --workflow=deploy-staging.yml \
+    --branch=main \
+    --limit=5 \
+    --json databaseId,headSha,conclusion \
+    --jq ".[] | select(.headSha==\"$MERGE_COMMIT\") | .databaseId" 2>/dev/null | head -1)
+
+  if [ -n "$DEPLOY_RUN" ]; then
+    echo "  Found deployment run: #$DEPLOY_RUN"
+
+    # Get workflow conclusion
+    DEPLOY_CONCLUSION=$(gh run view "$DEPLOY_RUN" --json conclusion -q '.conclusion' 2>/dev/null)
+
+    if [ "$DEPLOY_CONCLUSION" = "success" ]; then
+      echo "  ✅ Deployment workflow: SUCCESS"
+
+      # Quick scan of logs for error indicators
+      echo "  Scanning logs for errors..."
+      DEPLOY_LOGS=$(gh run view "$DEPLOY_RUN" --log 2>/dev/null || echo "")
+
+      ERROR_COUNT=$(echo "$DEPLOY_LOGS" | grep -ci "error\|failed\|fatal" || echo 0)
+
+      if [ "$ERROR_COUNT" -gt 10 ]; then
+        echo "  ⚠️  Found $ERROR_COUNT error mentions in logs (may be normal)"
+      else
+        echo "  ✅ No major errors in deployment logs"
+      fi
+    elif [ "$DEPLOY_CONCLUSION" = "failure" ]; then
+      echo "  ❌ Deployment workflow: FAILED"
+      ARTIFACTS_VALID=false
+
+      # Get failure details
+      echo ""
+      echo "Failed jobs:"
+      gh run view "$DEPLOY_RUN" --json jobs -q '.jobs[] | select(.conclusion=="failure") | "  - \(.name)"' 2>/dev/null
+      echo ""
+    else
+      echo "  ⏳ Deployment workflow: $DEPLOY_CONCLUSION"
+    fi
+  else
+    echo "  ⚠️  Deployment workflow not found yet"
+    echo "     Deployments may still be in progress"
+  fi
+
+  echo ""
+fi
+
+if [ "$ARTIFACTS_VALID" != true ]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "❌ ARTIFACT VERIFICATION FAILED"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "Build artifacts are missing or invalid!"
+  echo ""
+  echo "This indicates:"
+  echo "  - Builds may have reported success but produced no output"
+  echo "  - Artifact validation check failed"
+  echo "  - Deployment workflow failed"
+  echo ""
+  echo "⚠️  CRITICAL: This PR merged but may not be deployable!"
+  echo ""
+  echo "Recommended actions:"
+  echo "  1. Check workflow logs: gh run view $DEPLOY_RUN --log"
+  echo "  2. Verify build outputs exist in deployment"
+  echo "  3. Consider reverting merge if artifacts invalid:"
+  echo "     git revert -m 1 $MERGE_COMMIT"
+  echo "     git push origin main"
+  echo ""
+
+  read -p "Continue despite artifact validation failure? (y/N): " CONTINUE_ANYWAY
+  if [ "$CONTINUE_ANYWAY" != "y" ]; then
+    echo ""
+    echo "Stopping. Fix build artifacts before proceeding to validation."
+    exit 1
+  fi
+
+  echo ""
+  echo "⚠️  Proceeding with unverified artifacts (HIGH RISK)"
+else
+  echo "✅ Build artifacts verified"
+fi
+
+echo ""
 ```
 
 ## EXTRACT DEPLOYMENT IDS (FIX #3: Deployment ID Verification)
@@ -814,6 +1210,166 @@ EOF
   echo "✅ Rollback metadata saved: $FEATURE_DIR/deployment-metadata.json"
   echo ""
 fi
+```
+
+---
+
+## VERIFY STAGING DEPLOYMENT HEALTH
+
+**Validate that staging deployment is actually working:**
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Staging Deployment Health Check"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+if [ "$DEPLOYMENT_MODE" != "staging" ]; then
+  echo "Skipping health checks (deployment mode: $DEPLOYMENT_MODE)"
+  echo ""
+else
+  echo "Waiting for staging deployment to become healthy..."
+  echo ""
+
+  # Define staging URLs (customize for your project)
+  STAGING_MARKETING="https://staging.cfipros.com"
+  STAGING_APP="https://app.staging.cfipros.com"
+  STAGING_API="https://api.staging.cfipros.com/api/v1/health/healthz"
+
+  # Wait for DNS propagation and deployment
+  echo "Waiting 2 minutes for deployment propagation..."
+  sleep 120
+
+  HEALTH_PASSED=true
+  HEALTH_CHECKS_DONE=0
+  HEALTH_CHECKS_PASSED=0
+
+  # Check marketing site
+  echo "Checking marketing site..."
+  ((HEALTH_CHECKS_DONE++))
+
+  if curl -sf --max-time 10 "$STAGING_MARKETING" > /dev/null 2>&1; then
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$STAGING_MARKETING" 2>/dev/null)
+
+    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
+      echo "  ✅ Marketing: $HTTP_CODE"
+      ((HEALTH_CHECKS_PASSED++))
+    else
+      echo "  ❌ Marketing: HTTP $HTTP_CODE (expected 200)"
+      HEALTH_PASSED=false
+    fi
+  else
+    echo "  ❌ Marketing: Not responding"
+    echo "     URL: $STAGING_MARKETING"
+    HEALTH_PASSED=false
+  fi
+
+  # Check app
+  echo "Checking app..."
+  ((HEALTH_CHECKS_DONE++))
+
+  if curl -sf --max-time 10 "$STAGING_APP" > /dev/null 2>&1; then
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$STAGING_APP" 2>/dev/null)
+
+    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
+      echo "  ✅ App: $HTTP_CODE"
+      ((HEALTH_CHECKS_PASSED++))
+    else
+      echo "  ❌ App: HTTP $HTTP_CODE (expected 200)"
+      HEALTH_PASSED=false
+    fi
+  else
+    echo "  ❌ App: Not responding"
+    echo "     URL: $STAGING_APP"
+    HEALTH_PASSED=false
+  fi
+
+  # Check API health endpoint
+  echo "Checking API health..."
+  ((HEALTH_CHECKS_DONE++))
+
+  if curl -sf --max-time 10 "$STAGING_API" 2>/dev/null | grep -qi "healthy\|ok\|status.*ok"; then
+    echo "  ✅ API: Healthy"
+    ((HEALTH_CHECKS_PASSED++))
+  else
+    echo "  ❌ API: Health check failed"
+    echo "     URL: $STAGING_API"
+    HEALTH_PASSED=false
+  fi
+
+  # Check for immediate errors (first 60 seconds of logs)
+  if [ -n "$DEPLOY_RUN" ]; then
+    echo ""
+    echo "Checking for immediate errors in logs..."
+
+    # Wait a bit more for logs to populate
+    sleep 15
+
+    # Get recent logs
+    RECENT_LOGS=$(gh run view "$DEPLOY_RUN" --log 2>/dev/null | tail -100 || echo "")
+
+    # Count critical errors
+    CRITICAL_ERRORS=$(echo "$RECENT_LOGS" | grep -ci "error\|exception\|fatal\|crashed" || echo 0)
+
+    if [ "$CRITICAL_ERRORS" -gt 5 ]; then
+      echo "  ⚠️  Found $CRITICAL_ERRORS critical error mentions in recent logs"
+      echo "     Review logs: gh run view $DEPLOY_RUN --log"
+      HEALTH_PASSED=false
+    else
+      echo "  ✅ No critical errors in initial logs"
+    fi
+  fi
+
+  echo ""
+  echo "Health check results: $HEALTH_CHECKS_PASSED / $HEALTH_CHECKS_DONE passed"
+  echo ""
+
+  if [ "$HEALTH_PASSED" != true ]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "❌ STAGING HEALTH CHECK FAILED"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Staging deployment is not healthy!"
+    echo ""
+    echo "Failed checks:"
+    echo "  - Marketing responding: $([[ "$STAGING_MARKETING" == *"200"* ]] && echo "✅" || echo "❌")"
+    echo "  - App responding: $([[ "$STAGING_APP" == *"200"* ]] && echo "✅" || echo "❌")"
+    echo "  - API health: $([[ "$STAGING_API" == *"healthy"* ]] && echo "✅" || echo "❌")"
+    echo ""
+    echo "⚠️  CRITICAL: Staging deployment may be broken!"
+    echo ""
+    echo "Recommended actions:"
+    echo "  1. Check deployment logs: gh run view $DEPLOY_RUN --log"
+    echo "  2. Test URLs manually:"
+    echo "     - $STAGING_MARKETING"
+    echo "     - $STAGING_APP"
+    echo "     - $STAGING_API"
+    echo "  3. Revert if broken:"
+    echo "     git revert -m 1 $MERGE_COMMIT"
+    echo "     git push origin main"
+    echo ""
+
+    read -p "Continue despite health check failure? (y/N): " CONTINUE_UNHEALTHY
+    if [ "$CONTINUE_UNHEALTHY" != "y" ]; then
+      echo ""
+      echo "Stopping. Fix staging health before proceeding."
+      echo ""
+      echo "Next steps:"
+      echo "  1. Debug staging deployment"
+      echo "  2. Revert merge if necessary"
+      echo "  3. Fix issues on feature branch"
+      echo "  4. Re-run /phase-1-ship"
+      exit 1
+    fi
+
+    echo ""
+    echo "⚠️  Proceeding with unhealthy deployment (HIGH RISK)"
+  else
+    echo "✅ Staging deployment is healthy"
+  fi
+fi
+
+echo ""
 ```
 
 ---

@@ -467,6 +467,166 @@ fi
 
 ---
 
+### Phase 2.6.5: VERIFY PRODUCTION ARTIFACTS
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Verifying Production Artifacts"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+echo "Ensuring production deployment has valid artifacts..."
+echo ""
+
+PRODUCTION_ARTIFACTS_VALID=true
+
+# Get detailed job results
+JOBS_DATA=$(echo "$WORKFLOW_DATA" | jq -r '.jobs[]')
+
+# Check "Verify Build Artifacts" job (CRITICAL)
+echo "Checking 'Verify Build Artifacts' job..."
+VERIFY_JOB=$(echo "$JOBS_DATA" | jq -r 'select(.name | test("Verify.*Build.*Artifacts"; "i"))')
+
+if [ -n "$VERIFY_JOB" ]; then
+  VERIFY_CONCLUSION=$(echo "$VERIFY_JOB" | jq -r '.conclusion')
+  VERIFY_NAME=$(echo "$VERIFY_JOB" | jq -r '.name')
+
+  if [ "$VERIFY_CONCLUSION" = "success" ]; then
+    echo "  ✅ $VERIFY_NAME: PASSED"
+  else
+    echo "  ❌ $VERIFY_NAME: $VERIFY_CONCLUSION"
+    echo ""
+    echo "⚠️  CRITICAL: Build artifacts verification failed!"
+    PRODUCTION_ARTIFACTS_VALID=false
+  fi
+else
+  echo "  ⚠️  'Verify Build Artifacts' job not found"
+  echo "     Production builds may not have been validated"
+  PRODUCTION_ARTIFACTS_VALID=false
+fi
+
+echo ""
+
+# Check individual deployment jobs
+echo "Checking deployment jobs..."
+
+# Marketing deployment
+MARKETING_JOB=$(echo "$JOBS_DATA" | jq -r 'select(.name | test("Deploy.*Marketing|Marketing.*Deploy"; "i"))' | head -1)
+if [ -n "$MARKETING_JOB" ]; then
+  MARKETING_CONCLUSION=$(echo "$MARKETING_JOB" | jq -r '.conclusion')
+  MARKETING_NAME=$(echo "$MARKETING_JOB" | jq -r '.name')
+
+  if [ "$MARKETING_CONCLUSION" = "success" ]; then
+    echo "  ✅ $MARKETING_NAME: SUCCESS"
+  else
+    echo "  ❌ $MARKETING_NAME: $MARKETING_CONCLUSION"
+    PRODUCTION_ARTIFACTS_VALID=false
+  fi
+else
+  echo "  ⚠️  Marketing deployment job not found"
+fi
+
+# App deployment
+APP_JOB=$(echo "$JOBS_DATA" | jq -r 'select(.name | test("Deploy.*App|App.*Deploy"; "i"))' | head -1)
+if [ -n "$APP_JOB" ]; then
+  APP_CONCLUSION=$(echo "$APP_JOB" | jq -r '.conclusion')
+  APP_NAME=$(echo "$APP_JOB" | jq -r '.name')
+
+  if [ "$APP_CONCLUSION" = "success" ]; then
+    echo "  ✅ $APP_NAME: SUCCESS"
+  else
+    echo "  ❌ $APP_NAME: $APP_CONCLUSION"
+    PRODUCTION_ARTIFACTS_VALID=false
+  fi
+else
+  echo "  ⚠️  App deployment job not found"
+fi
+
+# API deployment
+API_JOB=$(echo "$JOBS_DATA" | jq -r 'select(.name | test("Deploy.*API|API.*Deploy|Railway"; "i"))' | head -1)
+if [ -n "$API_JOB" ]; then
+  API_CONCLUSION=$(echo "$API_JOB" | jq -r '.conclusion')
+  API_NAME=$(echo "$API_JOB" | jq -r '.name')
+
+  if [ "$API_CONCLUSION" = "success" ]; then
+    echo "  ✅ $API_NAME: SUCCESS"
+  else
+    echo "  ❌ $API_NAME: $API_CONCLUSION"
+    PRODUCTION_ARTIFACTS_VALID=false
+  fi
+else
+  echo "  ⚠️  API deployment job not found"
+fi
+
+echo ""
+
+# Check for errors in workflow logs
+echo "Scanning workflow logs for errors..."
+WORKFLOW_LOGS=$(gh run view "$RUN_ID" --log 2>/dev/null || echo "")
+
+CRITICAL_ERROR_COUNT=$(echo "$WORKFLOW_LOGS" | grep -ci "error\|failed\|fatal\|exception" || echo 0)
+
+if [ "$CRITICAL_ERROR_COUNT" -gt 20 ]; then
+  echo "  ⚠️  Found $CRITICAL_ERROR_COUNT critical error mentions"
+  echo "     Review logs: gh run view $RUN_ID --log"
+
+  # Show sample errors
+  echo ""
+  echo "Sample errors (first 3):"
+  echo "$WORKFLOW_LOGS" | grep -i "error\|failed\|fatal" | head -3 | sed 's/^/    /'
+  echo ""
+
+  PRODUCTION_ARTIFACTS_VALID=false
+else
+  echo "  ✅ No excessive errors in logs ($CRITICAL_ERROR_COUNT mentions)"
+fi
+
+echo ""
+
+if [ "$PRODUCTION_ARTIFACTS_VALID" != true ]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "❌ PRODUCTION ARTIFACT VERIFICATION FAILED"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "⚠️  CRITICAL: Production artifacts are invalid or missing!"
+  echo ""
+  echo "This indicates:"
+  echo "  - Build artifacts were not properly validated"
+  echo "  - One or more deployments failed"
+  echo "  - Workflow had critical errors"
+  echo ""
+  echo "⛔ BLOCKING RELEASE CREATION"
+  echo ""
+  echo "You MUST NOT create a production release with invalid artifacts."
+  echo ""
+  echo "Recommended actions:"
+  echo "  1. Review workflow logs:"
+  echo "     gh run view $RUN_ID --log"
+  echo "  2. Check failed jobs for details"
+  echo "  3. Rollback if deployments are broken:"
+  echo "     vercel rollback $PROD_APP"
+  echo "     railway rollback api --environment production"
+  echo "  4. Fix issues and re-run workflow"
+  echo ""
+
+  read -p "🚨 Override and continue? (DANGEROUS - type 'OVERRIDE' to continue): " OVERRIDE
+  if [ "$OVERRIDE" != "OVERRIDE" ]; then
+    echo ""
+    echo "Aborting. Fix artifacts before releasing to production."
+    exit 1
+  fi
+
+  echo ""
+  echo "⚠️  Proceeding with invalid artifacts (EXTREMELY HIGH RISK)"
+else
+  echo "✅ Production artifacts verified"
+fi
+
+echo ""
+```
+
+---
+
 ### Phase 2.7: CAPTURE DEPLOYMENT ARTIFACTS
 
 ```bash
@@ -548,6 +708,154 @@ fi
 echo ""
 echo "✅ Health checks complete"
 echo "   Note: DNS propagation may take 5-10 minutes"
+echo ""
+```
+
+---
+
+### Phase 2.8.5: POST-DEPLOY VALIDATION
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Post-Deploy Validation (Production)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+echo "Monitoring production deployment for initial errors..."
+echo ""
+
+POST_DEPLOY_HEALTHY=true
+
+# Wait for production traffic to flow
+echo "Waiting 3 minutes for production traffic..."
+sleep 180
+
+echo ""
+echo "Running validation checks..."
+echo ""
+
+# Re-check production URLs after traffic flows
+echo "1. Validating production endpoints..."
+
+ENDPOINTS_OK=0
+ENDPOINTS_TOTAL=3
+
+# Marketing
+if curl -sf --max-time 10 "$PROD_MARKETING" >/dev/null 2>&1; then
+  echo "  ✅ Marketing: Responding"
+  ((ENDPOINTS_OK++))
+else
+  echo "  ❌ Marketing: Not responding after 3 minutes"
+  POST_DEPLOY_HEALTHY=false
+fi
+
+# App
+if curl -sf --max-time 10 "$PROD_APP" >/dev/null 2>&1; then
+  echo "  ✅ App: Responding"
+  ((ENDPOINTS_OK++))
+else
+  echo "  ❌ App: Not responding after 3 minutes"
+  POST_DEPLOY_HEALTHY=false
+fi
+
+# API health
+if curl -sf --max-time 10 "$PROD_API/api/v1/health/healthz" 2>/dev/null | grep -qi "healthy\|ok"; then
+  echo "  ✅ API: Healthy"
+  ((ENDPOINTS_OK++))
+else
+  echo "  ❌ API: Health check failed"
+  POST_DEPLOY_HEALTHY=false
+fi
+
+echo ""
+
+# Check for immediate crashes or errors
+echo "2. Checking for deployment crashes..."
+
+# Re-scan logs for new errors after deployment
+FRESH_LOGS=$(gh run view "$RUN_ID" --log 2>/dev/null | tail -200 || echo "")
+CRASH_COUNT=$(echo "$FRESH_LOGS" | grep -ci "crash\|fatal\|panic\|segfault" || echo 0)
+
+if [ "$CRASH_COUNT" -gt 0 ]; then
+  echo "  ⚠️  Found $CRASH_COUNT crash indicators in logs"
+  echo "     Review: gh run view $RUN_ID --log | tail -200"
+  POST_DEPLOY_HEALTHY=false
+else
+  echo "  ✅ No crashes detected"
+fi
+
+echo ""
+
+# Check response times (basic sanity check)
+echo "3. Checking response times..."
+
+MARKETING_TIME=$(curl -o /dev/null -s -w "%{time_total}" --max-time 10 "$PROD_MARKETING" 2>/dev/null || echo "99")
+APP_TIME=$(curl -o /dev/null -s -w "%{time_total}" --max-time 10 "$PROD_APP" 2>/dev/null || echo "99")
+
+echo "  Marketing: ${MARKETING_TIME}s"
+echo "  App: ${APP_TIME}s"
+
+# Warn if response times are excessive
+if (( $(echo "$MARKETING_TIME > 5" | bc -l 2>/dev/null || echo 0) )); then
+  echo "  ⚠️  Marketing response time high (>${MARKETING_TIME}s)"
+  POST_DEPLOY_HEALTHY=false
+fi
+
+if (( $(echo "$APP_TIME > 5" | bc -l 2>/dev/null || echo 0) )); then
+  echo "  ⚠️  App response time high (>${APP_TIME}s)"
+  POST_DEPLOY_HEALTHY=false
+fi
+
+echo ""
+
+# Summary
+echo "Validation results:"
+echo "  Endpoints healthy: $ENDPOINTS_OK / $ENDPOINTS_TOTAL"
+echo "  Crashes detected: $CRASH_COUNT"
+echo "  Response times: $([ "$MARKETING_TIME" != "99" ] && echo "OK" || echo "TIMEOUT")"
+echo ""
+
+if [ "$POST_DEPLOY_HEALTHY" != true ]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "⚠️  POST-DEPLOY VALIDATION WARNINGS"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "Production deployment has health concerns!"
+  echo ""
+  echo "Issues detected:"
+  [ "$ENDPOINTS_OK" -lt "$ENDPOINTS_TOTAL" ] && echo "  - Some endpoints not responding"
+  [ "$CRASH_COUNT" -gt 0 ] && echo "  - Crash indicators in logs"
+  (( $(echo "$MARKETING_TIME > 5" | bc -l 2>/dev/null || echo 0) )) && echo "  - High response times"
+  echo ""
+  echo "⚠️  RECOMMENDATION: Monitor production closely"
+  echo ""
+  echo "Monitoring checklist:"
+  echo "  [ ] Check error rates in Sentry: https://sentry.io"
+  echo "  [ ] Monitor logs: gh run view $RUN_ID --log"
+  echo "  [ ] Test critical user flows manually"
+  echo "  [ ] Prepare for possible rollback"
+  echo ""
+
+  read -p "Continue with release despite warnings? (y/N): " CONTINUE_RELEASE
+  if [ "$CONTINUE_RELEASE" != "y" ]; then
+    echo ""
+    echo "Release cancelled. Fix production issues first."
+    echo ""
+    echo "Rollback commands:"
+    echo "  vercel rollback $PROD_MARKETING"
+    echo "  vercel rollback $PROD_APP"
+    echo "  railway rollback api --environment production"
+    exit 1
+  fi
+
+  echo ""
+  echo "⚠️  Proceeding with release (monitor closely)"
+else
+  echo "✅ Post-deploy validation passed"
+  echo ""
+  echo "Production deployment is healthy and responding normally."
+fi
+
 echo ""
 ```
 
