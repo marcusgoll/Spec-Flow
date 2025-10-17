@@ -560,6 +560,43 @@ Questions to answer:
 
 If ANY check fails: Fix before commit
 
+## Task Completion Protocol
+
+After successfully implementing a task:
+
+1. **Run all quality gates** (format, type check, tests, coverage, security)
+2. **Commit changes** with conventional commit message
+3. **Update task status via task-tracker** (DO NOT manually edit NOTES.md):
+
+```bash
+.spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
+  -TaskId "TXXX" \
+  -Notes "Implementation summary (1-2 sentences)" \
+  -Evidence "pytest: NN/NN passing, <500ms p95" \
+  -Coverage "NN% line, NN% branch (+ΔΔ%)" \
+  -CommitHash "$(git rev-parse --short HEAD)" \
+  -FeatureDir "$FEATURE_DIR"
+```
+
+This atomically updates BOTH tasks.md checkbox AND NOTES.md completion marker.
+
+4. **On task failure** (auto-rollback scenarios):
+
+```bash
+git restore .
+.spec-flow/scripts/bash/task-tracker.sh mark-failed \
+  -TaskId "TXXX" \
+  -ErrorMessage "Detailed error: [test output or error message]" \
+  -FeatureDir "$FEATURE_DIR"
+```
+
+**IMPORTANT:**
+- Never manually edit tasks.md or NOTES.md
+- Always use task-tracker for status updates
+- Provide specific evidence (test output, performance metrics)
+- Include coverage delta (e.g., "+8%" means coverage increased by 8%)
+- Log failures with enough detail for debugging
+
 ## Implementation Rules
 
 - Start EVERY shell command with: `cd api`

@@ -520,6 +520,43 @@ Questions to answer:
 
 If ANY check fails: Fix before commit
 
+## Task Completion Protocol
+
+After successfully implementing a task:
+
+1. **Run all quality gates** (format, lint, type-check, tests, a11y)
+2. **Commit changes** with conventional commit message
+3. **Update task status via task-tracker** (DO NOT manually edit NOTES.md):
+
+```bash
+.spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
+  -TaskId "TXXX" \
+  -Notes "Implementation summary (1-2 sentences)" \
+  -Evidence "jest: NN/NN passing, a11y: 0 violations" \
+  -Coverage "NN% (+ΔΔ%)" \
+  -CommitHash "$(git rev-parse --short HEAD)" \
+  -FeatureDir "$FEATURE_DIR"
+```
+
+This atomically updates BOTH tasks.md checkbox AND NOTES.md completion marker.
+
+4. **On task failure** (auto-rollback scenarios):
+
+```bash
+git restore .
+.spec-flow/scripts/bash/task-tracker.sh mark-failed \
+  -TaskId "TXXX" \
+  -ErrorMessage "Detailed error: [test output or error message]" \
+  -FeatureDir "$FEATURE_DIR"
+```
+
+**IMPORTANT:**
+- Never manually edit tasks.md or NOTES.md
+- Always use task-tracker for status updates
+- Include a11y test results in Evidence
+- Provide coverage delta (e.g., "+6%" means coverage increased by 6%)
+- Log failures with enough detail for debugging
+
 ## Implementation Rules
 
 - Start EVERY shell command with: `cd apps/app`

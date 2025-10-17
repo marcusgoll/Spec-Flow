@@ -21,8 +21,12 @@ TASKS_FILE="$FEATURE_DIR/tasks.md"
 ERROR_LOG="$FEATURE_DIR/error-log.md"
 NOTES_FILE="$FEATURE_DIR/NOTES.md"
 
+# Initialize task tracker for atomic status updates
+TASK_TRACKER=".spec-flow/scripts/bash/task-tracker.sh"
+
 [ ! -d "$FEATURE_DIR" ] && echo "❌ Feature not found: $FEATURE_DIR" && exit 1
 [ ! -f "$TASKS_FILE" ] && echo "❌ Run /tasks first" && exit 1
+[ ! -f "$TASK_TRACKER" ] && echo "⚠️  Warning: task-tracker not found" && TASK_TRACKER=""
 ```
 
 ## CHECKLIST VALIDATION (Quality Gate)
@@ -333,16 +337,36 @@ for batch in "${BATCHES[@]}"; do
   #     """
   #   )
 
-  # Validate batch results
+  # Validate batch results using task-tracker
   for task_info in "${TASKS_IN_BATCH[@]}"; do
     IFS=':' read -r TASK_ID DOMAIN TASK_DESC <<< "$task_info"
 
-    # Check if task completed (agent should have updated NOTES.md)
-    if grep -q "✅ $TASK_ID" "$NOTES_FILE" 2>/dev/null; then
-      echo "✅ $TASK_ID complete"
+    # Use task-tracker to check authoritative task status
+    if [ -n "$TASK_TRACKER" ]; then
+      # Query task status via task-tracker (checks both tasks.md and NOTES.md)
+      TASK_COMPLETED=$(pwsh -File "${TASK_TRACKER/bash\//powershell/}" status -FeatureDir "$FEATURE_DIR" -Json 2>/dev/null | \
+        jq -r ".CompletedTasks[] | select(.Id == \"$TASK_ID\") | .Id" || echo "")
+
+      if [ "$TASK_COMPLETED" = "$TASK_ID" ]; then
+        echo "✅ $TASK_ID complete"
+      else
+        echo "⚠️  $TASK_ID incomplete - check agent output"
+        # Log failure
+        if [ -n "$TASK_TRACKER" ]; then
+          pwsh -File "${TASK_TRACKER/bash\//powershell/}" mark-failed \
+            -TaskId "$TASK_ID" \
+            -ErrorMessage "Agent did not mark task as complete" \
+            -FeatureDir "$FEATURE_DIR" 2>/dev/null || true
+        fi
+      fi
     else
-      echo "⚠️  $TASK_ID - check agent output"
-      echo "  ⚠️  $TASK_ID: Agent did not complete" >> "$ERROR_LOG"
+      # Fallback to manual NOTES.md check
+      if grep -q "✅ $TASK_ID" "$NOTES_FILE" 2>/dev/null; then
+        echo "✅ $TASK_ID complete"
+      else
+        echo "⚠️  $TASK_ID - check agent output"
+        echo "  ⚠️  $TASK_ID: Agent did not complete" >> "$ERROR_LOG"
+      fi
     fi
   done
 
@@ -439,9 +463,19 @@ Requirements:
 - Run pytest api/tests/, provide evidence
 - Auto-rollback on failure
 - Commit when tests pass
-- Update NOTES.md: "✅ T001: Create Message model"
+- **Update task status via task-tracker (DO NOT manually edit NOTES.md):**
+  ```bash
+  .spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
+    -TaskId "T001" \
+    -Notes "Created Message model with validation" \
+    -Evidence "pytest: 25/25 passing" \
+    -Coverage "92% line (+8%)" \
+    -CommitHash "$(git rev-parse --short HEAD)" \
+    -FeatureDir "$FEATURE_DIR"
+  ```
+  This atomically updates BOTH tasks.md and NOTES.md
 
-Return: Files changed, test results, verification status
+Return: Files changed, test results, task-tracker confirmation
   """
 )
 
@@ -464,9 +498,18 @@ Requirements:
 - Run pnpm test, provide evidence
 - Auto-rollback on failure
 - Commit when complete
-- Update NOTES.md: "✅ T002: MessageForm component"
+- **Update task status via task-tracker:**
+  ```bash
+  .spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
+    -TaskId "T002" \
+    -Notes "MessageForm component with API integration" \
+    -Evidence "jest: 12/12 passing, a11y: 0 violations" \
+    -Coverage "88% (+6%)" \
+    -CommitHash "$(git rev-parse --short HEAD)" \
+    -FeatureDir "$FEATURE_DIR"
+  ```
 
-Return: Files changed, test results, verification status
+Return: Files changed, test results, task-tracker confirmation
   """
 )
 
@@ -486,9 +529,17 @@ Requirements:
 - Test up/down cycle
 - Auto-rollback on failure
 - Commit migration file
-- Update NOTES.md: "✅ T003: messages table migration"
+- **Update task status via task-tracker:**
+  ```bash
+  .spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
+    -TaskId "T003" \
+    -Notes "messages table migration with FK constraints" \
+    -Evidence "Migration up/down cycle tested successfully" \
+    -CommitHash "$(git rev-parse --short HEAD)" \
+    -FeatureDir "$FEATURE_DIR"
+  ```
 
-Return: Migration file, test results, verification status
+Return: Migration file, test results, task-tracker confirmation
   """
 )
 ```
@@ -556,19 +607,37 @@ echo "⚠️  TXXX: Auto-rolled back (test failure)" >> error-log.md
 - No snapshots in frontend tests (use semantic queries)
 - Lint/type-check clean
 
-## NOTES.md CHECKPOINTS
+## TASK STATUS UPDATES (MANDATORY)
 
-**Agents must update after each task:**
+**Agents MUST use task-tracker to update status (DO NOT manually edit NOTES.md or tasks.md):**
 
-**User Story Format:**
-```markdown
-✅ TXXX [USN] [PN]: Task description
-  - Evidence: pytest/jest output ✓
-  - Coverage: XX% (+ΔΔ%)
-  - Committed: [git hash]
+**After successful task completion:**
+```bash
+.spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
+  -TaskId "TXXX" \
+  -Notes "Implementation summary (1-2 sentences)" \
+  -Evidence "pytest: NN/NN passing" or "jest: NN/NN passing, a11y: 0 violations" \
+  -Coverage "NN% line, NN% branch (+ΔΔ%)" \
+  -CommitHash "$(git rev-parse --short HEAD)" \
+  -FeatureDir "$FEATURE_DIR"
 ```
 
-**TDD Phase Format:**
+**On task failure (auto-rollback scenarios):**
+```bash
+.spec-flow/scripts/bash/task-tracker.sh mark-failed \
+  -TaskId "TXXX" \
+  -ErrorMessage "Detailed error description" \
+  -FeatureDir "$FEATURE_DIR"
+```
+
+**Why task-tracker?**
+- Atomically updates BOTH tasks.md checkbox AND NOTES.md completion marker
+- Prevents desync between the two files
+- Standardized format with evidence tracking
+- Automatic phase marker extraction
+- Traceability via commit hash
+
+**Generated NOTES.md format:**
 ```markdown
 ✅ TXXX [PHASE]: Task description
   - Evidence: pytest/jest output ✓
@@ -576,7 +645,7 @@ echo "⚠️  TXXX: Auto-rolled back (test failure)" >> error-log.md
   - Committed: [git hash]
 ```
 
-**Note**: Format auto-detected based on task markers. [USN] = User Story number (e.g., [US1]), [PN] = Priority (e.g., [P1]), [PHASE] = TDD phase (e.g., [RED], [GREEN]).
+**Note**: [PHASE] auto-extracted from tasks.md ([RED], [GREEN], [REFACTOR], [US1], [P1], [P]).
 
 ## CONSTRAINTS
 

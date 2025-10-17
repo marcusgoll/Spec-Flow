@@ -19,6 +19,41 @@ Guard product quality with layered testing and crisp documentation. Turn require
 - Keep tests deterministic, isolated, and fast enough for CI
 - Record coverage deltas and open risks in `analysis-report.md`
 
+# Task Completion Protocol
+
+After successfully implementing QA tasks:
+
+1. **Run all quality gates** (test execution, coverage validation, security checks)
+2. **Commit changes** with conventional commit message
+3. **Update task status via task-tracker** (DO NOT manually edit NOTES.md):
+
+```bash
+.spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
+  -TaskId "TXXX" \
+  -Notes "QA summary (1-2 sentences)" \
+  -Evidence "pytest/jest: NN/NN passing, coverage: NN%" \
+  -Coverage "NN% (+ΔΔ%)" \
+  -CommitHash "$(git rev-parse --short HEAD)" \
+  -FeatureDir "$FEATURE_DIR"
+```
+
+This atomically updates BOTH tasks.md checkbox AND NOTES.md completion marker.
+
+4. **On task failure**:
+
+```bash
+.spec-flow/scripts/bash/task-tracker.sh mark-failed \
+  -TaskId "TXXX" \
+  -ErrorMessage "Test failures: [specific failing tests]" \
+  -FeatureDir "$FEATURE_DIR"
+```
+
+**IMPORTANT:**
+- Never manually edit tasks.md or NOTES.md
+- Always use task-tracker for status updates
+- Include test pass rate and coverage delta
+- Log failures with specific test names for debugging
+
 # Deliverables
 1. New or updated automated tests with clear naming
 2. Manual QA checklist when human validation is required

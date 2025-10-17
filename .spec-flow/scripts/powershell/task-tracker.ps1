@@ -34,11 +34,15 @@
 
 param(
     [Parameter(Mandatory)]
-    [ValidateSet("status", "mark-done", "mark-in-progress", "next", "summary", "validate")]
+    [ValidateSet("status", "mark-done", "mark-done-with-notes", "mark-in-progress", "mark-failed", "sync-status", "next", "summary", "validate")]
     [string]$Action,
 
     [string]$TaskId,
     [string]$Notes = "",
+    [string]$Evidence = "",
+    [string]$Coverage = "",
+    [string]$CommitHash = "",
+    [string]$ErrorMessage = "",
     [switch]$Json,
     [string]$FeatureDir = ""
 )
@@ -390,6 +394,235 @@ function Get-TaskSummary {
     return $summary
 }
 
+function Get-NotesFile {
+    $featureDir = Get-FeatureDirectory
+    return Join-Path $featureDir "NOTES.md"
+}
+
+function Get-ErrorLogFile {
+    $featureDir = Get-FeatureDirectory
+    return Join-Path $featureDir "error-log.md"
+}
+
+function Update-TaskCompletionAtomic {
+    <#
+    .SYNOPSIS
+        Atomically update both tasks.md checkbox AND NOTES.md completion marker
+
+    .DESCRIPTION
+        This function ensures task completion is tracked in both locations:
+        - tasks.md: Updates checkbox from [ ] to [X]
+        - NOTES.md: Appends completion marker with evidence
+
+    .PARAMETER TaskId
+        Task ID (e.g., T001)
+
+    .PARAMETER Notes
+        Implementation summary
+
+    .PARAMETER Evidence
+        Test execution evidence (e.g., "pytest: 18/18 passing")
+
+    .PARAMETER Coverage
+        Coverage change (e.g., "85% (+5%)")
+
+    .PARAMETER CommitHash
+        Git commit hash for traceability
+
+    .EXAMPLE
+        Update-TaskCompletionAtomic -TaskId "T001" -Notes "Created Message model" `
+            -Evidence "pytest: 25/25 passing" -Coverage "92% (+8%)" -CommitHash "abc123"
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [string]$TaskId,
+
+        [string]$Notes = "",
+        [string]$Evidence = "",
+        [string]$Coverage = "",
+        [string]$CommitHash = ""
+    )
+
+    $tasksFile = Get-TasksFile
+    $notesFile = Get-NotesFile
+    $tasks = Parse-TasksFile $tasksFile
+
+    # Find the task to get its full description and phase markers
+    $task = $tasks | Where-Object { $_.Id -eq $TaskId }
+    if (-not $task) {
+        throw "Task $TaskId not found in tasks.md"
+    }
+
+    # Extract phase marker if present ([RED], [GREEN], [REFACTOR], [US1], [P1])
+    $phaseMarker = ""
+    if ($task.Description -match '\[(RED|GREEN|REFACTOR|US\d+|P\d+|P)\]') {
+        $phaseMarker = $matches[0]
+    }
+
+    # 1. Update tasks.md checkbox
+    $taskContent = Get-Content $tasksFile
+    $updated = $false
+
+    for ($i = 0; $i -lt $taskContent.Count; $i++) {
+        if ($taskContent[$i] -match $TASK_PATTERN -and $matches[2] -eq $TaskId) {
+            $description = $matches[3]
+            $taskContent[$i] = "- [X] $TaskId$description"
+            $updated = $true
+            break
+        }
+    }
+
+    if (-not $updated) {
+        throw "Failed to update tasks.md for $TaskId"
+    }
+
+    Set-Content $tasksFile $taskContent -Encoding UTF8
+
+    # 2. Append to NOTES.md with structured format
+    $notesEntry = @()
+    $notesEntry += "✅ $TaskId"
+    if ($phaseMarker) { $notesEntry[-1] += " $phaseMarker" }
+    if ($Notes) { $notesEntry[-1] += ": $Notes" }
+
+    if ($Evidence) { $notesEntry += "  - Evidence: $Evidence" }
+    if ($Coverage) { $notesEntry += "  - Coverage: $Coverage" }
+    if ($CommitHash) { $notesEntry += "  - Committed: $CommitHash" }
+    $notesEntry += ""  # Blank line separator
+
+    # Append to NOTES.md (create if doesn't exist)
+    if (-not (Test-Path $notesFile)) {
+        $notesEntry | Set-Content $notesFile -Encoding UTF8
+    } else {
+        $notesEntry | Add-Content $notesFile -Encoding UTF8
+    }
+
+    return @{
+        Success = $true
+        TaskId = $TaskId
+        Message = "Task $TaskId marked complete in both tasks.md and NOTES.md"
+        TasksFile = $tasksFile
+        NotesFile = $notesFile
+        PhaseMarker = $phaseMarker
+    }
+}
+
+function Mark-TaskFailed {
+    <#
+    .SYNOPSIS
+        Mark task as failed and log to error-log.md
+
+    .DESCRIPTION
+        Records task failure in error-log.md for debugging.
+        Keeps checkbox unchecked in tasks.md for retry.
+
+    .PARAMETER TaskId
+        Task ID that failed
+
+    .PARAMETER ErrorMessage
+        Error description
+
+    .EXAMPLE
+        Mark-TaskFailed -TaskId "T001" -ErrorMessage "Tests failing: ImportError on MessageService"
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [string]$TaskId,
+
+        [Parameter(Mandatory)]
+        [string]$ErrorMessage
+    )
+
+    $errorLogFile = Get-ErrorLogFile
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+    $errorEntry = @()
+    $errorEntry += "## ❌ $TaskId - $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+    $errorEntry += ""
+    $errorEntry += "**Error:** $ErrorMessage"
+    $errorEntry += ""
+    $errorEntry += "**Status:** Needs retry or investigation"
+    $errorEntry += ""
+    $errorEntry += "---"
+    $errorEntry += ""
+
+    # Append to error-log.md (create if doesn't exist)
+    if (-not (Test-Path $errorLogFile)) {
+        "# Error Log`n`n" | Set-Content $errorLogFile -Encoding UTF8
+    }
+
+    $errorEntry | Add-Content $errorLogFile -Encoding UTF8
+
+    return @{
+        Success = $true
+        TaskId = $TaskId
+        Message = "Task $TaskId marked as failed in error-log.md"
+        ErrorLogFile = $errorLogFile
+        Timestamp = $timestamp
+    }
+}
+
+function Sync-TaskStatus {
+    <#
+    .SYNOPSIS
+        Sync tasks.md checkboxes to NOTES.md for existing features
+
+    .DESCRIPTION
+        Migration utility that reads completed tasks from tasks.md
+        and generates corresponding NOTES.md entries if missing.
+
+    .EXAMPLE
+        Sync-TaskStatus
+    #>
+
+    $tasksFile = Get-TasksFile
+    $notesFile = Get-NotesFile
+    $tasks = Parse-TasksFile $tasksFile
+
+    # Read existing NOTES.md to avoid duplicates
+    $existingNotes = @()
+    if (Test-Path $notesFile) {
+        $existingNotes = Get-Content $notesFile | Where-Object { $_ -match '^✅ (T\d+)' }
+    }
+
+    $existingTaskIds = $existingNotes | ForEach-Object {
+        if ($_ -match '^✅ (T\d+)') { $matches[1] }
+    }
+
+    # Find completed tasks in tasks.md that aren't in NOTES.md
+    $completedTasks = $tasks | Where-Object { $_.IsCompleted }
+    $missingEntries = $completedTasks | Where-Object { $existingTaskIds -notcontains $_.Id }
+
+    if ($missingEntries.Count -eq 0) {
+        return @{
+            Success = $true
+            Message = "All completed tasks already in NOTES.md"
+            SyncedCount = 0
+        }
+    }
+
+    # Generate NOTES.md entries for missing tasks
+    $newEntries = @()
+    foreach ($task in $missingEntries) {
+        $newEntries += "✅ $($task.Id): $($task.Description)"
+        $newEntries += "  - Migrated from tasks.md (completed previously)"
+        $newEntries += ""
+    }
+
+    # Append to NOTES.md
+    if (-not (Test-Path $notesFile)) {
+        $newEntries | Set-Content $notesFile -Encoding UTF8
+    } else {
+        $newEntries | Add-Content $notesFile -Encoding UTF8
+    }
+
+    return @{
+        Success = $true
+        Message = "Synced $($missingEntries.Count) task(s) from tasks.md to NOTES.md"
+        SyncedCount = $missingEntries.Count
+        SyncedTasks = $missingEntries | ForEach-Object { $_.Id }
+    }
+}
+
 function Validate-TasksFile {
     $tasksFile = Get-TasksFile
     $tasks = Parse-TasksFile $tasksFile
@@ -440,9 +673,26 @@ try {
             if (-not $TaskId) { throw "TaskId required for mark-done action" }
             $result = Update-TaskStatus -TaskId $TaskId -NewStatus 'X' -Notes $Notes
         }
+        "mark-done-with-notes" {
+            if (-not $TaskId) { throw "TaskId required for mark-done-with-notes action" }
+            $result = Update-TaskCompletionAtomic `
+                -TaskId $TaskId `
+                -Notes $Notes `
+                -Evidence $Evidence `
+                -Coverage $Coverage `
+                -CommitHash $CommitHash
+        }
         "mark-in-progress" {
             if (-not $TaskId) { throw "TaskId required for mark-in-progress action" }
             $result = Update-TaskStatus -TaskId $TaskId -NewStatus '~'
+        }
+        "mark-failed" {
+            if (-not $TaskId) { throw "TaskId required for mark-failed action" }
+            if (-not $ErrorMessage) { throw "ErrorMessage required for mark-failed action" }
+            $result = Mark-TaskFailed -TaskId $TaskId -ErrorMessage $ErrorMessage
+        }
+        "sync-status" {
+            $result = Sync-TaskStatus
         }
         "next" {
             $status = Get-TaskStatus

@@ -888,6 +888,41 @@ if [ "$TOTAL_ISSUES" -gt 0 ]; then
 fi
 ```
 
+## TASK STATUS CONSISTENCY CHECK
+
+```bash
+echo ""
+echo "🔍 Validating task status consistency..."
+
+# Check for task-tracker availability
+TASK_TRACKER=".spec-flow/scripts/bash/task-tracker.sh"
+if [ -f "$TASK_TRACKER" ]; then
+  # Run task-tracker validation
+  VALIDATION_RESULT=$(pwsh -File ".spec-flow/scripts/powershell/task-tracker.ps1" \
+    validate -FeatureDir "$FEATURE_DIR" -Json 2>/dev/null || echo '{"Valid":false,"Issues":[]}')
+
+  # Parse validation results
+  IS_VALID=$(echo "$VALIDATION_RESULT" | jq -r '.Valid' 2>/dev/null || echo "false")
+  ISSUE_COUNT=$(echo "$VALIDATION_RESULT" | jq -r '.Issues | length' 2>/dev/null || echo "0")
+
+  if [ "$IS_VALID" != "true" ] && [ "$ISSUE_COUNT" -gt 0 ]; then
+    echo "⚠️  Found $ISSUE_COUNT task status inconsistency issue(s)"
+    echo "$VALIDATION_RESULT" | jq -r '.Issues[]' 2>/dev/null || echo "Unable to parse issues"
+    echo ""
+    echo "To fix inconsistencies, run:"
+    echo "  pwsh -File .spec-flow/scripts/powershell/task-tracker.ps1 sync-status -FeatureDir \"$FEATURE_DIR\""
+    echo ""
+    MEDIUM_ISSUES=$((MEDIUM_ISSUES + 1))
+  else
+    echo "✅ Task status consistent (tasks.md ↔ NOTES.md)"
+  fi
+else
+  echo "⚠️  task-tracker not found - skipping consistency check"
+fi
+
+echo ""
+```
+
 ## RETURN
 
 ```bash
