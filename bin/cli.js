@@ -14,7 +14,7 @@ const VERSION = require('../package.json').version;
 program
   .name('spec-flow')
   .description('Spec-Driven Development workflow toolkit for Claude Code')
-  .version(VERSION);
+  .version(VERSION, '-v, --version', 'output the version number');
 
 // Init command - run installation wizard
 program
@@ -164,7 +164,7 @@ program
     console.log(chalk.gray('  --non-interactive          Skip prompts, use defaults (init only)'));
     console.log(chalk.gray('  -s, --strategy <mode>      Conflict resolution: merge|backup|skip|force (init only)'));
     console.log(chalk.gray('  -f, --force                Skip backup (update only)'));
-    console.log(chalk.gray('  -V, --version              Output version number\n'));
+    console.log(chalk.gray('  -v, --version              Output version number\n'));
 
     console.log(chalk.white('Examples:'));
     console.log(chalk.gray('  # Initialize in current directory'));
