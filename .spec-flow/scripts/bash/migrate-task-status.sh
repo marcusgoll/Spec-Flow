@@ -66,7 +66,7 @@ if [ ! -f "$TASK_TRACKER" ]; then
 fi
 
 # Count feature directories
-FEATURE_DIRS=($(find "$SPECS_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort))
+mapfile -t FEATURE_DIRS < <(find "$SPECS_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
 TOTAL_FEATURES=${#FEATURE_DIRS[@]}
 
 if [ "$TOTAL_FEATURES" -eq 0 ]; then
@@ -85,7 +85,6 @@ ERROR_COUNT=0
 for feature_dir in "${FEATURE_DIRS[@]}"; do
   FEATURE_NAME=$(basename "$feature_dir")
   TASKS_FILE="$feature_dir/tasks.md"
-  NOTES_FILE="$feature_dir/NOTES.md"
 
   echo -e "${CYAN}──────────────────────────────────────────────────────${NC}"
   echo "Feature: $FEATURE_NAME"
