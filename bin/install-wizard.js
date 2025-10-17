@@ -7,6 +7,8 @@ const { printHeader, printSuccess, printStep, printWarning, printError } = requi
 const { detectConflicts, formatConflicts, formatActions, STRATEGIES } = require('./conflicts');
 const { checkExistingInstallation } = require('./validate');
 
+const VERSION = require('../package.json').version;
+
 /**
  * Run interactive installation wizard
  * @param {Object} options - Wizard options
@@ -45,6 +47,7 @@ async function runWizard(options) {
       }
 
       printSuccess('\nUpdate complete!');
+      console.log(chalk.cyan(`\nSpec-Flow version: ${chalk.bold(VERSION)}`));
 
       // Show backup information
       if (updateResult.backupPaths && Object.keys(updateResult.backupPaths).length > 0) {
@@ -101,6 +104,7 @@ async function runWizard(options) {
       }
 
       printSuccess('\nUpdate complete!');
+      console.log(chalk.cyan(`\nSpec-Flow version: ${chalk.bold(VERSION)}`));
 
       // Show backup information
       if (updateResult.backupPaths && Object.keys(updateResult.backupPaths).length > 0) {
@@ -301,6 +305,7 @@ async function runWizard(options) {
   // Success!
   console.log('');
   printSuccess('Installation complete!');
+  console.log(chalk.cyan(`\nSpec-Flow version: ${chalk.bold(VERSION)}`));
 
   // Show conflict resolutions if any
   if (result.conflictActions && result.conflictActions.length > 0) {

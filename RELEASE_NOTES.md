@@ -1,5 +1,48 @@
 # Release Notes
 
+## v1.7.1 (2025-10-16)
+
+### 🎯 Enhancement: Version Display on Update
+
+**Changes:**
+Added version display to all installation and update workflows for better visibility.
+
+**What's New:**
+- `npx spec-flow update` now displays the version after successful update
+- `npx spec-flow init` displays version after installation (both fresh and update scenarios)
+- Version displayed in cyan with bold formatting for easy identification
+
+**Display Format:**
+```
+✓ Update complete!
+
+Spec-Flow version: 1.7.1
+```
+
+**Locations Updated:**
+- `bin/cli.js` - update command
+- `bin/install-wizard.js` - init command (3 scenarios: non-interactive update, interactive update, fresh install)
+
+### 📝 Files Changed
+
+- `bin/cli.js` (+1 line)
+- `bin/install-wizard.js` (+4 lines)
+- `package.json` (version bump to 1.7.1)
+- `RELEASE_NOTES.md` (documentation)
+
+### 📦 Installation
+
+```bash
+npm install -g spec-flow@1.7.1
+```
+
+Or upgrade:
+```bash
+npm update -g spec-flow
+```
+
+---
+
 ## v1.7.0 (2025-10-16)
 
 ### 🎯 Major Feature: Unified Task Status Tracking System

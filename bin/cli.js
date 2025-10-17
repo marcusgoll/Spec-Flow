@@ -81,6 +81,7 @@ program
       }
 
       printSuccess('\nUpdate complete!');
+      console.log(chalk.cyan(`\nSpec-Flow version: ${chalk.bold(VERSION)}`));
 
       // Show backup information
       if (result.backupPaths && Object.keys(result.backupPaths).length > 0) {
