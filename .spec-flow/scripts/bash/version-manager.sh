@@ -140,9 +140,6 @@ update_package_version() {
     return 1
   fi
 
-  # Create backup
-  cp "$PACKAGE_JSON" "${PACKAGE_JSON}.backup"
-
   # Update version using jq
   jq --arg version "$new_version" '.version = $version' "$PACKAGE_JSON" > "${PACKAGE_JSON}.tmp"
   mv "${PACKAGE_JSON}.tmp" "$PACKAGE_JSON"

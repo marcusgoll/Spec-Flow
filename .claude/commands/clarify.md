@@ -658,7 +658,18 @@ Next: /plan (or /clarify to resolve remaining)
 Co-Authored-By: Claude <noreply@anthropic.com>"
 
   git commit -m "$COMMIT_MSG"
+
+  # Verify commit succeeded
+  COMMIT_HASH=$(git rev-parse --short HEAD)
+  echo ""
+  echo "✅ Clarifications committed: $COMMIT_HASH"
+  echo ""
+  git log -1 --oneline
+  echo ""
 }
+
+# Execute commit
+commit_clarifications
 ```
 
 ## UPDATE NOTES.MD

@@ -487,6 +487,14 @@ git commit -m "design:tasks: generate N concrete tasks organized by user story
 
 🤖 Generated with Claude Code
 Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# Verify commit succeeded
+COMMIT_HASH=$(git rev-parse --short HEAD)
+echo ""
+echo "✅ Tasks committed: $COMMIT_HASH"
+echo ""
+git log -1 --oneline
+echo ""
 ```
 
 ## UPDATE NOTES.md

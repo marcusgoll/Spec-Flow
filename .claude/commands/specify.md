@@ -897,9 +897,17 @@ COMMIT_MSG="${COMMIT_MSG}
 🤖 Generated with Claude Code
 Co-Authored-By: Claude <noreply@anthropic.com>"
 
-# Commit
+# Commit specification artifacts
 git add specs/${SLUG}/
 git commit -m "$COMMIT_MSG"
+
+# Verify commit succeeded
+COMMIT_HASH=$(git rev-parse --short HEAD)
+echo ""
+echo "✅ Specification committed: $COMMIT_HASH"
+echo ""
+git log -1 --oneline
+echo ""
 ```
 
 ## ERROR HANDLING & ROLLBACK

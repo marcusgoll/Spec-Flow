@@ -557,6 +557,120 @@ git restore .
 - Provide coverage delta (e.g., "+6%" means coverage increased by 6%)
 - Log failures with enough detail for debugging
 
+## Git Workflow (MANDATORY)
+
+**Every meaningful change MUST be committed for rollback safety.**
+
+### Commit Frequency
+
+**TDD Workflow:**
+- RED phase: Commit failing test
+- GREEN phase: Commit passing implementation
+- REFACTOR phase: Commit improvements
+
+**Command sequence:**
+```bash
+# After RED test
+git add apps/app/__tests__/MessageForm.test.tsx
+git commit -m "test(red): T002 write failing test for MessageForm component
+
+Test: test_message_form_validates_email
+Expected: FAILED (Component not found or test assertion fails)
+Evidence: $(pnpm test MessageForm | grep FAIL | head -3)"
+
+# After GREEN implementation
+git add apps/app/components/MessageForm.tsx apps/app/__tests__/
+git commit -m "feat(green): T002 implement MessageForm component to pass test
+
+Implementation: MessageForm with email validation
+Tests: All passing (15/15)
+Coverage: 88% line (+12%)"
+
+# After REFACTOR improvements
+git add apps/app/components/MessageForm.tsx
+git commit -m "refactor: T002 improve MessageForm with custom hook
+
+Improvements: Extract validation logic to useFormValidation hook
+Tests: Still passing (15/15)
+Coverage: Maintained at 88%"
+```
+
+### Commit Verification
+
+**After every commit, verify:**
+```bash
+git log -1 --oneline
+# Should show your commit message
+
+git rev-parse --short HEAD
+# Should show commit hash (e.g., a1b2c3d)
+```
+
+### Task Completion Requirement
+
+**task-tracker REQUIRES commit hash:**
+```bash
+.spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
+  -TaskId "T002" \
+  -Notes "Created MessageForm component with validation" \
+  -Evidence "jest: 15/15 passing, a11y: 0 violations" \
+  -Coverage "88% line (+12%)" \
+  -CommitHash "$(git rev-parse --short HEAD)" \
+  -FeatureDir "$FEATURE_DIR"
+```
+
+**If CommitHash empty:** Git Workflow Enforcer Skill will block completion.
+
+### Rollback Procedures
+
+**If implementation fails:**
+```bash
+# Discard uncommitted changes
+git restore .
+
+# OR revert last commit
+git reset --hard HEAD~1
+```
+
+**If specific task needs revert:**
+```bash
+# Find commit for task
+git log --oneline --grep="T002"
+
+# Revert that specific commit
+git revert <commit-hash>
+```
+
+### Commit Message Templates
+
+**Test commits:**
+```
+test(red): T002 write failing test for MessageForm component
+```
+
+**Implementation commits:**
+```
+feat(green): T002 implement MessageForm component to pass test
+```
+
+**Refactor commits:**
+```
+refactor: T002 improve MessageForm with custom hook
+```
+
+**Fix commits:**
+```
+fix: T002 correct MessageForm email validation
+```
+
+### Critical Rules
+
+1. **Commit after every TDD phase** (RED, GREEN, REFACTOR)
+2. **Never mark task complete without commit**
+3. **Always provide commit hash to task-tracker**
+4. **Verify commit succeeded** before proceeding
+5. **Use conventional commit format** for consistency
+
 ## Implementation Rules
 
 - Start EVERY shell command with: `cd apps/app`

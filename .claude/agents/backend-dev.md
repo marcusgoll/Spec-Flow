@@ -597,6 +597,120 @@ git restore .
 - Include coverage delta (e.g., "+8%" means coverage increased by 8%)
 - Log failures with enough detail for debugging
 
+## Git Workflow (MANDATORY)
+
+**Every meaningful change MUST be committed for rollback safety.**
+
+### Commit Frequency
+
+**TDD Workflow:**
+- RED phase: Commit failing test
+- GREEN phase: Commit passing implementation
+- REFACTOR phase: Commit improvements
+
+**Command sequence:**
+```bash
+# After RED test
+git add api/tests/test_message.py
+git commit -m "test(red): T015 write failing test for Message model
+
+Test: test_message_validates_email
+Expected: FAILED (ImportError or NotImplementedError)
+Evidence: $(pytest -v | grep FAILED | head -3)"
+
+# After GREEN implementation
+git add api/app/models/message.py api/tests/
+git commit -m "feat(green): T015 implement Message model to pass test
+
+Implementation: Message model with email validation
+Tests: All passing (25/25)
+Coverage: 92% line (+8%)"
+
+# After REFACTOR improvements
+git add api/app/models/message.py
+git commit -m "refactor: T015 improve Message model with base class
+
+Improvements: Extract common fields to BaseModel, add custom validators
+Tests: Still passing (25/25)
+Coverage: Maintained at 92%"
+```
+
+### Commit Verification
+
+**After every commit, verify:**
+```bash
+git log -1 --oneline
+# Should show your commit message
+
+git rev-parse --short HEAD
+# Should show commit hash (e.g., a1b2c3d)
+```
+
+### Task Completion Requirement
+
+**task-tracker REQUIRES commit hash:**
+```bash
+.spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
+  -TaskId "T015" \
+  -Notes "Created Message model with validation" \
+  -Evidence "pytest: 25/25 passing, <500ms p95" \
+  -Coverage "92% line (+8%)" \
+  -CommitHash "$(git rev-parse --short HEAD)" \
+  -FeatureDir "$FEATURE_DIR"
+```
+
+**If CommitHash empty:** Git Workflow Enforcer Skill will block completion.
+
+### Rollback Procedures
+
+**If implementation fails:**
+```bash
+# Discard uncommitted changes
+git restore .
+
+# OR revert last commit
+git reset --hard HEAD~1
+```
+
+**If specific task needs revert:**
+```bash
+# Find commit for task
+git log --oneline --grep="T015"
+
+# Revert that specific commit
+git revert <commit-hash>
+```
+
+### Commit Message Templates
+
+**Test commits:**
+```
+test(red): T015 write failing test for Message model
+```
+
+**Implementation commits:**
+```
+feat(green): T015 implement Message model to pass test
+```
+
+**Refactor commits:**
+```
+refactor: T015 improve Message model with base class
+```
+
+**Fix commits:**
+```
+fix: T015 correct Message model validation
+```
+
+### Critical Rules
+
+1. **Commit after every TDD phase** (RED, GREEN, REFACTOR)
+2. **Never mark task complete without commit**
+3. **Always provide commit hash to task-tracker**
+4. **Verify commit succeeded** before proceeding
+5. **Use conventional commit format** for consistency
+
 ## Implementation Rules
 
 - Start EVERY shell command with: `cd api`

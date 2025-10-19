@@ -3,9 +3,6 @@ description: Generate design artifacts from feature spec (research + design + co
 scripts:
   sh: scripts/bash/setup-plan.sh --json "{ARGS}"
   ps: scripts/powershell/setup-plan.ps1 -Json "{ARGS}"
-agent_scripts:
-  sh: scripts/bash/update-agent-context.sh __AGENT__
-  ps: scripts/powershell/update-agent-context.ps1 -AgentType __AGENT__
 ---
 
 Design implementation for: $ARGUMENTS
@@ -742,29 +739,7 @@ echo "✅ Generated error-log.md"
 echo ""
 ```
 
-### Step 6: Update agent context
-
-**Run agent script to update agent-specific context files:**
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🤖 AGENT CONTEXT UPDATE"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-# Run agent context update script (detects which agent is in use)
-if [ -f "{AGENT_SCRIPT}" ]; then
-  echo "Updating agent context files with new technology..."
-  {AGENT_SCRIPT} "general-purpose"
-  echo "✅ Agent context updated"
-else
-  echo "⚠️  Agent script not found - skipping context update"
-fi
-
-echo ""
-```
-
-### Step 7: Validate unresolved questions
+### Step 6: Validate unresolved questions
 
 **Check for critical unknowns before committing:**
 
@@ -837,8 +812,6 @@ Artifacts:
 - specs/${SLUG}/contracts/api.yaml (OpenAPI specs)
 - specs/${SLUG}/error-log.md (initialized for tracking)
 
-Agent context: Updated with new technology stack
-
 Next: /tasks
 
 🤖 Generated with Claude Code
@@ -846,6 +819,14 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 git add "$FEATURE_DIR/"
 git commit -m "$COMMIT_MSG"
+
+# Verify commit succeeded
+COMMIT_HASH=$(git rev-parse --short HEAD)
+echo ""
+echo "✅ Plan committed: $COMMIT_HASH"
+echo ""
+git log -1 --oneline
+echo ""
 ```
 
 ## CONTEXT MANAGEMENT
@@ -920,8 +901,7 @@ update_notes_summary "$FEATURE_DIR" "1" \
 update_notes_checkpoint "$FEATURE_DIR" "1" "Plan" \
   "Artifacts: research.md, data-model.md, quickstart.md, plan.md, contracts/api.yaml, error-log.md" \
   "Research decisions: $DECISION_COUNT" \
-  "Migration required: $HAS_MIGRATION" \
-  "Agent context: Updated"
+  "Migration required: $HAS_MIGRATION"
 
 update_notes_timestamp "$FEATURE_DIR"
 

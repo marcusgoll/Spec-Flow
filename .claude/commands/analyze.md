@@ -923,6 +923,34 @@ fi
 echo ""
 ```
 
+## COMMIT ANALYSIS
+
+**After creating analysis report, commit the artifacts:**
+
+```bash
+# Stage analysis artifacts
+git add "$ANALYSIS_REPORT"
+
+# Commit with analysis summary
+git commit -m "docs(analyze): create cross-artifact analysis for $(basename "$FEATURE_DIR")
+
+- Consistency checks performed
+- Issues found: $TOTAL_ISSUES
+- Critical blockers: $CRITICAL_ISSUES
+- Ready for implementation: $([ "$CRITICAL_ISSUES" -eq 0 ] && echo 'YES' || echo 'NO')
+
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# Verify commit succeeded
+COMMIT_HASH=$(git rev-parse --short HEAD)
+echo ""
+echo "✅ Analysis committed: $COMMIT_HASH"
+echo ""
+git log -1 --oneline
+echo ""
+```
+
 ## RETURN
 
 ```bash

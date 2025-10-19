@@ -584,19 +584,43 @@ Return: Migration file, test results, task-tracker confirmation
 - Test must fail for right reason
 - Provide test output as evidence
 - Auto-rollback if test passes (wrong!)
-- Commit: `test(red): TXXX write failing test`
+- **Commit immediately after test written:**
+  ```bash
+  git add .
+  git commit -m "test(red): TXXX write failing test
+
+Test: $TEST_NAME
+Expected: FAILED (ImportError/NotImplementedError)
+Evidence: $(pytest output showing failure)"
+  ```
 
 **GREEN Phase** [GREEN→TXXX]:
 - Minimal implementation to pass RED test
 - Run tests, must pass
 - Auto-rollback on failure → log to error-log.md
-- Commit: `feat(green): TXXX implement to pass test`
+- **Commit when tests pass:**
+  ```bash
+  git add .
+  git commit -m "feat(green): TXXX implement to pass test
+
+Implementation: $SUMMARY
+Tests: All passing ($PASS/$TOTAL)
+Coverage: $COV% (+$DELTA%)"
+  ```
 
 **REFACTOR Phase** [REFACTOR]:
 - Clean up code (DRY, KISS)
 - Tests must stay green
 - Auto-rollback if tests break
-- Commit: `refactor: TXXX clean up implementation`
+- **Commit after refactoring:**
+  ```bash
+  git add .
+  git commit -m "refactor: TXXX clean up implementation
+
+Improvements: $IMPROVEMENTS
+Tests: Still passing ($PASS/$TOTAL)
+Coverage: Maintained at $COV%"
+  ```
 
 ### Auto-Rollback (NO prompts)
 
@@ -683,6 +707,58 @@ echo "⚠️  TXXX: Auto-rolled back (test failure)" >> error-log.md
 - **Auto-rollback**: No prompts, log failures to error-log.md
 - **REUSE enforcement**: Verify imports, fail if pattern file missing
 - **Commit per task**: Include evidence in commit message
+
+## COMMIT FINAL IMPLEMENTATION
+
+**After all tasks complete, final commit:**
+
+```bash
+# Check task completion
+COMPLETED=$(grep -c "^✅ T[0-9]\{3\}" "$NOTES_FILE" 2>/dev/null || echo 0)
+TOTAL=$(grep -c "^- \[ \] T[0-9]\{3\}" "$TASKS_FILE" 2>/dev/null || echo 0)
+
+# Count by priority if user story format
+if [ "$TASK_FORMAT" = "user-story" ]; then
+  P1_TOTAL=$(grep -c "\[P1\]" "$TASKS_FILE" 2>/dev/null || echo 0)
+  P1_COMPLETE=$(grep -c "✅.*\[P1\]" "$NOTES_FILE" 2>/dev/null || echo 0)
+  P2_COUNT=$(grep -c "\[P2\]" "$TASKS_FILE" 2>/dev/null || echo 0)
+  P3_COUNT=$(grep -c "\[P3\]" "$TASKS_FILE" 2>/dev/null || echo 0)
+  MVP_SHIPPED=$([ "$P1_COMPLETE" -eq "$P1_TOTAL" ] && echo "true" || echo "false")
+fi
+
+# Stage all implementation artifacts
+git add .
+
+# Commit with implementation summary
+if [ "$TASK_FORMAT" = "user-story" ] && [ "$MVP_SHIPPED" = "true" ]; then
+  # MVP commit (P1 only)
+  git commit -m "feat(mvp): complete P1 (MVP) implementation for $(basename "$FEATURE_DIR")
+
+MVP tasks: $P1_COMPLETE/$P1_TOTAL ✅
+Tests: All passing
+Deferred to roadmap: P2 ($P2_COUNT), P3 ($P3_COUNT)
+
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>"
+else
+  # Full implementation commit
+  git commit -m "feat(implement): complete implementation for $(basename "$FEATURE_DIR")
+
+Tasks: $COMPLETED/$TOTAL ✅
+Tests: All passing
+
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>"
+fi
+
+# Verify commit succeeded
+COMMIT_HASH=$(git rev-parse --short HEAD)
+echo ""
+echo "✅ Implementation committed: $COMMIT_HASH"
+echo ""
+git log -1 --oneline
+echo ""
+```
 
 ## RETURN
 

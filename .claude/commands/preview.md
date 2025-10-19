@@ -1154,7 +1154,12 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 git commit -m "$COMMIT_MSG"
 
-echo "✅ Changes committed"
+# Verify commit succeeded
+COMMIT_HASH=$(git rev-parse --short HEAD)
+echo ""
+echo "✅ Preview results committed: $COMMIT_HASH"
+echo ""
+git log -1 --oneline
 echo ""
 ```
 

@@ -1434,6 +1434,14 @@ Code Quality:
 
 🤖 Generated with Claude Code
 Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# Verify commit succeeded
+COMMIT_HASH=$(git rev-parse --short HEAD)
+echo ""
+echo "✅ Optimization committed: $COMMIT_HASH"
+echo ""
+git log -1 --oneline
+echo ""
 ```
 
 ## UPDATE NOTES.md

@@ -223,9 +223,6 @@ function Update-PackageVersion {
     }
 
     try {
-        # Create backup
-        Copy-Item -Path $PackageJsonPath -Destination "$PackageJsonPath.backup" -Force
-
         # Read, update, and write package.json
         $packageJson = Get-Content $PackageJsonPath -Raw | ConvertFrom-Json
         $packageJson.version = $NewVersion
