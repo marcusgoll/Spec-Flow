@@ -17,8 +17,6 @@ Orchestrate feature delivery through isolated phase agents for maximum efficienc
 - 2-3x faster (isolated contexts, no /compact overhead)
 - Same quality (slash commands unchanged)
 
-**Backup**: `/flow` command remains unchanged as fallback
-
 ## PARSE ARGUMENTS
 
 **Get feature description or continue mode:**
@@ -31,8 +29,6 @@ Usage: /feature [feature description]
 Examples:
   /feature "Student progress tracking dashboard"
   /feature continue
-
-Note: Use /flow for original workflow (backup)
 ```
 
 If `$ARGUMENTS` is "continue":
@@ -934,8 +930,8 @@ fi
 ## BENEFITS SUMMARY
 
 **Token Efficiency:**
-- Old `/flow`: ~240k tokens (cumulative context)
-- New `/feature`: ~80k tokens (isolated contexts)
+- Traditional approach: ~240k tokens (cumulative context)
+- `/feature` approach: ~80k tokens (isolated contexts)
 - **Savings: 67%**
 
 **Speed:**
@@ -947,9 +943,3 @@ fi
 - Slash commands unchanged (proven workflow)
 - Phase agents add thin orchestration layer
 - **Maintained: Same quality gates**
-
-## FALLBACK
-
-**If issues with `/feature`:**
-
-Use original `/flow` command (unchanged, available as backup)

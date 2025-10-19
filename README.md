@@ -191,7 +191,6 @@ Spec-Flow now features an **optimized orchestrator** (`/feature`) that runs each
 - ⚡ **67% Token Reduction** - Each phase runs in isolated context (240k → 80k tokens per feature)
 - 🏃 **2-3x Faster** - No cumulative context bloat, no /compact overhead between phases
 - ✅ **Same Quality** - All slash commands unchanged, proven workflow maintained
-- 🔄 **Easy Rollback** - Original `/workflow` command available as backup
 
 **How it works:**
 ```
@@ -206,8 +205,7 @@ Spec-Flow now features an **optimized orchestrator** (`/feature`) that runs each
 ```
 
 **Choose your workflow:**
-- **`/feature "feature"`** - New optimized workflow (recommended)
-- **`/workflow "feature"`** - Original workflow (backup/fallback)
+- **`/feature "feature"`** - Full feature workflow (recommended)
 - **`/quick "fix"`** - Fast path for small changes (<100 LOC)
 
 ## 🚀 Quick Start
@@ -259,9 +257,8 @@ powershell -File .spec-flow/scripts/powershell/install-wizard.ps1
    ```
 4. **Start building:**
    ```bash
-   /feature "my-feature"  # Optimized workflow (recommended)
-   /workflow "my-feature"       # Original workflow (backup)
-   /quick "fix bug"         # Fast path for small changes
+   /feature "my-feature"  # Full feature workflow
+   /quick "fix bug"       # Fast path for small changes
    ```
 
 👉 **Full guide**: [QUICKSTART.md](QUICKSTART.md) | **Detailed tutorial**: [Getting Started](docs/getting-started.md)
@@ -304,17 +301,12 @@ Use `/roadmap` to add features, prioritize them with ICE scoring (Impact × Conf
 
 Select a feature from your roadmap and choose your workflow:
 
-**Optimized workflow (recommended):**
+**Full workflow (recommended):**
 ```bash
 /feature "feature-name"  # Runs full workflow with isolated phase agents
 # Auto-progresses through: spec → plan → tasks → validate → implement → optimize → ship
 # Pauses at manual gates: /preview, /validate-staging
 # Use: /feature continue (to resume after manual gates)
-```
-
-**Original workflow (backup):**
-```bash
-/workflow "feature-name"  # Traditional workflow with cumulative context
 ```
 
 **Manual step-by-step:**
@@ -439,7 +431,7 @@ Every automation script is provided in both PowerShell (`.ps1`) and shell (`.sh`
 | 10 | `/ship-prod` | Production launch and follow-up |
 | - | `/compact [phase]` | **Optional:** Reduce token usage between phases |
 
-**Context Management**: The `/compact` command is optional and reduces token usage by summarizing verbose artifacts. Use it between phases when context feels heavy or when suggested by auto-progression. In `/workflow` mode, compaction happens automatically.
+**Context Management**: The `/compact` command is optional and reduces token usage by summarizing verbose artifacts. Use it between phases when context feels heavy or when suggested by auto-progression.
 
 ## Prerequisites
 

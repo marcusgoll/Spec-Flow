@@ -5,6 +5,71 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2025-01-19
+
+### Removed - Workflow Command Consolidation (Breaking Change)
+
+**Rationale**: Simplified to single orchestrator after `/feature` proven stable in production.
+
+#### What was removed
+- **`/workflow` command** (formerly `/flow` - original cumulative-context orchestrator)
+- **`/flow` command** (deprecated alias from v1.14.0)
+
+#### Why remove
+- **Performance**: `/feature` provides 67% token reduction (240k → 80k) and 2-3x speed improvement
+- **Battle-tested**: `/feature` used extensively across production features with zero stability issues
+- **User confusion**: Maintaining two orchestrators created "which one do I use?" decision paralysis
+- **Maintenance burden**: Single orchestrator = simpler updates, clearer documentation, less code to maintain
+- **Clear winner**: No use case where `/workflow` was objectively better than `/feature`
+
+#### Migration path
+**Simple replacement**:
+```bash
+# Old (removed)
+/workflow "feature description"
+/workflow continue
+
+# New (use instead)
+/feature "feature description"
+/feature continue
+```
+
+**What stays the same**:
+- All slash commands unchanged (`/spec`, `/plan`, `/tasks`, `/implement`, etc.)
+- Same quality gates and manual checkpoints
+- Same deployment workflows
+- Same workflow-state.yaml tracking
+
+**What changes**:
+- `/workflow` and `/flow` commands no longer available (command not found error)
+- All users benefit from isolated phase contexts (faster, more efficient)
+
+#### Breaking change impact
+- **Direct impact**: Users with scripts or documentation referencing `/workflow` or `/flow`
+- **Fix**: Find-replace `/workflow` → `/feature` and `/flow` → `/feature`
+- **Severity**: Low (simple text replacement, same functionality)
+
+#### Benefits
+✅ Single, clear orchestrator path
+✅ All users get 67% token savings automatically
+✅ Reduced documentation confusion
+✅ Simpler codebase maintenance
+✅ Cleaner architecture
+
+### Changed
+- **Documentation updates**:
+  - `README.md` - Removed `/workflow` backup references, simplified workflow options
+  - `CLAUDE.md` - Removed "Alternative" workflow section
+  - `docs/commands.md` - Updated orchestrator reference, fixed missed v1.14.0 updates
+  - `.claude/commands/feature.md` - Removed fallback/backup language
+
+### Files Modified
+- 2 files deleted: `workflow.md`, `flow.md`
+- 5 files updated: `feature.md`, `CLAUDE.md`, `README.md`, `commands.md`, `CHANGELOG.md`
+- `package.json` bumped to v1.15.0
+
+**Impact**: All users automatically benefit from optimized workflow. Existing `/workflow` users need simple find-replace migration.
+
 ## [1.14.0] - 2025-01-19
 
 ### Changed - Command Naming Clarity

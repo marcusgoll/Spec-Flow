@@ -60,10 +60,6 @@ Model-specific workflow:
 - Deployment model is auto-detected (staging-prod, direct-prod, or local-only)
 - Use `/ship continue` to resume after manual gates or failures
 - Use `/ship status` to check current progress
-
-**Alternative**:
-- Use `/workflow "Feature description"` for original workflow with manual phase progression
-- Use `/workflow continue` to resume after manual intervention
 - Commands are defined in `.claude/commands/`
 
 ## New Features (v1.1.0)
