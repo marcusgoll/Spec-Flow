@@ -210,10 +210,11 @@ NOTES_FILE="$FEATURE_DIR/NOTES.md"
 if [ -z "$FEATURE_NUM" ]; then
   # Standalone mode: create branch and directory
   git checkout -b ${SLUG}
-  mkdir -p ${FEATURE_DIR}/{visuals,artifacts,design/queries}
+  mkdir -p ${FEATURE_DIR}
 else
-  # Orchestrated mode: just ensure subdirectories exist (parent already created)
-  mkdir -p ${FEATURE_DIR}/{visuals,artifacts,design/queries}
+  # Orchestrated mode: directory already created by /spec-flow
+  # No directory creation needed
+  :
 fi
 
 # Create NOTES.md stub (created early so research can write to it)
@@ -524,6 +525,11 @@ Create `${FEATURE_DIR}/design/heart-metrics.md` from `$HEART_TEMPLATE`:
 
 **Skip if**: `$HAS_UI = false` (no UI screens)
 
+```bash
+# Create design directory for UI artifacts
+mkdir -p ${FEATURE_DIR}/design
+```
+
 Create `${FEATURE_DIR}/design/screens.yaml` from `$SCREENS_TEMPLATE`:
 
 **List screens**:
@@ -658,6 +664,10 @@ Does this feature require deployment changes?
    - Update with overview and final checkpoint timestamp
 
 3. **Visuals** (if applicable and `$HAS_UI = true`):
+   ```bash
+   # Create visuals directory for UI reference materials
+   mkdir -p ${FEATURE_DIR}/visuals
+   ```
    - Create `${FEATURE_DIR}/visuals/README.md` from `$VISUALS_TEMPLATE`
    - Document UX patterns from chrome-devtools
    - Extract layout, colors, interactions, measurements
