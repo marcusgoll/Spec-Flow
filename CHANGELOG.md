@@ -5,6 +5,124 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2025-01-19
+
+### Added - Local Project Integration Workflow
+
+**Problem**: Local dev projects had disconnect between `/optimize` and roadmap updates:
+- No explicit merge to main/master branch after build
+- Roadmap marked "Shipped" before integration to main branch
+- Version tag created on feature branch instead of main
+- Feature code remained isolated on feature branch
+
+**Solution**: New Phase S.4.5a (Local Integration) in `/ship` workflow
+
+#### New Phase S.4.5a: Merge to Main
+- **Auto-detects main branch**: Supports both `main` and `master` branch names
+- **Preserves feature history**: Uses `--no-ff` merge to maintain branch context
+- **Remote sync**: Automatically pushes to origin if remote exists
+- **Branch cleanup**: Offers to delete feature branch locally and remotely after merge
+- **Conflict handling**: Pauses on conflicts, allows resolution, then `/ship continue`
+- **Correct sequencing**: Runs AFTER `/build-local` and BEFORE `/finalize`
+
+#### Updated Workflow for local-only Projects
+**Before**: `optimize → preview → build-local → finalize` ❌ (stayed on feature branch)
+
+**After**: `optimize → preview → build-local → merge-to-main → finalize` ✅ (integrated to main)
+
+#### Benefits
+- ✅ **Clear integration path**: Local projects now have explicit merge step
+- ✅ **Correct sequencing**: Merge happens BEFORE version bump and roadmap update
+- ✅ **Roadmap accuracy**: Feature marked "Shipped" AFTER integration (not before)
+- ✅ **Git best practices**: Version tag created on main branch (not feature branch)
+- ✅ **Safe workflow**: Runs after all validations and builds pass
+- ✅ **Flexible**: Works with or without git remote
+
+### Changed
+- **`.claude/commands/ship.md`**:
+  - Added Phase S.4.5a between build-local and finalize for local-only model
+  - Updated workflow descriptions: `local-only: ... → Build-Local → Merge-to-Main → Finalize`
+  - Added main branch detection logic (main or master)
+  - Added conflict handling and recovery instructions
+
+- **`.claude/commands/build-local.md`**:
+  - Updated "Next Steps" to instruct running `/ship continue`
+  - Added workflow diagram showing 3-step process
+  - Clarified that merge happens automatically in `/ship`
+  - Added note that version bump and roadmap update happen after merge
+
+### Files Modified
+- `.claude/commands/ship.md` - Added Phase S.4.5a (local integration)
+- `.claude/commands/build-local.md` - Updated documentation for new workflow
+
+**Impact**: Local-only projects now have complete parity with remote deployment models - all features properly integrate to main branch before being marked "Shipped" in roadmap.
+
+## [1.12.1] - 2025-01-19
+
+### Changed
+- **Simplified update command**: Removed backup creation overhead for faster, cleaner updates
+- **Removed `--force` flag**: No longer needed (kept for backwards compatibility)
+- **Updated CLI output**: Shows "Templates updated, user data preserved" message after update
+
+### Removed
+- Backup creation logic from `update()` function (116 lines removed)
+- Backup restoration on error handling
+- `BACKUP_DIRECTORIES` constant and related exports
+- `createBackup` and `restoreBackup` import references from update flow
+
+### Improved
+- **Faster updates**: No backup overhead, instant template updates
+- **Cleaner user experience**: No backup folders to manually clean up
+- **User data still safe**: `preserveMemory` flag protects learnings.md, memory, and specs
+
+**Why This Change?** The `preserveMemory` flag already protects user data during updates. Backups created redundant `*-backup-*` folders that users had to manually delete. This change simplifies the update process while maintaining safety.
+
+## [1.12.0] - 2025-01-19
+
+### Added - Learnings Persistence & Design Iteration
+
+#### Part 1: Learnings Persistence (All 16 Skills)
+- **Created `learnings.md` for all 16 phase skills**: Separated auto-updating data from SKILL.md templates
+- **Two-file architecture**:
+  - `SKILL.md` - Template with static guidance (updated with npm)
+  - `learnings.md` - Dynamic data (preserved across npm updates)
+- **Auto-tracking system**:
+  - Pitfall frequencies: ⭐☆☆☆☆ → ⭐⭐⭐☆☆ as issues occur
+  - Pattern usage counts and success rates
+  - Metrics averages (test coverage, code reuse, accessibility scores, etc.)
+- **Zero manual intervention**: System learns automatically as you work
+
+**Skills with learnings.md**: specification-phase, clarification-phase, planning-phase, task-breakdown-phase, analysis-phase, implementation-phase, optimization-phase, debug-phase, preview-phase, staging-validation-phase, staging-deployment-phase, checks-phase, production-deployment-phase, finalize-phase, roadmap-integration, ui-ux-design
+
+#### Part 2: Design Iteration Enhancements
+- **Screen-specific targeting**: `/design-variations $SLUG [$SCREEN]` - iterate on single component
+- **Overwrite protection**: Warns before regenerating variants, offers [b]ackup to create git tag
+- **Re-enable support**: Can enable design workflow after initially declining in `/spec-flow`
+- **Iteration patterns guide**: New file `.claude/skills/ui-ux-design/iteration-patterns.md` with 5 common scenarios:
+  1. Iterate on specific component
+  2. Initially skipped, now want design workflow
+  3. Refine after initial exploration
+  4. A/B test alternative design
+  5. Iterate on specific state
+
+### Changed
+- **Updated all 16 SKILL.md files**: Replaced inline frequencies/metrics with references to learnings.md
+- **Enhanced design-variations.md**:
+  - Added optional screen parameter for targeted iteration
+  - Added screen filtering logic to all variant generation loops
+  - Added overwrite detection with interactive [c]ontinue/[b]ackup/[a]bort prompt
+- **Enhanced spec-flow.md**:
+  - Detects if `design_workflow.enabled=false` (previously skipped)
+  - Shows re-enable prompt: "⚠️ Design workflow was previously skipped for this feature"
+
+### Documentation
+- **New README section**: "Skills & Learning System" explaining two-file architecture
+- **Learnings persistence**: What gets updated vs preserved across npm updates
+- **Auto-learning triggers**: When and how skills update automatically
+
+### Files Changed
+- **36 files total**: 16 learnings.md created, 16 SKILL.md updated, 3 command files enhanced, 1 new iteration guide
+
 ## [1.5.3] - 2025-10-08
 
 ### Fixed - Complete Installation Safety for Brownfield Projects
