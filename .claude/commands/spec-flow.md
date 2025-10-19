@@ -467,6 +467,136 @@ Refer to your agent brief for full instructions.
 # Validate, store summary, log progress
 ```
 
+### Phase 2a/2b/2c: Design Workflow (UI Features Only - OPTIONAL)
+
+**Check if UI feature requires design workflow:**
+
+```bash
+# Read HAS_UI classification from spec
+HAS_UI=$(grep "^- UI screens:" specs/$FEATURE_NUM-$SLUG/NOTES.md | grep -o "true\|false" || echo "false")
+
+if [ "$HAS_UI" = "true" ]; then
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🎨 UI Feature Detected"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "This feature has UI components (screens.yaml created in /specify)."
+  echo ""
+  echo "Design Workflow (3-phase pipeline):"
+  echo "  Phase 2a: /design-variations → 3-5 grayscale variants per screen"
+  echo "  Phase 2b: /design-functional → merge variants + a11y + tests"
+  echo "  Phase 2c: /design-polish → brand tokens + performance"
+  echo ""
+  echo "Benefits:"
+  echo "  ✓ Explore UI approaches before coding"
+  echo "  ✓ Validate UX with mockups"
+  echo "  ✓ Jobs principles enforced (≤2 clicks, no tooltips)"
+  echo "  ✓ Design system compliance (tokens, a11y, performance)"
+  echo ""
+  echo "Options:"
+  echo "  [y] Yes - Run design workflow (recommended for UI features)"
+  echo "  [n] No - Skip to implementation (manual UI coding)"
+  echo ""
+  read -p "Run design workflow? (y/n): " RUN_DESIGN
+
+  if [[ "$RUN_DESIGN" =~ ^[Yy]$ ]]; then
+    # Update workflow state
+    yq eval '.design_workflow.enabled = true' -i specs/$FEATURE_NUM-$SLUG/workflow-state.yaml
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "⏳ Phase 2a: Design Variations"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    # Call /design-variations
+    /design-variations $SLUG
+
+    yq eval '.design_workflow.phases.variations = "completed"' -i specs/$FEATURE_NUM-$SLUG/workflow-state.yaml
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🎯 HUMAN CHECKPOINT: Review Variants"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Action required:"
+    echo "  1. Open: http://localhost:3000/mock/$SLUG/[screen]"
+    echo "  2. Review all variants (test states with ?state=)"
+    echo "  3. Fill: specs/$FEATURE_NUM-$SLUG/design/crit.md"
+    echo "  4. Mark Keep/Change/Kill decisions for each variant"
+    echo ""
+    echo "After completing crit.md, resume with:"
+    echo "  /spec-flow continue"
+    echo ""
+
+    # Pause for human review
+    exit 0
+
+  else
+    echo ""
+    echo "Skipping design workflow. UI will be coded manually in Phase 4."
+    yq eval '.design_workflow.enabled = false' -i specs/$FEATURE_NUM-$SLUG/workflow-state.yaml
+  fi
+fi
+
+# If continuing from design workflow checkpoint
+if yq eval '.design_workflow.enabled' specs/$FEATURE_NUM-$SLUG/workflow-state.yaml | grep -q "true"; then
+  VARIATIONS_STATUS=$(yq eval '.design_workflow.phases.variations' specs/$FEATURE_NUM-$SLUG/workflow-state.yaml)
+  FUNCTIONAL_STATUS=$(yq eval '.design_workflow.phases.functional' specs/$FEATURE_NUM-$SLUG/workflow-state.yaml)
+  POLISH_STATUS=$(yq eval '.design_workflow.phases.polish' specs/$FEATURE_NUM-$SLUG/workflow-state.yaml)
+
+  if [ "$VARIATIONS_STATUS" = "completed" ] && [ "$FUNCTIONAL_STATUS" = "not_started" ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "⏳ Phase 2b: Design Functional"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    # Call /design-functional
+    /design-functional $SLUG
+
+    yq eval '.design_workflow.phases.functional = "completed"' -i specs/$FEATURE_NUM-$SLUG/workflow-state.yaml
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🎯 HUMAN CHECKPOINT: Review Functional Prototype"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Action required:"
+    echo "  1. Open: http://localhost:3000/mock/$SLUG/[screen]/functional"
+    echo "  2. Test keyboard navigation (Tab, Enter, Space, ESC)"
+    echo "  3. Test screen reader (NVDA or VoiceOver)"
+    echo "  4. Verify all merged components correct"
+    echo ""
+    echo "After approval, resume with:"
+    echo "  /spec-flow continue"
+    echo ""
+
+    # Pause for human review
+    exit 0
+  fi
+
+  if [ "$FUNCTIONAL_STATUS" = "completed" ] && [ "$POLISH_STATUS" = "not_started" ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "⏳ Phase 2c: Design Polish"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    # Call /design-polish
+    /design-polish $SLUG
+
+    yq eval '.design_workflow.phases.polish = "completed"' -i specs/$FEATURE_NUM-$SLUG/workflow-state.yaml
+
+    echo ""
+    echo "✅ Design workflow complete"
+    echo "   Production-ready prototypes: apps/web/mock/$SLUG/*/polished/"
+    echo ""
+  fi
+fi
+```
+
 ### Phase 3: Analysis (VALIDATION)
 
 **Invoke phase agent:**

@@ -706,6 +706,123 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ---
 
+## CLEANUP VARIANTS
+
+**Preserve history in git tag, clean working directory:**
+
+```bash
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🧹 Cleaning Up Variants"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Create git tag to preserve variant history
+TAG_NAME="design-variants-$SLUG-$(date +%Y%m%d-%H%M%S)"
+
+# Build variant list for tag message
+VARIANT_LIST=$(find $MOCK_DIR -type d -name "v[0-9]" 2>/dev/null | sed 's|.*/||' | sort | tr '\n' ', ' | sed 's/,$//' || echo "none")
+
+# Build design decisions summary from crit.md
+DESIGN_DECISIONS=""
+if [ -f "$CRIT_FILE" ]; then
+  DESIGN_DECISIONS=$(grep -A 20 "## Selected Components" "$CRIT_FILE" | head -15 || echo "See crit.md for decisions")
+fi
+
+# Create annotated tag
+git tag -a "$TAG_NAME" -m "Design variants for $SLUG before cleanup
+
+Variants preserved: $VARIANT_LIST
+Merged into: functional/
+Review date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+Design decisions (from crit.md):
+$DESIGN_DECISIONS
+
+To restore variants:
+  git checkout $TAG_NAME
+  git checkout $TAG_NAME -- apps/web/mock/$SLUG/"
+
+echo "✅ Created git tag: $TAG_NAME"
+echo "   Variants preserved: $VARIANT_LIST"
+echo ""
+
+# Count screens and variants before deletion
+SCREEN_COUNT=0
+VARIANT_COUNT=0
+
+for screen_dir in $MOCK_DIR/*/; do
+  if [ -d "$screen_dir" ]; then
+    SCREEN=$(basename "$screen_dir")
+    SCREEN_COUNT=$((SCREEN_COUNT + 1))
+
+    # Count and delete variant folders (v1, v2, v3, v4, v5)
+    for variant_dir in $screen_dir/v[0-9]/; do
+      if [ -d "$variant_dir" ]; then
+        VARIANT=$(basename "$variant_dir")
+        VARIANT_COUNT=$((VARIANT_COUNT + 1))
+        rm -rf "$variant_dir"
+        echo "  🗑️  Deleted: $SCREEN/$VARIANT"
+      fi
+    done
+
+    # Optional: Delete comparison page (can keep for reference)
+    if [ -f "$screen_dir/compare/page.tsx" ]; then
+      rm -rf "$screen_dir/compare"
+      echo "  🗑️  Deleted: $SCREEN/compare"
+    fi
+
+    # Optional: Delete variant index page (can keep for reference)
+    # if [ -f "$screen_dir/page.tsx" ]; then
+    #   rm -f "$screen_dir/page.tsx"
+    #   echo "  🗑️  Deleted: $SCREEN/page.tsx (variant index)"
+    # fi
+  fi
+done
+
+echo ""
+echo "✅ Cleanup complete"
+echo "   Deleted: $VARIANT_COUNT variant folders from $SCREEN_COUNT screens"
+echo "   Kept: functional/ prototypes (production-ready)"
+echo ""
+echo "To restore variants:"
+echo "   git checkout $TAG_NAME -- apps/web/mock/$SLUG/"
+echo ""
+
+# Update workflow state
+if [ -f "$FEATURE_DIR/workflow-state.yaml" ]; then
+  yq eval '.design_workflow.artifacts.variants_tagged = true' -i "$FEATURE_DIR/workflow-state.yaml"
+  yq eval '.design_workflow.artifacts.variants_deleted = true' -i "$FEATURE_DIR/workflow-state.yaml"
+  yq eval ".design_workflow.artifacts.tag_name = \"$TAG_NAME\"" -i "$FEATURE_DIR/workflow-state.yaml"
+  echo "✅ Updated workflow state"
+  echo ""
+fi
+
+# Commit cleanup
+git add $MOCK_DIR/
+git commit -m "design:cleanup: archive and remove variants for $SLUG
+
+Variants preserved in git tag: $TAG_NAME
+Deleted: $VARIANT_LIST ($VARIANT_COUNT folders)
+Kept: functional/ prototypes
+
+Cleanup summary:
+- Screens cleaned: $SCREEN_COUNT
+- Variants removed: $VARIANT_COUNT
+- Tag created: $TAG_NAME
+
+Restore with:
+  git checkout $TAG_NAME -- apps/web/mock/$SLUG/
+
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+echo "✅ Cleanup committed to git"
+echo ""
+```
+
+---
+
 ## OUTPUT (Return to user)
 
 ```
