@@ -6,6 +6,8 @@ allowed-tools: Read, Write, Edit, Grep, Bash
 
 # Roadmap Integration: Lessons Learned
 
+> **Dynamic data**: Frequencies, metrics, and usage statistics are tracked in [learnings.md](learnings.md) (preserved across npm updates).
+
 **Capability**: Learn from roadmap usage to maintain clean feature tracking, proper state transitions, and spec linkage.
 
 **When I trigger**:

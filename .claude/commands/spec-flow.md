@@ -476,6 +476,9 @@ Refer to your agent brief for full instructions.
 HAS_UI=$(grep "^- UI screens:" specs/$FEATURE_NUM-$SLUG/NOTES.md | grep -o "true\|false" || echo "false")
 
 if [ "$HAS_UI" = "true" ]; then
+  # Check if design workflow was previously disabled
+  DESIGN_ENABLED=$(yq eval '.design_workflow.enabled' specs/$FEATURE_NUM-$SLUG/workflow-state.yaml 2>/dev/null || echo "null")
+
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "🎨 UI Feature Detected"
@@ -483,6 +486,13 @@ if [ "$HAS_UI" = "true" ]; then
   echo ""
   echo "This feature has UI components (screens.yaml created in /specify)."
   echo ""
+
+  # Show re-enable message if previously skipped
+  if [ "$DESIGN_ENABLED" = "false" ]; then
+    echo "⚠️  Design workflow was previously skipped for this feature."
+    echo ""
+  fi
+
   echo "Design Workflow (3-phase pipeline):"
   echo "  Phase 2a: /design-variations → 3-5 grayscale variants per screen"
   echo "  Phase 2b: /design-functional → merge variants + a11y + tests"

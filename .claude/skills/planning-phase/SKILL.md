@@ -6,6 +6,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash
 
 # Planning Phase: Lessons Learned
 
+> **Dynamic data**: Frequencies, metrics, and usage statistics are tracked in [learnings.md](learnings.md) (preserved across npm updates).
+
 **Capability**: Learn from plan generation to maximize code reuse, identify patterns, and ensure research completeness before implementation.
 
 **When I trigger**:
@@ -24,8 +26,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash
 
 ### 🚫 Missing Code Reuse Opportunities
 
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
+> **Current frequency**: See [learnings.md](learnings.md#missing-code-reuse)
+
 **Impact**: High (duplicate code, technical debt)
 
 **Detection**:
@@ -44,8 +46,8 @@ grep -r "class.*Model" api/app/models/*.py | wc -l
 
 ### 🚫 Insufficient Research Depth
 
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
+> **Current frequency**: See [learnings.md](learnings.md#insufficient-research)
+
 **Impact**: Medium (implementation surprises, rework)
 
 **Detection**:
@@ -68,7 +70,8 @@ fi
 
 ### ✅ Reuse Strategy Documentation
 
-**Success rate**: Not yet tracked
+> **Current usage**: See [learnings.md](learnings.md#reuse-strategy-documentation)
+
 **Approach**:
 ```markdown
 ## Reuse Strategy
@@ -88,10 +91,9 @@ fi
 
 ## Metrics Tracking
 
-| Metric | Target | Current | Trend |
-|--------|--------|---------|-------|
-| Code reuse rate | ≥60% | Not tracked | - |
-| Research depth | 5-12 tools | Not tracked | - |
-| Plan completeness | ≥90% | Not tracked | - |
+> **Current metrics**: See [learnings.md](learnings.md#metrics)
 
-**Updated**: Not yet tracked
+**Targets**:
+- Code reuse rate: ≥60%
+- Research depth: 5-12 tools
+- Plan completeness: ≥90%

@@ -6,6 +6,8 @@ allowed-tools: Read, Write, Edit, Grep, Bash
 
 # Preview Phase: Lessons Learned
 
+> **Dynamic data**: Frequencies, metrics, and usage statistics are tracked in [learnings.md](learnings.md) (preserved across npm updates).
+
 **Capability**: Learn from manual testing and preview validation to catch UX issues before deployment.
 
 **When I trigger**:

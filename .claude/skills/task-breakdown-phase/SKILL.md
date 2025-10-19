@@ -6,6 +6,8 @@ allowed-tools: Read, Write, Edit, Grep, Bash
 
 # Task Breakdown Phase: Lessons Learned
 
+> **Dynamic data**: Frequencies, metrics, and usage statistics are tracked in [learnings.md](learnings.md) (preserved across npm updates).
+
 **Capability**: Learn from task generation to ensure right-sized tasks, clear acceptance criteria, and proper sequencing.
 
 **When I trigger**:

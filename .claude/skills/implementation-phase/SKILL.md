@@ -6,6 +6,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash
 
 # Implementation Phase: Lessons Learned
 
+> **Dynamic data**: Frequencies, metrics, and usage statistics are tracked in [learnings.md](learnings.md) (preserved across npm updates).
+
 **Capability**: Learn from implementation execution to improve test-first development, catch duplications, and ensure task completion quality.
 
 **When I trigger**:
@@ -24,8 +26,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash
 
 ### 🚫 Implementation Without Tests
 
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
+> **Current frequency**: See [learnings.md](learnings.md#implementation-without-tests)
+
 **Impact**: High (unverified code, regression risk)
 
 **Detection**:
@@ -46,8 +48,8 @@ done
 
 ### 🚫 Duplicate Code Written
 
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
+> **Current frequency**: See [learnings.md](learnings.md#duplicate-code-written)
+
 **Impact**: Medium (technical debt, maintenance burden)
 
 **Detection**:
@@ -68,6 +70,8 @@ grep -r "def calculate_completion" specs/$SLUG | wc -l
 
 ### ✅ TDD Workflow
 
+> **Current usage**: See [learnings.md](learnings.md#tdd-workflow)
+
 **Approach**:
 1. Write failing test for acceptance criteria
 2. Implement minimal code to pass test
@@ -80,10 +84,9 @@ grep -r "def calculate_completion" specs/$SLUG | wc -l
 
 ## Metrics Tracking
 
-| Metric | Target | Current | Trend |
-|--------|--------|---------|-------|
-| Test coverage | ≥80% | Not tracked | - |
-| Tasks with tests | 100% | Not tracked | - |
-| Code duplication | <5% | Not tracked | - |
+> **Current metrics**: See [learnings.md](learnings.md#metrics)
 
-**Updated**: Not yet tracked
+**Targets**:
+- Test coverage: ≥80%
+- Tasks with tests: 100%
+- Code duplication: <5%

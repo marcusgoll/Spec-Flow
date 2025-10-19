@@ -6,6 +6,8 @@ allowed-tools: Read, Write, Edit, Grep, Bash
 
 # Staging Validation Phase: Lessons Learned
 
+> **Dynamic data**: Frequencies, metrics, and usage statistics are tracked in [learnings.md](learnings.md) (preserved across npm updates).
+
 **Capability**: Learn from staging validation to ensure production-readiness through systematic checks before promoting to production.
 
 **When I trigger**:

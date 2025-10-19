@@ -6,6 +6,8 @@ allowed-tools: Read, Write, Edit, Grep, Bash
 
 # Clarification Phase: Lessons Learned
 
+> **Dynamic data**: Frequencies, metrics, and usage statistics are tracked in [learnings.md](learnings.md) (preserved across npm updates).
+
 **Capability**: Learn from clarification question generation and response integration to reduce question count, improve question quality, and ensure responses update spec.md correctly.
 
 **When I trigger**:

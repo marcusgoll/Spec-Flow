@@ -286,6 +286,70 @@ Select a feature from your roadmap and choose your workflow:
 | GitHub Copilot | Partial | Works for code edits; manual command execution. |
 | Gemini CLI | Experimental | Requires manual prompt translation. |
 
+## Skills & Learning System
+
+Spec-Flow includes an auto-learning system that captures lessons from each workflow phase to continuously improve your process.
+
+### How Skills Work
+
+**16 Phase-Specific Skills**: Each workflow phase has a dedicated skill that learns from execution:
+- `.claude/skills/specification-phase/` - Learn from /specify (reduce clarifications, improve classification)
+- `.claude/skills/planning-phase/` - Learn from /plan (maximize code reuse, detect patterns)
+- `.claude/skills/implementation-phase/` - Learn from /implement (TDD enforcement, anti-duplication)
+- `.claude/skills/ui-ux-design/` - Learn from design workflow (Jobs principles, a11y compliance)
+- ...and 12 more for other phases
+
+**Two-File Architecture**:
+1. **SKILL.md** - Template with pitfall descriptions, detection logic, prevention strategies (updated with npm)
+2. **learnings.md** - Accumulated data with frequencies, metrics, instances (preserved across updates)
+
+### Learnings Persistence
+
+When you update Spec-Flow via npm, your accumulated learnings are preserved:
+
+**What Gets Updated** (npm overwrites):
+- `SKILL.md` - Template improvements, new pitfalls, better detection logic
+- `.claude/commands/*.md` - Command improvements, new features
+- `.spec-flow/templates/*.md` - Artifact templates
+
+**What Gets Preserved** (your local data):
+- `learnings.md` - Pitfall frequencies, pattern usage counts, metrics
+- `.spec-flow/memory/roadmap.md` - Your product roadmap
+- `.spec-flow/memory/constitution.md` - Your project principles
+- `specs/*/` - All your feature specifications
+
+**Example**: After 10 features, your `learnings.md` shows:
+```yaml
+common_pitfalls:
+  - id: "over-clarification"
+    frequency: 2/5 ⭐⭐☆☆☆
+    last_seen: "2025-01-15"
+    instances: [feature-001, feature-007]
+
+successful_patterns:
+  - id: "informed-guess-strategy"
+    usage_count: 8
+    success_rate: 87.5%
+```
+
+This data persists across npm updates, so your workflow gets smarter over time.
+
+### Auto-Learning in Action
+
+**Skills auto-trigger** when:
+- Starting a phase (loads relevant lessons)
+- Completing a phase (detects pitfalls, updates frequencies)
+- Encountering errors (captures patterns for prevention)
+
+**Skills auto-update** when:
+- Pitfall detected: Increments frequency (0/5 → 1/5 → 2/5 ★★☆☆☆)
+- Pattern used successfully: Increments usage count, recalculates success rate
+- Metrics updated: Averages recalculated after each feature
+
+**No manual intervention required** - the system learns as you work.
+
+---
+
 ## Script Reference
 
 Every automation script is provided in both PowerShell (`.ps1`) and shell (`.sh`) form. Pick the variant that matches your environment.

@@ -6,6 +6,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash
 
 # UI/UX Design: Lessons Learned
 
+> **Dynamic data**: Frequencies, metrics, and usage statistics are tracked in [learnings.md](learnings.md) (preserved across npm updates).
+
 **Capability**: Learn from three-phase design workflow to optimize variant exploration, ensure accessibility compliance, enforce design system usage, and maintain clean repositories.
 
 **When I trigger**:
@@ -25,8 +27,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash
 
 ### 🚫 Too Many Variants (Analysis Paralysis)
 
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
+> **Current frequency**: See [learnings.md](learnings.md#too-many-variants)
+
 **Impact**: High (slows decision-making, clutters repository)
 
 **Scenario**:
@@ -68,8 +70,8 @@ fi
 
 ### 🚫 Variants Not Cleaned Up
 
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
+> **Current frequency**: See [learnings.md](learnings.md#variants-not-cleaned-up)
+
 **Impact**: Medium (cluttered repo, confused future developers)
 
 **Scenario**:
@@ -111,8 +113,8 @@ git add $MOCK_DIR/ && git commit -m "design:cleanup: archive variants"
 
 ### 🚫 Design System Violations
 
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
+> **Current frequency**: See [learnings.md](learnings.md#design-system-violations)
+
 **Impact**: High (blocks production, inconsistent UI)
 
 **Scenario**:
@@ -159,8 +161,8 @@ fi
 
 ### 🚫 Accessibility Failures
 
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
+> **Current frequency**: See [learnings.md](learnings.md#accessibility-failures)
+
 **Impact**: Critical (blocks production, legal risk)
 
 **Scenario**:
@@ -209,8 +211,8 @@ fi
 
 ### 🚫 Performance Regressions
 
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
+> **Current frequency**: See [learnings.md](learnings.md#performance-regressions)
+
 **Impact**: Medium (slower UX, poor Lighthouse scores)
 
 **Scenario**:
@@ -250,8 +252,8 @@ fi
 
 ### ✅ 3-5 Variants Strategy
 
-**Success rate**: Not yet tracked
-**First used**: Not yet used
+> **Current usage**: See [learnings.md](learnings.md#3-5-variants-strategy)
+
 **Impact**: High (optimal exploration without paralysis)
 
 **Approach**:
@@ -282,8 +284,8 @@ fi
 
 ### ✅ Git Tag Before Cleanup
 
-**Success rate**: Not yet tracked
-**First used**: Not yet used
+> **Current usage**: See [learnings.md](learnings.md#git-tag-before-cleanup)
+
 **Impact**: High (preserves history, keeps repo clean)
 
 **Approach**:
@@ -319,8 +321,8 @@ rm -rf $MOCK_DIR/*/v[0-9]
 
 ### ✅ Design Token Compliance (100%)
 
-**Success rate**: Not yet tracked
-**First used**: Not yet used
+> **Current usage**: See [learnings.md](learnings.md#design-token-compliance)
+
 **Impact**: Critical (enforces consistency, enables theming)
 
 **Approach**:
@@ -349,8 +351,8 @@ fi
 
 ### ✅ Jobs Perfection Checklist
 
-**Success rate**: Not yet tracked
-**First used**: Not yet used
+> **Current usage**: See [learnings.md](learnings.md#jobs-perfection-checklist)
+
 **Impact**: High (delightful UX, competitive advantage)
 
 **Approach**:
@@ -413,14 +415,12 @@ Jobs Principles Validation:
 
 ## Metrics Tracking
 
-| Metric | Target | Current | Trend |
-|--------|--------|---------|-------|
-| Avg variants per screen | 3-5 | Not tracked | - |
-| Cleanup compliance | 100% | Not tracked | - |
-| Design token violations | 0 | Not tracked | - |
-| Lighthouse accessibility | ≥95 | Not tracked | - |
-| Lighthouse performance | ≥90 | Not tracked | - |
-| Jobs checklist pass rate | 100% | Not tracked | - |
+> **Current metrics**: See [learnings.md](learnings.md#metrics)
 
-**Updated**: Not yet tracked
-**Last feature**: None yet
+**Targets**:
+- Avg variants per screen: 3-5
+- Cleanup compliance: 100%
+- Design token violations: 0
+- Lighthouse accessibility: ≥95
+- Lighthouse performance: ≥90
+- Jobs checklist pass rate: 100%

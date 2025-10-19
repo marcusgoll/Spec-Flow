@@ -22,9 +22,12 @@ Generate design variations for: $ARGUMENTS
 **Get feature from argument or current branch:**
 
 ```bash
-if [ -n "$ARGUMENTS" ]; then
-  SLUG="$ARGUMENTS"
-else
+# Parse arguments: $1 = SLUG, $2 = SCREEN_FILTER (optional)
+ARGS=($ARGUMENTS)
+SLUG="${ARGS[0]}"
+SCREEN_FILTER="${ARGS[1]:-}"  # Optional: specific screen to generate variants for
+
+if [ -z "$SLUG" ]; then
   SLUG=$(git branch --show-current)
 fi
 
@@ -36,6 +39,10 @@ if [ ! -d "$FEATURE_DIR" ]; then
   echo "❌ Feature not found: $FEATURE_DIR"
   echo "Run \spec-flow first"
   exit 1
+fi
+
+if [ -n "$SCREEN_FILTER" ]; then
+  echo "🎯 Targeting specific screen: $SCREEN_FILTER"
 fi
 
 # Required files
@@ -58,6 +65,58 @@ if [ -f "$FEATURE_DIR/design/heart-metrics.md" ]; then
   HEART_METRICS="$FEATURE_DIR/design/heart-metrics.md"
 else
   HEART_METRICS=""
+fi
+```
+
+---
+
+## OVERWRITE DETECTION
+
+**Check for existing variants before generation:**
+
+```bash
+# Check if variants already exist
+EXISTING_VARIANTS=$(find "$MOCK_DIR" -type d -name "v[0-9]" 2>/dev/null | wc -l)
+
+if [ "$EXISTING_VARIANTS" -gt 0 ]; then
+  echo ""
+  echo "⚠️  Found $EXISTING_VARIANTS existing variant folder(s)"
+  echo "   Re-running will overwrite existing variant files"
+  echo ""
+  echo "Options:"
+  echo "  [c] Continue - Overwrite existing variants"
+  echo "  [b] Backup - Create git tag first, then continue"
+  echo "  [a] Abort - Cancel and review existing variants"
+  echo ""
+  read -p "Action? (c/b/a): " OVERWRITE_ACTION
+
+  case "$OVERWRITE_ACTION" in
+    [Bb]*)
+      TAG_NAME="design-variants-backup-$SLUG-$(date +%Y%m%d-%H%M%S)"
+      git tag -a "$TAG_NAME" -m "Backup before regenerating variants for $SLUG
+
+Created: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+Reason: User requested backup before overwriting existing variants
+
+To restore:
+  git checkout $TAG_NAME -- apps/web/mock/$SLUG/"
+
+      echo "✅ Created backup tag: $TAG_NAME"
+      echo "   Continuing with variant generation..."
+      ;;
+    [Aa]*)
+      echo "❌ Aborted by user"
+      exit 0
+      ;;
+    [Cc]*)
+      echo "Continuing with variant generation..."
+      ;;
+    *)
+      echo "Invalid option. Aborting."
+      exit 1
+      ;;
+  esac
+  echo ""
 fi
 ```
 
@@ -178,6 +237,11 @@ TOTAL_SCREENS=0
 TOTAL_FILES=0
 
 for screen_id in "${SCREEN_IDS[@]}"; do
+  # Skip if screen filter specified and doesn't match
+  if [ -n "$SCREEN_FILTER" ] && [ "$screen_id" != "$SCREEN_FILTER" ]; then
+    continue
+  fi
+
   eval "STATES=(\${STATES_${screen_id}[@]})"
   STATE_COUNT=${#STATES[@]}
 
@@ -259,6 +323,11 @@ fi
 **Create route structure:**
 ```bash
 for screen_id in "${SCREEN_IDS[@]}"; do
+  # Skip if screen filter specified and doesn't match
+  if [ -n "$SCREEN_FILTER" ] && [ "$screen_id" != "$SCREEN_FILTER" ]; then
+    continue
+  fi
+
   for i in $(seq 1 $VARIANT_COUNT); do
     mkdir -p "$MOCK_DIR/$screen_id/v$i"
   done
@@ -577,6 +646,11 @@ sed -i "s/{{SCREEN_COUNT}}/$SCREEN_COUNT/g" "$FEATURE_DIR/design/crit.md"
 
 # Generate variant matrix for each screen
 for screen_id in "${SCREEN_IDS[@]}"; do
+  # Skip if screen filter specified and doesn't match
+  if [ -n "$SCREEN_FILTER" ] && [ "$screen_id" != "$SCREEN_FILTER" ]; then
+    continue
+  fi
+
   echo "## Screen: $screen_id" >> "$FEATURE_DIR/design/crit.md"
   echo "" >> "$FEATURE_DIR/design/crit.md"
   echo "| Variant | Layout | Interaction | Copy | Verdict | Notes |" >> "$FEATURE_DIR/design/crit.md"

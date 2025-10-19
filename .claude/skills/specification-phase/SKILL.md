@@ -6,6 +6,8 @@ allowed-tools: Read, Write, Edit, Grep, Bash
 
 # Specification Phase: Lessons Learned
 
+> **Dynamic data**: Frequencies, metrics, and usage statistics are tracked in [learnings.md](learnings.md) (preserved across npm updates).
+
 **Capability**: Learn from spec generation to reduce clarifications, improve classification accuracy, and ensure roadmap integration.
 
 **When I trigger**:
@@ -24,8 +26,8 @@ allowed-tools: Read, Write, Edit, Grep, Bash
 
 ### 🚫 Over-Clarification (Too Many [NEEDS CLARIFICATION] Markers)
 
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
+> **Current frequency**: See [learnings.md](learnings.md#over-clarification)
+
 **Impact**: High (delays planning phase, frustrates users)
 
 **Scenario**:
@@ -66,8 +68,8 @@ fi
 
 ### 🚫 Wrong Classification (HAS_UI=true but no UI)
 
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
+> **Current frequency**: See [learnings.md](learnings.md#wrong-classification)
+
 **Impact**: Medium (creates unnecessary UI artifacts)
 
 **Scenario**:
@@ -99,8 +101,8 @@ fi
 
 ### 🚫 Roadmap Slug Mismatch
 
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
+> **Current frequency**: See [learnings.md](learnings.md#roadmap-slug-mismatch)
+
 **Impact**: Low (manual roadmap update needed)
 
 **Scenario**:
@@ -136,8 +138,8 @@ fi
 
 ### ✅ Informed Guess Strategy
 
-**Success rate**: Not yet tracked
-**First used**: Not yet used
+> **Current usage**: See [learnings.md](learnings.md#informed-guess-strategy)
+
 **Impact**: High (reduces clarifications)
 
 **Scenario**:
@@ -180,8 +182,8 @@ When to make informed guesses instead of clarifying:
 
 ### ✅ Roadmap Integration
 
-**Success rate**: Not yet tracked
-**First used**: Not yet used
+> **Current usage**: See [learnings.md](learnings.md#roadmap-integration)
+
 **Impact**: High (seamless context reuse)
 
 **Scenario**:
@@ -244,13 +246,11 @@ fi
 
 ## Metrics Tracking
 
-| Metric | Target | Current | Trend |
-|--------|--------|---------|-------|
-| Avg clarifications | ≤2 | Not tracked | - |
-| Classification accuracy | ≥90% | Not tracked | - |
-| Roadmap match rate | ≥80% | Not tracked | - |
-| Time to spec | ≤15 min | Not tracked | - |
-| Specs without rework | ≥95% | Not tracked | - |
+> **Current metrics**: See [learnings.md](learnings.md#metrics)
 
-**Updated**: Not yet tracked
-**Last feature**: None yet
+**Targets**:
+- Avg clarifications: ≤2
+- Classification accuracy: ≥90%
+- Roadmap match rate: ≥80%
+- Time to spec: ≤15 min
+- Specs without rework: ≥95%
