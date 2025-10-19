@@ -43,6 +43,17 @@
 
 ## 🆕 Recent Updates
 
+### v1.12.1 (January 2025)
+**Update Command Simplification** - Removed backup overhead for faster, cleaner updates
+
+- **Removed backup creation**: `npx spec-flow update` no longer creates backup folders
+- **Faster updates**: No backup overhead, instant template updates
+- **User data still preserved**: Templates updated while learnings.md, memory, and specs remain untouched
+- **Removed --force flag**: No longer needed (backwards compatible)
+- **Cleaner output**: Shows "Templates updated, user data preserved" message
+
+**Why?** The preserveMemory flag already protects user data during updates. Backups created redundant folders that users had to manually clean up. This change simplifies the update process while maintaining safety.
+
 ### v1.12.0 (January 2025)
 **Learnings Persistence & Design Iteration** - Skills learn across npm updates + enhanced design workflow
 
