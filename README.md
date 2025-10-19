@@ -43,6 +43,22 @@
 
 ## 🆕 Recent Updates
 
+### v1.13.0 (January 2025)
+**Local Project Integration Workflow** - Automatic merge-to-main for local-only projects
+
+- **New Phase S.4.5a**: Merges feature branch → main/master after successful local build
+- **Auto-detects main branch**: Supports both `main` and `master` branch names
+- **Preserves feature history**: Uses `--no-ff` merge to maintain branch context
+- **Remote sync**: Automatically pushes to origin if remote exists
+- **Branch cleanup**: Offers to delete feature branch locally and remotely after merge
+- **Correct sequencing**: Merge happens BEFORE version bump and roadmap update
+- **Git best practices**: Version tag created on main branch (not feature branch)
+
+**Before**: `optimize → build-local → finalize` ❌ (stayed on feature branch)
+**After**: `optimize → build-local → merge-to-main → finalize` ✅ (integrated to main)
+
+**Impact**: Local-only projects now have complete parity with remote deployment models - all features properly integrate to main branch before being marked "Shipped" in roadmap.
+
 ### v1.12.1 (January 2025)
 **Update Command Simplification** - Removed backup overhead for faster, cleaner updates
 
