@@ -59,46 +59,55 @@ if [ -z "$ARGUMENTS" ]; then
   exit 1
 fi
 
-# Generate concise short-name (2-4 words, action-noun format)
-# Analyze feature description and extract meaningful keywords
-SHORT_NAME=$(echo "$ARGUMENTS" |
-  tr '[:upper:]' '[:lower:]' |
-  # Remove common filler words and phrases
-  sed 's/\bwe want to\b//g; s/\bI want to\b//g; s/\bget our\b//g' |
-  sed 's/\bto a\b//g; s/\bwith\b//g; s/\bfor the\b//g' |
-  sed 's/\bbefore moving on to\b//g; s/\bother features\b//g' |
-  sed 's/\ba\b//g; s/\ban\b//g; s/\bthe\b//g' |
-  # Preserve technical terms (OAuth2, API, JWT, etc.) by keeping alphanumeric
-  # Extract key action words (add, create, fix, implement, etc.)
-  sed 's/\bimplement\b/add/g; s/\bcreate\b/add/g' |
-  # Convert to hyphen-separated
-  sed 's/[^a-z0-9-]/-/g' |
-  sed 's/--*/-/g' |
-  sed 's/^-//;s/-$//' |
-  # Take first 2-4 meaningful words (approx 20 chars max for short-name)
-  cut -c1-20 |
-  sed 's/-$//')
+# Check if SLUG already provided (from /spec-flow orchestrator)
+# If provided, use it; otherwise generate from feature description
+if [ -n "$SLUG" ]; then
+  echo "✓ Using provided slug: $SLUG"
+  echo "  From: $ARGUMENTS"
+  echo ""
+  SHORT_NAME="$SLUG"
+else
+  # Standalone mode: Generate concise short-name (2-4 words, action-noun format)
+  # Analyze feature description and extract meaningful keywords
+  SHORT_NAME=$(echo "$ARGUMENTS" |
+    tr '[:upper:]' '[:lower:]' |
+    # Remove common filler words and phrases
+    sed 's/\bwe want to\b//g; s/\bI want to\b//g; s/\bget our\b//g' |
+    sed 's/\bto a\b//g; s/\bwith\b//g; s/\bfor the\b//g' |
+    sed 's/\bbefore moving on to\b//g; s/\bother features\b//g' |
+    sed 's/\ba\b//g; s/\ban\b//g; s/\bthe\b//g' |
+    # Preserve technical terms (OAuth2, API, JWT, etc.) by keeping alphanumeric
+    # Extract key action words (add, create, fix, implement, etc.)
+    sed 's/\bimplement\b/add/g; s/\bcreate\b/add/g' |
+    # Convert to hyphen-separated
+    sed 's/[^a-z0-9-]/-/g' |
+    sed 's/--*/-/g' |
+    sed 's/^-//;s/-$//' |
+    # Take first 2-4 meaningful words (approx 20 chars max for short-name)
+    cut -c1-20 |
+    sed 's/-$//')
 
-# Validate short-name is not empty after sanitization
-if [ -z "$SHORT_NAME" ]; then
-  echo "Error: Invalid feature description (results in empty short-name)"
-  echo "Provided: $ARGUMENTS"
-  exit 1
+  # Validate short-name is not empty after sanitization
+  if [ -z "$SHORT_NAME" ]; then
+    echo "Error: Invalid feature description (results in empty short-name)"
+    echo "Provided: $ARGUMENTS"
+    exit 1
+  fi
+
+  # Prevent path traversal
+  if [[ "$SHORT_NAME" == *".."* ]] || [[ "$SHORT_NAME" == *"/"* ]]; then
+    echo "Error: Invalid characters in feature name"
+    exit 1
+  fi
+
+  # Show generated short-name
+  echo "✓ Generated short-name: $SHORT_NAME"
+  echo "  From: $ARGUMENTS"
+  echo ""
+
+  # Use SHORT_NAME as SLUG for consistency with rest of workflow
+  SLUG="$SHORT_NAME"
 fi
-
-# Prevent path traversal
-if [[ "$SHORT_NAME" == *".."* ]] || [[ "$SHORT_NAME" == *"/"* ]]; then
-  echo "Error: Invalid characters in feature name"
-  exit 1
-fi
-
-# Show generated short-name
-echo "Generated short-name: $SHORT_NAME"
-echo "From: $ARGUMENTS"
-echo ""
-
-# Use SHORT_NAME as SLUG for consistency with rest of workflow
-SLUG="$SHORT_NAME"
 ```
 
 ## GIT VALIDATION (before any changes)
@@ -126,27 +135,38 @@ if [ -n "$(git status --porcelain)" ]; then
   esac
 fi
 
-# 2. Check not on main branch
+# 2. Get current branch (for conditional logic below)
 CURRENT_BRANCH=$(git branch --show-current)
-if [ "$CURRENT_BRANCH" = "main" ]; then
-  echo "Error: Cannot create spec on main branch"
-  echo "Run: git checkout -b feature-branch-name"
-  exit 1
-fi
 
-# 3. Check branch doesn't already exist
-if git show-ref --verify --quiet refs/heads/${SLUG}; then
-  echo "Error: Branch '${SLUG}' already exists"
-  echo "Run: git checkout ${SLUG} (to switch to it)"
-  echo "Or: Choose different feature name"
-  exit 1
-fi
+# 3. Check if running in standalone mode (not from /spec-flow orchestrator)
+# If FEATURE_NUM is set, we're in orchestrated mode and branch/directory already created
+if [ -z "$FEATURE_NUM" ]; then
+  # Standalone mode validations
+  if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
+    echo "Error: Cannot create spec on main branch"
+    echo "Run: git checkout -b feature-branch-name"
+    echo "Or: Use /spec-flow command for full workflow"
+    exit 1
+  fi
 
-# 4. Check spec directory doesn't exist
-if [ -d "specs/${SLUG}" ]; then
-  echo "Error: Spec directory 'specs/${SLUG}/' already exists"
-  echo "Run: /spec-flow [different-name]"
-  exit 1
+  # Check branch doesn't already exist
+  if git show-ref --verify --quiet refs/heads/${SLUG}; then
+    echo "Error: Branch '${SLUG}' already exists"
+    echo "Run: git checkout ${SLUG} (to switch to it)"
+    echo "Or: Choose different feature name"
+    exit 1
+  fi
+
+  # Check spec directory doesn't exist
+  if [ -d "specs/${SLUG}" ]; then
+    echo "Error: Spec directory 'specs/${SLUG}/' already exists"
+    echo "Run: /specify [different-name]"
+    exit 1
+  fi
+else
+  # Orchestrated mode: validations already done by /spec-flow
+  echo "✓ Running in orchestrated mode (from /spec-flow)"
+  echo "  Branch and directory already created"
 fi
 ```
 
@@ -175,15 +195,26 @@ done
 **Create feature structure:**
 ```bash
 # Set up paths
-FEATURE_DIR="specs/${SLUG}"
+# If FEATURE_NUM is set (orchestrated mode), use numbered directory
+if [ -n "$FEATURE_NUM" ]; then
+  FEATURE_DIR="specs/${FEATURE_NUM}-${SLUG}"
+else
+  # Standalone mode: use plain slug
+  FEATURE_DIR="specs/${SLUG}"
+fi
+
 SPEC_FILE="$FEATURE_DIR/spec.md"
 NOTES_FILE="$FEATURE_DIR/NOTES.md"
 
-# Create branch
-git checkout -b ${SLUG}
-
-# Create directory structure
-mkdir -p ${FEATURE_DIR}/{visuals,artifacts,design/queries}
+# Create branch and directory (only in standalone mode)
+if [ -z "$FEATURE_NUM" ]; then
+  # Standalone mode: create branch and directory
+  git checkout -b ${SLUG}
+  mkdir -p ${FEATURE_DIR}/{visuals,artifacts,design/queries}
+else
+  # Orchestrated mode: just ensure subdirectories exist (parent already created)
+  mkdir -p ${FEATURE_DIR}/{visuals,artifacts,design/queries}
+fi
 
 # Create NOTES.md stub (created early so research can write to it)
 cat > $NOTES_FILE <<EOF

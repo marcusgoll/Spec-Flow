@@ -45,6 +45,48 @@ Else:
 - Set `FEATURE_DESCRIPTION = $ARGUMENTS`
 - Initialize new workflow
 
+## GENERATE FEATURE SLUG
+
+**Generate slug from feature description before any file/branch operations:**
+
+```bash
+# Generate concise short-name from feature description (2-4 words, action-noun format)
+# This must happen BEFORE branch creation since branch name includes slug
+SLUG=$(echo "$FEATURE_DESCRIPTION" |
+  tr '[:upper:]' '[:lower:]' |
+  # Remove common filler words and phrases
+  sed 's/\bwe want to\b//g; s/\bI want to\b//g; s/\bget our\b//g' |
+  sed 's/\bto a\b//g; s/\bwith\b//g; s/\bfor the\b//g' |
+  sed 's/\bbefore moving on to\b//g; s/\bother features\b//g' |
+  sed 's/\ba\b//g; s/\ban\b//g; s/\bthe\b//g' |
+  # Preserve technical terms by keeping alphanumeric
+  sed 's/\bimplement\b/add/g; s/\bcreate\b/add/g' |
+  # Convert to hyphen-separated
+  sed 's/[^a-z0-9-]/-/g' |
+  sed 's/--*/-/g' |
+  sed 's/^-//;s/-$//' |
+  # Take first 20 chars (approx 2-4 words)
+  cut -c1-20 |
+  sed 's/-$//')
+
+# Validate slug is not empty
+if [ -z "$SLUG" ]; then
+  echo "❌ Error: Invalid feature description (results in empty slug)"
+  echo "Provided: $FEATURE_DESCRIPTION"
+  exit 1
+fi
+
+# Prevent path traversal
+if [[ "$SLUG" == *".."* ]] || [[ "$SLUG" == *"/"* ]]; then
+  echo "❌ Error: Invalid characters in feature slug"
+  exit 1
+fi
+
+echo "📝 Generated slug: $SLUG"
+echo "   From: $FEATURE_DESCRIPTION"
+echo ""
+```
+
 ## DETECT PROJECT TYPE
 
 **Run project type detection:**
@@ -77,6 +119,19 @@ echo ""
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "⚠️  Git not detected, continuing without branch"
   BRANCH_NAME="local"
+
+  # Still need feature number for directory creation
+  MAX_NUM=0
+  while IFS= read -r dir; do
+    if [[ $dir =~ ([0-9]{3})- ]]; then
+      NUM=$((10#${BASH_REMATCH[1]}))
+      if (( NUM > MAX_NUM )); then
+        MAX_NUM=$NUM
+      fi
+    fi
+  done < <(find specs -maxdepth 1 -mindepth 1 -type d 2>/dev/null || true)
+
+  FEATURE_NUM=$(printf '%03d' $((MAX_NUM + 1)))
 else
   # Check for clean worktree
   if ! git diff --quiet || ! git diff --cached --quiet; then
@@ -94,26 +149,28 @@ else
   # Get current branch
   CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
+  # Calculate feature number (needed for directory creation)
+  # Find next available number by looking at existing spec directories
+  MAX_NUM=0
+  while IFS= read -r dir; do
+    if [[ $dir =~ ([0-9]{3})- ]]; then
+      NUM=$((10#${BASH_REMATCH[1]}))
+      if (( NUM > MAX_NUM )); then
+        MAX_NUM=$NUM
+      fi
+    fi
+  done < <(find specs -maxdepth 1 -mindepth 1 -type d 2>/dev/null || true)
+
+  FEATURE_NUM=$(printf '%03d' $((MAX_NUM + 1)))
+
   # If on main or master, create feature branch
   if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
     echo "📍 Currently on $CURRENT_BRANCH"
     echo "Creating feature branch..."
     echo ""
 
-    # Generate branch name: feat/NNN-slug
-    # Find next feature number
-    MAX_NUM=0
-    while IFS= read -r dir; do
-      if [[ $dir =~ ([0-9]{3})- ]]; then
-        NUM=$((10#${BASH_REMATCH[1]}))
-        if (( NUM > MAX_NUM )); then
-          MAX_NUM=$NUM
-        fi
-      fi
-    done < <(find specs -maxdepth 1 -mindepth 1 -type d 2>/dev/null || true)
-
-    FEATURE_NUM=$(printf '%03d' $((MAX_NUM + 1)))
-    BASE_BRANCH_NAME="feat/$FEATURE_NUM-$SLUG"
+    # Generate branch name: feature/NNN-slug
+    BASE_BRANCH_NAME="feature/$FEATURE_NUM-$SLUG"
     BRANCH_NAME="$BASE_BRANCH_NAME"
 
     # Check if branch exists, handle conflicts
@@ -157,8 +214,9 @@ else
   source .spec-flow/scripts/bash/workflow-state.sh
 fi
 
-# Create feature directory if needed
-FEATURE_DIR="specs/$SLUG"
+# Create feature directory with number prefix (NNN-slug format)
+# Feature number was already calculated during branch creation above
+FEATURE_DIR="specs/$FEATURE_NUM-$SLUG"
 mkdir -p "$FEATURE_DIR"
 
 # Initialize comprehensive workflow state
@@ -269,12 +327,22 @@ Execute Phase 0: Specification in isolated context.
 
 Feature Description: {FEATURE_DESCRIPTION}
 Feature Slug: {SLUG}
+Feature Number: {FEATURE_NUM}
 Project Type: {PROJECT_TYPE}
 
+IMPORTANT CONTEXT:
+- The feature branch has already been created: {BRANCH_NAME}
+- The feature directory has already been created: specs/{FEATURE_NUM}-{SLUG}/
+- Workflow state file already initialized
+
 Your task:
-1. Call /specify slash command with feature description
-2. Extract key information from resulting spec.md
-3. Return structured JSON summary
+1. Set environment variables for /specify to use:
+   - export SLUG="{SLUG}"
+   - export FEATURE_NUM="{FEATURE_NUM}"
+2. Call /specify slash command with feature description
+3. /specify will detect these env vars and skip branch/directory creation
+4. Extract key information from resulting spec.md at specs/{FEATURE_NUM}-{SLUG}/
+5. Return structured JSON summary
 
 Refer to your agent brief for full instructions.
   """
