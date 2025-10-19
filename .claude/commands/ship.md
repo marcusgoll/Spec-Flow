@@ -8,9 +8,9 @@
 - `/ship status` - Display current deployment status
 
 **Deployment Models**:
-- **staging-prod**: Full staging validation before production (optimize → preview → phase-1-ship → validate-staging → phase-2-ship)
-- **direct-prod**: Direct production deployment (optimize → preview → deploy-prod)
-- **local-only**: Local build validation (optimize → preview → build-local)
+- **staging-prod**: Full staging validation before production (optimize → preview → phase-1-ship → validate-staging → phase-2-ship → finalize)
+- **direct-prod**: Direct production deployment (optimize → preview → deploy-prod → finalize)
+- **local-only**: Local build and integration (optimize → preview → build-local → merge-to-main → finalize)
 
 **Dependencies**: Requires completed `/implement` phase
 
@@ -143,7 +143,7 @@ case "$DEPLOYMENT_MODEL" in
     echo "Workflow: Optimize → Preview → Deploy-Prod → Finalize"
     ;;
   local-only)
-    echo "Workflow: Optimize → Preview → Build-Local → Finalize"
+    echo "Workflow: Optimize → Preview → Build-Local → Merge-to-Main → Finalize"
     ;;
 esac
 
@@ -682,6 +682,172 @@ echo ""
 - **staging-prod**: Requires staging validation before continuing
 - **direct-prod**: Requires explicit confirmation before production deployment
 - **local-only**: No manual gate (local build only)
+
+---
+
+## Phase S.4.5a: Local Integration (local-only only)
+
+**Purpose**: Merge feature branch to main/master after successful local build
+
+**Process**:
+
+```bash
+# Only for local-only model - merge to main before finalize
+if [ "$DEPLOYMENT_MODEL" = "local-only" ]; then
+  echo "🔀 Phase S.4.5a: Merge to Main Branch"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  # Get feature info from state
+  FEATURE_SLUG=$(yq eval '.feature.slug' "$STATE_FILE")
+  FEATURE_TITLE=$(yq eval '.feature.title' "$STATE_FILE")
+
+  # Detect main branch name (main or master)
+  if git show-ref --verify --quiet refs/heads/main; then
+    MAIN_BRANCH="main"
+  elif git show-ref --verify --quiet refs/heads/master; then
+    MAIN_BRANCH="master"
+  else
+    # Try to detect from remote
+    MAIN_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+
+    if [ -z "$MAIN_BRANCH" ]; then
+      echo "❌ Cannot detect main branch (no 'main' or 'master' branch found)"
+      echo ""
+      echo "Please create a main branch first:"
+      echo "  git checkout -b main"
+      echo ""
+      exit 1
+    fi
+  fi
+
+  # Get current feature branch
+  FEATURE_BRANCH=$(git branch --show-current)
+
+  if [ "$FEATURE_BRANCH" = "$MAIN_BRANCH" ]; then
+    echo "⏭️  Already on $MAIN_BRANCH branch, skipping merge"
+    echo ""
+  else
+    echo "Merging: $FEATURE_BRANCH → $MAIN_BRANCH"
+    echo ""
+
+    # Check for uncommitted changes
+    if ! git diff-index --quiet HEAD --; then
+      echo "❌ Uncommitted changes detected"
+      echo ""
+      echo "Please commit or stash changes first:"
+      echo "  git add ."
+      echo "  git commit -m 'your message'"
+      echo ""
+      exit 1
+    fi
+
+    # Switch to main branch
+    echo "Checking out $MAIN_BRANCH..."
+    git checkout "$MAIN_BRANCH"
+
+    if [ $? -ne 0 ]; then
+      echo "❌ Failed to checkout $MAIN_BRANCH"
+      exit 1
+    fi
+
+    # Merge feature branch with no-ff to preserve history
+    echo "Merging $FEATURE_BRANCH..."
+    git merge --no-ff "$FEATURE_BRANCH" -m "feat: merge $FEATURE_SLUG
+
+Feature: $FEATURE_TITLE
+Branch: $FEATURE_BRANCH
+
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+    if [ $? -ne 0 ]; then
+      echo "❌ Merge conflict detected"
+      echo ""
+      echo "Resolve conflicts manually, then run:"
+      echo "  git add ."
+      echo "  git commit"
+      echo "  /ship continue"
+      echo ""
+      exit 1
+    fi
+
+    echo "✅ Merged $FEATURE_BRANCH → $MAIN_BRANCH"
+    echo ""
+
+    # Push to origin if remote exists
+    if git remote get-url origin >/dev/null 2>&1; then
+      echo "Pushing to origin/$MAIN_BRANCH..."
+
+      git push origin "$MAIN_BRANCH"
+
+      if [ $? -eq 0 ]; then
+        echo "✅ Pushed to origin/$MAIN_BRANCH"
+      else
+        echo "⚠️  Failed to push to origin (continuing anyway)"
+        echo "   You can push manually later: git push origin $MAIN_BRANCH"
+      fi
+    else
+      echo "⏭️  No remote configured, skipping push"
+    fi
+
+    echo ""
+
+    # Offer to delete feature branch
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🧹 Feature Branch Cleanup"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Feature branch '$FEATURE_BRANCH' has been merged."
+    echo ""
+    read -p "Delete feature branch locally? (yes/no): " DELETE_LOCAL
+
+    if [ "$DELETE_LOCAL" = "yes" ]; then
+      git branch -d "$FEATURE_BRANCH"
+      echo "✅ Deleted local branch: $FEATURE_BRANCH"
+
+      # If remote exists, offer to delete remote branch
+      if git remote get-url origin >/dev/null 2>&1; then
+        if git ls-remote --exit-code --heads origin "$FEATURE_BRANCH" >/dev/null 2>&1; then
+          echo ""
+          read -p "Delete remote branch origin/$FEATURE_BRANCH? (yes/no): " DELETE_REMOTE
+
+          if [ "$DELETE_REMOTE" = "yes" ]; then
+            git push origin --delete "$FEATURE_BRANCH"
+            echo "✅ Deleted remote branch: origin/$FEATURE_BRANCH"
+          else
+            echo "⏭️  Kept remote branch: origin/$FEATURE_BRANCH"
+          fi
+        fi
+      fi
+    else
+      echo "⏭️  Kept feature branch: $FEATURE_BRANCH"
+    fi
+
+    echo ""
+  fi
+
+  # Update workflow state
+  update_workflow_phase "$FEATURE_DIR" "ship:local-integration" "completed"
+
+  echo "✅ Local integration complete"
+  echo ""
+fi
+```
+
+**State Updates**:
+- Mark `ship:local-integration` as completed
+- Feature code now on main branch
+- Ready for version bump and roadmap update
+
+**Blocking Conditions**:
+- Merge conflicts
+- Uncommitted changes
+- Main branch doesn't exist
+
+**Manual Steps**:
+- User prompted to delete feature branch (optional)
+- User prompted to delete remote branch if exists (optional)
 
 ---
 

@@ -694,27 +694,36 @@ cat >> "$FEATURE_DIR/local-build-report.md" <<EOF
 
 ## Next Steps
 
-Since this is a local-only build, consider:
+Since this is a local-only build:
 
-1. **Manual Testing**
+1. **Continue `/ship` workflow**
+   - Run `/ship continue` to merge feature to main branch
+   - The workflow will automatically:
+     - Merge your feature branch to main/master
+     - Push to origin (if remote exists)
+     - Bump version and create git tag
+     - Update roadmap to mark feature as "Shipped"
+
+2. **Manual Testing** (before `/ship continue`)
    - Test the built application thoroughly
    - Check for any runtime errors
    - Verify all features work as expected
 
-2. **Performance**
+3. **Performance Checks**
    - Measure load times
    - Check memory usage
    - Profile CPU usage if applicable
 
-3. **Documentation**
-   - Update README if needed
-   - Document any setup steps
-   - Note any breaking changes
-
-4. **Distribution** (if applicable)
+4. **Distribution** (after `/ship` completes)
    - Package for distribution
    - Create installers
    - Prepare release artifacts
+
+**Important**: Do NOT manually merge to main. The `/ship` workflow handles:
+- Merging feature branch → main/master
+- Version bumping (package.json)
+- Roadmap updates
+- Git tag creation
 
 ---
 
@@ -767,7 +776,9 @@ if [ "$SECURITY_ISSUES" -gt 0 ]; then
   echo ""
 fi
 
-echo "✅ Ready for manual testing and distribution"
+echo "✅ Ready for integration to main branch"
+echo ""
+echo "Next: Run /ship continue to merge to main and update roadmap"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 ```
@@ -839,10 +850,16 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 ## Notes
 
 - **No deployment**: This command only builds locally
-- **Manual testing**: User responsible for testing built artifacts
-- **Distribution**: User handles packaging and distribution
+- **Integration**: After build, `/ship continue` will merge to main and update roadmap
+- **Manual testing**: User responsible for testing built artifacts before merging
+- **Distribution**: User handles packaging and distribution after `/ship` completes
 - **Best for**: Local development, prototypes, learning projects
 - **Security**: Security scan is informational, not blocking
 - **Testing**: Tests are run if available, skipped if not
 
 This command is automatically called by `/ship` when deployment model is `local-only`.
+
+**Workflow**:
+1. `/build-local` - Build and test locally (this command)
+2. `/ship continue` - Merge to main, version bump, roadmap update
+3. Manual distribution (if applicable)
