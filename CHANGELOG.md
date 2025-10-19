@@ -5,6 +5,85 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2025-01-19
+
+### Changed - Command Naming Clarity
+
+**Problem**: Several slash commands had unclear or confusing names:
+- `/spec-flow` - Collided with package name "spec-flow", unclear action
+- `/specify` - Verbose, could be shorter
+- `/phase-1-ship` & `/phase-2-ship` - Numbered phases not self-documenting
+- `/checks` - Too generic, unclear what it checks
+- `/analyze` - Could be more specific about validation purpose
+- `/flow` - Too generic, doesn't indicate workflow orchestration
+- `/measure-heart` - HEART acronym is implementation detail
+
+**Solution**: Renamed 8 commands with self-documenting, clearer names
+
+#### Command Renames (with backward compatibility)
+
+| Old Command | New Command | Rationale |
+|-------------|-------------|-----------|
+| `/spec-flow` | `/feature` | Avoids package name collision, clearer action |
+| `/specify` | `/spec` | Shorter, clearer, common terminology |
+| `/phase-1-ship` | `/ship-staging` | Self-documents deployment target |
+| `/phase-2-ship` | `/ship-prod` | Self-documents deployment target |
+| `/checks` | `/fix-ci` | More specific about CI/deployment blockers |
+| `/analyze` | `/validate` | More specific about validation purpose |
+| `/flow` | `/workflow` | More descriptive orchestrator name |
+| `/measure-heart` | `/metrics` | Simpler name, hides implementation detail |
+
+#### Backward Compatibility
+
+- **Old commands still work**: All 8 original commands maintained as aliases
+- **Deprecation warnings**: Old commands show migration guidance when used
+- **Removal timeline**: Old aliases will be removed in v2.0.0
+- **Migration guide**: Each deprecated command links to new equivalent
+
+#### Benefits
+- ✅ **Self-documenting**: Command names clearly indicate what they do
+- ✅ **No package confusion**: `/feature` avoids collision with "spec-flow" package
+- ✅ **Easier onboarding**: New users understand commands without documentation
+- ✅ **Gradual migration**: Old commands work while users migrate
+- ✅ **Clear targets**: `/ship-staging` and `/ship-prod` are explicit about deployment
+
+### Added
+- **8 new command files**:
+  - `.claude/commands/feature.md` - Feature workflow orchestrator
+  - `.claude/commands/spec.md` - Specification creation
+  - `.claude/commands/ship-staging.md` - Staging deployment
+  - `.claude/commands/ship-prod.md` - Production deployment
+  - `.claude/commands/fix-ci.md` - CI/deployment blocker fixes
+  - `.claude/commands/validate.md` - Cross-artifact validation
+  - `.claude/commands/workflow.md` - Original workflow orchestrator
+  - `.claude/commands/metrics.md` - HEART metrics measurement
+
+### Changed
+- **8 deprecated command files**: Added deprecation warnings with migration guidance
+  - `.claude/commands/spec-flow.md`
+  - `.claude/commands/specify.md`
+  - `.claude/commands/phase-1-ship.md`
+  - `.claude/commands/phase-2-ship.md`
+  - `.claude/commands/checks.md`
+  - `.claude/commands/analyze.md`
+  - `.claude/commands/flow.md`
+  - `.claude/commands/measure-heart.md`
+
+- **Documentation updates**:
+  - `CLAUDE.md` - Updated all workflow diagrams and command references
+  - `README.md` - Updated 15+ command examples throughout
+  - Updated workflow state machine diagrams
+  - Updated deployment model descriptions
+  - Updated command artifacts table
+
+### Files Modified
+- 8 new command files created (16 total with deprecation)
+- `CLAUDE.md` - Complete command reference update
+- `README.md` - All examples and documentation
+- `CHANGELOG.md` - This entry
+
+**Impact**: Users can now understand command purposes without consulting documentation. The renaming follows industry conventions (e.g., `/ship-staging`, `/ship-prod`) and improves discoverability.
+
 ## [1.13.0] - 2025-01-19
 
 ### Added - Local Project Integration Workflow

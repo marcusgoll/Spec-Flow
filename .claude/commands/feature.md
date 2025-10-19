@@ -2,22 +2,12 @@
 description: Orchestrate full feature workflow with isolated phase contexts (optimized)
 ---
 
-> **⚠️  DEPRECATED**: This command has been renamed to `/feature` for clarity.
->
-> **Reason**: Avoids confusion with package name "spec-flow"
->
-> **Migration**: Replace `/spec-flow` with `/feature` in your workflow
->
-> **Removal**: This alias will be removed in v2.0.0
->
-> **For now**: Both commands work identically
-
 Orchestrate feature delivery through isolated phase agents for maximum efficiency.
 
 ## MENTAL MODEL
 
 **Architecture**: Orchestrator-Workers with Phase Isolation
-- **Orchestrator** (`/spec-flow`): Lightweight state tracking, phase progression
+- **Orchestrator** (`/feature`): Lightweight state tracking, phase progression
 - **Phase Agents**: Isolated contexts, call slash commands, return summaries
 - **Implementation**: `/implement` called directly (spawns worker agents: backend-dev, frontend-shipper, etc.)
   - Note: Phase 4 bypasses phase agent due to sub-agent spawning limits
@@ -35,12 +25,12 @@ Orchestrate feature delivery through isolated phase agents for maximum efficienc
 
 If `$ARGUMENTS` is empty, show usage:
 ```
-Usage: /spec-flow [feature description]
-   or: /spec-flow continue
+Usage: /feature [feature description]
+   or: /feature continue
 
 Examples:
-  /spec-flow "Student progress tracking dashboard"
-  /spec-flow continue
+  /feature "Student progress tracking dashboard"
+  /feature continue
 
 Note: Use /flow for original workflow (backup)
 ```
@@ -272,7 +262,7 @@ if [ ! -f "$STATE_FILE" ] && [ -f "$FEATURE_DIR/workflow-state.json" ]; then
 fi
 
 if [ ! -f "$STATE_FILE" ]; then
-  echo "❌ No workflow state found. Run /spec-flow with a feature description first."
+  echo "❌ No workflow state found. Run /feature with a feature description first."
   exit 1
 fi
 
@@ -547,7 +537,7 @@ if [ "$HAS_UI" = "true" ]; then
     echo "  4. Mark Keep/Change/Kill decisions for each variant"
     echo ""
     echo "After completing crit.md, resume with:"
-    echo "  /spec-flow continue"
+    echo "  /feature continue"
     echo ""
 
     # Pause for human review
@@ -590,7 +580,7 @@ if yq eval '.design_workflow.enabled' specs/$FEATURE_NUM-$SLUG/workflow-state.ya
     echo "  4. Verify all merged components correct"
     echo ""
     echo "After approval, resume with:"
-    echo "  /spec-flow continue"
+    echo "  /feature continue"
     echo ""
 
     # Pause for human review
@@ -773,11 +763,11 @@ echo "Action required:"
 echo "1. Run /preview to start local dev server"
 echo "2. Test UI/UX flows manually"
 echo "3. Verify acceptance criteria from spec"
-echo "4. When satisfied, continue: /spec-flow continue"
+echo "4. When satisfied, continue: /feature continue"
 echo ""
 
 # Update workflow-state.yaml status to "awaiting_preview"
-# Save and exit (user will run /spec-flow continue after testing)
+# Save and exit (user will run /feature continue after testing)
 ```
 
 ### Phase 6: Ship to Staging (DEPLOYMENT)
@@ -847,7 +837,7 @@ echo "Action required:"
 echo "1. Test feature on staging environment"
 echo "2. Verify E2E tests passed (GitHub Actions)"
 echo "3. Check Lighthouse CI scores"
-echo "4. When approved, continue: /spec-flow continue"
+echo "4. When approved, continue: /feature continue"
 echo ""
 
 # Update workflow-state.yaml status to "awaiting_staging_validation"
@@ -934,7 +924,7 @@ if [ "$STATUS" = "blocked" ]; then
   echo "Blockers:"
   # Print blockers from result
   echo ""
-  echo "Fix blockers and continue: /spec-flow continue"
+  echo "Fix blockers and continue: /feature continue"
 
   # Save state with blocker info
   exit 1
@@ -945,7 +935,7 @@ fi
 
 **Token Efficiency:**
 - Old `/flow`: ~240k tokens (cumulative context)
-- New `/spec-flow`: ~80k tokens (isolated contexts)
+- New `/feature`: ~80k tokens (isolated contexts)
 - **Savings: 67%**
 
 **Speed:**
@@ -960,6 +950,6 @@ fi
 
 ## FALLBACK
 
-**If issues with `/spec-flow`:**
+**If issues with `/feature`:**
 
 Use original `/flow` command (unchanged, available as backup)

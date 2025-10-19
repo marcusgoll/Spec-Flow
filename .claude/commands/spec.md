@@ -2,16 +2,6 @@
 description: Create feature specification from natural language (planning is 80% of success)
 ---
 
-> **⚠️  DEPRECATED**: This command has been renamed to `/spec` for clarity.
->
-> **Reason**: Shorter, clearer action name
->
-> **Migration**: Replace `/specify` with `/spec` in your workflow
->
-> **Removal**: This alias will be removed in v2.0.0
->
-> **For now**: Both commands work identically
-
 Create specification for: $ARGUMENTS
 
 ## MENTAL MODEL
@@ -170,7 +160,7 @@ if [ -z "$FEATURE_NUM" ]; then
   # Check spec directory doesn't exist
   if [ -d "specs/${SLUG}" ]; then
     echo "Error: Spec directory 'specs/${SLUG}/' already exists"
-    echo "Run: /specify [different-name]"
+    echo "Run: /spec [different-name]"
     exit 1
   fi
 else

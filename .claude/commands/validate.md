@@ -5,16 +5,6 @@ scripts:
   ps: scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
 ---
 
-> **⚠️  DEPRECATED**: This command has been renamed to `/validate` for clarity.
->
-> **Reason**: More specific about validating cross-artifact consistency
->
-> **Migration**: Replace `/analyze` with `/validate` in your workflow
->
-> **Removal**: This alias will be removed in v2.0.0
->
-> **For now**: Both commands work identically
-
 Analyze feature artifacts for consistency, coverage, and quality.
 
 ## User Input
@@ -824,7 +814,7 @@ if [ "$CRITICAL_ISSUES" -gt 0 ]; then
 
 1. Review critical issues in findings table above
 2. Update spec.md, plan.md, or tasks.md to address
-3. Re-run: \`/analyze\`
+3. Re-run: \`/validate\`
 
 Do NOT proceed to /implement until critical issues resolved.
 EOF
@@ -984,7 +974,7 @@ if [ "$CRITICAL_ISSUES" -gt 0 ]; then
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
   echo "Fix critical issues before proceeding"
-  echo "Then re-run: /analyze"
+  echo "Then re-run: /validate"
 elif [ "$HIGH_ISSUES" -gt 0 ]; then
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "⚠️  REVIEW RECOMMENDED: $HIGH_ISSUES high-priority issue(s)"

@@ -2,30 +2,18 @@
 description: Orchestrate full feature workflow from idea to staging (with manual gates)
 ---
 
-> **⚠️  DEPRECATED**: This command has been renamed to `/workflow` for clarity.
->
-> **Reason**: More descriptive; distinguishes from `/feature` (optimized orchestrator)
->
-> **Migration**: Replace `/flow` with `/workflow` in your workflow
->
-> **Removal**: This alias will be removed in v2.0.0
->
-> **For now**: Both commands work identically
->
-> **Note**: Consider using `/feature` for the optimized isolated-context workflow
-
 ## PARSE ARGUMENTS
 
 **Get feature description or continue mode:**
 
 If $ARGUMENTS is empty, show usage:
 ```
-Usage: /flow [feature description]
-   or: /flow continue
+Usage: /workflow [feature description]
+   or: /workflow continue
 
 Examples:
-  /flow "Student progress tracking dashboard"
-  /flow continue
+  /workflow "Student progress tracking dashboard"
+  /workflow continue
 ```
 
 If $ARGUMENTS is "continue":
@@ -92,7 +80,7 @@ Read existing state file to determine next phase and project type.
 **Workflow**: Feature idea → Staging deployment (**YOLO mode** - fully automated)
 
 **Pattern**: Orchestrator-Workers (from Anthropic best practices)
-- **Orchestrator**: /flow tracks progress, manages context, handles errors
+- **Orchestrator**: /workflow tracks progress, manages context, handles errors
 - **Workers**: Individual slash commands are specialists
 - **YOLO mode**: Full automation, only stops for:
   - User questions (clarifications during \spec-flow)
@@ -237,7 +225,7 @@ PHASE 7.5: FINALIZE → Update docs (CHANGELOG, README, help), manage milestones
      - LOG: "❌ CRITICAL ISSUES FOUND"
      - LOG: "Review: specs/NNN-*/artifacts/analysis-report.md"
      - LOG: ""
-     - LOG: "Fix critical issues, then run: /flow continue"
+     - LOG: "Fix critical issues, then run: /workflow continue"
      - PAUSE: Exit workflow, return control to user
    - ELSE:
      - LOG: "✅ Analysis passed, proceeding to implement"
@@ -323,10 +311,10 @@ PHASE 7.5: FINALIZE → Update docs (CHANGELOG, README, help), manage milestones
    - LOG: "3. Verify against spec.md requirements"
    - LOG: "4. Check visuals/README.md patterns followed"
    - LOG: ""
-   - LOG: "Then continue with: /flow continue"
+   - LOG: "Then continue with: /workflow continue"
    - PAUSE: Exit workflow, return control to user
 
-3. **Resume after /preview (when user runs /flow continue):**
+3. **Resume after /preview (when user runs /workflow continue):**
    - Check for preview completion markers (see MANUAL GATE DETECTION)
    - If preview not complete: Display error, require /preview first
    - If preview complete:
@@ -359,7 +347,7 @@ if [ "$PROJECT_TYPE" = "local-only" ]; then
   echo "To enable remote workflow:"
   echo "  1. Add remote: git remote add origin <url>"
   echo "  2. Create staging branch: git checkout -b staging main && git push -u origin staging"
-  echo "  3. Re-run: /flow continue"
+  echo "  3. Re-run: /workflow continue"
   echo ""
   exit 0
 fi
@@ -419,10 +407,10 @@ echo ""
    - LOG: "3. Check Lighthouse CI scores (Performance >90, A11y >95)"
    - LOG: "4. Confirm no regressions"
    - LOG: ""
-   - LOG: "Then continue with: /flow continue"
+   - LOG: "Then continue with: /workflow continue"
    - PAUSE: Exit workflow, return control to user
 
-3. **Resume after /validate-staging (when user runs /flow continue):**
+3. **Resume after /validate-staging (when user runs /workflow continue):**
    - Check for staging validation completion (see MANUAL GATE DETECTION)
    - If validation not complete: Display error, require /validate-staging first
    - If validation complete:
@@ -469,7 +457,7 @@ echo ""
 
 ## CONTEXT COMPACTION (Auto After Each Phase)
 
-The `/flow` command automatically runs `/compact` after each phase with phase-specific instructions.
+The `/workflow` command automatically runs `/compact` after each phase with phase-specific instructions.
 
 **Note**: If `/compact` command doesn't exist, skip compaction and continue workflow.
 
@@ -515,7 +503,7 @@ Fix critical issues:
 - [Issue 1 description]
 - [Issue 2 description]
 
-Then continue: /flow continue
+Then continue: /workflow continue
 ```
 
 ### Blockers After /optimize
@@ -527,7 +515,7 @@ Review: specs/NNN-*/artifacts/optimization-report.md
 Auto-fix available? (y/n)
 
 If yes: Auto-fix will run (max 3 iterations)
-If no: Fix manually, then: /flow continue
+If no: Fix manually, then: /workflow continue
 ```
 
 ### Preview Gate
@@ -542,7 +530,7 @@ Validate:
 - [ ] No visual regressions
 - [ ] Responsive design works
 
-Then continue: /flow continue
+Then continue: /workflow continue
 ```
 
 ### Staging Validation Gate
@@ -557,7 +545,7 @@ Check:
 - [ ] Lighthouse CI scores met (>90 Performance, >95 A11y)
 - [ ] No production-breaking changes
 
-Then continue: /flow continue
+Then continue: /workflow continue
 ```
 
 ## CONTINUE MODE
@@ -565,7 +553,7 @@ Then continue: /flow continue
 Resume workflow after manual intervention:
 
 ```bash
-/flow continue
+/workflow continue
 ```
 
 ### Resume Logic
@@ -678,7 +666,7 @@ Action required:
   2. [Step 2]
   3. [Step 3]
 
-Then: /flow continue
+Then: /workflow continue
 ```
 
 ## COMMAND INVOCATION
@@ -722,7 +710,7 @@ Check for critical issues:
 4. If count > 0:
    - Display critical issues
    - PAUSE workflow
-   - Show: "Fix critical issues, then: /flow continue"
+   - Show: "Fix critical issues, then: /workflow continue"
 
 **After /optimize (Phase 5):**
 
@@ -737,7 +725,7 @@ Check for blockers:
      - If yes: /optimize handles auto-fix internally
    - If no auto-fix or user declines:
      - PAUSE workflow
-     - Show: "Fix blockers, then: /flow continue"
+     - Show: "Fix blockers, then: /workflow continue"
 
 ## ERROR HANDLING
 
@@ -866,7 +854,7 @@ Estimated remaining: 2h 30m
 
 ### Example 1: New Feature (Full Flow)
 ```bash
-/flow "Student progress tracking dashboard"
+/workflow "Student progress tracking dashboard"
 
 # Output:
 # ✅ Phase 0: Spec created (specs/015-student-progress-dashboard)
@@ -889,7 +877,7 @@ Estimated remaining: 2h 30m
 ### Example 2: Resume After Preview
 ```bash
 # After /preview completed
-/flow continue
+/workflow continue
 
 # Output:
 # Resuming from: Phase 6 (Ship to Staging)
@@ -902,7 +890,7 @@ Estimated remaining: 2h 30m
 ### Example 3: Resume After Fixes
 ```bash
 # After fixing critical issues from /analyze
-/flow continue
+/workflow continue
 
 # Output:
 # Resuming from: Phase 4 (Implementation)
@@ -952,7 +940,7 @@ Phase: [phase-name] (Manual Gate)
 Action required:
 - [specific validation steps]
 
-Next: /flow continue (after validation complete)
+Next: /workflow continue (after validation complete)
 ```
 
 ### On Error
@@ -965,7 +953,7 @@ Error: [error-description]
 Options:
   A) Debug: /debug
   B) Fix: [specific fix instructions]
-  C) Skip: /flow continue --skip-phase
+  C) Skip: /workflow continue --skip-phase
   D) Abort: Exit workflow
 
 Logs: specs/NNN-*/NOTES.md

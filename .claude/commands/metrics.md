@@ -2,16 +2,6 @@
 description: Measure HEART metrics from local sources (logs, DB, Lighthouse) and compare to targets
 ---
 
-> **⚠️  DEPRECATED**: This command has been renamed to `/metrics` for clarity.
->
-> **Reason**: Simpler name; HEART acronym is implementation detail
->
-> **Migration**: Replace `/measure-heart` with `/metrics` in your workflow
->
-> **Removal**: This alias will be removed in v2.0.0
->
-> **For now**: Both commands work identically
-
 Measure HEART metrics for: $ARGUMENTS
 
 ## MENTAL MODEL
@@ -363,7 +353,7 @@ cd design/features/$FEATURE_SLUG/results && ./compare.sh > comparison.json
 ---
 
 **Generated**: [ISO timestamp]
-**Measured By**: Claude Code `/measure-heart`
+**Measured By**: Claude Code `/metrics`
 ```
 
 ---

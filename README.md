@@ -83,7 +83,7 @@
 **Part 2: Design Iteration Enhancements**
 - **Screen-specific targeting**: `/design-variations $SLUG [$SCREEN]` - iterate on single component
 - **Overwrite protection**: Warns before regenerating, offers [b]ackup to create git tag first
-- **Re-enable support**: Can enable design workflow after initially declining in `/spec-flow`
+- **Re-enable support**: Can enable design workflow after initially declining in `/feature`
 - **Iteration patterns guide**: 5 common scenarios with step-by-step solutions (component iteration, A/B testing, state-specific refinement)
 
 **Documentation**
@@ -96,7 +96,7 @@
 ### v1.11.1 (October 2024)
 **Folder Cleanup Refactor** - Cleaner spec directories with on-demand folder creation
 
-- **Eliminated empty folders**: Removed blanket directory pre-creation from `/specify` command
+- **Eliminated empty folders**: Removed blanket directory pre-creation from `/spec` command
 - **On-demand creation**: Folders (`visuals/`, `design/`) now created only when files are written
 - **Benefits**: Cleaner spec directories, easier to identify UI features, follows YAGNI principle
 - **Files modified**: `.claude/commands/specify.md`
@@ -185,18 +185,18 @@ Spec-Driven Development flips the traditional model: specifications become execu
 
 ### 🚀 New: Optimized Phase Agent Architecture (v1.5.0)
 
-Spec-Flow now features an **optimized orchestrator** (`/spec-flow`) that runs each workflow phase in isolated contexts for maximum efficiency:
+Spec-Flow now features an **optimized orchestrator** (`/feature`) that runs each workflow phase in isolated contexts for maximum efficiency:
 
 **Benefits:**
 - ⚡ **67% Token Reduction** - Each phase runs in isolated context (240k → 80k tokens per feature)
 - 🏃 **2-3x Faster** - No cumulative context bloat, no /compact overhead between phases
 - ✅ **Same Quality** - All slash commands unchanged, proven workflow maintained
-- 🔄 **Easy Rollback** - Original `/flow` command available as backup
+- 🔄 **Easy Rollback** - Original `/workflow` command available as backup
 
 **How it works:**
 ```
-/spec-flow (Orchestrator - Lightweight State Tracking)
-  ├→ spec-phase-agent → /specify → Returns summary
+/feature (Orchestrator - Lightweight State Tracking)
+  ├→ spec-phase-agent → /spec → Returns summary
   ├→ plan-phase-agent → /plan → Returns summary
   ├→ tasks-phase-agent → /tasks → Returns summary
   ├→ /implement → Spawns worker agents directly (bypasses phase agent*)
@@ -206,8 +206,8 @@ Spec-Flow now features an **optimized orchestrator** (`/spec-flow`) that runs ea
 ```
 
 **Choose your workflow:**
-- **`/spec-flow "feature"`** - New optimized workflow (recommended)
-- **`/flow "feature"`** - Original workflow (backup/fallback)
+- **`/feature "feature"`** - New optimized workflow (recommended)
+- **`/workflow "feature"`** - Original workflow (backup/fallback)
 - **`/quick "fix"`** - Fast path for small changes (<100 LOC)
 
 ## 🚀 Quick Start
@@ -259,8 +259,8 @@ powershell -File .spec-flow/scripts/powershell/install-wizard.ps1
    ```
 4. **Start building:**
    ```bash
-   /spec-flow "my-feature"  # Optimized workflow (recommended)
-   /flow "my-feature"       # Original workflow (backup)
+   /feature "my-feature"  # Optimized workflow (recommended)
+   /workflow "my-feature"       # Original workflow (backup)
    /quick "fix bug"         # Fast path for small changes
    ```
 
@@ -306,20 +306,20 @@ Select a feature from your roadmap and choose your workflow:
 
 **Optimized workflow (recommended):**
 ```bash
-/spec-flow "feature-name"  # Runs full workflow with isolated phase agents
-# Auto-progresses through: spec → plan → tasks → analyze → implement → optimize → ship
+/feature "feature-name"  # Runs full workflow with isolated phase agents
+# Auto-progresses through: spec → plan → tasks → validate → implement → optimize → ship
 # Pauses at manual gates: /preview, /validate-staging
-# Use: /spec-flow continue (to resume after manual gates)
+# Use: /feature continue (to resume after manual gates)
 ```
 
 **Original workflow (backup):**
 ```bash
-/flow "feature-name"  # Traditional workflow with cumulative context
+/workflow "feature-name"  # Traditional workflow with cumulative context
 ```
 
 **Manual step-by-step:**
 ```bash
-/specify "feature-name"  # Create specification
+/spec "feature-name"  # Create specification
 /plan                    # Create plan
 /tasks                   # Break down tasks
 /implement              # Execute implementation
@@ -343,7 +343,7 @@ Spec-Flow includes an auto-learning system that captures lessons from each workf
 ### How Skills Work
 
 **16 Phase-Specific Skills**: Each workflow phase has a dedicated skill that learns from execution:
-- `.claude/skills/specification-phase/` - Learn from /specify (reduce clarifications, improve classification)
+- `.claude/skills/specification-phase/` - Learn from /spec (reduce clarifications, improve classification)
 - `.claude/skills/planning-phase/` - Learn from /plan (maximize code reuse, detect patterns)
 - `.claude/skills/implementation-phase/` - Learn from /implement (TDD enforcement, anti-duplication)
 - `.claude/skills/ui-ux-design/` - Learn from design workflow (Jobs principles, a11y compliance)
@@ -425,21 +425,21 @@ Every automation script is provided in both PowerShell (`.ps1`) and shell (`.sh`
 | Phase | Command | Primary Outputs |
 |-------|---------|-----------------|
 | -1 | `/roadmap` | `roadmap.md` with ICE-scored features |
-| 0 | `/specify` | `spec.md`, `NOTES.md`, `visuals/README.md` |
+| 0 | `/spec` | `spec.md`, `NOTES.md`, `visuals/README.md` |
 | 0.5 | `/clarify` | Clarification log inside the spec |
 | 1 | `/plan` | `plan.md`, `research.md` |
 | 2 | `/tasks` | `tasks.md` with acceptance criteria |
-| 3 | `/analyze` | Risk analysis report |
+| 3 | `/validate` | Risk analysis report |
 | 4 | `/implement` | Implementation checklist & validation hooks |
 | 5 | `/optimize` | Code review summary & optimization plan |
 | 6 | `/debug` | Error triage and remediation plan |
 | 7 | `/preview` | Release notes & preview checklist |
-| 8 | `/phase-1-ship` | Staging deployment ritual |
+| 8 | `/ship-staging` | Staging deployment ritual |
 | 9 | `/validate-staging` | Sign-off for staging |
-| 10 | `/phase-2-ship` | Production launch and follow-up |
+| 10 | `/ship-prod` | Production launch and follow-up |
 | - | `/compact [phase]` | **Optional:** Reduce token usage between phases |
 
-**Context Management**: The `/compact` command is optional and reduces token usage by summarizing verbose artifacts. Use it between phases when context feels heavy or when suggested by auto-progression. In `/flow` mode, compaction happens automatically.
+**Context Management**: The `/compact` command is optional and reduces token usage by summarizing verbose artifacts. Use it between phases when context feels heavy or when suggested by auto-progression. In `/workflow` mode, compaction happens automatically.
 
 ## Prerequisites
 
@@ -507,10 +507,10 @@ specs/001-example-feature/
 
 1. Run `.spec-flow/scripts/bash/check-prerequisites.sh --json` (or the PowerShell variant) to ensure your environment is ready.
 2. Build your roadmap with `/roadmap` - add features, prioritize with ICE scoring, and organize into Backlog → Next → In Progress → Shipped.
-3. Select a feature from the roadmap and launch `/spec-flow "<feature-slug>"` in Claude to scaffold the spec from the roadmap entry.
-4. Progress through `/clarify`, `/plan`, `/tasks`, and `/analyze`, addressing blockers as they appear.
+3. Select a feature from the roadmap and launch `/feature "<feature-slug>"` in Claude to scaffold the spec from the roadmap entry.
+4. Progress through `/clarify`, `/plan`, `/tasks`, and `/validate`, addressing blockers as they appear.
 5. Use `calculate-tokens` to watch context budgets and `compact-context` to summarise when approaching thresholds.
-6. Walk the release staircase: `/preview`, `/phase-1-ship`, `/validate-staging`, `/phase-2-ship`.
+6. Walk the release staircase: `/preview`, `/ship-staging`, `/validate-staging`, `/ship-prod`.
 7. The feature automatically moves to "Shipped" in the roadmap, and changelog is updated with the release.
 
 ## Packages & Releases
@@ -524,7 +524,7 @@ specs/001-example-feature/
 | Issue | Resolution |
 |-------|------------|
 | `pwsh` command not found | Install PowerShell 7 (`winget install Microsoft.PowerShell` or `brew install --cask powershell`). |
-| Shell script reports missing feature directory | Run `/spec-flow` first or use `create-new-feature` to scaffold `specs/NNN-slug`. |
+| Shell script reports missing feature directory | Run `/feature` first or use `create-new-feature` to scaffold `specs/NNN-slug`. |
 | Token estimate returns zero | Verify files are UTF-8 encoded and not empty. |
 | Context delta lacks checkpoints | Ensure `NOTES.md` records checkpoints prefixed with `-`. |
 

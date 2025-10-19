@@ -45,12 +45,12 @@ pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 -FeatureDir specs/N
 Features progress through fixed phases with automatic state tracking:
 
 ```
-/spec-flow → /clarify (if needed) → /plan → /tasks → /analyze → /implement
+/feature → /clarify (if needed) → /plan → /tasks → /validate → /implement
   ↓
 /ship (unified deployment orchestrator)
   ↓
 Model-specific workflow:
-  • staging-prod: /optimize → /preview → /phase-1-ship → /validate-staging → /phase-2-ship
+  • staging-prod: /optimize → /preview → /ship-staging → /validate-staging → /ship-prod
   • direct-prod: /optimize → /preview → /deploy-prod
   • local-only: /optimize → /preview → /build-local
 ```
@@ -62,8 +62,8 @@ Model-specific workflow:
 - Use `/ship status` to check current progress
 
 **Alternative**:
-- Use `/flow "Feature description"` for original workflow with manual phase progression
-- Use `/flow continue` to resume after manual intervention
+- Use `/workflow "Feature description"` for original workflow with manual phase progression
+- Use `/workflow continue` to resume after manual intervention
 - Commands are defined in `.claude/commands/`
 
 ## New Features (v1.1.0)
@@ -104,7 +104,7 @@ Model-specific workflow:
 **Lifecycle**: `Backlog → Next → In Progress → Shipped`
 
 **Automatic Updates**:
-- `/spec-flow` → Marks feature "In Progress"
+- `/feature` → Marks feature "In Progress"
 - `/ship` (Phase S.5) → Marks feature "Shipped" with version/date
 
 **Feature Discovery**: Workflow detects potential features in code comments:
@@ -161,7 +161,7 @@ Invoke-InteractiveVersionBump -FeatureDir "specs/NNN-slug"
 - `.spec-flow/templates/` — Markdown scaffolds for specs, plans, tasks, reports
 - `.spec-flow/scripts/powershell/` — Windows/cross-platform automation
 - `.spec-flow/scripts/bash/` — macOS/Linux automation
-- `specs/NNN-slug/` — Feature working directories created by `/spec-flow`
+- `specs/NNN-slug/` — Feature working directories created by `/feature`
 
 **Context management:**
 - Phase-based token budgets: Planning (75k), Implementation (100k), Optimization (125k)
@@ -175,17 +175,17 @@ Each command produces structured outputs:
 
 | Command | Artifacts |
 |---------|-----------|
-| `/spec-flow` | `spec.md`, `NOTES.md`, `visuals/README.md`, `workflow-state.yaml` |
+| `/feature` | `spec.md`, `NOTES.md`, `visuals/README.md`, `workflow-state.yaml` |
 | `/plan` | `plan.md`, `research.md` |
 | `/tasks` | `tasks.md` (20-30 tasks with acceptance criteria) |
-| `/analyze` | `analysis-report.md` |
+| `/validate` | `analysis-report.md` |
 | `/implement` | Implementation checklist + task completion |
 | `/ship` | `ship-summary.md`, state updates, deployment orchestration |
 | `/optimize` | `optimization-report.md`, `code-review-report.md` |
 | `/preview` | `release-notes.md`, preview checklist |
-| `/phase-1-ship` | `staging-ship-report.md`, `deployment-metadata.json` |
+| `/ship-staging` | `staging-ship-report.md`, `deployment-metadata.json` |
 | `/validate-staging` | Staging sign-off summary, rollback test results |
-| `/phase-2-ship` | `production-ship-report.md`, release version |
+| `/ship-prod` | `production-ship-report.md`, release version |
 | `/deploy-prod` | `production-ship-report.md`, deployment IDs |
 | `/build-local` | `local-build-report.md`, build artifacts analysis |
 | `/ship-status` | Real-time deployment status display |
@@ -204,7 +204,7 @@ The workflow automatically detects and adapts to three deployment models:
 
 ### staging-prod (Recommended)
 - **Detection**: Git remote + staging branch + `.github/workflows/deploy-staging.yml`
-- **Workflow**: optimize → preview → phase-1-ship → validate-staging → phase-2-ship
+- **Workflow**: optimize → preview → ship-staging → validate-staging → ship-prod
 - **Features**: Full staging validation, rollback testing, production promotion
 - **Use for**: Production applications, team projects, critical deployments
 
