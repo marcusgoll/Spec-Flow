@@ -62,7 +62,6 @@ program
   .command('update')
   .description('Update Spec-Flow to latest version')
   .option('-t, --target <path>', 'Target directory (defaults to current directory)')
-  .option('-f, --force', 'Skip backup creation')
   .action(async (options) => {
     const targetDir = options.target ? path.resolve(options.target) : process.cwd();
 
@@ -71,7 +70,6 @@ program
     try {
       const result = await update({
         targetDir,
-        force: options.force,
         verbose: true
       });
 
@@ -82,16 +80,7 @@ program
 
       printSuccess('\nUpdate complete!');
       console.log(chalk.cyan(`\nSpec-Flow version: ${chalk.bold(VERSION)}`));
-
-      // Show backup information
-      if (result.backupPaths && Object.keys(result.backupPaths).length > 0) {
-        console.log(chalk.cyan('\nBackups created:'));
-        for (const [dir, backupPath] of Object.entries(result.backupPaths)) {
-          console.log(chalk.gray(`  ${dir}: ${path.basename(backupPath)}`));
-        }
-        console.log(chalk.yellow('\nNote: Backups preserved for safety. Remove *-backup-* folders when confident.'));
-      }
-
+      console.log(chalk.gray('Templates updated, user data preserved (memory, specs, learnings.md)'));
       console.log('');
     } catch (error) {
       printError(`Update failed: ${error.message}`);
@@ -163,7 +152,6 @@ program
     console.log(chalk.gray('  -t, --target <path>        Target directory (default: current directory)'));
     console.log(chalk.gray('  --non-interactive          Skip prompts, use defaults (init only)'));
     console.log(chalk.gray('  -s, --strategy <mode>      Conflict resolution: merge|backup|skip|force (init only)'));
-    console.log(chalk.gray('  -f, --force                Skip backup (update only)'));
     console.log(chalk.gray('  -v, --version              Output version number\n'));
 
     console.log(chalk.white('Examples:'));

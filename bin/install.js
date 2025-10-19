@@ -4,8 +4,6 @@ const ora = require('ora');
 const {
   getPackageRoot,
   copyDirectory,
-  createBackup,
-  restoreBackup,
   printHeader,
   printSuccess,
   printError,
@@ -28,15 +26,6 @@ const USER_DATA_DIRECTORIES = [
   '.next',           // Next.js build
   '.nuxt',           // Nuxt build
   'out'              // Output directories
-];
-
-/**
- * Directories containing valuable user data that should be backed up during updates
- * Only includes directories that spec-flow manages and users customize
- */
-const BACKUP_DIRECTORIES = [
-  'specs'            // Feature specifications and user's work
-  // Note: .spec-flow/memory is backed up separately
 ];
 
 /**
@@ -169,12 +158,12 @@ async function install(options) {
  * Update existing spec-flow installation
  * @param {Object} options - Update options
  * @param {string} options.targetDir - Target directory
- * @param {boolean} options.force - Skip backup
+ * @param {boolean} options.force - Deprecated (kept for backwards compatibility)
  * @param {boolean} options.verbose - Show detailed output
- * @returns {Promise<Object>} { success: boolean, backupPaths: Object, error: string|null }
+ * @returns {Promise<Object>} { success: boolean, error: string|null }
  */
 async function update(options) {
-  const { targetDir, force = false, verbose = false } = options;
+  const { targetDir, verbose = false } = options;
 
   // Check if installed
   const existing = await checkExistingInstallation(targetDir);
@@ -182,47 +171,13 @@ async function update(options) {
   if (!existing.installed) {
     return {
       success: false,
-      backupPaths: {},
       error: 'Spec-Flow not found in this directory. Use init command to install.'
     };
   }
 
-  const backupPaths = {};
-  let spinner;
-
   try {
-    // Create backup of valuable user content (memory and specs only)
-    if (!force) {
-      spinner = ora('Creating backup of user data...').start();
-
-      // Backup memory directory (roadmap, constitution, design inspirations)
-      if (existing.hasSpecFlowDir) {
-        const memoryDir = path.join(targetDir, '.spec-flow', 'memory');
-        if (await fs.pathExists(memoryDir)) {
-          backupPaths.memory = await createBackup(memoryDir);
-          if (verbose) spinner.text = `Backed up memory: ${path.basename(backupPaths.memory)}`;
-        }
-      }
-
-      // Backup ONLY valuable user-generated directories (not node_modules, build artifacts, etc.)
-      // CRITICAL: Only backup spec-flow managed content to prevent EPERM errors on Windows
-      for (const userDir of BACKUP_DIRECTORIES) {
-        const dirPath = path.join(targetDir, userDir);
-        if (await fs.pathExists(dirPath)) {
-          backupPaths[userDir] = await createBackup(dirPath);
-          if (verbose) spinner.text = `Backed up ${userDir}: ${path.basename(backupPaths[userDir])}`;
-        }
-      }
-
-      const backupCount = Object.keys(backupPaths).length;
-      if (backupCount > 0) {
-        spinner.succeed(`Created ${backupCount} backup(s) of user data`);
-      } else {
-        spinner.info('No user data to backup');
-      }
-    }
-
     // Run installation with memory preservation and user directory exclusion
+    // This updates templates while preserving user data (memory, specs, learnings.md)
     const result = await install({
       targetDir,
       preserveMemory: true,
@@ -231,72 +186,21 @@ async function update(options) {
     });
 
     if (!result.success) {
-      // Restore backups if update failed
-      if (Object.keys(backupPaths).length > 0) {
-        spinner = ora('Restoring backups...').start();
-
-        // Restore memory
-        if (backupPaths.memory) {
-          await restoreBackup(backupPaths.memory, path.join(targetDir, '.spec-flow', 'memory'));
-        }
-
-        // Restore user directories (only those we backed up)
-        for (const userDir of BACKUP_DIRECTORIES) {
-          if (backupPaths[userDir]) {
-            await restoreBackup(backupPaths[userDir], path.join(targetDir, userDir));
-          }
-        }
-
-        spinner.succeed('All backups restored');
-      }
-
       return {
         success: false,
-        backupPaths: {},
         error: result.error
       };
     }
 
-    // Clean up backups after successful update
-    if (Object.keys(backupPaths).length > 0 && verbose) {
-      printSuccess('Update complete! Backups preserved in case of issues.');
-    }
+    printSuccess('Update complete!');
 
     return {
       success: true,
-      backupPaths,
       error: null
     };
   } catch (error) {
-    if (spinner) spinner.fail('Update failed');
-
-    // Restore backups on error
-    if (Object.keys(backupPaths).length > 0) {
-      try {
-        spinner = ora('Restoring backups...').start();
-
-        // Restore memory
-        if (backupPaths.memory) {
-          await restoreBackup(backupPaths.memory, path.join(targetDir, '.spec-flow', 'memory'));
-        }
-
-        // Restore user directories (only those we backed up)
-        for (const userDir of BACKUP_DIRECTORIES) {
-          if (backupPaths[userDir]) {
-            await restoreBackup(backupPaths[userDir], path.join(targetDir, userDir));
-          }
-        }
-
-        spinner.succeed('All backups restored');
-      } catch (restoreError) {
-        printError(`Failed to restore backups: ${restoreError.message}`);
-        printWarning('Your data may be in backup directories. Check for *-backup-* folders.');
-      }
-    }
-
     return {
       success: false,
-      backupPaths: {},
       error: `Update error: ${error.message}`
     };
   }
@@ -305,6 +209,5 @@ async function update(options) {
 module.exports = {
   install,
   update,
-  USER_DATA_DIRECTORIES,
-  BACKUP_DIRECTORIES
+  USER_DATA_DIRECTORIES
 };
