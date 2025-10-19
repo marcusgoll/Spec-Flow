@@ -43,6 +43,29 @@
 
 ## 🆕 Recent Updates
 
+### v1.12.0 (January 2025)
+**Learnings Persistence & Design Iteration** - Skills learn across npm updates + enhanced design workflow
+
+**Part 1: Learnings Persistence (All 16 Skills)**
+- **Separated learnings data from SKILL templates**: Created `learnings.md` for all 16 phase skills
+- **Preserves knowledge across npm updates**: SKILL.md templates get updated, learnings.md data persists
+- **Tracks pitfall frequencies**: Auto-updates frequency stars (⭐☆☆☆☆ → ⭐⭐⭐☆☆) as issues occur
+- **Tracks pattern success rates**: Records usage counts and success rates for proven approaches
+- **Zero manual intervention**: System learns automatically as you work
+
+**Part 2: Design Iteration Enhancements**
+- **Screen-specific targeting**: `/design-variations $SLUG [$SCREEN]` - iterate on single component
+- **Overwrite protection**: Warns before regenerating, offers [b]ackup to create git tag first
+- **Re-enable support**: Can enable design workflow after initially declining in `/spec-flow`
+- **Iteration patterns guide**: 5 common scenarios with step-by-step solutions (component iteration, A/B testing, state-specific refinement)
+
+**Documentation**
+- Added "Skills & Learning System" section to README
+- Two-file architecture explained (templates vs data)
+- Iteration patterns guide for design workflow
+
+**Files**: 36 changed (16 learnings.md created, 16 SKILL.md updated, iteration-patterns.md created)
+
 ### v1.11.1 (October 2024)
 **Folder Cleanup Refactor** - Cleaner spec directories with on-demand folder creation
 
