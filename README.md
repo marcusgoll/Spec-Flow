@@ -41,6 +41,27 @@
 
 ---
 
+## 🆕 Recent Updates
+
+### v1.11.1 (October 2024)
+**Folder Cleanup Refactor** - Cleaner spec directories with on-demand folder creation
+
+- **Eliminated empty folders**: Removed blanket directory pre-creation from `/specify` command
+- **On-demand creation**: Folders (`visuals/`, `design/`) now created only when files are written
+- **Benefits**: Cleaner spec directories, easier to identify UI features, follows YAGNI principle
+- **Files modified**: `.claude/commands/specify.md`
+
+### v1.11.0 (October 2024)
+**Phase-Specific Learning Skills** - Workflow improvement tracking
+
+- Added learning Skills for each workflow phase (spec, plan, tasks, implement, optimize, ship, etc.)
+- Auto-triggers on workflow events to capture lessons and improve future iterations
+- Skills track common issues: clarification overload, test failures, deployment blockers
+
+[View all releases →](https://github.com/marcusgoll/Spec-Flow/releases)
+
+---
+
 ## Table of Contents
 
 - [What is Spec-Driven Development?](#what-is-spec-driven-development)
