@@ -1,20 +1,10 @@
 ---
-description: Pre-flight deployment validation - Catch failures before consuming quota
+description: Validate Deploy deployment validation - Catch failures before consuming quota
 ---
 
-> **⚠️  DEPRECATED**: This command has been renamed to `/validate-deploy` for clarity.
->
-> **Reason**: Self-documents that it validates deployment readiness
->
-> **Migration**: Replace `/preflight` with `/validate-deploy` in your workflow
->
-> **Removal**: This alias will be removed in v2.0.0
->
-> **For now**: Both commands work identically
+# Validate Deploy: Deployment Readiness Check
 
-# Pre-Flight: Deployment Readiness Check
-
-**Command**: `/preflight`
+**Command**: `/validate-deploy`
 
 **Purpose**: Simulate deployment locally before pushing. Catches deployment failures before they cost quota.
 
@@ -119,16 +109,16 @@ echo ""
 # Marketing build
 echo "Building marketing site..."
 cd apps/marketing
-pnpm build 2>&1 | tee /tmp/preflight-marketing-build.log >/dev/null
+pnpm build 2>&1 | tee /tmp/validate-deploy-marketing-build.log >/dev/null
 
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
   echo "  ❌ Marketing build failed"
   echo ""
   echo "Last 10 errors:"
-  grep -i "error" /tmp/preflight-marketing-build.log | tail -10 | sed 's/^/    /'
+  grep -i "error" /tmp/validate-deploy-marketing-build.log | tail -10 | sed 's/^/    /'
   PREFLIGHT_FAILED=true
 else
-  MARKETING_BUILD_TIME=$(grep -oE "completed in [0-9]+\.?[0-9]*s" /tmp/preflight-marketing-build.log | tail -1 | grep -oE "[0-9]+\.?[0-9]*" || echo "?")
+  MARKETING_BUILD_TIME=$(grep -oE "completed in [0-9]+\.?[0-9]*s" /tmp/validate-deploy-marketing-build.log | tail -1 | grep -oE "[0-9]+\.?[0-9]*" || echo "?")
   echo "  ✅ Marketing build succeeded (${MARKETING_BUILD_TIME}s)"
 fi
 cd ../..
@@ -136,16 +126,16 @@ cd ../..
 # App build
 echo "Building app..."
 cd apps/app
-pnpm build 2>&1 | tee /tmp/preflight-app-build.log >/dev/null
+pnpm build 2>&1 | tee /tmp/validate-deploy-app-build.log >/dev/null
 
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
   echo "  ❌ App build failed"
   echo ""
   echo "Last 10 errors:"
-  grep -i "error" /tmp/preflight-app-build.log | tail -10 | sed 's/^/    /'
+  grep -i "error" /tmp/validate-deploy-app-build.log | tail -10 | sed 's/^/    /'
   PREFLIGHT_FAILED=true
 else
-  APP_BUILD_TIME=$(grep -oE "completed in [0-9]+\.?[0-9]*s" /tmp/preflight-app-build.log | tail -1 | grep -oE "[0-9]+\.?[0-9]*" || echo "?")
+  APP_BUILD_TIME=$(grep -oE "completed in [0-9]+\.?[0-9]*s" /tmp/validate-deploy-app-build.log | tail -1 | grep -oE "[0-9]+\.?[0-9]*" || echo "?")
   echo "  ✅ App build succeeded (${APP_BUILD_TIME}s)"
 fi
 cd ../..
@@ -162,16 +152,16 @@ echo "Building Railway Docker image..."
 echo ""
 
 # Build image
-docker build -t api-preflight -f api/Dockerfile . 2>&1 | tee /tmp/preflight-docker-build.log >/dev/null
+docker build -t api-preflight -f api/Dockerfile . 2>&1 | tee /tmp/validate-deploy-docker-build.log >/dev/null
 
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
   echo "  ❌ Docker build failed"
   echo ""
   echo "Last 10 errors:"
-  tail -10 /tmp/preflight-docker-build.log | sed 's/^/    /'
+  tail -10 /tmp/validate-deploy-docker-build.log | sed 's/^/    /'
   PREFLIGHT_FAILED=true
 else
-  DOCKER_BUILD_TIME=$(grep -oE "[0-9]+\.?[0-9]*s" /tmp/preflight-docker-build.log | tail -1 | grep -oE "[0-9]+\.?[0-9]*" || echo "?")
+  DOCKER_BUILD_TIME=$(grep -oE "[0-9]+\.?[0-9]*s" /tmp/validate-deploy-docker-build.log | tail -1 | grep -oE "[0-9]+\.?[0-9]*" || echo "?")
   echo "  ✅ Docker image builds (${DOCKER_BUILD_TIME}s)"
 
   # Test container starts
@@ -222,13 +212,13 @@ TEST_DB_URL="${DATABASE_URL%/*}/test_preflight_$(date +%s)"
 echo "  Test DB: $TEST_DB_URL"
 
 # Run migrations on test DB
-DATABASE_URL="$TEST_DB_URL" uv run alembic upgrade head 2>&1 | tee /tmp/preflight-migrations.log >/dev/null
+DATABASE_URL="$TEST_DB_URL" uv run alembic upgrade head 2>&1 | tee /tmp/validate-deploy-migrations.log >/dev/null
 
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
   echo "  ❌ Migrations failed"
   echo ""
   echo "Last 10 errors:"
-  tail -10 /tmp/preflight-migrations.log | sed 's/^/    /'
+  tail -10 /tmp/validate-deploy-migrations.log | sed 's/^/    /'
   PREFLIGHT_FAILED=true
 else
   echo "  ✅ Migrations succeed"
@@ -255,13 +245,13 @@ echo ""
 
 # Backend types
 cd api
-uv run mypy app/ --no-error-summary 2>&1 | tee /tmp/preflight-backend-types.log >/dev/null
+uv run mypy app/ --no-error-summary 2>&1 | tee /tmp/validate-deploy-backend-types.log >/dev/null
 
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
   echo "  ❌ Backend type errors found"
   echo ""
   echo "First 5 errors:"
-  head -5 /tmp/preflight-backend-types.log | sed 's/^/    /'
+  head -5 /tmp/validate-deploy-backend-types.log | sed 's/^/    /'
   PREFLIGHT_FAILED=true
 else
   echo "  ✅ Backend types pass"
@@ -270,13 +260,13 @@ cd ..
 
 # Frontend types (app)
 cd apps/app
-pnpm type-check 2>&1 | tee /tmp/preflight-app-types.log >/dev/null
+pnpm type-check 2>&1 | tee /tmp/validate-deploy-app-types.log >/dev/null
 
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
   echo "  ❌ App type errors found"
   echo ""
   echo "First 5 errors:"
-  grep "error TS" /tmp/preflight-app-types.log | head -5 | sed 's/^/    /'
+  grep "error TS" /tmp/validate-deploy-app-types.log | head -5 | sed 's/^/    /'
   PREFLIGHT_FAILED=true
 else
   echo "  ✅ App types pass"
@@ -285,13 +275,13 @@ cd ../..
 
 # Frontend types (marketing)
 cd apps/marketing
-pnpm type-check 2>&1 | tee /tmp/preflight-marketing-types.log >/dev/null
+pnpm type-check 2>&1 | tee /tmp/validate-deploy-marketing-types.log >/dev/null
 
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
   echo "  ❌ Marketing type errors found"
   echo ""
   echo "First 5 errors:"
-  grep "error TS" /tmp/preflight-marketing-types.log | head -5 | sed 's/^/    /'
+  grep "error TS" /tmp/validate-deploy-marketing-types.log | head -5 | sed 's/^/    /'
   PREFLIGHT_FAILED=true
 else
   echo "  ✅ Marketing types pass"
@@ -358,12 +348,12 @@ if [ -f ".lighthouserc.json" ]; then
   sleep 10
 
   # Run Lighthouse CI
-  lhci autorun --config=.lighthouserc.json 2>&1 | tee /tmp/preflight-lighthouse.log >/dev/null
+  lhci autorun --config=.lighthouserc.json 2>&1 | tee /tmp/validate-deploy-lighthouse.log >/dev/null
   LIGHTHOUSE_EXIT=${PIPESTATUS[0]}
 
   # Parse scores
-  PERF_SCORE=$(grep -oE "performance: [0-9]+" /tmp/preflight-lighthouse.log | grep -oE "[0-9]+" || echo "?")
-  A11Y_SCORE=$(grep -oE "accessibility: [0-9]+" /tmp/preflight-lighthouse.log | grep -oE "[0-9]+" || echo "?")
+  PERF_SCORE=$(grep -oE "performance: [0-9]+" /tmp/validate-deploy-lighthouse.log | grep -oE "[0-9]+" || echo "?")
+  A11Y_SCORE=$(grep -oE "accessibility: [0-9]+" /tmp/validate-deploy-lighthouse.log | grep -oE "[0-9]+" || echo "?")
 
   kill $SERVER_PID 2>/dev/null || true
 
@@ -400,7 +390,7 @@ if [ "$PREFLIGHT_FAILED" = true ]; then
   echo ""
 
   # Cleanup
-  rm -f /tmp/preflight-*.log
+  rm -f /tmp/validate-deploy-*.log
   docker rmi api-preflight 2>/dev/null || true
 
   exit 1
@@ -417,7 +407,7 @@ else
   echo ""
 
   # Cleanup
-  rm -f /tmp/preflight-*.log
+  rm -f /tmp/validate-deploy-*.log
   docker rmi api-preflight 2>/dev/null || true
 
   exit 0

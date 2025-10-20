@@ -299,13 +299,25 @@ No CI pipeline yet. Validate locally before submitting:
 
 ## Agent Briefs
 
-Specialist agents are defined in `.claude/agents/`:
-- `backend-dev.md` — Backend implementation
-- `frontend-shipper.md` — Frontend implementation
-- `qa-test.md` — QA and testing
-- `senior-code-reviewer.md` — Code review
-- `debugger.md` — Error triage
-- `ci-cd-release.md` — CI/CD and deployment
+Specialist agents are organized in `.claude/agents/` by category:
+
+**Phase Orchestrators** (`phase/`):
+- `spec.md`, `clarify.md`, `plan.md`, `tasks.md`, `validate.md`, `implement.md`, `optimize.md`, `ship-staging.md`, `ship-prod.md`, `finalize.md`
+
+**Implementation Specialists** (`implementation/`):
+- `backend.md` — Backend implementation
+- `frontend.md` — Frontend implementation
+- `database.md` — Database architecture
+- `api-contracts.md` — API contract management
+
+**Quality Specialists** (`quality/`):
+- `code-reviewer.md` — Code review
+- `qa-tester.md` — QA and testing
+- `test-coverage.md` — Test coverage enhancement
+- `debug.md` — Error triage and debugging
+
+**Deployment Specialists** (`deployment/`):
+- `release.md` — CI/CD and release management
 
 When working with agents, load the relevant brief for context on capabilities and responsibilities.
 

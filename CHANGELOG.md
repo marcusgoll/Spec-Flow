@@ -5,6 +5,81 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] - 2025-01-19
+
+### Changed - Agent Organization & Command Clarity
+
+**Agent Reorganization**: Restructured 19 agents into 4 category-based folders for better discoverability.
+
+#### New Agent Structure
+```
+.claude/agents/
+├── phase/              # Phase orchestrators (10 agents)
+│   ├── spec.md, clarify.md, plan.md, tasks.md, validate.md
+│   ├── implement.md, optimize.md, ship-staging.md, ship-prod.md, finalize.md
+├── implementation/     # Code specialists (4 agents)
+│   ├── backend.md, frontend.md, database.md, api-contracts.md
+├── quality/           # Testing & review (4 agents)
+│   ├── code-reviewer.md, qa-tester.md, test-coverage.md, debug.md
+└── deployment/        # CI/CD (1 agent)
+    └── release.md
+```
+
+**Agent Renames** (for consistency):
+- `spec-phase-agent.md` → `phase/spec.md`
+- `analyze-phase-agent.md` → `phase/validate.md` (aligns with v1.14.0 command rename)
+- `backend-dev.md` → `implementation/backend.md`
+- `frontend-shipper.md` → `implementation/frontend.md`
+- `database-architect.md` → `implementation/database.md`
+- `contracts-sdk.md` → `implementation/api-contracts.md`
+- `senior-code-reviewer.md` → `quality/code-reviewer.md`
+- `qa-test.md` → `quality/qa-tester.md`
+- `coverage-enhancer.md` → `quality/test-coverage.md`
+- `debugger.md` → `quality/debug.md`
+- `ci-cd-release.md` → `deployment/release.md`
+- (All phase agents lost `-phase-agent` suffix)
+
+**Command Renames** (with deprecation path):
+- `/constitution` → `/setup-constitution` (clearer that it's a setup command)
+- `/preflight` → `/validate-deploy` (self-documents validation purpose)
+- `/dry-run` → `/test-deploy` (clearer that it tests without deploying)
+- `/ship-status` → `/deploy-status` (matches other deploy-* commands)
+
+**Removed Deprecated Commands** (cleanup from v1.14.0):
+- `/analyze`, `/checks`, `/measure-heart`, `/phase-1-ship`, `/phase-2-ship`, `/spec-flow`, `/specify`
+
+**Updated References**:
+- `.claude/commands/feature.md` - Updated all `subagent_type` references to new paths
+- `.claude/commands/implement.md` - Updated worker agent references
+- `CLAUDE.md` - New agent briefs section with categories
+- `README.md` - Updated command examples
+
+#### Benefits
+✅ **Better discoverability**: Agents organized by purpose (phase/implementation/quality/deployment)
+✅ **Consistent naming**: Removed inconsistent suffixes (-agent, -dev, -shipper, -architect)
+✅ **Clearer commands**: Self-documenting names (setup-constitution, validate-deploy, test-deploy)
+✅ **Simpler structure**: Easy to find the right specialist for any task
+✅ **Scalability**: Clear home for new agents (e.g., implementation/mobile.md)
+
+### Removed
+- 7 deprecated commands: analyze, checks, measure-heart, phase-1-ship, phase-2-ship, spec-flow, specify
+- Old agent files (moved to new structure)
+
+### Files Modified
+- 2 commands deleted (workflow.md, flow.md from v1.15.0)
+- 7 deprecated commands deleted (from v1.14.0)
+- 4 new command files created (setup-constitution, validate-deploy, test-deploy, deploy-status)
+- 4 old command files updated (deprecation warnings)
+- 19 agents reorganized (moved to folders, renamed for consistency)
+- 5 documentation files updated (feature.md, implement.md, CLAUDE.md, README.md, commands.md)
+- package.json bumped to v1.16.0
+
+**Migration**:
+- Agent paths: `/feature` automatically uses new paths
+- Old command names: Still work with deprecation warnings (removed in v2.0.0)
+
+**Impact**: Significantly improved organization and naming clarity. Users benefit from easier agent discovery and self-documenting command names.
+
 ## [1.15.0] - 2025-01-19
 
 ### Removed - Workflow Command Consolidation (Breaking Change)

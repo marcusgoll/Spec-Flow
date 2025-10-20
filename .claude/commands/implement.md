@@ -288,10 +288,10 @@ for batch in "${BATCHES[@]}"; do
     # Determine agent
     AGENT=""
     case "$DOMAIN" in
-      backend) AGENT="backend-dev" ;;
-      frontend) AGENT="frontend-shipper" ;;
-      database) AGENT="database-architect" ;;
-      tests) AGENT="qa-test" ;;
+      backend) AGENT="implementation/backend" ;;
+      frontend) AGENT="implementation/frontend" ;;
+      database) AGENT="implementation/database" ;;
+      tests) AGENT="quality/qa-tester" ;;
       *) AGENT="general-purpose" ;;
     esac
 
@@ -476,7 +476,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 # Example: 3 tasks in parallel batch (backend, frontend, database)
 
 Task(
-  subagent_type="backend-dev",
+  subagent_type="implementation/backend",
   description="T001: Create Message model",
   prompt=f"""
 Task T001: Create Message model in api/app/models/message.py
@@ -509,7 +509,7 @@ Return: Files changed, test results, task-tracker confirmation
 )
 
 Task(
-  subagent_type="frontend-shipper",
+  subagent_type="implementation/frontend",
   description="T002: Create MessageForm component",
   prompt=f"""
 Task T002: Create MessageForm component in apps/app/components/MessageForm.tsx
@@ -543,7 +543,7 @@ Return: Files changed, test results, task-tracker confirmation
 )
 
 Task(
-  subagent_type="database-architect",
+  subagent_type="implementation/database",
   description="T003: Add messages table migration",
   prompt=f"""
 Task T003: Generate Alembic migration for messages table

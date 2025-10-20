@@ -316,7 +316,7 @@ This enables:
 Use Task tool:
 ```
 Task(
-  subagent_type="spec-phase-agent",
+  subagent_type="phase/spec",
   description="Phase 0: Create Specification",
   prompt=f"""
 Execute Phase 0: Specification in isolated context.
@@ -389,7 +389,7 @@ fi
 ```
 if needs_clarification:
   Task(
-    subagent_type="clarify-phase-agent",
+    subagent_type="phase/clarify",
     description="Phase 0.5: Resolve Clarifications",
     prompt=f"""
 Execute Phase 0.5: Clarification in isolated context.
@@ -415,7 +415,7 @@ Refer to your agent brief for full instructions.
 
 ```
 Task(
-  subagent_type="plan-phase-agent",
+  subagent_type="phase/plan",
   description="Phase 1: Create Plan",
   prompt=f"""
 Execute Phase 1: Planning in isolated context.
@@ -442,7 +442,7 @@ Refer to your agent brief for full instructions.
 
 ```
 Task(
-  subagent_type="tasks-phase-agent",
+  subagent_type="phase/tasks",
   description="Phase 2: Create Tasks",
   prompt=f"""
 Execute Phase 2: Task Breakdown in isolated context.
@@ -609,7 +609,7 @@ fi
 
 ```
 Task(
-  subagent_type="analyze-phase-agent",
+  subagent_type="phase/validate",
   description="Phase 3: Cross-Artifact Analysis",
   prompt=f"""
 Execute Phase 3: Analysis in isolated context.
@@ -723,7 +723,7 @@ echo ""
 
 ```
 Task(
-  subagent_type="optimize-phase-agent",
+  subagent_type="phase/optimize",
   description="Phase 5: Code Review & Optimization",
   prompt=f"""
 Execute Phase 5: Optimization in isolated context.
@@ -798,7 +798,7 @@ fi
 
 ```
 Task(
-  subagent_type="ship-staging-phase-agent",
+  subagent_type="phase/ship-staging",
   description="Phase 6: Deploy to Staging",
   prompt=f"""
 Execute Phase 6: Ship to Staging in isolated context.
@@ -846,7 +846,7 @@ echo ""
 
 ```
 Task(
-  subagent_type="ship-prod-phase-agent",
+  subagent_type="phase/ship-prod",
   description="Phase 7: Deploy to Production",
   prompt=f"""
 Execute Phase 7: Ship to Production in isolated context.
@@ -872,7 +872,7 @@ Refer to your agent brief for full instructions.
 
 ```
 Task(
-  subagent_type="finalize-phase-agent",
+  subagent_type="phase/finalize",
   description="Phase 7.5: Finalize Documentation",
   prompt=f"""
 Execute Phase 7.5: Finalization in isolated context.

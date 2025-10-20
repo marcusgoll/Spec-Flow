@@ -251,7 +251,7 @@ powershell -File .spec-flow/scripts/powershell/install-wizard.ps1
 2. **Open in Claude Code** - Navigate to your project directory
 3. **Set up your project** (optional but recommended):
    ```bash
-   /constitution         # Interactive Q&A for engineering standards
+   /setup-constitution         # Interactive Q&A for engineering standards
    /roadmap              # Plan and prioritize features with ICE scoring
    /design-inspiration   # Curate visual references for consistency
    ```
@@ -287,7 +287,7 @@ Copy `.claude/settings.example.json` to `.claude/settings.local.json` and update
 
 ### 2. Establish principles
 
-Run the `/constitution` command in Claude to document the engineering principles that guard every feature. Store the output in `.spec-flow/memory/constitution.md`.
+Run the `/setup-constitution` command in Claude to document the engineering principles that guard every feature. Store the output in `.spec-flow/memory/setup-constitution.md`.
 
 ### 3. Build your roadmap
 
@@ -357,7 +357,7 @@ When you update Spec-Flow via npm, your accumulated learnings are preserved:
 **What Gets Preserved** (your local data):
 - `learnings.md` - Pitfall frequencies, pattern usage counts, metrics
 - `.spec-flow/memory/roadmap.md` - Your product roadmap
-- `.spec-flow/memory/constitution.md` - Your project principles
+- `.spec-flow/memory/setup-constitution.md` - Your project principles
 - `specs/*/` - All your feature specifications
 
 **Example**: After 10 features, your `learnings.md` shows:

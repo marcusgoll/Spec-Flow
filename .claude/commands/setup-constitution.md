@@ -1,16 +1,6 @@
-# Constitution: Update Project Constitution
+# Setup Constitution: Configure Project Constitution
 
-> **⚠️  DEPRECATED**: This command has been renamed to `/setup-constitution` for clarity.
->
-> **Reason**: More explicit that it's a setup/configuration command
->
-> **Migration**: Replace `/constitution` with `/setup-constitution` in your workflow
->
-> **Removal**: This alias will be removed in v2.0.0
->
-> **For now**: Both commands work identically
-
-**Command**: `/constitution`
+**Command**: `/setup-constitution`
 
 **Purpose**: Update project constitution and sync dependent templates. Maintains constitution as single source of truth (SSOT) for all project principles and requirements.
 
@@ -48,13 +38,13 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 if [ -z "$ARGUMENTS" ]; then
-  echo "Usage: /constitution [changes description]"
+  echo "Usage: /setup-constitution [changes description]"
   echo ""
   echo "Examples:"
-  echo "  /constitution Add principle: Always use TypeScript for type safety"
-  echo "  /constitution Remove outdated testing requirement"
-  echo "  /constitution Fix typo in Quality Gates section"
-  echo "  /constitution Update test coverage threshold from 80% to 85%"
+  echo "  /setup-constitution Add principle: Always use TypeScript for type safety"
+  echo "  /setup-constitution Remove outdated testing requirement"
+  echo "  /setup-constitution Fix typo in Quality Gates section"
+  echo "  /setup-constitution Update test coverage threshold from 80% to 85%"
   echo ""
   exit 1
 fi
@@ -78,7 +68,7 @@ echo "PHASE C.1: LOAD CONSTITUTION"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-CONSTITUTION_FILE="\spec-flow/memory/constitution.md"
+CONSTITUTION_FILE="\spec-flow/memory/setup-constitution.md"
 
 if [ ! -f "$CONSTITUTION_FILE" ]; then
   echo "❌ Constitution not found: $CONSTITUTION_FILE"
@@ -88,7 +78,7 @@ if [ ! -f "$CONSTITUTION_FILE" ]; then
 fi
 
 # Backup current version
-cp "$CONSTITUTION_FILE" /tmp/constitution-backup.md
+cp "$CONSTITUTION_FILE" /tmp/setup-constitution-backup.md
 
 echo "✅ Constitution loaded"
 echo ""
@@ -260,7 +250,7 @@ echo ""
 echo "Checking for changes..."
 
 # Check if file actually changed
-if diff -q "$CONSTITUTION_FILE" /tmp/constitution-backup.md > /dev/null; then
+if diff -q "$CONSTITUTION_FILE" /tmp/setup-constitution-backup.md > /dev/null; then
   echo "⚠️  No changes detected"
   echo ""
   read -p "Skip update? (y/N): " SKIP_UPDATE
@@ -287,7 +277,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Create hash of normalized content (ignore whitespace, comments)
-OLD_HASH=$(grep -v "^<!--" /tmp/constitution-backup.md | \
+OLD_HASH=$(grep -v "^<!--" /tmp/setup-constitution-backup.md | \
            grep -v "^#" | \
            grep -v "^$" | \
            md5sum | \
@@ -521,7 +511,7 @@ if [ "$VALIDATION_PASSED" = false ]; then
   if [ "$CONTINUE" != "y" ]; then
     echo "Constitution update cancelled"
     # Restore backup
-    cp /tmp/constitution-backup.md "$CONSTITUTION_FILE"
+    cp /tmp/setup-constitution-backup.md "$CONSTITUTION_FILE"
     exit 1
   fi
 else
@@ -721,11 +711,11 @@ echo ""
 
 # Show diff
 echo "Diff:"
-diff -u /tmp/constitution-backup.md "$CONSTITUTION_FILE" | head -30 | sed 's/^/  /'
+diff -u /tmp/setup-constitution-backup.md "$CONSTITUTION_FILE" | head -30 | sed 's/^/  /'
 
 echo ""
 echo "Stats:"
-echo "  Lines changed: $(diff /tmp/constitution-backup.md "$CONSTITUTION_FILE" | wc -l)"
+echo "  Lines changed: $(diff /tmp/setup-constitution-backup.md "$CONSTITUTION_FILE" | wc -l)"
 echo "  New size: $NEW_LINE_COUNT lines"
 echo ""
 ```
@@ -752,7 +742,7 @@ read -p "Apply these changes? (y/N): " APPLY_CHANGES
 if [ "$APPLY_CHANGES" != "y" ]; then
   echo ""
   echo "Rolling back changes..."
-  cp /tmp/constitution-backup.md "$CONSTITUTION_FILE"
+  cp /tmp/setup-constitution-backup.md "$CONSTITUTION_FILE"
   echo "✅ Changes reverted"
   exit 0
 fi
@@ -862,7 +852,7 @@ Other commands should reference constitution principles:
 ```bash
 # Example: In /plan command, reference quality gates
 echo "Quality gates defined in constitution.md §Quality_Gates"
-echo "See: \spec-flow/memory/constitution.md"
+echo "See: \spec-flow/memory/setup-constitution.md"
 ```
 
 **Cross-references**: Use §Section_Name format for linking to constitution sections.

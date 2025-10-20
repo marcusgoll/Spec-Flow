@@ -1,18 +1,8 @@
-> **⚠️  DEPRECATED**: This command has been renamed to `/deploy-status` for clarity.
->
-> **Reason**: Broader term, matches other deploy-* commands
->
-> **Migration**: Replace `/ship-status` with `/deploy-status` in your workflow
->
-> **Removal**: This alias will be removed in v2.0.0
->
-> **For now**: Both commands work identically
-
-# /ship-status - Deployment Status Visualization
+# /deploy-status - Deployment Status Visualization
 
 **Purpose**: Display comprehensive deployment workflow status, showing current phase, completed tasks, quality gates, and deployment information.
 
-**Usage**: `/ship-status` or `/ship status`
+**Usage**: `/deploy-status` or `/deploy status`
 
 **When to Use**:
 - Check current deployment progress
@@ -373,7 +363,7 @@ echo "📚 Helpful Commands"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "/ship continue    - Resume workflow from last phase"
-echo "/ship status      - Show this status display"
+echo "/deploy status      - Show this status display"
 echo "/validate-staging - Validate staging environment"
 echo "/preview          - Start local preview for testing"
 echo ""
@@ -658,7 +648,7 @@ The `/ship` command calls this status display via the `status` argument:
 
 ```bash
 if [ "$1" = "status" ]; then
-  /ship-status
+  /deploy-status
   exit 0
 fi
 ```

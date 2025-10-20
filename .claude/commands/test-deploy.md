@@ -2,19 +2,9 @@
 description: Test deployment configuration without actually deploying
 ---
 
-> **⚠️  DEPRECATED**: This command has been renamed to `/test-deploy` for clarity.
->
-> **Reason**: Clearer what it tests (deployment without actually deploying)
->
-> **Migration**: Replace `/dry-run` with `/test-deploy` in your workflow
->
-> **Removal**: This alias will be removed in v2.0.0
->
-> **For now**: Both commands work identically
+# Test Deploy: Deployment Config Validator
 
-# Dry-Run: Deployment Config Validator
-
-**Command**: `/dry-run`
+**Command**: `/test-deploy`
 
 **Purpose**: Validate deployment configurations without consuming quota. Test deployment workflows locally.
 
@@ -72,7 +62,7 @@ echo ""
 if [ -f "vercel.json" ]; then
   echo "Checking vercel.json..."
 
-  jq empty vercel.json 2>/tmp/dry-run-vercel-json-error.log
+  jq empty vercel.json 2>/tmp/test-deploy-vercel-json-error.log
 
   if [ $? -eq 0 ]; then
     echo "  ✅ vercel.json is valid JSON"
@@ -89,7 +79,7 @@ if [ -f "vercel.json" ]; then
     fi
   else
     echo "  ❌ vercel.json has syntax errors:"
-    cat /tmp/dry-run-vercel-json-error.log | sed 's/^/     /'
+    cat /tmp/test-deploy-vercel-json-error.log | sed 's/^/     /'
     DRY_RUN_FAILED=true
   fi
 else
@@ -102,13 +92,13 @@ echo ""
 if [ -f "railway.json" ]; then
   echo "Checking railway.json..."
 
-  jq empty railway.json 2>/tmp/dry-run-railway-json-error.log
+  jq empty railway.json 2>/tmp/test-deploy-railway-json-error.log
 
   if [ $? -eq 0 ]; then
     echo "  ✅ railway.json is valid JSON"
   else
     echo "  ❌ railway.json has syntax errors:"
-    cat /tmp/dry-run-railway-json-error.log | sed 's/^/     /'
+    cat /tmp/test-deploy-railway-json-error.log | sed 's/^/     /'
     DRY_RUN_FAILED=true
   fi
 else
@@ -122,13 +112,13 @@ if [ -f "api/Dockerfile" ]; then
   echo "Checking Dockerfile..."
 
   # Basic syntax check
-  docker build --check -f api/Dockerfile . 2>/tmp/dry-run-dockerfile-error.log
+  docker build --check -f api/Dockerfile . 2>/tmp/test-deploy-dockerfile-error.log
 
   if [ $? -eq 0 ]; then
     echo "  ✅ Dockerfile syntax is valid"
   else
     echo "  ❌ Dockerfile has syntax errors:"
-    cat /tmp/dry-run-dockerfile-error.log | sed 's/^/     /'
+    cat /tmp/test-deploy-dockerfile-error.log | sed 's/^/     /'
     DRY_RUN_FAILED=true
   fi
 else
@@ -155,7 +145,7 @@ if [ "$DRY_RUN_FAILED" = false ]; then
   echo "Simulating Vercel build..."
   echo ""
 
-  vercel build --prod --yes 2>&1 | tee /tmp/dry-run-vercel-marketing.log
+  vercel build --prod --yes 2>&1 | tee /tmp/test-deploy-vercel-marketing.log
 
   MARKETING_BUILD_RESULT=${PIPESTATUS[0]}
 
@@ -180,7 +170,7 @@ if [ "$DRY_RUN_FAILED" = false ]; then
     echo "❌ Marketing build would fail on Vercel"
     echo ""
     echo "Last 20 errors:"
-    grep -i "error" /tmp/dry-run-vercel-marketing.log | tail -20 | sed 's/^/   /'
+    grep -i "error" /tmp/test-deploy-vercel-marketing.log | tail -20 | sed 's/^/   /'
     DRY_RUN_FAILED=true
   fi
 
@@ -205,7 +195,7 @@ if [ "$DRY_RUN_FAILED" = false ]; then
   echo "Simulating Vercel build..."
   echo ""
 
-  vercel build --prod --yes 2>&1 | tee /tmp/dry-run-vercel-app.log
+  vercel build --prod --yes 2>&1 | tee /tmp/test-deploy-vercel-app.log
 
   APP_BUILD_RESULT=${PIPESTATUS[0]}
 
@@ -248,7 +238,7 @@ if [ "$DRY_RUN_FAILED" = false ]; then
     echo "❌ App build would fail on Vercel"
     echo ""
     echo "Last 20 errors:"
-    grep -i "error" /tmp/dry-run-vercel-app.log | tail -20 | sed 's/^/   /'
+    grep -i "error" /tmp/test-deploy-vercel-app.log | tail -20 | sed 's/^/   /'
     DRY_RUN_FAILED=true
   fi
 
@@ -271,7 +261,7 @@ if [ "$DRY_RUN_FAILED" = false ]; then
   echo "Building Docker image..."
   echo ""
 
-  docker build -t api-dry-run -f api/Dockerfile . 2>&1 | tee /tmp/dry-run-docker-build.log
+  docker build -t api-dry-run -f api/Dockerfile . 2>&1 | tee /tmp/test-deploy-docker-build.log
 
   DOCKER_BUILD_RESULT=${PIPESTATUS[0]}
 
@@ -300,13 +290,13 @@ if [ "$DRY_RUN_FAILED" = false ]; then
       --env DATABASE_URL="${DATABASE_URL:-postgresql://localhost/test}" \
       --env SECRET_KEY="${SECRET_KEY:-test-secret-key}" \
       --env ENVIRONMENT="test" \
-      api-dry-run 2>/tmp/dry-run-docker-start.log
+      api-dry-run 2>/tmp/test-deploy-docker-start.log
 
     if [ $? -ne 0 ]; then
       echo "❌ Container failed to start"
       echo ""
       echo "Error:"
-      cat /tmp/dry-run-docker-start.log | sed 's/^/   /'
+      cat /tmp/test-deploy-docker-start.log | sed 's/^/   /'
       DRY_RUN_FAILED=true
     else
       # Wait for startup
@@ -364,7 +354,7 @@ if [ "$DRY_RUN_FAILED" = false ]; then
     echo "❌ Docker build would fail on Railway"
     echo ""
     echo "Last 20 errors:"
-    tail -20 /tmp/dry-run-docker-build.log | sed 's/^/   /'
+    tail -20 /tmp/test-deploy-docker-build.log | sed 's/^/   /'
     DRY_RUN_FAILED=true
   fi
 
@@ -432,7 +422,7 @@ if [ "$DRY_RUN_FAILED" = true ]; then
   echo ""
 
   # Cleanup
-  rm -f /tmp/dry-run-*.log
+  rm -f /tmp/test-deploy-*.log
   docker rmi api-dry-run 2>/dev/null || true
   docker rm -f api-dry-run-test 2>/dev/null || true
 
@@ -452,7 +442,7 @@ else
   echo ""
 
   # Cleanup
-  rm -f /tmp/dry-run-*.log
+  rm -f /tmp/test-deploy-*.log
   docker rmi api-dry-run 2>/dev/null || true
 
   exit 0
