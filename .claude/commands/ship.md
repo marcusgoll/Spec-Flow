@@ -14,6 +14,7 @@
 
 **Dependencies**: Requires completed `/implement` phase
 
+<context>
 ## DEPLOYMENT TRACKING
 
 **IMPORTANT**: Use the TodoWrite tool to track ship workflow progress throughout this command.
@@ -48,7 +49,9 @@ TodoWrite({
 - Only ONE phase should be `in_progress` at a time
 
 **Why**: Ship workflow involves 5-8 phases depending on deployment model and can take 20-40 minutes with manual gates (preview testing, staging validation). Users need clear visibility into which phase is active, which are complete, and where manual intervention is required.
+</context>
 
+<constraints>
 ## ANTI-HALLUCINATION RULES
 
 **CRITICAL**: Follow these rules to prevent deployment failures from false assumptions.
@@ -79,7 +82,9 @@ TodoWrite({
    - If state file missing/corrupted, flag it - don't assume status
 
 **Why this matters**: Hallucinated deployment config causes failed deployments. False deployment URLs waste debugging time. Accurate state tracking enables reliable resume capability and rollback procedures.
+</constraints>
 
+<instructions>
 ---
 
 ## Phase S.0: Initialize & Detect Model
@@ -1350,3 +1355,4 @@ fi
 - **Rollback**: Deployment IDs stored in state file for emergency rollback
 
 This command replaces the need to manually run each post-implementation phase, providing a unified, state-tracked deployment experience with proper quality gates and rollback capability.
+</instructions>

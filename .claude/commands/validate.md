@@ -7,6 +7,7 @@ scripts:
 
 Analyze feature artifacts for consistency, coverage, and quality.
 
+<context>
 ## User Input
 
 ```text
@@ -30,7 +31,9 @@ You **MUST** consider the user input before proceeding (if not empty).
 - **Constitution Authority**: Constitution violations are automatically CRITICAL
 - **Token Efficient**: Limit to 50 findings max, aggregate overflow
 - **Deterministic**: Rerunning should produce consistent IDs
+</context>
 
+<constraints>
 ## ANTI-HALLUCINATION RULES
 
 **CRITICAL**: Follow these rules to prevent false validation findings.
@@ -61,7 +64,9 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Don't inflate severity without evidence
 
 **Why this matters**: False inconsistencies waste time investigating non-issues. Invented missing tests create unnecessary work. Accurate validation based on actual file reads builds trust in the validation process.
+</constraints>
 
+<instructions>
 ## RUN PREREQUISITE SCRIPT
 
 **Execute once from repo root:**
@@ -1022,3 +1027,4 @@ fi
 
 echo ""
 ```
+</instructions>

@@ -4,6 +4,7 @@ description: Orchestrate full feature workflow with isolated phase contexts (opt
 
 Orchestrate feature delivery through isolated phase agents for maximum efficiency.
 
+<context>
 ## MENTAL MODEL
 
 **Architecture**: Orchestrator-Workers with Phase Isolation
@@ -61,7 +62,9 @@ TodoWrite({
 - Only ONE phase should be `in_progress` at a time
 
 **Why**: The /feature workflow orchestrates 8-14 phases (depending on project type and feature complexity) and can take 1-3 hours end-to-end with manual gates. Users need clear visibility into which phase is active, which phases remain, and where manual intervention is required. This is especially important since phases run in isolated contexts via specialized agents.
+</context>
 
+<constraints>
 ## ANTI-HALLUCINATION RULES
 
 **CRITICAL**: Follow these rules to prevent workflow failures from false assumptions.
@@ -92,7 +95,9 @@ TodoWrite({
    - Quote workflow-state.yaml for historical phase status
 
 **Why this matters**: Skipped phases lead to incomplete features. False phase completion claims hide failures. Accurate workflow orchestration based on actual state ensures all quality gates execute properly.
+</constraints>
 
+<instructions>
 ## PARSE ARGUMENTS
 
 **Get feature description or continue mode:**
@@ -1019,3 +1024,4 @@ fi
 - Slash commands unchanged (proven workflow)
 - Phase agents add thin orchestration layer
 - **Maintained: Same quality gates**
+</instructions>

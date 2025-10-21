@@ -7,6 +7,7 @@ scripts:
 
 Clarify ambiguities in specification: $ARGUMENTS
 
+<context>
 ## User Input
 
 ```text
@@ -30,7 +31,9 @@ You **MUST** consider the user input before proceeding (if not empty).
 - **Recommended Answers**: Analyze options and provide best-practice recommendation
 - **Incremental Updates**: Save after EACH answer (atomic)
 - **Git Safety**: Checkpoint before each update, rollback on failure
+</context>
 
+<constraints>
 ## ANTI-HALLUCINATION RULES
 
 **CRITICAL**: Follow these rules to prevent fabricating ambiguities or solutions.
@@ -61,7 +64,9 @@ You **MUST** consider the user input before proceeding (if not empty).
    - If user says "skip", mark as skipped - don't invent answer
 
 **Why this matters**: Fabricated ambiguities create unnecessary work. Invented best practices may conflict with project standards. Accurate clarification based on real spec ambiguities ensures plan addresses actual uncertainties.
+</constraints>
 
+<instructions>
 ## RUN PREREQUISITE SCRIPT
 
 **Execute once from repo root:**
@@ -789,3 +794,4 @@ else
   echo "  → /flow continue"
 fi
 ```
+</instructions>

@@ -4,6 +4,7 @@ description: Production readiness validation (performance, security, a11y, code 
 
 Validate production readiness for feature.
 
+<context>
 ## PROGRESS TRACKING
 
 **IMPORTANT**: Use the TodoWrite tool to track optimization phases throughout this command.
@@ -31,7 +32,9 @@ TodoWrite({
 - Only ONE phase should be `in_progress` at a time
 
 **Why**: Optimization involves multiple independent validation checks that can take 10-20 minutes total. Users need to see progress.
+</context>
 
+<constraints>
 ## ANTI-HALLUCINATION RULES
 
 **CRITICAL**: Follow these rules to prevent false performance/security findings.
@@ -62,7 +65,9 @@ TodoWrite({
    - Cite scan output files when reporting issues
 
 **Why this matters**: False performance claims lead to production issues. Invented security vulnerabilities waste time. Accurate measurements based on actual tool output build confidence in deployments.
+</constraints>
 
+<instructions>
 ## LOAD FEATURE
 
 **Get feature from argument or current branch:**
@@ -1552,3 +1557,4 @@ Brief summary:
 - ⚠️  Blockers: N issues found (fix before /preview) OR 0 (ready for /preview)
 - Next: `/preview` (manual UI/UX testing before shipping) (or /compact if threshold exceeded)
 
+</instructions>

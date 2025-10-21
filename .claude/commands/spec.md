@@ -4,6 +4,7 @@ description: Create feature specification from natural language (planning is 80%
 
 Create specification for: $ARGUMENTS
 
+<context>
 ## MENTAL MODEL
 
 **Workflow**: spec-flow -> clarify -> plan -> tasks -> analyze -> implement -> optimize -> debug -> preview -> phase-1-ship -> validate-staging -> phase-2-ship
@@ -25,7 +26,9 @@ Create specification for: $ARGUMENTS
 - Removes filler words: "we want to", "get our", "to a", "with", "before moving on to", etc.
 - Example: "We want to add student progress dashboard" → `add-student-progress-dashboard`
 - Example: "We want to get our vercel and railway app to a healthy state..." → `vercel-railway-app-healthy-state`
+</context>
 
+<constraints>
 ## ANTI-HALLUCINATION RULES
 
 **CRITICAL**: Follow these rules to prevent making up information when creating specifications.
@@ -56,7 +59,9 @@ Create specification for: $ARGUMENTS
    - Mark clarifications needed with `[NEEDS CLARIFICATION]` explicitly
 
 **Why this matters**: Hallucinated technical constraints lead to specs that can't be implemented. Specs based on non-existent code create impossible plans. Accurate specifications save 50-60% of implementation time.
+</constraints>
 
+<instructions>
 ## CONTEXT
 
 **Path constants:**
@@ -1168,3 +1173,4 @@ else
   echo "  → /flow continue"
 fi
 ```
+</instructions>

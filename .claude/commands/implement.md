@@ -4,6 +4,7 @@ description: Execute tasks with TDD, anti-duplication checks, pattern following 
 
 Execute tasks from: specs/$SLUG/tasks.md
 
+<context>
 ## MENTAL MODEL
 
 **Parallel Execution**: Group independent tasks by domain → Launch agents in parallel → Auto-handle failures → Commit batches
@@ -11,6 +12,7 @@ Execute tasks from: specs/$SLUG/tasks.md
 **No Stops Unless**: Blocking error, missing context, user clarification required
 
 **Speed**: 3-5x faster via parallel agent execution
+</context>
 
 ## TASK TRACKING
 
@@ -40,6 +42,7 @@ TodoWrite({
 
 **Why**: Users need real-time visibility into which of 20-30 tasks are complete during long parallel execution (can take 15-30 minutes).
 
+<constraints>
 ## ANTI-HALLUCINATION RULES
 
 **CRITICAL**: Follow these rules to prevent making up information.
@@ -70,7 +73,9 @@ TodoWrite({
    - Use Grep to find imports: search for existing import patterns
 
 **Why this matters**: Hallucinated code references cause compile errors, broken imports, and failed tests. Reading files before referencing them prevents 60-70% of implementation errors.
+</constraints>
 
+<instructions>
 ## LOAD FEATURE
 
 ```bash
@@ -844,3 +849,4 @@ Failures: N (see error-log.md)
 
 Next: /optimize
 ```
+</instructions>

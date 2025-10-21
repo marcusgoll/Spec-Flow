@@ -4,6 +4,7 @@ description: Fix CI/deployment blockers after /ship creates PR
 
 Get PR ready for deployment: $ARGUMENTS
 
+<context>
 ## MENTAL MODEL
 
 **Mission:** Deployment doctor - diagnose → fix → delegate → validate
@@ -36,7 +37,9 @@ Get PR ready for deployment: $ARGUMENTS
 - GitHub CLI (`gh`) installed and authenticated
 - PR must exist
 - Branch checked out locally (for auto-fixes)
+</context>
 
+<constraints>
 ## ANTI-HALLUCINATION RULES
 
 **CRITICAL**: Follow these rules to prevent false CI fix claims.
@@ -67,7 +70,9 @@ Get PR ready for deployment: $ARGUMENTS
    - If URL not in logs, say so - don't make one up
 
 **Why this matters**: False fix claims lead to merged broken code. Hallucinated error messages waste debugging time. Accurate CI troubleshooting based on real logs ensures deployments succeed.
+</constraints>
 
+<instructions>
 ## BLOCKER TRACKING
 
 **IMPORTANT**: Use the TodoWrite tool to track CI fix progress throughout this command.
@@ -1298,3 +1303,4 @@ fi
 
 echo ""
 ```
+</instructions>

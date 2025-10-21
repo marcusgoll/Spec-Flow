@@ -4,6 +4,7 @@ description: Generate concrete TDD tasks from design artifacts (no generic place
 
 Create tasks from: specs/$SLUG/plan.md
 
+<constraints>
 ## ANTI-HALLUCINATION RULES
 
 **CRITICAL**: Follow these rules to prevent creating impossible tasks.
@@ -34,7 +35,9 @@ Create tasks from: specs/$SLUG/plan.md
    - Check plan.md for intended sequence
 
 **Why this matters**: Hallucinated tasks create impossible work. Tasks referencing non-existent code waste implementation time. Clear, verified tasks reduce implementation errors by 50-60%.
+</constraints>
 
+<instructions>
 ## LOAD FEATURE
 
 **Get feature from argument or current branch:**
@@ -596,3 +599,4 @@ Output: specs/$SLUG/artifacts/analysis-report.md
 
 Duration: ~5 minutes
 ```
+</instructions>

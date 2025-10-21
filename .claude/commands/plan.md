@@ -7,6 +7,7 @@ scripts:
 
 Design implementation for: $ARGUMENTS
 
+<context>
 ## MENTAL MODEL
 
 **Workflow**: spec-flow -> clarify -> plan -> tasks -> analyze -> implement -> optimize -> debug -> preview -> phase-1-ship -> validate-staging -> phase-2-ship
@@ -21,6 +22,7 @@ Design implementation for: $ARGUMENTS
 **Auto-suggest:**
 - UI features → `/design-variations` or `/tasks`
 - Backend features → `/tasks`
+</context>
 
 ## USER INPUT
 
@@ -829,6 +831,7 @@ git log -1 --oneline
 echo ""
 ```
 
+<constraints>
 ## ANTI-HALLUCINATION RULES
 
 **CRITICAL**: Follow these rules to prevent making up architectural decisions.
@@ -859,7 +862,9 @@ echo ""
    - Don't suggest packages that aren't installed
 
 **Why this matters**: Hallucinated architecture leads to plans that can't be implemented. Plans based on non-existent patterns create unnecessary refactoring. Accurate planning grounded in actual code saves 40-50% of implementation rework.
+</constraints>
 
+<instructions>
 ## CONTEXT MANAGEMENT
 
 **Before proceeding to /tasks:**
@@ -1013,3 +1018,4 @@ if [ "$CONTEXT_CHECK" -gt 500 ]; then
 fi
 ```
 
+</instructions>
