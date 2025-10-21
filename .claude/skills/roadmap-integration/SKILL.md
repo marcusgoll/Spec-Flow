@@ -1,88 +1,34 @@
 ---
 name: roadmap-integration
-description: "Capture lessons from /roadmap usage (brainstorm, prioritize, track features). Auto-triggers when: using /roadmap, linking specs to roadmap, moving features between states. Updates when: roadmap sync issues, missing links, state transitions unclear."
-allowed-tools: Read, Write, Edit, Grep, Bash
+description: "Standard Operating Procedure for /roadmap usage. Manage product roadmap (brainstorm, prioritize, track)."
+allowed-tools: Read, Write, Edit, Bash
 ---
 
-# Roadmap Integration: Lessons Learned
+# Roadmap Integration: Standard Operating Procedure
 
-> **Dynamic data**: Frequencies, metrics, and usage statistics are tracked in [learnings.md](learnings.md) (preserved across npm updates).
+> **Training Guide**: Manage product roadmap with ICE prioritization.
 
-**Capability**: Learn from roadmap usage to maintain clean feature tracking, proper state transitions, and spec linkage.
+## Phase Overview
+**Purpose**: Brainstorm features, prioritize with ICE scoring, track shipped features
+**Inputs**: Feature ideas, user requests
+**Outputs**: Updated roadmap with prioritization
+**Expected duration**: 30-60 minutes
 
-**When I trigger**:
-- `/roadmap` used → Load lessons to guide roadmap updates
-- Feature state changed → Detect if links missing, transition invalid
-- Error: Roadmap out of sync with specs → Capture sync pattern
+## Execution Steps
+1. Brainstorm features (new ideas)
+2. Score with ICE (Impact × Confidence / Effort)
+3. Prioritize by ICE score
+4. Move features between states (Backlog → Next → In Progress → Shipped)
+5. Link specs to roadmap entries
 
-**Supporting files**:
-- [reference.md](reference.md) - Roadmap structure, state transitions, linking conventions
-- [examples.md](examples.md) - Well-maintained roadmap vs stale roadmap
+## Common Mistakes
+- Roadmap sync issues
+- Missing ICE scores
+- State transitions unclear
 
----
+## Completion Criteria
+- [ ] Features scored with ICE
+- [ ] Roadmap prioritized
+- [ ] Links to specs added
 
-## Common Pitfalls (Auto-Updated)
-
-### 🚫 Roadmap Out of Sync
-
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
-**Impact**: Medium (lost visibility, planning confusion)
-
-**Detection**:
-```bash
-# Check if shipped features still in "In Progress"
-grep -A 5 "## In Progress" .spec-flow/memory/roadmap.md | while read -r line; do
-  SLUG=$(echo "$line" | grep "^### " | sed 's/### //')
-  [ -f "specs/$SLUG/*-ship-report.md" ] && echo "⚠️  Shipped feature still in progress: $SLUG"
-done
-```
-
-**Prevention**:
-1. Update roadmap when feature state changes
-2. Move to "Shipped" when production deployed
-3. Add links to spec and ship report
-
----
-
-### 🚫 Missing Spec Links
-
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
-**Impact**: Low (navigation friction)
-
-**Prevention**:
-1. Add spec link when moving to "In Progress"
-2. Add ship report link when moving to "Shipped"
-3. Use consistent linking format
-
----
-
-## Successful Patterns (Auto-Updated)
-
-### ✅ Roadmap State Machine
-
-**States**:
-1. **Backlog** → Feature brainstormed, not prioritized
-2. **Prioritized** → Moved up, ready for spec work
-3. **In Progress** → Spec exists, work started
-4. **Shipped** → Production deployed
-
-**Transitions**:
-- Backlog → Prioritized: User prioritizes
-- Prioritized → In Progress: `/specify` creates spec
-- In Progress → Shipped: `/phase-2-ship` completes
-- Any → Backlog: Deprioritized
-
-**Results**: Clear feature lifecycle visibility
-
----
-
-## Metrics Tracking
-
-| Metric | Target | Current | Trend |
-|--------|--------|---------|-------|
-| Roadmap sync rate | ≥95% | Not tracked | - |
-| Features with links | 100% | Not tracked | - |
-
-**Updated**: Not yet tracked
+_This SOP guides roadmap management._

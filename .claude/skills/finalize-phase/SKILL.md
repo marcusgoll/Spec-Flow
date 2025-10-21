@@ -1,75 +1,139 @@
 ---
 name: finalize-phase
-description: "Capture lessons from /finalize phase (workflow completion, artifact archival). Auto-triggers when: completing feature workflow, updating roadmap, archiving artifacts. Updates when: incomplete documentation, roadmap not updated, artifacts not archived."
+description: "Standard Operating Procedure for /finalize phase. Covers workflow completion, artifact archival, roadmap updates, and knowledge preservation."
 allowed-tools: Read, Write, Edit, Grep, Bash
 ---
 
-# Finalize Phase: Lessons Learned
+# Finalize Phase: Standard Operating Procedure
 
-> **Dynamic data**: Frequencies, metrics, and usage statistics are tracked in [learnings.md](learnings.md) (preserved across npm updates).
+> **Training Guide**: Step-by-step procedures for completing feature workflows and preserving knowledge.
 
-**Capability**: Learn from workflow finalization to ensure complete documentation, roadmap updates, and proper archival.
-
-**When I trigger**:
-- `/finalize` starts → Load lessons to guide completion checklist
-- Finalize complete → Detect if steps skipped, documentation incomplete
-- Error: Missing artifacts or roadmap updates → Capture
-
-**Supporting files**:
-- [reference.md](reference.md) - Finalization checklist, archival procedures, documentation standards
+**Supporting references**:
+- [reference.md](reference.md) - Finalization checklist, archival procedures
 - [examples.md](examples.md) - Complete finalization vs rushed cleanup
 
 ---
 
-## Common Pitfalls (Auto-Updated)
+## Phase Overview
+
+**Purpose**: Complete feature workflow, update roadmap, archive artifacts, preserve knowledge.
+
+**Inputs**:
+- Deployed feature (production-ready)
+- All phase artifacts (spec, plan, tasks, reports)
+- Ship report with deployment details
+
+**Outputs**:
+- Updated roadmap (moved to "Shipped")
+- Archived artifacts
+- Updated README (if applicable)
+- Cleaned up branches (if applicable)
+- Updated `workflow-state.yaml`
+
+**Expected duration**: 10-15 minutes
+
+---
+
+## Execution Steps
+
+### Step 1: Update Roadmap
+
+**Actions**:
+1. Move feature from "In Progress" to "Shipped" in roadmap
+2. Add completion date, version, and production URL
+3. Link to ship report and release notes
+
+**Example**:
+```markdown
+## Shipped
+
+### Student Progress Dashboard (v1.3.0) - Shipped 2025-10-21
+- **Production URL**: https://app.example.com/students/progress
+- **Ship Report**: [specs/042-student-progress-dashboard/ship-summary.md]
+- **Release Notes**: [v1.3.0]
+- **Impact**: Teachers can now track student progress with completion rates and time spent
+```
+
+---
+
+### Step 2: Archive Artifacts
+
+**Actions**:
+Archive all workflow artifacts in `specs/NNN-slug/`:
+- [x] spec.md
+- [x] plan.md
+- [x] tasks.md
+- [x] optimization-report.md
+- [x] preview-checklist.md
+- [x] ship-summary.md
+- [x] release-notes.md
+- [x] workflow-state.yaml
+
+---
+
+### Step 3: Update Documentation
+
+**Actions**:
+Update README or docs if user-facing feature:
+- [ ] README.md: Add feature to feature list
+- [ ] docs/: Create user guide (if complex feature)
+- [ ] CHANGELOG.md: Add release entry
+
+---
+
+### Step 4: Clean Up Branches
+
+**Actions**:
+```bash
+# Delete feature branch (if merged)
+git branch -d feature/042-student-progress-dashboard
+
+# Delete remote branch (if applicable)
+git push origin --delete feature/042-student-progress-dashboard
+```
+
+---
+
+### Step 5: Commit Finalization
+
+**Actions**:
+```bash
+git add .spec-flow/memory/roadmap.md README.md CHANGELOG.md
+git commit -m "chore: finalize student-progress-dashboard feature
+
+- Updated roadmap: Moved to Shipped (v1.3.0)
+- Updated README: Added progress dashboard to features list
+- Updated CHANGELOG: Added v1.3.0 release entry
+- Archived all artifacts in specs/042-student-progress-dashboard/
+- Cleaned up feature branch
+
+Feature complete - workflow closed
+"
+```
+
+---
+
+## Common Mistakes
 
 ### 🚫 Roadmap Not Updated
-
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
-**Impact**: Medium (roadmap stale, lost tracking)
-
-**Prevention**:
-1. Move feature from "In Progress" to "Shipped" in roadmap
-2. Add links to ship report and production URL
-3. Update feature status with completion date
-
----
+**Impact**: Roadmap stale, lost tracking
+**Prevention**: Always move to "Shipped" with completion date and links
 
 ### 🚫 Incomplete Documentation
-
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
-**Impact**: Medium (knowledge loss, onboarding friction)
-
-**Prevention**:
-1. Verify release notes created
-2. Update README if user-facing feature
-3. Archive all artifacts (spec, plan, tasks, reports)
+**Impact**: Knowledge loss, onboarding friction
+**Prevention**: Update README, create user guides, preserve all artifacts
 
 ---
 
-## Successful Patterns (Auto-Updated)
+## Completion Criteria
 
-### ✅ Complete Finalization Checklist
-
-**Approach**:
+**Phase is complete when**:
 - [ ] Roadmap updated (moved to "Shipped")
-- [ ] Release notes created
-- [ ] Ship report archived
-- [ ] Production URL documented
-- [ ] README updated (if applicable)
-- [ ] Branch deleted (if no longer needed)
-
-**Results**: Clean workflow completion, knowledge preserved
+- [ ] All artifacts archived
+- [ ] Documentation updated
+- [ ] Branches cleaned up
+- [ ] Finalization committed
 
 ---
 
-## Metrics Tracking
-
-| Metric | Target | Current | Trend |
-|--------|--------|---------|-------|
-| Complete finalizations | 100% | Not tracked | - |
-| Documentation completeness | 100% | Not tracked | - |
-
-**Updated**: Not yet tracked
+_This SOP guides the finalize phase. Refer to reference.md for finalization checklists._

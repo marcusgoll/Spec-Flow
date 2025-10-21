@@ -1,91 +1,35 @@
 ---
 name: staging-deployment-phase
-description: "Capture lessons from /phase-1-ship (staging deployment). Auto-triggers when: deploying to staging, running migrations, health checks. Updates when: deployment failures, migration issues, health check failures."
-allowed-tools: Read, Write, Edit, Grep, Bash
+description: "Standard Operating Procedure for /ship-staging phase. Deploy feature to staging with auto-merge."
+allowed-tools: Read, Edit, Bash
 ---
 
-# Staging Deployment Phase: Lessons Learned
+# Staging Deployment Phase: Standard Operating Procedure
 
-> **Dynamic data**: Frequencies, metrics, and usage statistics are tracked in [learnings.md](learnings.md) (preserved across npm updates).
+> **Training Guide**: Deploy feature to staging environment for validation.
 
-**Capability**: Learn from staging deployments to ensure smooth deploys, safe migrations, and proper health validation.
+## Phase Overview
+**Purpose**: Deploy to staging, run migrations, verify health
+**Inputs**: Merged PR, passing CI
+**Outputs**: Staging deployment, ship report
+**Expected duration**: 15-30 minutes
 
-**When I trigger**:
-- `/phase-1-ship` starts → Load lessons to guide deployment and health checks
-- Deployment complete → Detect if failures occurred, migrations risky, health checks insufficient
-- Error: Staging deployment failed → Capture root cause
-
-**Supporting files**:
-- [reference.md](reference.md) - Deployment checklist, migration safety, health check patterns
-- [examples.md](examples.md) - Successful deploys vs failed deploys
-- [scripts/health-check-validator.sh](scripts/health-check-validator.sh) - Validates health checks before deploy
-
----
-
-## Common Pitfalls (Auto-Updated)
-
-### 🚫 Migration Failures
-
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
-**Impact**: Critical (data corruption, downtime)
-
-**Detection**:
-```bash
-# Check migration ran successfully
-if ! grep -q "Migration.*successful" deploy.log; then
-  echo "⚠️  Migration may have failed"
-fi
-```
-
-**Prevention**:
-1. Test migrations on development database first
-2. Create rollback migration before deploying
-3. Backup database before running migrations
-
----
-
-### 🚫 Health Checks Not Configured
-
-**Frequency**: ★☆☆☆☆ (0/5 - not yet seen)
-**Last seen**: Never
-**Impact**: High (undetected service failures)
-
-**Detection**:
-```bash
-# Verify health endpoint responds
-curl -f http://staging-url/health || echo "⚠️  Health check failed"
-```
-
-**Prevention**:
-1. Add /health endpoint returning service status
-2. Configure platform health checks (Railway, Vercel)
-3. Verify health checks pass after deploy
-
----
-
-## Successful Patterns (Auto-Updated)
-
-### ✅ Safe Deployment Workflow
-
-**Approach**:
-1. Run tests locally (ensure passing)
-2. Create PR and merge to staging branch
+## Execution Steps
+1. Verify PR merged to main
+2. Run database migrations (if any)
 3. Deploy to staging environment
-4. Run migrations (if applicable)
-5. Verify health checks pass
-6. Run smoke tests
+4. Run health checks
+5. Verify deployment successful
+6. Generate staging ship report
 
-**Results**: Smooth deployments, quick rollback if needed
+## Common Mistakes
+- Deployment failures
+- Migration issues
+- Health check failures
 
----
+## Completion Criteria
+- [ ] Deployed to staging
+- [ ] Health checks pass
+- [ ] Ship report generated
 
-## Metrics Tracking
-
-| Metric | Target | Current | Trend |
-|--------|--------|---------|-------|
-| Staging deploy success rate | ≥95% | Not tracked | - |
-| Migration failures | 0 | Not tracked | - |
-| Deploy time | <10 min | Not tracked | - |
-
-**Updated**: Not yet tracked
+_This SOP guides staging deployment._
