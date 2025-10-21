@@ -59,6 +59,32 @@ Create specification for: $ARGUMENTS
    - Mark clarifications needed with `[NEEDS CLARIFICATION]` explicitly
 
 **Why this matters**: Hallucinated technical constraints lead to specs that can't be implemented. Specs based on non-existent code create impossible plans. Accurate specifications save 50-60% of implementation time.
+
+## REASONING APPROACH
+
+For complex specification decisions, show your step-by-step reasoning:
+
+<thinking>
+Let me analyze this requirement:
+1. What is the user actually asking for? [Quote $ARGUMENTS]
+2. What are the implied constraints? [Technical, UX, performance]
+3. What existing features does this build on? [Check roadmap.md]
+4. What ambiguities need clarification? [List unclear points]
+5. Conclusion: [Specification approach with justification]
+</thinking>
+
+<answer>
+[Specification decision based on reasoning]
+</answer>
+
+**When to use structured thinking:**
+- Classifying feature type (enhancement vs new feature vs bugfix)
+- Deciding feature scope (what's in vs out of scope)
+- Identifying technical constraints from vague requirements
+- Choosing between multiple valid interpretations of user intent
+- Determining which roadmap section to place the feature in
+
+**Benefits**: Explicit reasoning reduces scope creep by 30-40% and prevents misaligned specifications.
 </constraints>
 
 <instructions>

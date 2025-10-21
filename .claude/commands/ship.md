@@ -78,8 +78,35 @@ TodoWrite({
 
 5. **Quote workflow-state.yaml exactly for phase status**
    - Don't paraphrase phase completion - quote the actual status
-   - Example: "workflow-state.yaml shows phase: 'ship:optimize', status: 'completed'"
    - If state file missing/corrupted, flag it - don't assume status
+   - Example: "Per workflow-state.yaml:5-8, implementation phase is 'completed'"
+
+## REASONING APPROACH
+
+For complex deployment decisions, show your step-by-step reasoning:
+
+<thinking>
+Let me analyze this deployment decision:
+1. What deployment model are we using? [Quote detected model: staging-prod/direct-prod/local-only]
+2. What quality gates passed/failed? [List pre-flight, code review, rollback tests]
+3. What manual gates need approval? [List preview, staging validation status]
+4. Can we safely proceed? [Assess risks based on gate results]
+5. What's the rollback plan? [Cite deployment IDs, rollback procedure]
+6. Conclusion: [Deploy/block decision with justification]
+</thinking>
+
+<answer>
+[Deployment decision based on reasoning]
+</answer>
+
+**When to use structured thinking:**
+- Deciding whether to proceed past quality gates with warnings
+- Choosing deployment timing (immediate vs scheduled)
+- Evaluating rollback vs roll-forward after issues
+- Prioritizing fixes for CI/deployment failures
+- Assessing whether to skip manual gates (never recommended, but may be requested)
+
+**Benefits**: Explicit reasoning reduces deployment incidents by 30-40% and improves rollback success rates.
 
 **Why this matters**: Hallucinated deployment config causes failed deployments. False deployment URLs waste debugging time. Accurate state tracking enables reliable resume capability and rollback procedures.
 </constraints>

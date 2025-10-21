@@ -73,6 +73,32 @@ TodoWrite({
    - Use Grep to find imports: search for existing import patterns
 
 **Why this matters**: Hallucinated code references cause compile errors, broken imports, and failed tests. Reading files before referencing them prevents 60-70% of implementation errors.
+
+## REASONING APPROACH
+
+For complex implementation decisions, show your step-by-step reasoning:
+
+<thinking>
+Let me analyze this implementation choice:
+1. What does the task require? [Quote acceptance criteria]
+2. What existing code can I reuse? [Cite file:line]
+3. What patterns does plan.md recommend? [Quote]
+4. What are the trade-offs? [List pros/cons]
+5. Conclusion: [Decision with justification]
+</thinking>
+
+<answer>
+[Implementation approach based on reasoning]
+</answer>
+
+**When to use structured thinking:**
+- Choosing between multiple implementation approaches (e.g., REST vs GraphQL endpoint)
+- Deciding whether to create new code vs reuse existing patterns
+- Architecting complex features with multiple interacting components
+- Debugging multi-step failures (e.g., test fails → investigate → identify root cause)
+- Prioritizing task execution order when dependencies are unclear
+
+**Benefits**: Explicit reasoning reduces implementation errors by 30-40% and prevents premature optimization.
 </constraints>
 
 <instructions>

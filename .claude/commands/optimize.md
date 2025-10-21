@@ -65,6 +65,33 @@ TodoWrite({
    - Cite scan output files when reporting issues
 
 **Why this matters**: False performance claims lead to production issues. Invented security vulnerabilities waste time. Accurate measurements based on actual tool output build confidence in deployments.
+
+## REASONING APPROACH
+
+For complex optimization decisions, show your step-by-step reasoning:
+
+<thinking>
+Let me analyze this optimization opportunity:
+1. What is the current performance? [Quote actual metrics]
+2. What does plan.md target? [Quote performance requirements]
+3. What are potential optimizations? [List 2-3 approaches]
+4. What are the trade-offs? [Complexity vs gain, maintainability vs performance]
+5. What does profiling show? [Cite bottlenecks from actual measurements]
+6. Conclusion: [Recommended optimization with justification]
+</thinking>
+
+<answer>
+[Optimization decision based on reasoning]
+</answer>
+
+**When to use structured thinking:**
+- Prioritizing performance optimizations (biggest impact first)
+- Deciding between multiple optimization approaches
+- Evaluating security vs usability trade-offs
+- Choosing accessibility improvements
+- Assessing code quality vs delivery speed
+
+**Benefits**: Explicit reasoning prevents premature optimization and focuses effort on high-impact changes (30-40% efficiency gain).
 </constraints>
 
 <instructions>

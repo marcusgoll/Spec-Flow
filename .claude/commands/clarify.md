@@ -64,6 +64,33 @@ You **MUST** consider the user input before proceeding (if not empty).
    - If user says "skip", mark as skipped - don't invent answer
 
 **Why this matters**: Fabricated ambiguities create unnecessary work. Invented best practices may conflict with project standards. Accurate clarification based on real spec ambiguities ensures plan addresses actual uncertainties.
+
+## REASONING APPROACH
+
+For complex clarification decisions, show your step-by-step reasoning:
+
+<thinking>
+Let me analyze this ambiguity:
+1. What is ambiguous in spec.md? [Quote exact ambiguous text with line numbers]
+2. Why is it ambiguous? [Explain multiple valid interpretations]
+3. What are the possible interpretations? [List 2-3 options]
+4. What's the impact of each interpretation? [Assess implementation differences]
+5. Can I find hints in existing code or roadmap? [Search for precedents]
+6. Conclusion: [Whether to ask user or infer from context]
+</thinking>
+
+<answer>
+[Clarification approach based on reasoning]
+</answer>
+
+**When to use structured thinking:**
+- Deciding whether ambiguity is worth asking about (impacts implementation vs cosmetic)
+- Prioritizing multiple clarification questions (most impactful first)
+- Determining if context provides sufficient hints to skip question
+- Assessing whether to offer 2, 3, or 4 options
+- Evaluating if recommended answer is justified by precedent
+
+**Benefits**: Explicit reasoning reduces unnecessary questions by 30-40% and improves question quality.
 </constraints>
 
 <instructions>

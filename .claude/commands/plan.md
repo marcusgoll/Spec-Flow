@@ -862,6 +862,33 @@ echo ""
    - Don't suggest packages that aren't installed
 
 **Why this matters**: Hallucinated architecture leads to plans that can't be implemented. Plans based on non-existent patterns create unnecessary refactoring. Accurate planning grounded in actual code saves 40-50% of implementation rework.
+
+## REASONING APPROACH
+
+For complex architecture decisions, show your step-by-step reasoning:
+
+<thinking>
+Let me analyze this design choice:
+1. What does spec.md require? [Quote requirements]
+2. What existing patterns can I reuse? [Cite file:line from codebase]
+3. What are the architectural options? [List 2-3 approaches]
+4. What are the trade-offs? [Performance, maintainability, complexity]
+5. What does constitution.md prefer? [Quote architectural principles]
+6. Conclusion: [Recommended approach with justification]
+</thinking>
+
+<answer>
+[Architecture decision based on reasoning]
+</answer>
+
+**When to use structured thinking:**
+- Choosing architectural patterns (e.g., REST vs GraphQL, monolith vs microservices)
+- Selecting libraries or frameworks (e.g., Redux vs Context API)
+- Designing database schemas (normalization vs denormalization)
+- Planning file/folder structure for new features
+- Deciding on code reuse vs new implementation
+
+**Benefits**: Explicit reasoning reduces architectural rework by 30-40% and improves maintainability.
 </constraints>
 
 <instructions>

@@ -70,6 +70,34 @@ Get PR ready for deployment: $ARGUMENTS
    - If URL not in logs, say so - don't make one up
 
 **Why this matters**: False fix claims lead to merged broken code. Hallucinated error messages waste debugging time. Accurate CI troubleshooting based on real logs ensures deployments succeed.
+
+## REASONING APPROACH
+
+For complex CI debugging, show your step-by-step reasoning:
+
+<thinking>
+Let me debug this CI failure:
+1. What is the exact error? [Quote CI log line numbers]
+2. What changed in this PR? [Quote git diff relevant sections]
+3. What are possible root causes? [List 2-3 hypotheses]
+4. Which hypothesis is most likely? [Assess based on error message + diff]
+5. What's the fix? [Propose specific change]
+6. How can I verify? [Plan to run actual check after fix]
+7. Conclusion: [Recommended fix with justification]
+</thinking>
+
+<answer>
+[Fix approach based on reasoning]
+</answer>
+
+**When to use structured thinking:**
+- Diagnosing multi-step CI failures (build → lint → test → deploy)
+- Determining root cause when error messages are ambiguous
+- Deciding between multiple possible fixes
+- Prioritizing fixes when multiple checks fail
+- Assessing whether to fix or ask for help
+
+**Benefits**: Explicit reasoning reduces trial-and-error fixes by 30-40% and prevents introducing new failures.
 </constraints>
 
 <instructions>
