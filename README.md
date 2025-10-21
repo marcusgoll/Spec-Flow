@@ -124,7 +124,7 @@
 
 **Files**: 36 changed (16 learnings.md created, 16 SKILL.md updated, iteration-patterns.md created)
 
-### v1.11.1 (October 2024)
+### v1.11.1 (October 2025)
 **Folder Cleanup Refactor** - Cleaner spec directories with on-demand folder creation
 
 - **Eliminated empty folders**: Removed blanket directory pre-creation from `/spec` command
@@ -132,7 +132,7 @@
 - **Benefits**: Cleaner spec directories, easier to identify UI features, follows YAGNI principle
 - **Files modified**: `.claude/commands/specify.md`
 
-### v1.11.0 (October 2024)
+### v1.11.0 (October 2025)
 **Phase-Specific Learning Skills** - Workflow improvement tracking
 
 - Added learning Skills for each workflow phase (spec, plan, tasks, implement, optimize, ship, etc.)
