@@ -390,14 +390,14 @@ if [ "$STRUCTURED_MODE" = false ]; then
     # Build errors
     if vercel logs 2>/dev/null | grep -q "Build failed\|npm ERR\|error TS"; then
       echo "  ⚠️  Build errors"
-      echo "     Fix: Run /preflight to test builds locally"
+      echo "     Fix: Run /validate-deploy to test builds locally"
       echo ""
     fi
 
     # Docker image issues
     if railway logs 2>/dev/null | grep -q "Failed to pull image\|image not found"; then
       echo "  ⚠️  Docker image issues"
-      echo "     Fix: Run /dry-run to test Docker builds"
+      echo "     Fix: Run /test-deploy to test Docker builds"
       echo ""
     fi
 

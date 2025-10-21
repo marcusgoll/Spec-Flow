@@ -6,6 +6,7 @@ const chalk = require('chalk');
 const { runWizard } = require('./install-wizard');
 const { update } = require('./install');
 const { healthCheck } = require('./validate');
+const { setupRoadmap } = require('./setup-roadmap');
 const { printHeader, printSuccess, printError, printWarning } = require('./utils');
 const { STRATEGIES } = require('./conflicts');
 
@@ -133,6 +134,22 @@ program
     }
   });
 
+// Setup Roadmap command - configure GitHub Issues roadmap
+program
+  .command('setup-roadmap')
+  .description('Set up GitHub Issues for roadmap management')
+  .action(async () => {
+    try {
+      await setupRoadmap();
+    } catch (error) {
+      printError(`Roadmap setup failed: ${error.message}`);
+      if (error.stack && process.env.DEBUG) {
+        console.error(error.stack);
+      }
+      process.exit(1);
+    }
+  });
+
 // Help command
 program
   .command('help')
@@ -143,10 +160,11 @@ program
     console.log(chalk.gray('  npx spec-flow <command> [options]\n'));
 
     console.log(chalk.white('Commands:'));
-    console.log(chalk.green('  init') + chalk.gray('        Initialize Spec-Flow in current directory'));
-    console.log(chalk.green('  update') + chalk.gray('      Update existing Spec-Flow installation'));
-    console.log(chalk.green('  status') + chalk.gray('      Check installation health'));
-    console.log(chalk.green('  help') + chalk.gray('        Show this help message\n'));
+    console.log(chalk.green('  init') + chalk.gray('           Initialize Spec-Flow in current directory'));
+    console.log(chalk.green('  update') + chalk.gray('         Update existing Spec-Flow installation'));
+    console.log(chalk.green('  status') + chalk.gray('         Check installation health'));
+    console.log(chalk.green('  setup-roadmap') + chalk.gray('  Set up GitHub Issues for roadmap'));
+    console.log(chalk.green('  help') + chalk.gray('           Show this help message\n'));
 
     console.log(chalk.white('Options:'));
     console.log(chalk.gray('  -t, --target <path>        Target directory (default: current directory)'));

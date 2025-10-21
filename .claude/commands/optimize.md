@@ -4,6 +4,34 @@ description: Production readiness validation (performance, security, a11y, code 
 
 Validate production readiness for feature.
 
+## PROGRESS TRACKING
+
+**IMPORTANT**: Use the TodoWrite tool to track optimization phases throughout this command.
+
+**At start** - Create todo list for all validation phases:
+
+```javascript
+TodoWrite({
+  todos: [
+    {content: "Load optimization targets from plan.md", status: "pending", activeForm: "Loading targets"},
+    {content: "Run performance benchmarks", status: "pending", activeForm: "Running performance benchmarks"},
+    {content: "Run security scan", status: "pending", activeForm: "Running security scan"},
+    {content: "Run accessibility audit", status: "pending", activeForm: "Running accessibility audit"},
+    {content: "Run code review", status: "pending", activeForm: "Running code review"},
+    {content: "Validate bundle sizes", status: "pending", activeForm: "Validating bundle sizes"},
+    {content: "Check test coverage", status: "pending", activeForm: "Checking test coverage"},
+    {content: "Generate optimization report", status: "pending", activeForm: "Generating report"},
+  ]
+})
+```
+
+**During execution**:
+- Mark each phase as `in_progress` when starting
+- Mark as `completed` IMMEDIATELY after finishing
+- Only ONE phase should be `in_progress` at a time
+
+**Why**: Optimization involves multiple independent validation checks that can take 10-20 minutes total. Users need to see progress.
+
 ## LOAD FEATURE
 
 **Get feature from argument or current branch:**

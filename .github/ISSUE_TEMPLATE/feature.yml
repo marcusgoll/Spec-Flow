@@ -1,0 +1,163 @@
+name: Feature Request
+description: Propose a new feature for the product roadmap
+title: "[Feature] "
+labels: ["type:feature", "status:backlog"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Request
+
+        Use this template to propose a new feature. The ICE score (Impact × Confidence ÷ Effort) will help prioritize this feature in the roadmap.
+
+  - type: input
+    id: slug
+    attributes:
+      label: Feature Slug
+      description: URL-friendly identifier (e.g., "student-progress-widget")
+      placeholder: "feature-name"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the system does this affect?
+      options:
+        - marketing
+        - app
+        - api
+        - infra
+        - design
+    validations:
+      required: true
+
+  - type: dropdown
+    id: role
+    attributes:
+      label: User Role
+      description: Which users will benefit from this feature?
+      options:
+        - all
+        - free
+        - student
+        - cfi
+        - school
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact (User Value)
+      description: How much value does this provide to users?
+      options:
+        - "1 - Nice to have"
+        - "2 - Useful but not critical"
+        - "3 - Useful"
+        - "4 - High value"
+        - "5 - Critical / Game changer"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Effort (Implementation Complexity)
+      description: How much work is required to build this?
+      options:
+        - "1 - < 1 day"
+        - "2 - 1-3 days"
+        - "3 - 1-2 weeks"
+        - "4 - 2-4 weeks"
+        - "5 - 4+ weeks"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: confidence
+    attributes:
+      label: Confidence (Estimate Certainty)
+      description: How confident are we in the impact and effort estimates?
+      options:
+        - "0.5 - Very uncertain"
+        - "0.6 - Uncertain"
+        - "0.7 - Some unknowns"
+        - "0.8 - Mostly confident"
+        - "0.9 - High confidence"
+        - "1.0 - Certain"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve?
+      placeholder: |
+        Describe the user pain point or opportunity this addresses.
+
+        Example: Students struggle to track which ACS codes they've mastered, leading to inefficient study time allocation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How will this feature solve the problem?
+      placeholder: |
+        Describe the feature at a high level.
+
+        Example: Add a progress widget to the results page showing mastery percentage for each ACS area. Use existing ACS data, no new backend required.
+    validations:
+      required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      description: List specific requirements or acceptance criteria
+      placeholder: |
+        - [ ] Requirement 1
+        - [ ] Requirement 2
+        - [ ] Requirement 3
+      value: |
+        - [ ]
+    validations:
+      required: false
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies & Blockers
+      description: Are there any dependencies or blockers for this feature?
+      placeholder: |
+        - [BLOCKED: other-feature-slug] - Requires X to be completed first
+        - [PIGGYBACK: existing-feature-slug] - Can leverage existing infrastructure
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: Any other context, research, or references
+      placeholder: |
+        - Research: https://example.com/article
+        - Similar feature in: Competitor X
+        - User feedback: "Users requested this in survey"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        **Note**: Once submitted, the ICE score will be calculated automatically and added to the issue description.
+
+        **ICE Formula**: (Impact × Confidence) ÷ Effort
+
+        Higher scores indicate higher priority for implementation.

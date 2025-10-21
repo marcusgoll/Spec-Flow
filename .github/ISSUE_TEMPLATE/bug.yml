@@ -1,0 +1,110 @@
+name: Bug Report
+description: Report a bug or issue
+title: "[Bug] "
+labels: ["type:bug", "priority:medium"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug Report
+
+        Use this template to report bugs or issues in the application.
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How severe is this bug?
+      options:
+        - "Critical - Blocks core functionality"
+        - "High - Significant impact on users"
+        - "Medium - Affects some users or use cases"
+        - "Low - Minor issue or edge case"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the system is affected?
+      options:
+        - marketing
+        - app
+        - api
+        - infra
+        - design
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: What is the bug?
+      placeholder: Clear description of the issue
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this bug?
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should happen?
+      placeholder: Describe the expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happens?
+      placeholder: Describe what actually occurs
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser, OS, device, etc.
+      placeholder: |
+        - Browser: Chrome 120
+        - OS: Windows 11
+        - Device: Desktop
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs / Screenshots
+      description: Any error messages, console logs, or screenshots
+      placeholder: Paste error messages or attach screenshots
+    validations:
+      required: false
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: User Impact
+      description: Who is affected and how?
+      placeholder: |
+        - Affects: All students on mobile devices
+        - Impact: Cannot access quiz results on phones
+    validations:
+      required: false

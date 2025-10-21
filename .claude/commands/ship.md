@@ -14,6 +14,41 @@
 
 **Dependencies**: Requires completed `/implement` phase
 
+## DEPLOYMENT TRACKING
+
+**IMPORTANT**: Use the TodoWrite tool to track ship workflow progress throughout this command.
+
+**At start** - Create todo list (adapt based on detected deployment model):
+
+```javascript
+// Example for staging-prod model:
+TodoWrite({
+  todos: [
+    {content: "Initialize and detect deployment model", status: "pending", activeForm: "Initializing deployment"},
+    {content: "Run pre-flight validation", status: "pending", activeForm: "Running pre-flight checks"},
+    {content: "Execute /optimize phase", status: "pending", activeForm: "Optimizing for production"},
+    {content: "Execute /preview phase (manual gate)", status: "pending", activeForm: "Preparing preview"},
+    {content: "Deploy to staging", status: "pending", activeForm: "Deploying to staging"},
+    {content: "Validate staging (manual gate)", status: "pending", activeForm: "Validating staging"},
+    {content: "Deploy to production", status: "pending", activeForm: "Deploying to production"},
+    {content: "Finalize deployment and update roadmap", status: "pending", activeForm: "Finalizing deployment"},
+  ]
+})
+
+// For direct-prod model, omit staging phases
+// For local-only model, replace deploy phases with "Build locally" and "Merge to main"
+```
+
+**During execution**:
+- **Adapt** todos based on detected deployment model (staging-prod has 8 phases, direct-prod has 6, local-only has 7)
+- Mark each phase as `in_progress` when starting
+- Mark as `completed` IMMEDIATELY after phase finishes successfully
+- Pause at manual gates - keep as `pending` until user runs `/ship continue` with approval
+- Update to `failed` if phase encounters blocking errors
+- Only ONE phase should be `in_progress` at a time
+
+**Why**: Ship workflow involves 5-8 phases depending on deployment model and can take 20-40 minutes with manual gates (preview testing, staging validation). Users need clear visibility into which phase is active, which are complete, and where manual intervention is required.
+
 ---
 
 ## Phase S.0: Initialize & Detect Model
@@ -1169,7 +1204,7 @@ The `/ship continue` command allows resuming from interruptions:
 
 ## Status Visualization
 
-Use `/ship status` to view current deployment state (see `/ship-status` command for full implementation):
+Use `/ship status` to view current deployment state (see `/deploy-status` command for full implementation):
 
 ```bash
 if [ "$1" = "status" ]; then

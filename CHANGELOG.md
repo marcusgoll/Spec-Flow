@@ -5,6 +5,77 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-10-20
+
+### Changed - Command Cleanup & Internal Command Marking (BREAKING CHANGES)
+
+**Rationale**: Simplify command structure, remove deprecated aliases, and clearly distinguish internal commands from user-facing ones.
+
+#### Removed Commands (BREAKING)
+
+Three deprecated command aliases have been removed. These were marked for deprecation in v1.16.0:
+
+- **`/dry-run`** → Use `/test-deploy` instead
+- **`/preflight`** → Use `/validate-deploy` instead
+- **`/ship-status`** → Use `/deploy-status` instead
+
+**Migration**: Replace old command names with new ones in your workflows:
+```bash
+# OLD (no longer works)
+/dry-run
+/preflight
+/ship-status
+
+# NEW (use these instead)
+/test-deploy
+/validate-deploy
+/deploy-status
+```
+
+#### Deprecated Commands (Removal in v2.1.0)
+
+- **`/test-deploy`** → Use `/validate-deploy` instead
+  - Reason: `/validate-deploy` provides more comprehensive checks (env vars, migrations, types, bundle sizes, Lighthouse)
+  - `/test-deploy` only validates config files and Docker builds (subset of `/validate-deploy`)
+
+#### Internal Commands Marked
+
+Five commands are now clearly marked as **internal** (called automatically by other commands):
+
+1. **`/route-agent`** - Called by `/implement` (task routing)
+2. **`/ship-staging`** - Called by `/ship` (staging deployment)
+3. **`/ship-prod`** - Called by `/ship` (production deployment)
+4. **`/deploy-prod`** - Called by `/ship` when model is `direct-prod`
+5. **`/build-local`** - Called by `/ship` when model is `local-only`
+
+Each now includes:
+- `internal: true` in frontmatter metadata
+- Warning header: "⚠️ INTERNAL COMMAND: Use `/ship` instead"
+
+**User Impact**: Most users only need `/ship` - internal commands are auto-invoked. Advanced users can still call them directly if needed.
+
+#### Benefits
+
+✅ **Cleaner command list**: Removed 3 deprecated aliases
+✅ **Clear separation**: Internal vs user-facing commands
+✅ **Better UX**: Users know which commands to use
+✅ **Reduced confusion**: No duplicate commands with different names
+
+### Files Modified
+
+- 3 deprecated command files deleted (`dry-run.md`, `preflight.md`, `ship-status.md`)
+- 1 command deprecated (`test-deploy.md` - removal in v2.1.0)
+- 5 commands marked internal (`route-agent.md`, `ship-staging.md`, `ship-prod.md`, `deploy-prod.md`, `build-local.md`)
+- package.json bumped to v2.0.0
+
+**Migration Path**:
+- Update any scripts/documentation using old command names
+- If you were calling internal commands directly, consider using `/ship` instead (or continue using internal commands if you need fine-grained control)
+
+**Impact**: BREAKING for users still using `/dry-run`, `/preflight`, or `/ship-status`. All other users unaffected.
+
+---
+
 ## [1.16.0] - 2025-01-19
 
 ### Changed - Agent Organization & Command Clarity

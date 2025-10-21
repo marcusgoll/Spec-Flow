@@ -225,7 +225,7 @@ elif [ "$PROJECTED_REMAINING" -lt "$QUOTA_CRITICAL_THRESHOLD" ]; then
   echo "⚠️  WARNING: Low quota after deployment"
   echo ""
   echo "Recommendation:"
-  echo "  - Run /preflight before deploying (catches failures locally)"
+  echo "  - Run /validate-deploy before deploying (catches failures locally)"
   echo "  - Consider preview mode for CI testing"
   echo "  - Reserve staging mode for final deployment"
   echo ""
@@ -233,7 +233,7 @@ elif [ "$PROJECTED_REMAINING" -lt "$QUOTA_WARNING_THRESHOLD" ]; then
   echo "⚠️  Approaching quota limits"
   echo ""
   echo "Recommendation:"
-  echo "  - Use /preflight to validate before deploying"
+  echo "  - Use /validate-deploy to validate before deploying"
   echo "  - Plan remaining deployments carefully"
   echo ""
 else
@@ -275,13 +275,13 @@ elif [ "$BUDGET_STATUS" = "warning" ]; then
   echo "⚠️  Use quota carefully"
   echo ""
   echo "Best practices:"
-  echo "  1. Run /preflight before every /phase-1-ship"
+  echo "  1. Run /validate-deploy before every deployment"
   echo "  2. Use preview mode for CI testing"
   echo "  3. Use staging mode only for actual staging deploys"
   echo "  4. Fix issues locally before pushing"
   echo ""
   echo "Workflow:"
-  echo "  /preflight → /phase-1-ship (preview) → verify → /phase-1-ship (staging)"
+  echo "  /validate-deploy → /ship (preview) → verify → /ship (staging)"
   echo ""
 
 else
@@ -290,7 +290,7 @@ else
   echo "✅ Enough quota for normal workflow"
   echo ""
   echo "Best practices:"
-  echo "  1. Still run /preflight to catch issues early"
+  echo "  1. Still run /validate-deploy to catch issues early"
   echo "  2. Use preview mode for experimental changes"
   echo "  3. Monitor quota with /deployment-budget"
   echo ""
@@ -335,7 +335,7 @@ if [ -n "$RECENT_DEPLOYS" ]; then
       echo ""
       echo "  🚨 HIGH failure rate detected"
       echo "     Run /debug to investigate issues"
-      echo "     Use /preflight before deploying"
+      echo "     Use /validate-deploy before deploying"
     fi
   fi
 
@@ -374,7 +374,7 @@ case "$BUDGET_STATUS" in
     echo "Remaining: $VERCEL_REMAINING / $VERCEL_LIMIT"
     echo "After next deploy: ~$PROJECTED_REMAINING"
     echo ""
-    echo "Run /preflight before deploying"
+    echo "Run /validate-deploy before deploying"
     ;;
 
   *)
@@ -384,7 +384,7 @@ case "$BUDGET_STATUS" in
     echo "Remaining: $VERCEL_REMAINING / $VERCEL_LIMIT"
     echo "After next deploy: ~$PROJECTED_REMAINING"
     echo ""
-    echo "Proceed with /phase-1-ship"
+    echo "Proceed with /ship"
     ;;
 esac
 
@@ -426,7 +426,7 @@ echo ""
 Remaining: 82 / 100
 After next deploy: ~80
 
-Proceed with /phase-1-ship
+Proceed with /ship
 ```
 
 **Low quota**:
@@ -438,7 +438,7 @@ Proceed with /phase-1-ship
 Remaining: 15 / 100
 After next deploy: ~13
 
-Run /preflight before deploying
+Run /validate-deploy before deploying
 ```
 
 **Critical quota**:

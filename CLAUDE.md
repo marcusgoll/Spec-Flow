@@ -93,26 +93,79 @@ Model-specific workflow:
 .spec-flow/scripts/powershell/migrate-state-to-yaml.ps1
 ```
 
-### Roadmap Integration
+### Roadmap Integration (GitHub Issues)
 
-**Automatic Lifecycle Tracking**: Features move through roadmap sections automatically.
+**IMPORTANT**: This workflow is an **npm package**. There are two distinct roadmap use cases:
 
-**Lifecycle**: `Backlog → Next → In Progress → Shipped`
+#### 1. Workflow Development (This Repo)
 
-**Automatic Updates**:
-- `/feature` → Marks feature "In Progress"
-- `/ship` (Phase S.5) → Marks feature "Shipped" with version/date
+**Purpose**: Track improvements to the workflow system itself
 
-**Feature Discovery**: Workflow detects potential features in code comments:
-- Patterns: "TODO", "future work", "phase 2", "out of scope"
-- Prompts: "Add to roadmap? (yes/no/later)"
-- Saves deferred to `.spec-flow/memory/discovered-features.md`
+**Source**: This repo's GitHub Issues
 
-**File**: `.spec-flow/memory/roadmap.md`
+**Status**: ✅ Active (old markdown roadmap archived 2025-10-20)
 
-**Scripts**:
-- `.spec-flow/scripts/bash/roadmap-manager.sh`
-- `.spec-flow/scripts/powershell/roadmap-manager.ps1`
+**Usage**:
+```bash
+# View workflow improvements
+gh issue list --label type:feature
+
+# Create workflow improvement
+gh issue create --template feature.yml
+
+# Programmatic creation
+source .spec-flow/scripts/bash/github-roadmap-manager.sh
+create_roadmap_issue "Improve /roadmap" "Add GitHub Projects" 4 3 0.8 "infra" "all" "roadmap-projects"
+```
+
+**See**: `docs/WORKFLOW_DEVELOPMENT_ROADMAP.md`
+
+#### 2. User Project Roadmaps (User Repos)
+
+**Purpose**: Product features that users of this workflow are building
+
+**Source**: User's own GitHub Issues (their repos)
+
+**Status**: ⏳ Pending - `/roadmap` command needs update
+
+**Planned Usage** (when implemented):
+- Users run `/roadmap` command in their repos
+- Creates issues in their GitHub repo (not this one)
+- Same ICE scoring and label system
+- Integrates with `/feature` and `/ship` commands
+
+**Current Status**: `/roadmap` command uses markdown (legacy, will be updated)
+
+---
+
+**ICE Prioritization**: Issues include YAML frontmatter with Impact/Confidence/Effort scoring
+- Score = (Impact × Confidence) / Effort
+- Auto-applied priority labels based on score
+
+**Issue Templates**: `.github/ISSUE_TEMPLATE/`
+- `feature.yml` - Features with ICE scoring
+- `enhancement.yml` - Enhancements
+- `bug.yml` - Bug reports
+- `task.yml` - Tasks
+
+**Labels Schema**:
+- **Priority**: `priority:high|medium|low` (auto-applied by ICE score)
+- **Type**: `type:feature|enhancement|bug|task`
+- **Area**: `area:backend|frontend|api|infra|design|marketing`
+- **Role**: `role:all|free|student|cfi|school`
+- **Status**: `status:backlog|next|later|in-progress|shipped|blocked`
+- **Size**: `size:small|medium|large|xl` (auto-applied by effort)
+
+**Core Functions** (for both use cases):
+- `.spec-flow/scripts/bash/github-roadmap-manager.sh` - Roadmap functions
+- `.spec-flow/scripts/powershell/github-roadmap-manager.ps1` - PowerShell version
+- `.spec-flow/scripts/bash/setup-github-labels.sh` - Label setup
+
+**Archived**: `.spec-flow/memory/roadmap-archived-2025-10-20.md` - Old workflow roadmap
+
+**Guides**:
+- `docs/WORKFLOW_DEVELOPMENT_ROADMAP.md` - For workflow contributors
+- `docs/github-roadmap-migration.md` - Technical reference and user project setup
 
 ### Version Management
 
@@ -184,7 +237,7 @@ Each command produces structured outputs:
 | `/ship-prod` | `production-ship-report.md`, release version |
 | `/deploy-prod` | `production-ship-report.md`, deployment IDs |
 | `/build-local` | `local-build-report.md`, build artifacts analysis |
-| `/ship-status` | Real-time deployment status display |
+| `/deploy-status` | Real-time deployment status display |
 
 **State Management**: All commands update `workflow-state.yaml` with:
 - Current phase and status

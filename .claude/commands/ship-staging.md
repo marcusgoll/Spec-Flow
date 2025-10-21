@@ -1,6 +1,10 @@
 ---
 description: Ship feature to staging with auto-merge
+internal: true
 ---
+
+> **⚠️  INTERNAL COMMAND**: This command is called automatically by `/ship`.
+> Most users should use `/ship` instead of calling this directly.
 
 Ship feature to staging.
 
@@ -47,7 +51,7 @@ if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "staging" ]; then
   echo "❌ Cannot ship from $CURRENT_BRANCH branch"
   echo "phase-1-ship runs from feature branches only"
   echo ""
-  echo "To promote staging → production: /phase-2-ship"
+  echo "To promote staging → production: /ship-prod (called via /ship)"
   exit 1
 fi
 
@@ -650,7 +654,7 @@ Auto-merge enabled. PR merges automatically when:
 
 1. ✅ Auto-merge to main when checks pass
 2. Manual validation: \`/validate-staging\`
-3. Production: \`/phase-2-ship\`
+3. Production: \`/ship-prod\` (called via \`/ship\`)
 
 ---
 🤖 Generated with [Claude Code](https://claude.ai/claude-code)
@@ -1435,7 +1439,7 @@ fi)
 
 1. **Wait for deployment**: ~5-10 minutes for staging deployment to complete
 2. **Manual validation**: Run \`/validate-staging\` to test feature in staging
-3. **Production deploy**: After validation passes, run \`/phase-2-ship\`
+3. **Production deploy**: After validation passes, run \`/ship\` (which calls \`/ship-prod\`)
 
 ---
 

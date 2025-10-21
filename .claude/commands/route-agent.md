@@ -1,6 +1,10 @@
 ---
 description: Internal helper to route tasks to specialist agents (context-aware delegation)
+internal: true
 ---
+
+> **⚠️  INTERNAL COMMAND**: This command is called automatically by `/implement`.
+> Most users should not need to call this directly. Use `/implement` instead.
 
 ## PARSE ARGUMENTS
 

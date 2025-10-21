@@ -12,9 +12,10 @@ console.log(chalk.green('  npx spec-flow init --target ./my-project') + chalk.gr
 
 console.log(chalk.white('After installation:'));
 console.log(chalk.gray('  1. Read QUICKSTART.md (copied to your project)'));
-console.log(chalk.gray('  2. Open in Claude Code'));
-console.log(chalk.gray('  3. Run /constitution, /roadmap, /design-inspiration (optional)'));
-console.log(chalk.gray('  4. Start building: /spec-flow "feature-name"\n'));
+console.log(chalk.gray('  2. Set up GitHub roadmap: npx spec-flow setup-roadmap (recommended)'));
+console.log(chalk.gray('  3. Open in Claude Code'));
+console.log(chalk.gray('  4. Run /constitution, /design-inspiration (optional)'));
+console.log(chalk.gray('  5. Start building: /feature "feature-name"\n'));
 
 console.log(chalk.white('Documentation:'));
 console.log(chalk.gray('  https://github.com/marcusgoll/Spec-Flow\n'));

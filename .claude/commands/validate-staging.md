@@ -4,7 +4,9 @@
 
 **Purpose**: Manual validation of staging deployment before production. Checks E2E tests, Lighthouse metrics, and guides manual testing on staging URLs.
 
-**When to use**: After `/phase-1-ship` completes and deploys to staging environment. This is the quality gate before `/phase-2-ship` to production.
+**When to use**: After `/ship-staging` (called by `/ship`) deploys to staging. This is the quality gate before `/ship-prod` to production.
+
+**Note**: `/ship-staging` and `/ship-prod` are internal commands called by `/ship`. Users should use `/ship` for deployment.
 
 **Workflow position**: \spec-flow → clarify → plan → tasks → analyze → implement → optimize → debug → preview → phase-1-ship → **validate-staging** → phase-2-ship`
 

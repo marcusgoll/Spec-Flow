@@ -419,7 +419,7 @@ else
   echo "Safe to deploy to $ENVIRONMENT"
   echo ""
   echo "Next steps:"
-  echo "  /preflight           # Run pre-flight validation"
+  echo "  /validate-deploy     # Run pre-flight validation"
   echo "  /phase-1-ship        # Deploy to staging"
   echo ""
 

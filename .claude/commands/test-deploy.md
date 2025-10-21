@@ -2,6 +2,14 @@
 description: Test deployment configuration without actually deploying
 ---
 
+> **⚠️  DEPRECATED**: This command will be removed in v2.1.0. Use `/validate-deploy` instead.
+>
+> **Reason**: `/validate-deploy` provides more comprehensive pre-flight checks (env vars, migrations, types, etc.)
+>
+> **Migration**: Replace `/test-deploy` with `/validate-deploy` in your workflow
+>
+> **For now**: This command still works, but use `/validate-deploy` for complete deployment validation
+
 # Test Deploy: Deployment Config Validator
 
 **Command**: `/test-deploy`

@@ -12,6 +12,34 @@ Execute tasks from: specs/$SLUG/tasks.md
 
 **Speed**: 3-5x faster via parallel agent execution
 
+## TASK TRACKING
+
+**IMPORTANT**: Use the TodoWrite tool to track task execution throughout this command.
+
+**At start** - Create todo list from tasks.md:
+
+```javascript
+TodoWrite({
+  todos: [
+    {content: "Validate checklists", status: "pending", activeForm: "Validating checklists"},
+    {content: "Parse tasks from tasks.md", status: "pending", activeForm: "Parsing tasks"},
+    {content: "Execute T001: [task description]", status: "pending", activeForm: "Executing T001"},
+    {content: "Execute T002: [task description]", status: "pending", activeForm: "Executing T002"},
+    // ... one entry per task from tasks.md (typically 20-30 tasks)
+    {content: "Verify all implementations", status: "pending", activeForm: "Verifying implementations"},
+    {content: "Run final test suite", status: "pending", activeForm": "Running final tests"},
+  ]
+})
+```
+
+**During execution**:
+- Mark task as `in_progress` when starting it
+- Mark as `completed` IMMEDIATELY after finishing each task
+- Update to `failed` or blocked status if issues occur
+- Only ONE task should be `in_progress` at a time
+
+**Why**: Users need real-time visibility into which of 20-30 tasks are complete during long parallel execution (can take 15-30 minutes).
+
 ## LOAD FEATURE
 
 ```bash

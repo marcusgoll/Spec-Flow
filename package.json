@@ -1,6 +1,6 @@
 {
   "name": "spec-flow",
-  "version": "1.16.0",
+  "version": "2.0.0",
   "description": "Spec-Driven Development workflow toolkit for Claude Code - Build high-quality features faster with repeatable AI workflows",
   "keywords": [
     "claude",
@@ -28,14 +28,18 @@
   "files": [
     ".claude/",
     ".spec-flow/",
+    ".github/ISSUE_TEMPLATE/",
     "CLAUDE.md",
     "bin/",
+    "docs/",
     "LICENSE",
     "README.md",
     "QUICKSTART.md"
   ],
   "scripts": {
-    "postinstall": "node bin/postinstall.js"
+    "postinstall": "node bin/postinstall.js",
+    "setup:roadmap": "node bin/setup-roadmap.js",
+    "setup:roadmap:labels": "bash .spec-flow/scripts/bash/setup-github-labels.sh || pwsh -File .spec-flow/scripts/powershell/setup-github-labels.ps1"
   },
   "engines": {
     "node": ">=16.0.0"

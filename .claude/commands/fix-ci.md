@@ -1,5 +1,5 @@
 ---
-description: Fix CI/deployment blockers after /phase-1-ship or /phase-2-ship creates PR
+description: Fix CI/deployment blockers after /ship creates PR
 ---
 
 Get PR ready for deployment: $ARGUMENTS
@@ -36,6 +36,36 @@ Get PR ready for deployment: $ARGUMENTS
 - GitHub CLI (`gh`) installed and authenticated
 - PR must exist
 - Branch checked out locally (for auto-fixes)
+
+## BLOCKER TRACKING
+
+**IMPORTANT**: Use the TodoWrite tool to track CI fix progress throughout this command.
+
+**At start** - Create todo list (adapt based on actual blockers found):
+
+```javascript
+TodoWrite({
+  todos: [
+    {content: "Load PR context and checks", status: "pending", activeForm: "Loading PR context"},
+    {content: "Categorize blockers (lint/types/tests/build)", status: "pending", activeForm: "Categorizing blockers"},
+    {content: "Auto-fix lint issues", status: "pending", activeForm: "Auto-fixing lint issues"},
+    {content: "Fix type errors", status: "pending", activeForm: "Fixing type errors"},
+    {content: "Fix failing tests", status: "pending", activeForm: "Fixing failing tests"},
+    {content: "Fix build errors", status: "pending", activeForm: "Fixing build errors"},
+    {content: "Validate all checks pass", status: "pending", activeForm: "Validating checks"},
+    {content: "Update PR with status", status: "pending", activeForm: "Updating PR"},
+  ]
+})
+```
+
+**During execution**:
+- **Adapt** todo list based on actual blockers found (add/remove as needed)
+- Mark each fix as `in_progress` when starting
+- Mark as `completed` IMMEDIATELY after fix succeeds
+- Update to `failed` if fix doesn't work (with blocker details)
+- Only ONE item should be `in_progress` at a time
+
+**Why**: CI fixes can involve multiple blockers across different categories. Users need visibility into which fixes are in progress vs complete, especially when delegating to specialist agents.
 
 ---
 

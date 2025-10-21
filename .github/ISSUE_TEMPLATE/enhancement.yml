@@ -1,0 +1,135 @@
+name: Enhancement
+description: Suggest an improvement to an existing feature
+title: "[Enhancement] "
+labels: ["type:enhancement", "status:backlog"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Enhancement Request
+
+        Use this template to suggest improvements to existing features.
+
+  - type: input
+    id: slug
+    attributes:
+      label: Enhancement Slug
+      description: URL-friendly identifier (e.g., "aktr-results-export-pdf")
+      placeholder: "parent-feature-enhancement-name"
+    validations:
+      required: true
+
+  - type: input
+    id: parent_feature
+    attributes:
+      label: Parent Feature
+      description: Which existing feature is this enhancing?
+      placeholder: "aktr-results-core"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the system does this affect?
+      options:
+        - marketing
+        - app
+        - api
+        - infra
+        - design
+    validations:
+      required: true
+
+  - type: dropdown
+    id: role
+    attributes:
+      label: User Role
+      description: Which users will benefit from this enhancement?
+      options:
+        - all
+        - free
+        - student
+        - cfi
+        - school
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact (User Value)
+      options:
+        - "1 - Nice to have"
+        - "2 - Useful but not critical"
+        - "3 - Useful"
+        - "4 - High value"
+        - "5 - Critical / Game changer"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Effort (Implementation Complexity)
+      options:
+        - "1 - < 1 day"
+        - "2 - 1-3 days"
+        - "3 - 1-2 weeks"
+        - "4 - 2-4 weeks"
+        - "5 - 4+ weeks"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: confidence
+    attributes:
+      label: Confidence (Estimate Certainty)
+      options:
+        - "0.5 - Very uncertain"
+        - "0.6 - Uncertain"
+        - "0.7 - Some unknowns"
+        - "0.8 - Mostly confident"
+        - "0.9 - High confidence"
+        - "1.0 - Certain"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current_behavior
+    attributes:
+      label: Current Behavior
+      description: How does the existing feature work now?
+      placeholder: Describe the current state
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_improvement
+    attributes:
+      label: Proposed Improvement
+      description: What specific enhancement are you suggesting?
+      placeholder: Describe the proposed change
+    validations:
+      required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      placeholder: |
+        - [ ] Requirement 1
+        - [ ] Requirement 2
+      value: |
+        - [ ]
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      placeholder: Any other context, user feedback, or references
+    validations:
+      required: false

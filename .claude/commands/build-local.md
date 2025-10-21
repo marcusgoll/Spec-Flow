@@ -1,3 +1,11 @@
+---
+description: Local build and validation without deployment
+internal: true
+---
+
+> **⚠️  INTERNAL COMMAND**: This command is called automatically by `/ship` when deployment model is `local-only`.
+> Most users should use `/ship` instead of calling this directly.
+
 # /build-local - Local Build & Validation
 
 **Purpose**: Build and validate locally for projects without remote deployment. This command is called by `/ship` when deployment model is `local-only`.

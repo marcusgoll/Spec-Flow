@@ -1,6 +1,10 @@
 ---
 description: Automated staging→production promotion with versioning and release
+internal: true
 ---
+
+> **⚠️  INTERNAL COMMAND**: This command is called automatically by `/ship`.
+> Most users should use `/ship` instead of calling this directly.
 
 # Phase 2 Ship: Staging → Production Deployment
 

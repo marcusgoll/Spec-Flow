@@ -1,3 +1,11 @@
+---
+description: Direct production deployment without staging
+internal: true
+---
+
+> **⚠️  INTERNAL COMMAND**: This command is called automatically by `/ship` when deployment model is `direct-prod`.
+> Most users should use `/ship` instead of calling this directly.
+
 # /deploy-prod - Direct Production Deployment
 
 **Purpose**: Deploy directly to production for projects without staging environments. This command is called by `/ship` when deployment model is `direct-prod`.

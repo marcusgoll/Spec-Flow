@@ -17,6 +17,51 @@ Orchestrate feature delivery through isolated phase agents for maximum efficienc
 - 2-3x faster (isolated contexts, no /compact overhead)
 - Same quality (slash commands unchanged)
 
+## WORKFLOW TRACKING
+
+**IMPORTANT**: Use the TodoWrite tool to track feature workflow progress throughout this command.
+
+**At start** - Create todo list (adapt based on feature complexity and deployment model):
+
+```javascript
+// Example for full staging-prod workflow:
+TodoWrite({
+  todos: [
+    {content: "Parse arguments and initialize workflow state", status: "pending", activeForm: "Initializing workflow"},
+    {content: "Phase 0: Create specification", status: "pending", activeForm: "Creating specification"},
+    {content: "Phase 0.5: Resolve clarifications (if needed)", status: "pending", activeForm: "Resolving clarifications"},
+    {content: "Phase 1: Create plan with reuse analysis", status: "pending", activeForm: "Creating plan"},
+    {content: "Phase 2: Generate task breakdown", status: "pending", activeForm: "Generating tasks"},
+    {content: "Phase 2a-c: Design workflow (if UI feature)", status: "pending", activeForm: "Running design workflow"},
+    {content: "Phase 3: Cross-artifact validation", status: "pending", activeForm: "Validating artifacts"},
+    {content: "Phase 4: Execute implementation", status: "pending", activeForm: "Implementing tasks"},
+    {content: "Phase 5: Code review and optimization", status: "pending", activeForm: "Optimizing code"},
+    {content: "Manual Gate: Preview testing", status: "pending", activeForm: "Awaiting preview approval"},
+    {content: "Phase 6: Deploy to staging", status: "pending", activeForm: "Deploying to staging"},
+    {content: "Manual Gate: Staging validation", status: "pending", activeForm: "Awaiting staging approval"},
+    {content: "Phase 7: Deploy to production", status: "pending", activeForm: "Deploying to production"},
+    {content: "Phase 7.5: Finalize documentation", status: "pending", activeForm: "Finalizing documentation"},
+  ]
+})
+
+// For local-only projects, omit deployment phases (6, 7)
+// For direct-prod projects, omit staging phases (6, staging validation)
+// For non-UI features, omit design workflow (2a-c)
+```
+
+**During execution**:
+- **Adapt** todos based on detected project type and feature characteristics
+- Skip Phase 0.5 if no clarifications needed
+- Skip Phase 2a-c if feature has no UI components
+- Adjust deployment phases based on deployment model (staging-prod, direct-prod, local-only)
+- Mark each phase as `in_progress` when starting
+- Mark as `completed` IMMEDIATELY after phase finishes successfully
+- Pause at manual gates - keep as `pending` until user runs `/feature continue` with approval
+- Update to `blocked` if phase encounters critical issues
+- Only ONE phase should be `in_progress` at a time
+
+**Why**: The /feature workflow orchestrates 8-14 phases (depending on project type and feature complexity) and can take 1-3 hours end-to-end with manual gates. Users need clear visibility into which phase is active, which phases remain, and where manual intervention is required. This is especially important since phases run in isolated contexts via specialized agents.
+
 ## PARSE ARGUMENTS
 
 **Get feature description or continue mode:**
@@ -302,7 +347,7 @@ The new state file includes comprehensive tracking:
 
 This enables:
 - Resume capability via `/ship continue`
-- Status visualization via `/ship-status`
+- Status visualization via `/deploy-status`
 - Deployment model adaptation
 - Quality gate blocking
 - Rollback capability tracking

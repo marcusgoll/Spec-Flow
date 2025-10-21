@@ -1,0 +1,95 @@
+name: Task
+description: Create a task for implementation or documentation
+title: "[Task] "
+labels: ["type:task", "status:backlog"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Task
+
+        Use this template for implementation tasks, refactoring, documentation, or other work items.
+
+  - type: dropdown
+    id: task_type
+    attributes:
+      label: Task Type
+      description: What kind of task is this?
+      options:
+        - "Implementation - New code"
+        - "Refactor - Improve existing code"
+        - "Documentation - Update docs"
+        - "Infrastructure - DevOps/tooling"
+        - "Testing - Add/update tests"
+        - "Research - Investigation or spike"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - marketing
+        - app
+        - api
+        - infra
+        - design
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - "High - Must be done soon"
+        - "Medium - Should be done"
+        - "Low - Nice to have"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Task Description
+      description: What needs to be done?
+      placeholder: Clear description of the work
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: How do we know when this is complete?
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+        - [ ] Tests added
+        - [ ] Documentation updated
+      value: |
+        - [ ]
+    validations:
+      required: true
+
+  - type: input
+    id: related_issue
+    attributes:
+      label: Related Issue/Feature
+      description: Issue number or feature slug this task belongs to
+      placeholder: "#123 or feature-slug"
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Technical Notes
+      description: Any implementation details, constraints, or considerations
+      placeholder: |
+        - Use existing component X
+        - Must be backwards compatible
+        - Performance target: < 100ms
+    validations:
+      required: false
