@@ -43,6 +43,24 @@
 
 ## 🆕 Recent Updates
 
+### v1.14.0 (January 2025)
+**GitHub Issues Roadmap Migration** - Complete migration from markdown to GitHub Issues
+
+- **Backend Migration**: `/roadmap` command now uses GitHub Issues instead of markdown files
+- **Label-Based State**: Features organized via labels (`status:backlog`, `status:next`, `status:in-progress`, `status:shipped`)
+- **ICE Scoring Preserved**: Impact × Confidence / Effort stored in YAML frontmatter in issue descriptions
+- **Priority Labels**: Auto-applied based on ICE score (`priority:high` >= 1.5, `priority:medium` 0.8-1.5, `priority:low` < 0.8)
+- **Dynamic Sorting**: Features sorted by priority labels via queries (no manual file editing)
+- **Native Integration**: Issues, PRs, and roadmap in one place with GitHub Projects support
+- **Cross-Platform**: Both Bash and PowerShell examples throughout
+- **Same Workflow**: All actions (add, brainstorm, move, delete, ship) work identically
+
+**Breaking Change**: Roadmap data is now in GitHub Issues, not `.spec-flow/memory/roadmap.md`. Old markdown roadmap can be migrated using `.spec-flow/scripts/bash/migrate-roadmap-to-github.sh`.
+
+**Setup Required**: Run `.spec-flow/scripts/bash/setup-github-labels.sh` to create labels, then authenticate with `gh auth login` or set `GITHUB_TOKEN`.
+
+**Documentation**: See `docs/github-roadmap-migration.md` for complete guide.
+
 ### v1.13.0 (January 2025)
 **Local Project Integration Workflow** - Automatic merge-to-main for local-only projects
 
@@ -291,11 +309,18 @@ Run the `/setup-constitution` command in Claude to document the engineering prin
 
 ### 3. Build your roadmap
 
-Use `/roadmap` to add features, prioritize them with ICE scoring (Impact × Confidence / Effort), and organize them into:
-- **Backlog** - Ideas to consider
-- **Next** - Top 5-10 prioritized features
-- **In Progress** - Currently being built
-- **Shipped** - Completed features
+Use `/roadmap` to manage features via GitHub Issues with ICE scoring (Impact × Confidence / Effort):
+- **Setup**: Authenticate with `gh auth login` or set `GITHUB_TOKEN`, then run `.spec-flow/scripts/bash/setup-github-labels.sh`
+- **Add features**: `/roadmap add "feature description"` creates GitHub issue with priority labels
+- **Brainstorm**: `/roadmap brainstorm [quick|deep]` generates ideas from research
+- **Organize via labels**:
+  - `status:backlog` - Ideas to consider
+  - `status:next` - Top 5-10 prioritized features
+  - `status:in-progress` - Currently being built
+  - `status:shipped` - Completed features (issue closed)
+- **View roadmap**: Browse GitHub Issues or use `gh issue list --label status:next`
+
+**Documentation**: See `docs/github-roadmap-migration.md` for complete guide.
 
 ### 4. Kick off a feature
 
@@ -356,7 +381,7 @@ When you update Spec-Flow via npm, your accumulated learnings are preserved:
 
 **What Gets Preserved** (your local data):
 - `learnings.md` - Pitfall frequencies, pattern usage counts, metrics
-- `.spec-flow/memory/roadmap.md` - Your product roadmap
+- GitHub Issues - Your product roadmap (stored as issues with labels)
 - `.spec-flow/memory/setup-constitution.md` - Your project principles
 - `specs/*/` - All your feature specifications
 
@@ -416,7 +441,7 @@ Every automation script is provided in both PowerShell (`.ps1`) and shell (`.sh`
 
 | Phase | Command | Primary Outputs |
 |-------|---------|-----------------|
-| -1 | `/roadmap` | `roadmap.md` with ICE-scored features |
+| -1 | `/roadmap` | GitHub Issues with ICE-scored features and priority labels |
 | 0 | `/spec` | `spec.md`, `NOTES.md`, `visuals/README.md` |
 | 0.5 | `/clarify` | Clarification log inside the spec |
 | 1 | `/plan` | `plan.md`, `research.md` |
@@ -498,12 +523,13 @@ specs/001-example-feature/
 ## Detailed Process
 
 1. Run `.spec-flow/scripts/bash/check-prerequisites.sh --json` (or the PowerShell variant) to ensure your environment is ready.
-2. Build your roadmap with `/roadmap` - add features, prioritize with ICE scoring, and organize into Backlog → Next → In Progress → Shipped.
-3. Select a feature from the roadmap and launch `/feature "<feature-slug>"` in Claude to scaffold the spec from the roadmap entry.
-4. Progress through `/clarify`, `/plan`, `/tasks`, and `/validate`, addressing blockers as they appear.
-5. Use `calculate-tokens` to watch context budgets and `compact-context` to summarise when approaching thresholds.
-6. Walk the release staircase: `/preview`, `/ship-staging`, `/validate-staging`, `/ship-prod`.
-7. The feature automatically moves to "Shipped" in the roadmap, and changelog is updated with the release.
+2. **Set up roadmap**: Authenticate with GitHub (`gh auth login`), run `.spec-flow/scripts/bash/setup-github-labels.sh` to create labels.
+3. **Build roadmap**: Use `/roadmap` to add features as GitHub Issues, prioritize with ICE scoring, organize via labels (status:backlog → status:next → status:in-progress → status:shipped).
+4. Select a feature from GitHub Issues and launch `/feature "<feature-slug>"` in Claude to scaffold the spec from the issue.
+5. Progress through `/clarify`, `/plan`, `/tasks`, and `/validate`, addressing blockers as they appear.
+6. Use `calculate-tokens` to watch context budgets and `compact-context` to summarise when approaching thresholds.
+7. Walk the release staircase: `/preview`, `/ship-staging`, `/validate-staging`, `/ship-prod`.
+8. The feature is automatically marked as shipped in GitHub Issues (label changed to `status:shipped`, issue closed), and changelog is updated with the release.
 
 ## Packages & Releases
 
