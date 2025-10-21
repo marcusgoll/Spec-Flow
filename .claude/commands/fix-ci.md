@@ -37,6 +37,37 @@ Get PR ready for deployment: $ARGUMENTS
 - PR must exist
 - Branch checked out locally (for auto-fixes)
 
+## ANTI-HALLUCINATION RULES
+
+**CRITICAL**: Follow these rules to prevent false CI fix claims.
+
+1. **Never claim a fix worked without running checks**
+   - ❌ BAD: "Fixed lint errors" (without running linter)
+   - ✅ GOOD: Run `npm run lint`, show output, confirm 0 errors
+   - Always verify fixes with actual tool runs
+
+2. **Cite actual CI log output when diagnosing issues**
+   - When reporting errors: "CI log line 245: 'TypeError: Cannot read property...'"
+   - Extract actual error messages from `gh pr checks` output
+   - Don't paraphrase errors - quote them exactly
+
+3. **Never assume what broke without reading PR diff**
+   - Before fixing, read: `gh pr diff` to see what changed
+   - Correlate errors to specific file changes
+   - Don't guess which file caused the issue
+
+4. **Verify PR checks status before claiming success**
+   - After fixes, run: `gh pr checks` to see actual status
+   - Quote check statuses: "✓ lint (passed), ✗ test (failed)"
+   - Don't say "all checks pass" without verification
+
+5. **Never fabricate deployment URLs or IDs**
+   - Only report URLs/IDs extracted from actual PR check logs
+   - Use `gh pr view --json checks` to get real deployment info
+   - If URL not in logs, say so - don't make one up
+
+**Why this matters**: False fix claims lead to merged broken code. Hallucinated error messages waste debugging time. Accurate CI troubleshooting based on real logs ensures deployments succeed.
+
 ## BLOCKER TRACKING
 
 **IMPORTANT**: Use the TodoWrite tool to track CI fix progress throughout this command.

@@ -31,6 +31,37 @@ You **MUST** consider the user input before proceeding (if not empty).
 - **Incremental Updates**: Save after EACH answer (atomic)
 - **Git Safety**: Checkpoint before each update, rollback on failure
 
+## ANTI-HALLUCINATION RULES
+
+**CRITICAL**: Follow these rules to prevent fabricating ambiguities or solutions.
+
+1. **Never invent ambiguities not present in spec.md**
+   - ❌ BAD: "The spec doesn't mention how to handle edge cases" (without reading it)
+   - ✅ GOOD: Read spec.md, quote ambiguous sections: "spec.md:45 says 'users can edit' but doesn't specify edit permissions"
+   - Only flag ambiguities found in actual spec text
+
+2. **Quote exact text when identifying unclear requirements**
+   - When flagging ambiguity: "spec.md:120-125: '[exact quote]' - unclear whether this means X or Y"
+   - Don't paraphrase unclear text - show it verbatim
+   - Cite line numbers for all ambiguities
+
+3. **Never make up recommended answers**
+   - Don't say "Best practice is..." without evidence
+   - Source recommendations: "Similar feature in specs/002-auth used JWT per plan.md:45"
+   - If no precedent exists, say: "No existing pattern found, recommend researching..."
+
+4. **Verify question relevance before asking user**
+   - Before asking technical question, check if answer exists in codebase
+   - Use Grep/Glob to search for existing implementations
+   - Don't ask "Should we use PostgreSQL?" if package.json already has pg installed
+
+5. **Never assume user's answer without asking**
+   - Don't fill in clarifications with guesses
+   - Present question, wait for response, use exact answer given
+   - If user says "skip", mark as skipped - don't invent answer
+
+**Why this matters**: Fabricated ambiguities create unnecessary work. Invented best practices may conflict with project standards. Accurate clarification based on real spec ambiguities ensures plan addresses actual uncertainties.
+
 ## RUN PREREQUISITE SCRIPT
 
 **Execute once from repo root:**

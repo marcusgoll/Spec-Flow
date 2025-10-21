@@ -31,6 +31,37 @@ You **MUST** consider the user input before proceeding (if not empty).
 - **Token Efficient**: Limit to 50 findings max, aggregate overflow
 - **Deterministic**: Rerunning should produce consistent IDs
 
+## ANTI-HALLUCINATION RULES
+
+**CRITICAL**: Follow these rules to prevent false validation findings.
+
+1. **Never report inconsistencies you haven't verified by reading files**
+   - ❌ BAD: "spec.md probably doesn't match plan.md"
+   - ✅ GOOD: Read both files, extract specific quotes, compare them
+   - Use Read tool for all files before claiming inconsistencies
+
+2. **Cite exact line numbers when reporting issues**
+   - When reporting mismatch: "spec.md:45 says 'POST /users' but plan.md:120 says 'POST /api/users'"
+   - Include exact quotes from both files
+   - Don't paraphrase - quote verbatim
+
+3. **Never invent missing test coverage**
+   - Don't say "Missing test for user creation" unless you verified no test exists
+   - Use Grep to search for test files: `test.*user.*create`
+   - If uncertain whether test exists, search before claiming it's missing
+
+4. **Verify constitution rules exist before citing violations**
+   - Read constitution.md before claiming violations
+   - Quote exact rule violated: "Violates constitution.md:25 'All APIs must use OpenAPI contracts'"
+   - Don't invent constitution rules
+
+5. **Never fabricate severity levels**
+   - Use actual severity assessment based on impact
+   - CRITICAL: Blocks implementation, MAJOR: Causes rework, MINOR: Nice to fix
+   - Don't inflate severity without evidence
+
+**Why this matters**: False inconsistencies waste time investigating non-issues. Invented missing tests create unnecessary work. Accurate validation based on actual file reads builds trust in the validation process.
+
 ## RUN PREREQUISITE SCRIPT
 
 **Execute once from repo root:**

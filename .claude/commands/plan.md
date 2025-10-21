@@ -829,6 +829,37 @@ git log -1 --oneline
 echo ""
 ```
 
+## ANTI-HALLUCINATION RULES
+
+**CRITICAL**: Follow these rules to prevent making up architectural decisions.
+
+1. **Never speculate about existing patterns you have not read**
+   - ❌ BAD: "The app probably follows a services pattern"
+   - ✅ GOOD: "Let me search for existing service files to understand current patterns"
+   - Use Grep to find patterns: `class.*Service`, `interface.*Repository`
+
+2. **Cite existing code when recommending reuse**
+   - When suggesting to reuse UserService, cite: `api/app/services/user.py:20-45`
+   - When referencing patterns, cite: `api/app/core/database.py:12-18 shows our DB session pattern`
+   - Don't invent reusable components that don't exist
+
+3. **Admit when codebase exploration is needed**
+   - If unsure about tech stack, say: "I need to read package.json and search for imports"
+   - If uncertain about patterns, say: "Let me search the codebase for similar implementations"
+   - Never make up directory structures, module names, or import paths
+
+4. **Quote from spec.md exactly when planning**
+   - Don't paraphrase requirements - quote user stories verbatim
+   - Example: "According to spec.md:45-48: '[exact quote]', therefore we need..."
+   - If spec is ambiguous, flag it rather than assuming intent
+
+5. **Verify dependencies exist before recommending**
+   - Before suggesting "use axios for HTTP", check package.json
+   - Before recommending libraries, search existing imports
+   - Don't suggest packages that aren't installed
+
+**Why this matters**: Hallucinated architecture leads to plans that can't be implemented. Plans based on non-existent patterns create unnecessary refactoring. Accurate planning grounded in actual code saves 40-50% of implementation rework.
+
 ## CONTEXT MANAGEMENT
 
 **Before proceeding to /tasks:**

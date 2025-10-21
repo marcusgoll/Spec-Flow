@@ -26,6 +26,37 @@ Create specification for: $ARGUMENTS
 - Example: "We want to add student progress dashboard" → `add-student-progress-dashboard`
 - Example: "We want to get our vercel and railway app to a healthy state..." → `vercel-railway-app-healthy-state`
 
+## ANTI-HALLUCINATION RULES
+
+**CRITICAL**: Follow these rules to prevent making up information when creating specifications.
+
+1. **Never speculate about existing code you have not read**
+   - ❌ BAD: "The app probably uses React Router for navigation"
+   - ✅ GOOD: "Let me check package.json and src/ to see what's currently used"
+   - Use Glob to find files, Read to examine them before making assumptions
+
+2. **Cite sources for technical constraints**
+   - When referencing existing architecture, cite files: `package.json:12`, `tsconfig.json:5-8`
+   - When referencing similar features, cite: `specs/002-auth-flow/spec.md:45`
+   - Don't invent APIs, libraries, or frameworks that might not exist
+
+3. **Admit when research is needed**
+   - If uncertain about tech stack, say: "I need to read package.json and check existing code"
+   - If unsure about design patterns, say: "Let me search for similar implementations"
+   - Never make up database schemas, API endpoints, or component hierarchies
+
+4. **Verify roadmap entries before referencing**
+   - Before saying "This builds on feature X", search roadmap.md for X
+   - Use exact roadmap slugs and titles, don't paraphrase
+   - If feature not in roadmap, say: "This is a new feature, not extending existing work"
+
+5. **Quote user requirements exactly**
+   - When documenting user needs, quote $ARGUMENTS directly
+   - Don't add unstated requirements or assumptions
+   - Mark clarifications needed with `[NEEDS CLARIFICATION]` explicitly
+
+**Why this matters**: Hallucinated technical constraints lead to specs that can't be implemented. Specs based on non-existent code create impossible plans. Accurate specifications save 50-60% of implementation time.
+
 ## CONTEXT
 
 **Path constants:**

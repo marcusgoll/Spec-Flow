@@ -62,6 +62,37 @@ TodoWrite({
 
 **Why**: The /feature workflow orchestrates 8-14 phases (depending on project type and feature complexity) and can take 1-3 hours end-to-end with manual gates. Users need clear visibility into which phase is active, which phases remain, and where manual intervention is required. This is especially important since phases run in isolated contexts via specialized agents.
 
+## ANTI-HALLUCINATION RULES
+
+**CRITICAL**: Follow these rules to prevent workflow failures from false assumptions.
+
+1. **Never assume phase completion without checking workflow-state.yaml**
+   - ❌ BAD: "Spec phase probably completed"
+   - ✅ GOOD: Read workflow-state.yaml, quote exact phase status
+   - Use Read tool on workflow-state.yaml before determining next phase
+
+2. **Cite actual phase agent outputs when reporting progress**
+   - When phase completes: "spec-phase-agent returned: {summary: '...', status: 'completed'}"
+   - Quote actual JSON returned by agents
+   - Don't paraphrase agent outputs - include key details verbatim
+
+3. **Never skip phases based on assumptions**
+   - Don't say "This is simple, we can skip validation"
+   - Follow workflow-state.yaml phase sequence exactly
+   - If phase marked required, run it - don't bypass
+
+4. **Verify deployment model before selecting workflow path**
+   - Read .git/config, .github/workflows/ to detect model
+   - Quote evidence: "No staging branch found per `git branch -a` → direct-prod model"
+   - Don't assume model - detect it from actual project structure
+
+5. **Never fabricate phase summaries for display**
+   - Only show phase summaries actually returned by agents
+   - If agent returns error, show error - don't make up success message
+   - Quote workflow-state.yaml for historical phase status
+
+**Why this matters**: Skipped phases lead to incomplete features. False phase completion claims hide failures. Accurate workflow orchestration based on actual state ensures all quality gates execute properly.
+
 ## PARSE ARGUMENTS
 
 **Get feature description or continue mode:**

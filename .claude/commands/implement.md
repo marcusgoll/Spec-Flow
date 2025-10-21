@@ -40,6 +40,37 @@ TodoWrite({
 
 **Why**: Users need real-time visibility into which of 20-30 tasks are complete during long parallel execution (can take 15-30 minutes).
 
+## ANTI-HALLUCINATION RULES
+
+**CRITICAL**: Follow these rules to prevent making up information.
+
+1. **Never speculate about code you have not read**
+   - ❌ BAD: "The UserService probably has a create_user method"
+   - ✅ GOOD: "Let me read api/app/services/user.py to see available methods"
+   - If you need to know what's in a file, use the Read tool first
+
+2. **Cite your sources with file paths**
+   - When referencing code, include exact location: `file_path:line_number`
+   - Example: "The User model is defined in api/app/models/user.py:15-42"
+   - Example: "The create_user endpoint is in api/app/api/v1/users.py:78-95"
+
+3. **Admit uncertainty explicitly**
+   - If unclear about something, say: "I'm uncertain about [X]. Let me investigate by reading [file]"
+   - Never make up: function names, API endpoints, database schemas, import paths, class names
+   - If a file might not exist, check with Glob or Read before referencing it
+
+4. **Quote before analyzing long documents**
+   - For specs >5000 tokens, extract relevant quotes first
+   - Then analyze the quotes, not your memory
+   - Example: "According to spec.md lines 45-50: '[quote]', this means..."
+
+5. **Verify file existence before importing/referencing**
+   - Before writing `from app.services.user import UserService`, verify the file exists
+   - Use Glob to find files: `**/*.py` pattern matching
+   - Use Grep to find imports: search for existing import patterns
+
+**Why this matters**: Hallucinated code references cause compile errors, broken imports, and failed tests. Reading files before referencing them prevents 60-70% of implementation errors.
+
 ## LOAD FEATURE
 
 ```bash

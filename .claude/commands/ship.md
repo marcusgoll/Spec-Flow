@@ -49,6 +49,37 @@ TodoWrite({
 
 **Why**: Ship workflow involves 5-8 phases depending on deployment model and can take 20-40 minutes with manual gates (preview testing, staging validation). Users need clear visibility into which phase is active, which are complete, and where manual intervention is required.
 
+## ANTI-HALLUCINATION RULES
+
+**CRITICAL**: Follow these rules to prevent deployment failures from false assumptions.
+
+1. **Never assume deployment configuration you haven't read**
+   - ❌ BAD: "The app probably deploys to Vercel"
+   - ✅ GOOD: "Let me check .github/workflows/ and package.json for deployment config"
+   - Read actual CI/CD files before describing deployment process
+
+2. **Cite actual workflow files when describing deployment**
+   - When describing CI: "Per .github/workflows/deploy.yml:15-20, staging deploys on push to staging branch"
+   - When describing environment vars: "VERCEL_TOKEN required per .env.example:5"
+   - Don't invent environment variables or workflow steps
+
+3. **Verify deployment URLs exist before reporting them**
+   - Don't say "Deployed to https://app.example.com" unless you see it in logs/config
+   - Extract actual URLs from deployment tool output
+   - If URL unknown, say: "Deployment succeeded but URL not captured in logs"
+
+4. **Never fabricate deployment IDs or version tags**
+   - Only report deployment IDs extracted from actual tool output
+   - Don't invent git tags - verify with `git tag -l`
+   - If rollback ID missing, say so - don't make one up
+
+5. **Quote workflow-state.yaml exactly for phase status**
+   - Don't paraphrase phase completion - quote the actual status
+   - Example: "workflow-state.yaml shows phase: 'ship:optimize', status: 'completed'"
+   - If state file missing/corrupted, flag it - don't assume status
+
+**Why this matters**: Hallucinated deployment config causes failed deployments. False deployment URLs waste debugging time. Accurate state tracking enables reliable resume capability and rollback procedures.
+
 ---
 
 ## Phase S.0: Initialize & Detect Model

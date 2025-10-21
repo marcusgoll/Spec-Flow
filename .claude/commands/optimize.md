@@ -32,6 +32,37 @@ TodoWrite({
 
 **Why**: Optimization involves multiple independent validation checks that can take 10-20 minutes total. Users need to see progress.
 
+## ANTI-HALLUCINATION RULES
+
+**CRITICAL**: Follow these rules to prevent false performance/security findings.
+
+1. **Never report metrics you haven't measured**
+   - ❌ BAD: "Performance looks good, probably under 200ms"
+   - ✅ GOOD: Run actual benchmarks, report measured values
+   - Use tools: `pytest --benchmark`, `lighthouse`, `npm run build -- --stats`
+
+2. **Cite actual test results with file paths**
+   - When reporting coverage: "Test coverage is 85% per coverage/index.html"
+   - When reporting bundle size: "Main bundle is 245KB per webpack stats"
+   - Don't estimate - measure and cite reports
+
+3. **Verify tools exist before running them**
+   - Before running `lighthouse`, check if installed: `which lighthouse`
+   - Before `pytest --cov`, verify coverage package exists
+   - Use Bash tool to check, don't assume tool availability
+
+4. **Quote plan.md performance targets exactly**
+   - Don't paraphrase targets - quote them: "plan.md:120 specifies <200ms API response"
+   - Compare actual measurements to quoted targets
+   - If no target specified, say so - don't invent benchmarks
+
+5. **Never fabricate security vulnerabilities or fixes**
+   - Only report vulnerabilities found by actual scans (npm audit, bandit, etc.)
+   - Don't say "should add rate limiting" unless spec/plan requires it
+   - Cite scan output files when reporting issues
+
+**Why this matters**: False performance claims lead to production issues. Invented security vulnerabilities waste time. Accurate measurements based on actual tool output build confidence in deployments.
+
 ## LOAD FEATURE
 
 **Get feature from argument or current branch:**
