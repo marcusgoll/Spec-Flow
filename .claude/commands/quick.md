@@ -27,11 +27,11 @@ Implement small features, bug fixes, or refactors without full workflow.
 - Config tweaks
 
 ❌ **Do NOT use for:**
-- New features with UI components (use `/flow`)
-- Database schema changes (use `/flow`)
-- API contract changes (use `/flow`)
-- Security-sensitive code (use `/flow`)
-- Changes affecting >5 files (use `/flow`)
+- New features with UI components (use `/feature`)
+- Database schema changes (use `/feature`)
+- API contract changes (use `/feature`)
+- Security-sensitive code (use `/feature`)
+- Changes affecting >5 files (use `/feature`)
 - Multi-step features requiring coordination
 
 ## PARSE ARGUMENTS
@@ -223,18 +223,18 @@ echo ""
 
 **This command is NOT suitable for:**
 
-1. **Multi-file features** - Use `/flow` for coordinated changes across many files
+1. **Multi-file features** - Use `/feature` for coordinated changes across many files
 2. **Database migrations** - Schema changes need full spec/plan/review
 3. **API contract changes** - Breaking changes need stakeholder review
 4. **Security features** - Auth, permissions, crypto need thorough review
 5. **Performance-critical code** - Needs benchmarking in `/optimize` phase
 6. **UI redesigns** - Visual changes need design review via `/design-variations`
 
-**If you're unsure, use `/flow` instead.** The full workflow ensures quality gates for complex changes.
+**If you're unsure, use `/feature` instead.** The full workflow ensures quality gates for complex changes.
 
-## COMPARISON WITH /flow
+## COMPARISON WITH /feature
 
-| Aspect | /quick | /flow |
+| Aspect | /quick | /feature |
 |--------|--------|-------|
 | **Duration** | <30 min | 2-8 hours |
 | **Artifacts** | Commit only | spec.md, plan.md, tasks.md, reports |
@@ -244,4 +244,4 @@ echo ""
 | **Testing** | Existing tests | New tests required |
 | **Deployment** | Manual | Automated (staging → prod) |
 
-**Rule of thumb**: If you can implement it in one sitting without pausing to think about architecture, use `/quick`. Otherwise, use `/flow`.
+**Rule of thumb**: If you can implement it in one sitting without pausing to think about architecture, use `/quick`. Otherwise, use `/feature`.

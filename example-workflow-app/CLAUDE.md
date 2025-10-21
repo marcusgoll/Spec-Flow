@@ -42,15 +42,15 @@ pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 -FeatureDir specs/N
 
 ## Workflow State Machine
 
-Features progress through fixed phases (see `.claude/commands/flow.md` for full detail):
+Features progress through fixed phases:
 
 ```
 /spec-flow → /clarify (if needed) → /plan → /tasks → /analyze → /implement → /optimize →
 /preview (manual gate) → /phase-1-ship → /validate-staging (manual gate) → /phase-2-ship
 ```
 
-- Use `/flow "Feature description"` to automate progression with manual gates
-- Use `/flow continue` to resume after manual intervention or fixes
+- Use `/feature "Feature description"` to automate progression with manual gates
+- Use `/feature continue` to resume after manual intervention or fixes
 - Commands are defined in `.claude/commands/`
 
 ## Architecture

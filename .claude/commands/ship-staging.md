@@ -80,7 +80,7 @@ if ! git remote -v | grep -q "origin"; then
   echo "     git push -u origin main"
   echo ""
   echo "  2. For local-only projects:"
-  echo "     Use manual deployment (see /flow output for instructions)"
+  echo "     Use manual deployment (see /feature output for instructions)"
   echo ""
   echo "  3. Update project configuration:"
   echo "     See .spec-flow/memory/constitution.md"

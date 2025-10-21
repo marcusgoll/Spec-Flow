@@ -1034,7 +1034,7 @@ fi
 
 echo ""
 echo "Automated (full workflow):"
-echo "  → /flow continue"
+echo "  → /feature continue"
 echo ""
 
 # Optional compaction reminder if conversation is long

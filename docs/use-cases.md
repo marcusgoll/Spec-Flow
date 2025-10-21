@@ -384,7 +384,7 @@ Specializes in:
 
 ### Solo Developer
 
-**Workflow**: Use `/flow` for full automation with manual gates at preview and staging.
+**Workflow**: Use `/feature` for full automation with manual gates at preview and staging.
 
 **Customizations**:
 - Skip code review phase (or self-review)
@@ -393,7 +393,7 @@ Specializes in:
 
 **Example**:
 ```bash
-/flow "Dark mode toggle"
+/feature "Dark mode toggle"
 # Automated: spec → plan → tasks → implement → optimize
 # Manual gate: preview (test locally)
 # Automated: ship to staging

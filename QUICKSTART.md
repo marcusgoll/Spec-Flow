@@ -236,10 +236,10 @@ This creates `specs/001-dark-mode-toggle/` with:
 
 ### 3. Run the Workflow
 
-Use `/flow` to automate the full workflow with manual gates:
+Use `/feature` to automate the full workflow with manual gates:
 
 ```
-/flow "dark-mode-toggle"
+/feature "dark-mode-toggle"
 ```
 
 The workflow progresses through phases:
@@ -315,7 +315,7 @@ See the full [Troubleshooting Guide](docs/troubleshooting.md) or [file an issue]
 |---------|---------|
 | `/roadmap` | Manage feature backlog with ICE scoring |
 | `/spec-flow "name"` | Create specification for a feature |
-| `/flow "name"` | Automate workflow from spec to production |
+| `/feature "name"` | Automate workflow from spec to production |
 | `/plan` | Generate implementation plan |
 | `/tasks` | Break plan into 20-30 actionable tasks |
 | `/implement` | Execute implementation tasks |
@@ -325,7 +325,7 @@ See the full [Troubleshooting Guide](docs/troubleshooting.md) or [file an issue]
 | `/validate-staging` | Manual staging validation gate |
 | `/phase-2-ship` | Deploy to production |
 
-**Pro tip**: Use `/flow "feature-name"` to automate progression with manual gates at preview and staging validation.
+**Pro tip**: Use `/feature "feature-name"` to automate progression with manual gates at preview and staging validation.
 
 ---
 

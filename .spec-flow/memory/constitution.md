@@ -16,7 +16,7 @@ The Engineering Constitution serves as the Single Source of Truth (SSOT) for eng
 
 ## Project Configuration
 
-**Project Type**: Auto-detected on first `/flow` run
+**Project Type**: Auto-detected on first `/feature` run
 
 **Deployment Model**: staging-prod _(auto-detected, can be overridden)_
 
@@ -61,7 +61,7 @@ _(Write exactly one of: staging-prod, direct-prod, local-only)_
 
 **Unified Command**: Use `/ship` after `/implement` to automatically execute the appropriate workflow based on deployment model.
 
-**Quick Changes**: For small bug fixes, refactors, or enhancements (<100 LOC), use `/quick "description"` instead of full `/flow` workflow.
+**Quick Changes**: For small bug fixes, refactors, or enhancements (<100 LOC), use `/quick "description"` instead of full `/feature` workflow.
 
 ---
 

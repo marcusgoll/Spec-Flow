@@ -340,7 +340,7 @@ ls specs/
 
 4. **Continue workflow**:
    ```bash
-   /flow continue
+   /feature continue
    ```
 
 **Common issues**:
@@ -622,7 +622,7 @@ file .spec-flow/scripts/bash/check-prerequisites.sh
 
 1. **Compact context** to reduce token count:
    ```bash
-   /flow  # Auto-compacts when needed
+   /feature  # Auto-compacts when needed
    ```
 
 2. **Split large features** into smaller ones:

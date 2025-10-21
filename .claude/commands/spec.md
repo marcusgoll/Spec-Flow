@@ -1048,7 +1048,7 @@ rollback_spec_flow() {
 
 ## AUTO-COMPACTION
 
-In `/flow` mode, auto-compaction runs after specification:
+In `/feature` mode, auto-compaction runs after specification:
 - ✅ Preserve: Spec decisions, requirements, UX research, visual insights
 - ❌ Remove: Redundant research notes, verbose inspiration quotes
 - Strategy: Aggressive (planning phase)
@@ -1059,7 +1059,7 @@ In `/flow` mode, auto-compaction runs after specification:
 ```
 
 **When to compact:**
-- Auto: After `/spec-flow` in `/flow` mode
+- Auto: After `/spec-flow` in `/feature` mode
 - Manual: If context >`$COMPACT_THRESHOLD` tokens before `/clarify` or `/plan`
 - Rationale: Planning quality degrades above 50k tokens (empirical observation)
 
@@ -1097,7 +1097,7 @@ if [ "$CLARIFICATIONS" -gt 0 ]; then
   echo "Recommended: /clarify"
   echo "Alternative: /plan (proceed with current spec, clarify later)"
   echo ""
-  echo "To automate: /flow \"${SLUG}\" (runs full workflow)"
+  echo "To automate: /feature \"${SLUG}\" (runs full workflow)"
 elif [ "$CHECKLIST_COMPLETE" = false ]; then
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "⚠️  AUTO-PROGRESSION: Quality checks incomplete"
@@ -1118,7 +1118,7 @@ else
   echo "Ready for planning phase"
   echo ""
   echo "Recommended: /plan"
-  echo "Alternative: /flow continue (automates plan → tasks → implement → ship)"
+  echo "Alternative: /feature continue (automates plan → tasks → implement → ship)"
 fi
 ```
 
@@ -1183,20 +1183,20 @@ if [ "$CLARIFICATIONS" -gt 0 ]; then
   echo "  → /clarify (resolve ${CLARIFICATIONS} ambiguities)"
   echo ""
   echo "Automated (full workflow):"
-  echo "  → /flow continue"
+  echo "  → /feature continue"
 elif [ "$COMPLETE_CHECKS" -ne "$TOTAL_CHECKS" ] 2>/dev/null; then
   echo "Manual (step-by-step):"
   echo "  → Review and complete requirements checklist"
   echo "  → Then: /plan"
   echo ""
   echo "Automated (full workflow):"
-  echo "  → /flow continue (will prompt for checklist completion)"
+  echo "  → /feature continue (will prompt for checklist completion)"
 else
   echo "Manual (step-by-step):"
   echo "  → /plan"
   echo ""
   echo "Automated (full workflow):"
-  echo "  → /flow continue"
+  echo "  → /feature continue"
 fi
 ```
 </instructions>

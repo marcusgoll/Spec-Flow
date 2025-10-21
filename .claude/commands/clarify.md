@@ -818,7 +818,7 @@ else
   echo "  → /plan"
   echo ""
   echo "Automated (full workflow):"
-  echo "  → /flow continue"
+  echo "  → /feature continue"
 fi
 ```
 </instructions>

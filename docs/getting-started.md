@@ -117,7 +117,7 @@ Spec-Flow follows a fixed sequence of phases:
 └───────────────┘
 ```
 
-**Pro tip**: Use `/flow "Feature name"` to automate progression through phases with manual gates.
+**Pro tip**: Use `/feature "Feature name"` to automate progression through phases with manual gates.
 
 ## Step 3: Document Your Engineering Principles
 
@@ -378,7 +378,7 @@ Claude will:
 
 **Resume after interruption**:
 ```bash
-/flow continue
+/feature continue
 ```
 Claude detects the last completed phase and resumes automatically.
 

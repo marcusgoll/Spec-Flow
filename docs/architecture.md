@@ -72,7 +72,7 @@ Spec-Flow orchestrates feature work through a fixed series of Claude commands. E
               │ No                │
               │            ┌──────▼─────────┐
               │            │   PAUSE        │ Manual Fix Required
-              │            │ User resolves  │ Then: /flow continue
+              │            │ User resolves  │ Then: /feature continue
               │            └──────┬─────────┘
               │                   │
               └◄──────────────────┘
@@ -98,7 +98,7 @@ Spec-Flow orchestrates feature work through a fixed series of Claude commands. E
               │ No                │
               │            ┌──────▼─────────┐
               │            │   PAUSE        │ Auto-fix or Manual
-              │            │ Resolve issues │ Then: /flow continue
+              │            │ Resolve issues │ Then: /feature continue
               │            └──────┬─────────┘
               │                   │
               └◄──────────────────┘
@@ -251,7 +251,7 @@ spec-flow-workflow-kit/
 
 ## Token Strategy
 The workflow keeps artifacts concise by:
-- Pre-calculating budgets per phase (75k/100k/125k tokens) inside `/flow`.
+- Pre-calculating budgets per phase (75k/100k/125k tokens) inside `/feature`.
 - Running `compact-context.ps1` automatically when budgets exceed 80%.
 - Encouraging teams to move long research to reference docs and link instead of inlining.
 
