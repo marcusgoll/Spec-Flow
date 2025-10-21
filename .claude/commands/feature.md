@@ -127,16 +127,18 @@ Let me analyze this workflow decision:
 <instructions>
 ## PARSE ARGUMENTS
 
-**Get feature description or continue mode:**
+**Get feature description, continue mode, or next mode:**
 
 If `$ARGUMENTS` is empty, show usage:
 ```
 Usage: /feature [feature description]
    or: /feature continue
+   or: /feature next
 
 Examples:
   /feature "Student progress tracking dashboard"
   /feature continue
+  /feature next
 ```
 
 If `$ARGUMENTS` is "continue":
@@ -144,34 +146,204 @@ If `$ARGUMENTS` is "continue":
 - Load workflow state from `specs/*/workflow-state.yaml`
 - Resume from last completed phase
 
+Else if `$ARGUMENTS` is "next":
+- Set `NEXT_MODE = true`
+- Query GitHub Issues for highest priority roadmap item
+- Extract slug and feature description
+- Initialize new workflow with auto-fetched feature
+
 Else:
 - Set `CONTINUE_MODE = false`
+- Set `NEXT_MODE = false`
 - Set `FEATURE_DESCRIPTION = $ARGUMENTS`
 - Initialize new workflow
+
+## FETCH NEXT FEATURE
+
+**Only execute if `NEXT_MODE = true`:**
+
+```bash
+# Check GitHub authentication
+if ! command -v gh &> /dev/null; then
+  echo "❌ GitHub CLI (gh) not installed"
+  echo "Install: https://cli.github.com"
+  exit 1
+fi
+
+# Verify authentication
+if ! gh auth status &> /dev/null; then
+  echo "❌ GitHub authentication required"
+  echo "Run: gh auth login"
+  exit 1
+fi
+
+# Get repository info
+REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
+if [ -z "$REPO" ]; then
+  echo "❌ Not in a GitHub repository"
+  exit 1
+fi
+
+echo "🔍 Searching for highest priority roadmap item..."
+echo ""
+
+# Query GitHub Issues for highest priority feature in status:next
+# Sort by priority labels (high → medium → low)
+NEXT_ISSUE=$(gh issue list \
+  --repo "$REPO" \
+  --label "status:next,type:feature" \
+  --json number,title,body,labels \
+  --limit 50 | jq -r '
+    map(select(.labels | any(.name | startswith("priority:")))) |
+    sort_by(
+      .labels[] |
+      select(.name | startswith("priority:")) |
+      .name |
+      if . == "priority:high" then 1
+      elif . == "priority:medium" then 2
+      elif . == "priority:low" then 3
+      else 4 end
+    ) |
+    first // empty')
+
+# If no items in status:next, fall back to status:backlog
+if [ -z "$NEXT_ISSUE" ]; then
+  echo "⚠️  No items found in status:next, checking status:backlog..."
+  echo ""
+
+  NEXT_ISSUE=$(gh issue list \
+    --repo "$REPO" \
+    --label "status:backlog,type:feature" \
+    --json number,title,body,labels \
+    --limit 50 | jq -r '
+      map(select(.labels | any(.name | startswith("priority:")))) |
+      sort_by(
+        .labels[] |
+        select(.name | startswith("priority:")) |
+        .name |
+        if . == "priority:high" then 1
+        elif . == "priority:medium" then 2
+        elif . == "priority:low" then 3
+        else 4 end
+      ) |
+      first // empty')
+fi
+
+# If still no items found, error
+if [ -z "$NEXT_ISSUE" ]; then
+  echo "❌ No roadmap items found in status:next or status:backlog"
+  echo ""
+  echo "Create a roadmap item first:"
+  echo "  /roadmap add \"Feature description\""
+  echo ""
+  echo "Or use /feature with a description:"
+  echo "  /feature \"Your feature description\""
+  exit 1
+fi
+
+# Extract issue details
+ISSUE_NUMBER=$(echo "$NEXT_ISSUE" | jq -r '.number')
+ISSUE_TITLE=$(echo "$NEXT_ISSUE" | jq -r '.title')
+ISSUE_BODY=$(echo "$NEXT_ISSUE" | jq -r '.body // ""')
+
+# Extract slug from YAML frontmatter in issue body
+# Expected format: slug: "feature-slug"
+EXTRACTED_SLUG=$(echo "$ISSUE_BODY" | grep -oP '^slug:\s*"\K[^"]+' | head -1)
+
+# If no slug in frontmatter, generate from title
+if [ -z "$EXTRACTED_SLUG" ]; then
+  echo "⚠️  No slug found in issue frontmatter, generating from title..."
+  EXTRACTED_SLUG=$(echo "$ISSUE_TITLE" |
+    tr '[:upper:]' '[:lower:]' |
+    sed 's/[^a-z0-9-]/-/g' |
+    sed 's/--*/-/g' |
+    sed 's/^-//;s/-$//' |
+    cut -c1-20 |
+    sed 's/-$//')
+fi
+
+# Extract feature description from title
+FEATURE_DESCRIPTION="$ISSUE_TITLE"
+
+# Display confirmation
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📋 Next Feature Selected"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Issue: #$ISSUE_NUMBER"
+echo "Title: $ISSUE_TITLE"
+echo "Slug: $EXTRACTED_SLUG"
+echo ""
+
+# Extract priority and ICE score for display
+PRIORITY=$(echo "$NEXT_ISSUE" | jq -r '.labels[] | select(.name | startswith("priority:")) | .name' | sed 's/priority://')
+ICE_IMPACT=$(echo "$ISSUE_BODY" | grep -oP '^impact:\s*\K\d+' | head -1)
+ICE_CONFIDENCE=$(echo "$ISSUE_BODY" | grep -oP '^confidence:\s*\K\d+' | head -1)
+ICE_EFFORT=$(echo "$ISSUE_BODY" | grep -oP '^effort:\s*\K[\d.]+' | head -1)
+
+if [ -n "$ICE_IMPACT" ] && [ -n "$ICE_CONFIDENCE" ] && [ -n "$ICE_EFFORT" ]; then
+  ICE_SCORE=$(echo "scale=2; ($ICE_IMPACT * $ICE_CONFIDENCE) / $ICE_EFFORT" | bc)
+  echo "Priority: $PRIORITY (ICE Score: $ICE_SCORE)"
+  echo "  Impact: $ICE_IMPACT | Confidence: $ICE_CONFIDENCE | Effort: $ICE_EFFORT"
+else
+  echo "Priority: $PRIORITY"
+fi
+echo ""
+
+# Auto-update issue status to in-progress
+echo "📌 Updating issue status to in-progress..."
+gh issue edit "$ISSUE_NUMBER" \
+  --remove-label "status:next" \
+  --remove-label "status:backlog" \
+  --add-label "status:in-progress" \
+  --repo "$REPO"
+
+echo "✅ Issue #$ISSUE_NUMBER marked as in-progress"
+echo ""
+echo "Starting feature workflow..."
+echo ""
+
+# Continue with normal workflow using extracted values
+SLUG="$EXTRACTED_SLUG"
+```
+
+**Important**: After fetching, continue to GENERATE FEATURE SLUG section (which will use the extracted SLUG), then proceed normally through the workflow.
 
 ## GENERATE FEATURE SLUG
 
 **Generate slug from feature description before any file/branch operations:**
 
+**Skip if already set by NEXT_MODE:**
+
 ```bash
-# Generate concise short-name from feature description (2-4 words, action-noun format)
-# This must happen BEFORE branch creation since branch name includes slug
-SLUG=$(echo "$FEATURE_DESCRIPTION" |
-  tr '[:upper:]' '[:lower:]' |
-  # Remove common filler words and phrases
-  sed 's/\bwe want to\b//g; s/\bI want to\b//g; s/\bget our\b//g' |
-  sed 's/\bto a\b//g; s/\bwith\b//g; s/\bfor the\b//g' |
-  sed 's/\bbefore moving on to\b//g; s/\bother features\b//g' |
-  sed 's/\ba\b//g; s/\ban\b//g; s/\bthe\b//g' |
-  # Preserve technical terms by keeping alphanumeric
-  sed 's/\bimplement\b/add/g; s/\bcreate\b/add/g' |
-  # Convert to hyphen-separated
-  sed 's/[^a-z0-9-]/-/g' |
-  sed 's/--*/-/g' |
-  sed 's/^-//;s/-$//' |
-  # Take first 20 chars (approx 2-4 words)
-  cut -c1-20 |
-  sed 's/-$//')
+# If SLUG already set (from /feature next), skip generation
+if [ -z "$SLUG" ]; then
+  # Generate concise short-name from feature description (2-4 words, action-noun format)
+  # This must happen BEFORE branch creation since branch name includes slug
+  SLUG=$(echo "$FEATURE_DESCRIPTION" |
+    tr '[:upper:]' '[:lower:]' |
+    # Remove common filler words and phrases
+    sed 's/\bwe want to\b//g; s/\bI want to\b//g; s/\bget our\b//g' |
+    sed 's/\bto a\b//g; s/\bwith\b//g; s/\bfor the\b//g' |
+    sed 's/\bbefore moving on to\b//g; s/\bother features\b//g' |
+    sed 's/\ba\b//g; s/\ban\b//g; s/\bthe\b//g' |
+    # Preserve technical terms by keeping alphanumeric
+    sed 's/\bimplement\b/add/g; s/\bcreate\b/add/g' |
+    # Convert to hyphen-separated
+    sed 's/[^a-z0-9-]/-/g' |
+    sed 's/--*/-/g' |
+    sed 's/^-//;s/-$//' |
+    # Take first 20 chars (approx 2-4 words)
+    cut -c1-20 |
+    sed 's/-$//')
+
+  echo "📝 Generated slug: $SLUG"
+  echo "   From: $FEATURE_DESCRIPTION"
+  echo ""
+else
+  echo "📝 Using slug from roadmap: $SLUG"
+  echo ""
+fi
 
 # Validate slug is not empty
 if [ -z "$SLUG" ]; then
@@ -185,10 +357,6 @@ if [[ "$SLUG" == *".."* ]] || [[ "$SLUG" == *"/"* ]]; then
   echo "❌ Error: Invalid characters in feature slug"
   exit 1
 fi
-
-echo "📝 Generated slug: $SLUG"
-echo "   From: $FEATURE_DESCRIPTION"
-echo ""
 ```
 
 ## DETECT PROJECT TYPE
@@ -332,6 +500,12 @@ mkdir -p "$FEATURE_DIR"
 # - Deployment state (staging, production)
 # - Artifacts paths
 initialize_workflow_state "$FEATURE_DIR" "$SLUG" "$FEATURE_DESCRIPTION" "$BRANCH_NAME"
+
+# If using /feature next, store GitHub issue number for tracking
+if [ -n "$ISSUE_NUMBER" ]; then
+  yq eval -i ".feature.github_issue = $ISSUE_NUMBER" "$FEATURE_DIR/workflow-state.yaml"
+  echo "🔗 Linked to GitHub Issue #$ISSUE_NUMBER"
+fi
 
 echo "✅ Workflow state initialized: $FEATURE_DIR/workflow-state.yaml"
 echo ""
