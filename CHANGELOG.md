@@ -5,6 +5,73 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-01-21
+
+### Changed - /roadmap Command GitHub Issues Backend
+
+**Rationale**: Complete migration from markdown files to GitHub Issues for native integration, better collaboration, and automated workflows.
+
+#### Complete /roadmap Rewrite
+
+The `/roadmap` command now uses GitHub Issues instead of `.spec-flow/memory/roadmap.md`:
+
+**Backend Migration**:
+- Replaced all markdown file operations with GitHub API calls
+- Uses `github-roadmap-manager.sh/ps1` functions for CRUD operations
+- Label-based state management (`status:backlog`, `status:next`, `status:in-progress`, `status:shipped`)
+- ICE scoring preserved in YAML frontmatter in issue descriptions
+- Priority labels auto-applied based on ICE score thresholds
+
+**Actions Updated**:
+- **INITIALIZE**: Now checks GitHub authentication (gh CLI or API token)
+- **ADD FEATURE**: Creates GitHub issue with `create_roadmap_issue()`
+- **BRAINSTORM**: Fetches existing features from GitHub Issues via `gh issue list`
+- **MOVE FEATURE**: Updates status labels instead of moving between markdown sections
+- **DELETE FEATURE**: Closes issue with `wont-fix` label
+- **SHIP FEATURE**: Calls `mark_issue_shipped()` to close issue and add shipped label
+- **SEARCH**: Uses GitHub Issues search API
+
+**Auto-Sort Logic**:
+- Dynamic sorting via priority labels (`priority:high`, `priority:medium`, `priority:low`)
+- No manual file editing needed (queries handle sorting automatically)
+- GitHub Projects can provide visual roadmap with drag-and-drop
+
+**Template Removal**:
+- Deleted `.spec-flow/templates/roadmap-template.md` (no longer needed)
+
+#### Breaking Changes
+
+**Migration Required**:
+- Old markdown roadmap data must be migrated to GitHub Issues
+- Use `.spec-flow/scripts/bash/migrate-roadmap-to-github.sh` for automated migration
+- Manual setup: Run `.spec-flow/scripts/bash/setup-github-labels.sh` to create labels
+
+**Authentication Required**:
+- Must authenticate with GitHub via `gh auth login` OR set `GITHUB_TOKEN` environment variable
+- Commands will fail if no GitHub authentication is available
+
+#### Preserved Functionality
+
+All existing workflows still work:
+- ICE scoring (Impact × Confidence / Effort)
+- Auto-split for large features (>30 requirements or effort >4)
+- Brainstorm (quick and deep tiers)
+- Clarifications workflow (manual, recommend, skip)
+- Same user-facing actions and mental model
+
+**Benefits**:
+✅ **Native integration**: Issues, PRs, and roadmap in one place
+✅ **Better collaboration**: Comments, subscriptions, mentions on issues
+✅ **Automatic linking**: PRs automatically close issues when merged
+✅ **Rich metadata**: Labels, milestones, assignees, projects
+✅ **API access**: Programmatic roadmap management
+✅ **No sync complexity**: Single source of truth in GitHub
+✅ **Dynamic sorting**: Query-based prioritization, no file edits
+
+**Documentation**: See `docs/github-roadmap-migration.md` for complete setup guide.
+
+---
+
 ## [2.0.0] - 2025-10-20
 
 ### Added - TodoWrite Tool Integration
