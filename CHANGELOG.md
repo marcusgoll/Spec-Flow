@@ -5,6 +5,54 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2025-01-21
+
+### Changed - Documentation Cleanup
+
+**Rationale**: Complete removal of deprecated `/flow` command references for consistency and clarity.
+
+#### Background
+
+The `/flow` command was:
+- Deprecated in v1.14.0 as an alias
+- Officially removed in v2.0.0 and replaced by `/feature`
+- `/feature` uses isolated phase contexts (67% token reduction, 2-3x faster)
+
+However, documentation and example files still contained legacy `/flow` references that needed cleanup.
+
+#### Changes
+
+**Documentation Updated** (13 references):
+- `QUICKSTART.md` - 4 occurrences → `/feature`
+- `docs/use-cases.md` - 2 occurrences → `/feature`
+- `docs/troubleshooting.md` - 2 occurrences → `/feature`
+- `docs/getting-started.md` - 2 occurrences → `/feature`
+- `docs/architecture.md` - 3 occurrences → `/feature`
+
+**Command Files Updated** (19 references):
+- `.claude/commands/clarify.md` - Workflow progression
+- `.claude/commands/plan.md` - Automation reference
+- `.claude/commands/quick.md` - Comparison table and guidelines
+- `.claude/commands/spec.md` - Workflow automation
+- `.claude/commands/ship-staging.md` - Deployment instructions
+
+**Configuration Updated**:
+- `.spec-flow/memory/constitution.md` - Quick change guidelines
+
+**Example App Cleanup**:
+- Deleted: `example-workflow-app/.claude/commands/flow.md` (614 lines, outdated orchestrator)
+- Updated: `example-workflow-app/CLAUDE.md` - Workflow references
+
+**Impact**:
+✅ All documentation consistently references `/feature`
+✅ Example app shows current best practices
+✅ No confusion about which orchestrator to use
+✅ Clean codebase (652 lines removed)
+
+**Breaking Changes**: None - command was already removed in v2.0.0
+
+---
+
 ## [2.1.0] - 2025-01-21
 
 ### Changed - /roadmap Command GitHub Issues Backend
