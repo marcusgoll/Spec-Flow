@@ -1,0 +1,41 @@
+# NPM Ignore - Files not to publish to npm registry
+
+# Internal development scripts (DO NOT SHIP)
+.spec-flow/scripts/internal/
+
+# Development files
+*.log
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# Test files
+test/
+tests/
+*.test.js
+*.spec.js
+
+# CI/CD
+.github/workflows/
+
+# Development docs
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+
+# Spec-Flow development artifacts (examples from using the workflow on itself)
+specs/
+
+# Error logs from workflow development
+error-log.md
