@@ -7,6 +7,145 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0] - 2025-10-20
 
+### Added - TodoWrite Tool Integration
+
+**Rationale**: Provide real-time progress visibility for long-running commands (15-40 minute workflows with 20-30 tasks).
+
+#### Progress Tracking in 5 Key Commands
+
+Commands now include comprehensive TodoWrite tool integration:
+
+1. **`/implement`** (TASK TRACKING)
+   - Tracks 20-30 tasks during parallel execution
+   - One todo per task from tasks.md
+   - Clear visibility during 15-30 minute implementation phase
+
+2. **`/optimize`** (PROGRESS TRACKING)
+   - Tracks 8 validation phases (performance, security, a11y, code review)
+   - Real-time updates during 10-20 minute optimization
+
+3. **`/fix-ci`** (BLOCKER TRACKING)
+   - Dynamic todo list adapted to actual blockers found
+   - Tracks lint/types/tests/build fixes separately
+   - Shows which fixes are in progress vs completed
+
+4. **`/ship`** (DEPLOYMENT TRACKING)
+   - Tracks 5-8 deployment phases (varies by model: staging-prod, direct-prod, local-only)
+   - Includes manual gates (preview, staging validation)
+   - Progress visibility during 20-40 minute deployments
+
+5. **`/feature`** (WORKFLOW TRACKING)
+   - Tracks 8-14 phases (full feature orchestration)
+   - Adapts to project type and feature characteristics
+   - Clear progress during 1-3 hour end-to-end workflows with manual gates
+
+#### TodoWrite Integration Pattern
+
+Each command now includes:
+- Example JavaScript with typical todo structure
+- Guidance on adapting todos dynamically based on context
+- Instructions: mark `in_progress` when starting, `completed` immediately after finishing
+- Best practice: "Only ONE task should be `in_progress` at a time"
+- "Why" section explaining user benefit
+
+**Benefits**:
+✅ **Real-time visibility**: Users see which tasks are in progress during long operations
+✅ **Better UX**: Clear progress indication instead of waiting blindly
+✅ **Debugging**: Easy to see where workflow failed if issues occur
+✅ **Multi-phase workflows**: Essential for commands with 20+ tasks or manual gates
+
+---
+
+### Added - GitHub Issues Roadmap Integration
+
+**Rationale**: Replace markdown-based roadmap with GitHub Issues for better tracking, collaboration, and automation.
+
+#### GitHub Issues Migration
+
+- **Automated migration**: Scripts to migrate existing roadmap.md entries to GitHub Issues
+- **Issue templates**: Pre-configured templates for features, enhancements, bugs, tasks
+- **Label automation**: Automatic label creation and assignment
+- **Status tracking**: Uses GitHub project boards for Backlog → Next → In Progress → Shipped
+
+#### New Scripts
+
+**Bash**:
+- `.spec-flow/scripts/bash/github-roadmap-manager.sh` - Roadmap management via GitHub API
+- `.spec-flow/scripts/bash/migrate-roadmap-to-github.sh` - Migration automation
+- `.spec-flow/scripts/bash/setup-github-labels.sh` - Label setup
+
+**PowerShell**:
+- `.spec-flow/scripts/powershell/github-roadmap-manager.ps1` - Windows roadmap management
+- `.spec-flow/scripts/powershell/setup-github-labels.ps1` - Windows label setup
+
+#### Issue Templates
+
+Five new templates in `.github/ISSUE_TEMPLATE/`:
+1. `feature.yml` - Feature requests
+2. `enhancement.yml` - Enhancements to existing features
+3. `bug.yml` - Bug reports
+4. `task.yml` - General tasks
+5. `config.yml` - Template configuration
+
+#### Roadmap Archive
+
+- Old `roadmap.md` archived to `roadmap-archived-2025-10-20.md`
+- Archive README with migration guide
+- Preservation of historical roadmap data
+
+**Benefits**:
+✅ **Better collaboration**: Use GitHub's native issue tracking
+✅ **Automation**: Auto-close issues on PR merge, auto-label
+✅ **Visibility**: Public roadmap visible to all contributors
+✅ **Integration**: Works with GitHub Projects, milestones, and automation
+
+---
+
+### Added - NPM Package CLI Tool
+
+**Rationale**: Provide interactive CLI for roadmap setup and migration to improve user onboarding.
+
+#### New CLI Tool
+
+- **`bin/cli.js`** - Main CLI entry point with commander.js
+- **`bin/setup-roadmap.js`** - Interactive roadmap setup wizard
+- **`bin/postinstall.js`** - Improved postinstall experience
+
+#### CLI Commands
+
+```bash
+# Interactive roadmap setup
+spec-flow setup-roadmap
+
+# Migrate existing roadmap to GitHub
+spec-flow migrate-roadmap
+```
+
+#### Features
+
+- Interactive GitHub PAT configuration
+- Automatic label creation
+- Migration preview and confirmation
+- User-friendly error messages
+- Better documentation references
+
+#### Documentation
+
+Four new docs in `docs/`:
+1. `USER_ROADMAP_SETUP.md` - User guide for roadmap setup
+2. `WORKFLOW_DEVELOPMENT_ROADMAP.md` - Workflow development roadmap
+3. `github-roadmap-migration.md` - Migration guide
+4. `GITHUB_ROADMAP_SUMMARY.md` - GitHub roadmap summary
+5. `NPM_PACKAGE_ROADMAP_SUMMARY.md` - NPM package roadmap summary
+
+**Benefits**:
+✅ **Easy onboarding**: Interactive setup vs manual configuration
+✅ **Better UX**: Clear prompts and validation
+✅ **Automation**: One command to set up entire roadmap system
+✅ **Documentation**: Comprehensive guides for users
+
+---
+
 ### Changed - Command Cleanup & Internal Command Marking (BREAKING CHANGES)
 
 **Rationale**: Simplify command structure, remove deprecated aliases, and clearly distinguish internal commands from user-facing ones.
