@@ -2,54 +2,149 @@
 description: Manage product roadmap (brainstorm, prioritize, track shipped features)
 ---
 
-Manage the CFIPros roadmap: $ARGUMENTS
+Manage the product roadmap via GitHub Issues: $ARGUMENTS
 
 ## MENTAL MODEL
 
-**Workflow**: roadmap ->\spec-flow -> clarify -> plan -> tasks -> implement -> optimize -> ship
+**Workflow**: roadmap -> /feature -> clarify -> plan -> tasks -> implement -> optimize -> ship
 
 **State machine:**
-- Parse intent -> Execute action -> Auto-sort -> Return summary
+- Parse intent -> Execute GitHub API action -> Auto-label -> Return summary
 
 **Auto-actions:**
-- Add/update -> Trigger auto-sort (see AUTO-SORT LOGIC)
+- Add/update -> Auto-calculate ICE score and apply priority labels
 - Large feature detected (>30 req OR effort >4) -> Suggest auto-split with scores
 - Clarifications found -> Offer manual/recommend/skip (default: recommend)
-- Brainstorm -> Generate ideas -> Offer to add
+- Brainstorm -> Generate ideas -> Offer to add as GitHub issues
 
 ## INITIALIZE
 
-Check if roadmap exists, create from template if missing:
+Check GitHub authentication and verify repository access:
+
+**Bash (macOS/Linux):**
 ```bash
-if [ ! -f "\spec-flow/memory/roadmap.md" ]; then
-  mkdir -p \spec-flow/memory
-  cp \spec-flow/templates/roadmap-template.md \spec-flow/memory/roadmap.md
+# Source GitHub roadmap manager
+source .spec-flow/scripts/bash/github-roadmap-manager.sh
+
+# Check authentication
+AUTH_METHOD=$(check_github_auth)
+
+if [ "$AUTH_METHOD" = "none" ]; then
+  echo "❌ GitHub authentication required"
+  echo ""
+  echo "Choose one option:"
+  echo "  A) GitHub CLI: gh auth login"
+  echo "  B) API Token: export GITHUB_TOKEN=ghp_your_token"
+  echo ""
+  echo "See: docs/github-roadmap-migration.md"
+  exit 1
 fi
+
+# Verify repository
+REPO=$(get_repo_info)
+
+if [ -z "$REPO" ]; then
+  echo "❌ Could not determine repository"
+  echo "Ensure you're in a git repository with a GitHub remote"
+  exit 1
+fi
+
+echo "✅ GitHub authenticated ($AUTH_METHOD)"
+echo "✅ Repository: $REPO"
+```
+
+**PowerShell (Windows):**
+```powershell
+# Import GitHub roadmap manager
+. .\.spec-flow\scripts\powershell\github-roadmap-manager.ps1
+
+# Check authentication
+$authMethod = Test-GitHubAuth
+
+if ($authMethod -eq "none") {
+  Write-Host "❌ GitHub authentication required" -ForegroundColor Red
+  Write-Host ""
+  Write-Host "Choose one option:"
+  Write-Host "  A) GitHub CLI: gh auth login"
+  Write-Host "  B) API Token: `$env:GITHUB_TOKEN = 'ghp_your_token'"
+  Write-Host ""
+  Write-Host "See: docs/github-roadmap-migration.md"
+  exit 1
+}
+
+# Verify repository
+$repo = Get-RepositoryInfo
+
+if ([string]::IsNullOrEmpty($repo)) {
+  Write-Host "❌ Could not determine repository" -ForegroundColor Red
+  Write-Host "Ensure you're in a git repository with a GitHub remote"
+  exit 1
+}
+
+Write-Host "✅ GitHub authenticated ($authMethod)" -ForegroundColor Green
+Write-Host "✅ Repository: $repo" -ForegroundColor Green
 ```
 
 ## CONTEXT
 
-**Location**: `\spec-flow/memory/roadmap.md`
+**Backend**: GitHub Issues with label-based state management
 
-**Sections** (priority order):
-1. Shipped (done)
-2. In Progress (active)
-3. Next (queued)
-4. Later (planned)
-5. Backlog (ideas)
+**Status Labels** (roadmap sections):
+- `status:backlog` - Backlog (ideas, not prioritized)
+- `status:later` - Later (planned for future)
+- `status:next` - Next (queued for implementation)
+- `status:in-progress` - In Progress (actively being worked on)
+- `status:shipped` - Shipped (closed, deployed to production)
 
-**Item structure:**
-- **Slug**: URL-friendly identifier
-- **Title**: Human-readable name
-- **Area**: marketing|app|api|infra|design
-- **Role**: free|student|cfi|school|all
-- **Impact**: 1-5 (user value)
-- **Effort**: 1-5 (implementation complexity)
-- **Confidence**: 0-1 (estimate certainty)
-- **Score**: ICE = (Impact × Confidence) / Effort
-- **Requirements**: Bullets or `[CLARIFY: ...]`
+**Priority Labels** (auto-applied by ICE score):
+- `priority:high` - ICE >= 1.5
+- `priority:medium` - 0.8 <= ICE < 1.5
+- `priority:low` - ICE < 0.8
 
-**Auto-sort trigger**: Any add/update/clarify action (see AUTO-SORT LOGIC)
+**Type Labels:**
+- `type:feature` - New feature or functionality
+- `type:enhancement` - Enhancement to existing feature
+- `type:bug` - Bug or defect
+- `type:task` - Task or chore
+
+**Area Labels:**
+- `area:marketing`, `area:app`, `area:api`, `area:infra`, `area:design`
+
+**Role Labels:**
+- `role:free`, `role:student`, `role:cfi`, `role:school`, `role:all`
+
+**Size Labels** (auto-applied by effort):
+- `size:small` - Effort 1-2
+- `size:medium` - Effort 3
+- `size:large` - Effort 4
+- `size:xl` - Effort 5
+
+**Issue Frontmatter** (ICE scoring in YAML):
+```yaml
+---
+ice:
+  impact: 4
+  effort: 2
+  confidence: 0.9
+  score: 1.8
+metadata:
+  area: app
+  role: student
+  slug: student-progress-widget
+---
+
+## Problem
+Students struggle to track mastery...
+
+## Proposed Solution
+Add a progress widget...
+
+## Requirements
+- [ ] Display mastery percentage
+- [ ] Group by ACS area
+```
+
+**Sorting**: GitHub Issues sorted by ICE score via priority labels + custom queries
 
 ## SCORING
 
@@ -60,7 +155,7 @@ fi
 - Effort: 3 (medium complexity)
 - Confidence: 0.7 (medium certainty)
 
-**Tie-breaker**: If scores match, preserve original order
+**Tie-breaker**: If scores match, preserve created date order
 
 **Examples:**
 - High-value quick win: Impact 4, Effort 2, Confidence 1.0 → Score 2.0
@@ -74,14 +169,13 @@ fi
 **Parse natural language:**
 - Extract: title, area, role, requirements
 - Infer: Impact (1-5), Effort (1-5), Confidence (0-1)
-- Generate: URL-friendly slug
+- Generate: URL-friendly slug (lowercase-with-hyphens, max 30 chars)
 - Calculate: ICE score (use SCORING defaults if unclear)
 
 **Deduplicate:**
-- Lowercase both titles
-- Check if slug already exists in roadmap
+- Check if slug exists in GitHub Issues via `get_issue_by_slug()`
 - Check if `specs/[slug]/` directory exists
-- If duplicate: Ask "Merge with existing [slug]?"
+- If duplicate: Ask "Merge with existing issue #N?"
 
 **Size validation with auto-split:**
 
@@ -111,45 +205,88 @@ B) [slug]-enhanced (I:N, E:2, C:0.8) → Score: N.NN
 Create split features? (Y/n)
 ```
 
-3. If "Y": Auto-create child features
-   - Add [BLOCKED: parent-slug] to dependent features
+3. If "Y": Auto-create child issues
+   - Add `[BLOCKED: parent-slug]` to dependent issue bodies
    - Recalculate ICE scores for each
-   - Add all to Backlog
-   - Trigger auto-sort
+   - Create with `status:backlog` label
+   - Add `blocked` label to dependent issues
 
-4. If "n": Add original feature as-is with warning tag
-   - Add `[LARGE: consider splitting before \spec-flow]` to requirements
+4. If "n": Add original feature as-is with warning
+   - Add `size:xl` label
+   - Add comment: "⚠️  Large feature - consider splitting before /feature"
 
-**Example split:**
+**Create GitHub Issue:**
+
+**Bash:**
+```bash
+source .spec-flow/scripts/bash/github-roadmap-manager.sh
+
+# Generate slug from title
+SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | cut -c1-30)
+
+# Format requirements as markdown body
+BODY="## Problem
+
+$PROBLEM_STATEMENT
+
+## Proposed Solution
+
+$SOLUTION_DESCRIPTION
+
+## Requirements
+
+$REQUIREMENTS_LIST"
+
+# Create issue
+create_roadmap_issue \
+  "$TITLE" \
+  "$BODY" \
+  "$IMPACT" \
+  "$EFFORT" \
+  "$CONFIDENCE" \
+  "$AREA" \
+  "$ROLE" \
+  "$SLUG" \
+  "type:feature,status:backlog"
 ```
-Input: "AI Study Plan Generator with export and cloud sync"
-Requirements: 6 major components (AI, tracking, storage, export, sharing, cloud)
-Effort: 4 weeks
 
-Detection: Layer split (generation + storage + export)
+**PowerShell:**
+```powershell
+. .\.spec-flow\scripts\powershell\github-roadmap-manager.ps1
 
-Suggested:
-1. study-plan-basic (I:5, E:2, C:0.9) → 2.25
-   - AI-powered plan generation from AKTR
-   - Progress tracking (local storage)
-   - Mark codes as studying/mastered
+# Generate slug
+$slug = $title.ToLower() -replace '[^a-z0-9-]', '-' -replace '--+', '-' |
+        Select-Object -First 1 | ForEach-Object { $_.Substring(0, [Math]::Min(30, $_.Length)) }
 
-2. study-plan-export (I:4, E:2, C:0.8) → 1.60
-   - [BLOCKED: study-plan-basic]
-   - PDF export
-   - Shareable links
-   - Cloud sync
+# Format body
+$body = @"
+## Problem
 
-Result: 2 focused features vs 1 over-scoped feature
+$problemStatement
+
+## Proposed Solution
+
+$solutionDescription
+
+## Requirements
+
+$requirementsList
+"@
+
+# Create issue
+New-RoadmapIssue `
+  -Title $title `
+  -Body $body `
+  -Impact $impact `
+  -Effort $effort `
+  -Confidence $confidence `
+  -Area $area `
+  -Role $role `
+  -Slug $slug `
+  -Labels "type:feature,status:backlog"
 ```
 
-**Add to Backlog:**
-- Append feature with full metadata
-- Add `[CLARIFY: question]` for unknowns
-- Trigger auto-sort (see AUTO-SORT LOGIC)
-- Update timestamp
-
-**Auto-clarification (if `[CLARIFY]` found):**
+**Auto-clarification (if `[CLARIFY]` found in requirements):**
 Present 3 options:
 ```
 🤔 Found N clarifications needed:
@@ -167,12 +304,12 @@ Default: B
 
 **If "A" (Manual)**: Interactive Q&A like `/clarify`
 **If "B" (Recommend)** [DEFAULT]:
-- Use CLAUDE.md, constitution, similar features
+- Use CLAUDE.md, constitution, similar features from GitHub Issues
 - Generate answers with rationale
-- Update requirements
-- Trigger auto-sort
+- Update issue body with answers
+- Remove `[CLARIFY]` tags
 
-**If "C" (Skip)**: Continue to summary
+**If "C" (Skip)**: Continue to summary, add `needs-clarification` label
 
 ### 2. BRAINSTORM (research → plan → present)
 
@@ -186,9 +323,45 @@ Default: B
 
 **QUICK BRAINSTORM** (2-3 tool calls):
 
-**Step 1 - CFIPros Context:**
-- Read `\spec-flow/memory/constitution.md` (mission)
-- Read `\spec-flow/memory/roadmap.md` (existing features)
+**Step 1 - Current Context:**
+- Read `.spec-flow/memory/constitution.md` (mission)
+- **Fetch existing features from GitHub:**
+
+**Bash:**
+```bash
+source .spec-flow/scripts/bash/github-roadmap-manager.sh
+
+# Get all roadmap features (any status)
+EXISTING_FEATURES=$(gh issue list \
+  --repo "$(get_repo_info)" \
+  --label "type:feature" \
+  --json number,title,body,labels \
+  --limit 100)
+
+# Parse slugs to avoid duplicates
+EXISTING_SLUGS=$(echo "$EXISTING_FEATURES" | jq -r '.[].body' | grep -oP 'slug:\s*\K\S+' | sort -u)
+```
+
+**PowerShell:**
+```powershell
+. .\.spec-flow\scripts\powershell\github-roadmap-manager.ps1
+
+$repo = Get-RepositoryInfo
+
+# Get all roadmap features
+$existingFeatures = gh issue list `
+  --repo $repo `
+  --label "type:feature" `
+  --json number,title,body,labels `
+  --limit 100 | ConvertFrom-Json
+
+# Parse slugs
+$existingSlugs = $existingFeatures |
+  ForEach-Object { $_.body } |
+  Select-String -Pattern 'slug:\s*(\S+)' |
+  ForEach-Object { $_.Matches.Groups[1].Value } |
+  Sort-Object -Unique
+```
 
 **Step 2 - Focused Research:**
 - WebSearch: "[user-specified topic] features 2025" (if args provided)
@@ -222,9 +395,9 @@ Which to add? (1,2,3, all, skip)
 
 **Phase 1: RESEARCH**
 
-**Step 1 - CFIPros Context:**
-- Read `\spec-flow/memory/constitution.md` (mission: AKTR→ACS extraction for aviation education)
-- Read `\spec-flow/memory/roadmap.md` (existing features, identify gaps)
+**Step 1 - Current Context:**
+- Read `.spec-flow/memory/constitution.md` (mission)
+- Fetch existing features from GitHub Issues (same as quick brainstorm)
 - Glob `specs/*/spec.md` (patterns, user flows, reusable infra)
 
 **Step 2 - Industry Research:**
@@ -234,7 +407,7 @@ Which to add? (1,2,3, all, skip)
 - WebSearch: "[user-specified topic]" (if args provided)
 
 **Step 3 - Gap Analysis:**
-- Compare CFIPros vs industry leaders (Foreflight, Sporty's, etc.)
+- Compare current features vs industry leaders
 - Identify role gaps: free, student, CFI, school
 - Find piggybacking opportunities (leverage existing features)
 
@@ -287,28 +460,91 @@ Which to add? (1,2,3, all, skip)
 ---
 
 **Selection** (both tiers):
-- `1,2,3...` - Add specific ideas by number
+- `1,2,3...` - Add specific ideas by number (creates GitHub issues)
 - `all` - Add everything
 - `skip` - Cancel
 
 **If selected**:
-- Add to Backlog with full metadata
-- Preserve `[PIGGYBACK]` tags in requirements
-- Trigger auto-sort (see AUTO-SORT LOGIC)
-- Show updated roadmap summary
+- Create GitHub issues with full metadata using `create_roadmap_issue()`
+- Preserve `[PIGGYBACK]` and `[BLOCKED]` tags in issue bodies
+- Apply `status:backlog` label
+- Show updated roadmap summary with issue numbers
 
 ### 3. MOVE FEATURE
 
 **Parse**: "move [slug] to [section]"
 
 **Valid moves:**
-- Backlog -> Later -> Next -> In Progress -> Shipped
-- Downgrade: Next -> Later -> Backlog (if deprioritized)
+- Backlog → Later → Next → In Progress → Shipped
+- Downgrade: Next → Later → Backlog (if deprioritized)
 
 **Execute:**
-- Move item to target section
-- Trigger auto-sort in destination (see AUTO-SORT LOGIC)
-- If "Shipped": Add date, remove Impact/Effort/Confidence/Score
+
+**Bash:**
+```bash
+source .spec-flow/scripts/bash/github-roadmap-manager.sh
+
+# Get issue by slug
+ISSUE=$(get_issue_by_slug "$SLUG")
+
+if [ -z "$ISSUE" ] || [ "$ISSUE" = "null" ]; then
+  echo "❌ Issue with slug '$SLUG' not found"
+  exit 1
+fi
+
+ISSUE_NUMBER=$(echo "$ISSUE" | jq -r '.number')
+
+# Map section to status label
+case "$TARGET_SECTION" in
+  "backlog")     NEW_STATUS="status:backlog" ;;
+  "later")       NEW_STATUS="status:later" ;;
+  "next")        NEW_STATUS="status:next" ;;
+  "in progress") NEW_STATUS="status:in-progress" ;;
+  "shipped")     echo "Use '/roadmap ship $SLUG' instead"; exit 1 ;;
+  *)             echo "Invalid section: $TARGET_SECTION"; exit 1 ;;
+esac
+
+# Update labels
+gh issue edit "$ISSUE_NUMBER" \
+  --repo "$(get_repo_info)" \
+  --remove-label "status:backlog,status:later,status:next,status:in-progress" \
+  --add-label "$NEW_STATUS"
+
+echo "✅ Moved issue #$ISSUE_NUMBER to $TARGET_SECTION"
+```
+
+**PowerShell:**
+```powershell
+. .\.spec-flow\scripts\powershell\github-roadmap-manager.ps1
+
+$issue = Get-IssueBySlug -Slug $slug
+
+if (-not $issue) {
+  Write-Host "❌ Issue with slug '$slug' not found" -ForegroundColor Red
+  exit 1
+}
+
+$issueNumber = $issue.number
+$repo = Get-RepositoryInfo
+
+# Map section to label
+$newStatus = switch ($targetSection.ToLower()) {
+  "backlog"     { "status:backlog" }
+  "later"       { "status:later" }
+  "next"        { "status:next" }
+  "in progress" { "status:in-progress" }
+  "shipped"     { Write-Host "Use '/roadmap ship $slug' instead"; exit 1 }
+  default       { Write-Host "Invalid section: $targetSection"; exit 1 }
+}
+
+# Update labels
+gh issue edit $issueNumber `
+  --repo $repo `
+  --remove-label "status:backlog,status:later,status:next,status:in-progress" `
+  --add-label $newStatus
+
+Write-Host "✅ Moved issue #$issueNumber to $targetSection" -ForegroundColor Green
+```
 
 ### 4. DELETE FEATURE
 
@@ -318,9 +554,10 @@ Which to add? (1,2,3, all, skip)
 ```
 ⚠️  Delete [slug] from roadmap?
 
-This will permanently remove:
+This will close the GitHub issue with 'wont-fix' label:
+- Issue: #123
 - Title: [title]
-- Section: [section]
+- Status: [current status]
 - Requirements: [count] items
 
 Note: If specs/[slug]/ exists, it will NOT be deleted.
@@ -329,130 +566,363 @@ Confirm? (yes/no)
 ```
 
 **Execute:**
-- Remove item from roadmap
-- Keep specs/[slug]/ untouched (manual cleanup if needed)
+
+**Bash:**
+```bash
+source .spec-flow/scripts/bash/github-roadmap-manager.sh
+
+ISSUE=$(get_issue_by_slug "$SLUG")
+
+if [ -z "$ISSUE" ] || [ "$ISSUE" = "null" ]; then
+  echo "❌ Issue with slug '$SLUG' not found"
+  exit 1
+fi
+
+ISSUE_NUMBER=$(echo "$ISSUE" | jq -r '.number')
+
+# Close with wont-fix label
+gh issue close "$ISSUE_NUMBER" \
+  --repo "$(get_repo_info)" \
+  --reason "not planned" \
+  --comment "Removed from roadmap (not planned for implementation)"
+
+gh issue edit "$ISSUE_NUMBER" \
+  --repo "$(get_repo_info)" \
+  --add-label "wont-fix"
+
+echo "✅ Closed issue #$ISSUE_NUMBER (wont-fix)"
+```
+
+**PowerShell:**
+```powershell
+. .\.spec-flow\scripts\powershell\github-roadmap-manager.ps1
+
+$issue = Get-IssueBySlug -Slug $slug
+
+if (-not $issue) {
+  Write-Host "❌ Issue with slug '$slug' not found" -ForegroundColor Red
+  exit 1
+}
+
+$issueNumber = $issue.number
+$repo = Get-RepositoryInfo
+
+# Close with wont-fix
+gh issue close $issueNumber `
+  --repo $repo `
+  --reason "not planned" `
+  --comment "Removed from roadmap (not planned for implementation)"
+
+gh issue edit $issueNumber `
+  --repo $repo `
+  --add-label "wont-fix"
+
+Write-Host "✅ Closed issue #$issueNumber (wont-fix)" -ForegroundColor Green
+```
 
 ### 5. PRIORITIZE
 
 **Parse**: "prioritize [section]" or "sort [section]"
 
 **Execute:**
-- Trigger auto-sort for specified section (see AUTO-SORT LOGIC)
-- Show updated section summary
 
-### 6.\spec-flow HANDOFF
+Show sorted list of issues in the specified section, ordered by ICE score (via priority labels):
 
-**Parse**: \spec-flow [slug]" or "create spec for [slug]"
+**Bash:**
+```bash
+source .spec-flow/scripts/bash/github-roadmap-manager.sh
+
+# Map section to status label
+case "$SECTION" in
+  "backlog") STATUS="backlog" ;;
+  "later")   STATUS="later" ;;
+  "next")    STATUS="next" ;;
+  *)         echo "Invalid section: $SECTION"; exit 1 ;;
+esac
+
+# Get issues sorted by priority (high → medium → low)
+echo "📊 $SECTION (sorted by ICE score):"
+echo ""
+
+# High priority
+gh issue list --repo "$(get_repo_info)" \
+  --label "status:$STATUS,priority:high" \
+  --json number,title,body \
+  --limit 50 | jq -r '.[] | "  \(.number). \(.title) (HIGH)"'
+
+# Medium priority
+gh issue list --repo "$(get_repo_info)" \
+  --label "status:$STATUS,priority:medium" \
+  --json number,title,body \
+  --limit 50 | jq -r '.[] | "  \(.number). \(.title) (MEDIUM)"'
+
+# Low priority
+gh issue list --repo "$(get_repo_info)" \
+  --label "status:$STATUS,priority:low" \
+  --json number,title,body \
+  --limit 50 | jq -r '.[] | "  \(.number). \(.title) (LOW)"'
+```
+
+### 6. /feature HANDOFF
+
+**Parse**: "/feature [slug]" or "create spec for [slug]"
 
 **Execute:**
-- Check if specs/[slug]/ exists
-- Extract requirements from roadmap item
-- Show `\spec-flow` command with context:
 
+**Bash:**
+```bash
+source .spec-flow/scripts/bash/github-roadmap-manager.sh
+
+# Get issue by slug
+ISSUE=$(get_issue_by_slug "$SLUG")
+
+if [ -z "$ISSUE" ] || [ "$ISSUE" = "null" ]; then
+  echo "❌ Issue with slug '$SLUG' not found in roadmap"
+  echo "   Create it first with: /roadmap add \"[description]\""
+  exit 1
+fi
+
+ISSUE_NUMBER=$(echo "$ISSUE" | jq -r '.number')
+
+# Check for clarifications
+BODY=$(echo "$ISSUE" | jq -r '.body')
+CLARIFY_COUNT=$(echo "$BODY" | grep -c '\[CLARIFY:' || true)
+
+if [ "$CLARIFY_COUNT" -gt 0 ]; then
+  echo "⚠️  Found $CLARIFY_COUNT clarifications needed"
+  echo "   Suggested: /roadmap clarify $SLUG"
+  echo ""
+  read -p "Continue to /feature anyway? (y/N): " RESPONSE
+  if [[ ! "$RESPONSE" =~ ^[Yy]$ ]]; then
+    exit 0
+  fi
+fi
+
+# Show handoff message
+echo "✅ Found roadmap issue: #$ISSUE_NUMBER"
+echo ""
+echo "Run: /feature $SLUG"
+echo ""
+echo "/feature will:"
+echo "  1. Create specs/$SLUG/ directory"
+echo "  2. Extract requirements from issue #$ISSUE_NUMBER"
+echo "  3. Generate spec.md"
+echo "  4. Mark issue as 'status:in-progress'"
+echo "  5. Link issue to workflow-state.yaml"
 ```
-Run: \spec-flow [slug]
-
-\spec-flow will:
-1. Read \spec-flow/memory/roadmap.md
-2. Find [slug] in roadmap
-3. Extract requirements as context
-4. Generate spec in specs/[slug]/spec.md
-5. Update roadmap with "Spec: specs/[slug]/" link
-```
-
-**If clarifications remain:**
-- Suggest: "Clarifications needed. Run `/roadmap clarify [slug]` first?"
 
 ### 7. SHIP FEATURE
 
 **Parse**: "ship [slug]" or "shipped [slug] [version]"
 
 **Execute:**
-- Move to "Shipped" section
-- Add: **Date**: YYYY-MM-DD
-- Add: **Release**: vX.Y.Z - [one-line notes]
-- Remove: Impact, Effort, Confidence, Score
-- Keep: Spec link (if exists)
-- Sort Shipped by date (newest first)
+
+**Bash:**
+```bash
+source .spec-flow/scripts/bash/github-roadmap-manager.sh
+
+# Get version and URL from user or workflow-state.yaml
+VERSION="${VERSION:-1.0.0}"
+DATE=$(date +%Y-%m-%d)
+PROD_URL="${PROD_URL:-}"
+
+# Mark as shipped
+mark_issue_shipped "$SLUG" "$VERSION" "$DATE" "$PROD_URL"
+
+# Output: ✅ Marked issue #123 as Shipped (v1.0.0) in roadmap
+```
+
+**PowerShell:**
+```powershell
+. .\.spec-flow\scripts\powershell\github-roadmap-manager.ps1
+
+# Get version and URL
+$version = if ($version) { $version } else { "1.0.0" }
+$date = Get-Date -Format "yyyy-MM-dd"
+$prodUrl = if ($prodUrl) { $prodUrl } else { "" }
+
+# Mark as shipped
+Set-IssueShipped -Slug $slug -Version $version -Date $date -ProductionUrl $prodUrl
+
+# Output: ✅ Marked issue #123 as Shipped (v1.0.0) in roadmap
+```
+
+**Note**: This action:
+- Adds `status:shipped` label
+- Removes all other status labels
+- Closes the issue with "completed" reason
+- Adds comment with version, date, and production URL
 
 ### 8. SEARCH
 
 **Parse**: Keywords, area filter, role filter
 
 **Execute:**
-- Find matches across all sections
-- Show: slug, title, score, section
-- Count by section
+
+**Bash:**
+```bash
+source .spec-flow/scripts/bash/github-roadmap-manager.sh
+
+REPO=$(get_repo_info)
+
+# Build search query
+QUERY="repo:$REPO type:feature $KEYWORDS"
+
+# Add filters if provided
+[ -n "$AREA" ] && QUERY="$QUERY label:area:$AREA"
+[ -n "$ROLE" ] && QUERY="$QUERY label:role:$ROLE"
+
+# Search
+RESULTS=$(gh issue list \
+  --repo "$REPO" \
+  --search "$QUERY" \
+  --json number,title,labels,state \
+  --limit 50)
+
+# Display results
+echo "🔍 Search Results:"
+echo ""
+echo "$RESULTS" | jq -r '.[] | "  #\(.number) - \(.title) [\(.state)]"'
+echo ""
+
+# Count by status
+echo "📊 By Status:"
+echo "$RESULTS" | jq -r '
+  group_by(.labels[] | select(.name | startswith("status:")) | .name) |
+  map({status: .[0].labels[] | select(.name | startswith("status:")) | .name, count: length}) |
+  .[] | "  \(.status): \(.count)"
+'
+```
 
 ## AUTO-SORT LOGIC
 
-**Trigger on:**
-- Add new feature
-- Update existing feature
-- Change Impact/Effort/Confidence
-- Resolve clarifications
-- Move feature to new section
+**GitHub Issues Sorting Model:**
 
-**Sort rules:**
-- **Backlog/Later/Next**: By ICE score (descending), then preserve original order for ties
-- **In Progress**: Preserve manual order (user controls priority)
-- **Shipped**: By date (newest first)
+Unlike the old markdown roadmap, GitHub Issues don't have explicit "sort order" within sections. Instead, sorting happens dynamically via queries:
 
-**Implementation:**
-1. Extract all items from section
-2. Calculate ICE for each (use SCORING formula)
-3. Sort array by score (descending)
-4. For ties: Preserve original order (stable sort)
-5. Rewrite section with sorted items
+**Priority-based Sorting:**
+- Issues auto-labeled with `priority:high|medium|low` based on ICE score
+- Queries fetch issues in priority order: high → medium → low
+- Within same priority: Sort by created date (oldest first) or ICE score
+
+**ICE Score Calculation:**
+- Calculated when issue is created via `create_roadmap_issue()`
+- Stored in YAML frontmatter in issue body
+- Priority labels auto-applied based on score thresholds
+
+**Re-prioritization:**
+- Update ICE scores → Use `update_issue_ice()` from github-roadmap-manager
+- Script recalculates score and updates priority labels
+- Next query will reflect new priority
+
+**Example Query** (high priority backlog items):
+```bash
+gh issue list \
+  --repo "owner/repo" \
+  --label "status:backlog,priority:high" \
+  --json number,title,body \
+  --limit 10
+```
+
+**Manual Sorting:**
+- GitHub Projects can provide drag-and-drop manual ordering
+- Use custom "Priority" field in Projects for manual overrides
+- Roadmap command shows ICE-based priority by default
+
+**Implementation Note:**
+- No need to "rewrite" files like markdown roadmap
+- Label updates are instant and automatically reflected in queries
+- Use GitHub Projects for visual roadmap with custom ordering
 
 ## RETURN
 
 **Concise summary:**
+
+**After ADD:**
 ```
-✅ Added: [slug] to Backlog (Impact: N, Effort: N, Score: N.NN)
+✅ Created issue #123: [slug] in Backlog
+   Impact: N | Effort: N | Confidence: N.N | Score: N.NN
+   Priority: high | Area: app | Role: student
 
-📊 Roadmap (sorted by priority):
-- Shipped: N | In Progress: N | Next: N | Later: N | Backlog: N
+📊 Roadmap Summary:
+   Backlog: 12 | Next: 3 | In Progress: 2 | Shipped: 45
 
-Backlog Top 3:
-1. [slug-1] (Score: N.NN) - [title]
-2. [slug-2] (Score: N.NN) - [title]
-3. [slug-3] (Score: N.NN) - [title]
+Top 3 in Backlog (by priority):
+1. #123 [slug] (Score: 1.8) - [title]
+2. #98 other-slug (Score: 1.5) - [title]
+3. #87 another-slug (Score: 1.2) - [title]
 
-💡 Next: /roadmap clarify [slug] OR \spec-flow [slug]
-```
-
-**If auto-split created:**
-```
-✅ Split [original-slug] into N features:
-- [slug-1] (Score: N.NN) - Basic version
-- [slug-2] (Score: N.NN) - Enhanced version [BLOCKED: slug-1]
-
-📊 Roadmap (sorted by priority):
-- Backlog: N (including N new features)
-
-Backlog Top 5:
-1. [slug-1] (Score: N.NN) - [title]
-2. [other-slug] (Score: N.NN) - [title]
-3. [slug-2] (Score: N.NN) - [title] [BLOCKED]
-
-💡 Next: \spec-flow [slug-1] (ship basic version first)
+💡 Next: /feature [slug]
 ```
 
-**If clarifications offered:**
+**After BRAINSTORM:**
 ```
-🤔 Found N clarifications - How to proceed?
-A) Answer now | B) Let Claude recommend | C) Skip
+✅ Created N GitHub issues from brainstormed ideas
 
-Default: B
+📊 Roadmap Summary:
+   Backlog: 15 (+N) | Next: 3 | In Progress: 2
 
-[Waiting for A, B, or C]
-```
+New Issues:
+- #124 student-progress-widget (Score: 1.5)
+- #125 cfi-batch-export (Score: 1.4)
+- #126 study-plan-generator (Score: 1.2)
 
-**If brainstormed:**
-```
-💡 Generated N ideas - Which to add? (1,2,3, all, skip)
-
-[Waiting for selection]
+💡 Next: /feature [highest-priority-slug]
 ```
 
+**After MOVE:**
+```
+✅ Moved issue #123 from Backlog to Next
+
+📊 Roadmap Summary:
+   Backlog: 11 | Next: 4 (+1) | In Progress: 2
+
+Next Queue:
+1. #123 [slug] (Score: 1.8) - [title]
+2. #98 other-slug (Score: 1.5) - [title]
+3. #87 another-slug (Score: 1.2) - [title]
+4. #76 final-slug (Score: 1.0) - [title]
+
+💡 Next: /feature [slug]
+```
+
+**After DELETE:**
+```
+✅ Closed issue #123 (wont-fix)
+
+📊 Roadmap Summary:
+   Backlog: 11 (-1) | Next: 3 | In Progress: 2
+
+Note: specs/[slug]/ directory preserved (if exists)
+```
+
+**After SHIP:**
+```
+✅ Shipped issue #123: [slug] (v1.2.0)
+   Date: 2025-10-20
+   Production: https://app.example.com
+
+📊 Roadmap Summary:
+   Backlog: 11 | Next: 3 | In Progress: 1 (-1) | Shipped: 46 (+1)
+
+Recent Shipments:
+1. #123 [slug] - v1.2.0 (2025-10-20)
+2. #120 other-feature - v1.1.9 (2025-10-18)
+3. #118 another-feature - v1.1.8 (2025-10-15)
+```
+
+**After SEARCH:**
+```
+🔍 Search Results for "$KEYWORDS":
+
+Found N issues:
+- #123 student-progress-widget [OPEN]
+- #98 progress-tracking [CLOSED]
+- #87 mastery-dashboard [OPEN]
+
+📊 By Status:
+   status:backlog: 2
+   status:shipped: 1
+
+💡 Open issue: gh issue view 123
+```
