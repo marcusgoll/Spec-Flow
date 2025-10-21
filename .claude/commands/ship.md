@@ -1188,16 +1188,16 @@ echo ""
 
 # Source roadmap management functions
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-  source .spec-flow/scripts/bash/roadmap-manager.sh 2>/dev/null || {
+  source .spec-flow/scripts/bash/github-roadmap-manager.sh 2>/dev/null || {
     echo "⚠️  Roadmap management not available on Windows (use PowerShell)"
   }
 else
-  source .spec-flow/scripts/bash/roadmap-manager.sh
+  source .spec-flow/scripts/bash/github-roadmap-manager.sh
 fi
 
-# Mark feature as shipped in roadmap
+# Mark feature as shipped in roadmap (GitHub Issues)
 if [ -n "$NEW_VERSION" ]; then
-  mark_feature_shipped "$FEATURE_SLUG" "$NEW_VERSION" "$(date +%Y-%m-%d)" "$PROD_URL" 2>/dev/null || {
+  mark_issue_shipped "$FEATURE_SLUG" "$NEW_VERSION" "$(date +%Y-%m-%d)" "$PROD_URL" 2>/dev/null || {
     echo "⚠️  Could not update roadmap (feature may not be in roadmap yet)"
   }
 else

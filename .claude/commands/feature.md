@@ -512,15 +512,15 @@ echo ""
 
 # Source roadmap management functions
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-  source .spec-flow/scripts/bash/roadmap-manager.sh 2>/dev/null || {
+  source .spec-flow/scripts/bash/github-roadmap-manager.sh 2>/dev/null || {
     echo "⚠️  Roadmap management not available on Windows (use PowerShell)"
   }
 else
-  source .spec-flow/scripts/bash/roadmap-manager.sh
+  source .spec-flow/scripts/bash/github-roadmap-manager.sh
 fi
 
-# Mark feature as in progress in roadmap
-mark_feature_in_progress "$SLUG" 2>/dev/null || {
+# Mark feature as in progress in roadmap (GitHub Issues)
+mark_issue_in_progress "$SLUG" 2>/dev/null || {
   echo "Note: Could not update roadmap (feature may not be in roadmap yet)"
 }
 echo ""

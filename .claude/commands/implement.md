@@ -506,8 +506,8 @@ if [ "$TASK_FORMAT" = "user-story" ]; then
       # This is a manual gate - execution stops until user responds
       #
       # When user chooses 'ship', execute:
-      # source .spec-flow/scripts/bash/roadmap-manager.sh
-      # add_future_enhancements_to_roadmap "$FEATURE_DIR" "$SLUG"
+      # source .spec-flow/scripts/bash/github-roadmap-manager.sh
+      # add_future_enhancements_to_roadmap "$FEATURE_DIR" "$SLUG"  # NOTE: This function needs to be created for GitHub Issues
       # echo ""
       # echo "Next: /preview to validate MVP"
       # exit 0
@@ -549,9 +549,9 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
      - If user says "ship" or "A":
        ```bash
        # Load roadmap manager functions
-       source .spec-flow/scripts/bash/roadmap-manager.sh
+       source .spec-flow/scripts/bash/github-roadmap-manager.sh
 
-       # Add future enhancements to roadmap
+       # Add future enhancements to roadmap (NOTE: This function needs to be created for GitHub Issues)
        add_future_enhancements_to_roadmap "$FEATURE_DIR" "$SLUG"
 
        # Exit with next step
