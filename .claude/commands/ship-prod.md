@@ -1462,6 +1462,93 @@ echo "**Workflow complete**:\spec-flow → ... → optimize → preview → phas
 echo ""
 ```
 
+## BRANCH CLEANUP
+
+**Purpose**: Switch to main and optionally delete the local feature branch after production deployment
+
+**Process**:
+
+```bash
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔄 Switching to Main Branch"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Get current branch (should be feature branch)
+FEATURE_BRANCH=$(git branch --show-current)
+
+# Get main branch name
+MAIN_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+
+if [ -z "$MAIN_BRANCH" ]; then
+  # Fallback to detecting main vs master
+  if git show-ref --verify --quiet refs/heads/main; then
+    MAIN_BRANCH="main"
+  elif git show-ref --verify --quiet refs/heads/master; then
+    MAIN_BRANCH="master"
+  else
+    echo "⚠️  Could not detect main branch"
+    MAIN_BRANCH="main"  # Default
+  fi
+fi
+
+echo "Feature branch: $FEATURE_BRANCH"
+echo "Main branch: $MAIN_BRANCH"
+echo ""
+
+# Switch to main branch
+echo "Checking out $MAIN_BRANCH..."
+git checkout "$MAIN_BRANCH"
+
+if [ $? -ne 0 ]; then
+  echo "❌ Failed to checkout $MAIN_BRANCH"
+  echo "   You may need to manually run: git checkout $MAIN_BRANCH"
+else
+  echo "✅ Switched to $MAIN_BRANCH"
+  echo ""
+
+  # Pull latest from origin (includes the merged PR)
+  echo "Pulling latest from origin/$MAIN_BRANCH..."
+  git pull origin "$MAIN_BRANCH"
+
+  if [ $? -eq 0 ]; then
+    echo "✅ Updated $MAIN_BRANCH with merged changes"
+  else
+    echo "⚠️  Failed to pull (continuing anyway)"
+    echo "   You can pull manually later: git pull origin $MAIN_BRANCH"
+  fi
+
+  echo ""
+
+  # Offer to delete feature branch
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🧹 Feature Branch Cleanup"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "Feature branch '$FEATURE_BRANCH' has been deployed to production."
+  echo "The remote branch has been deleted automatically."
+  echo ""
+  read -p "Delete local feature branch? (yes/no): " DELETE_LOCAL
+
+  if [ "$DELETE_LOCAL" = "yes" ]; then
+    git branch -d "$FEATURE_BRANCH"
+
+    if [ $? -eq 0 ]; then
+      echo "✅ Deleted local branch: $FEATURE_BRANCH"
+    else
+      echo "⚠️  Branch has unmerged commits, use -D to force delete"
+      echo "   If you're sure, run: git branch -D $FEATURE_BRANCH"
+    fi
+  else
+    echo "⏭️  Kept local branch: $FEATURE_BRANCH"
+    echo "   You can delete it later: git branch -d $FEATURE_BRANCH"
+  fi
+
+  echo ""
+fi
+```
+
 ---
 
 ## ERROR HANDLING
@@ -1604,6 +1691,7 @@ https://github.com/cfipros/monorepo/releases/new?tag=v[X.Y.Z]
 - ✅ All deployments successful
 - ✅ Canary smoke tests passing
 - ✅ Alias flip completed
+- ✅ Switched to main branch locally
 - ✅ Roadmap updated (moved to "Shipped")
 
 ### Reports
