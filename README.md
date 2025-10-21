@@ -43,7 +43,20 @@
 
 ## 🆕 Recent Updates
 
-### v1.14.0 (January 2025)
+### v2.1.2 (October 2025)
+**/feature next Auto-Pull** - Automatically start highest priority roadmap item
+
+- **Usage**: `/feature next` - Auto-pulls highest priority feature from GitHub Issues
+- **Smart Search**: Queries `status:next` first, falls back to `status:backlog`
+- **Priority Sorting**: Sorts by `priority:high` → `priority:medium` → `priority:low`
+- **ICE Display**: Shows Impact/Confidence/Effort scores and calculated ICE score
+- **Auto-Status Update**: Moves issue from `next`/`backlog` → `in-progress`
+- **Full Traceability**: Links workflow state to GitHub issue number
+- **No Manual Input**: Just run `/feature next` - no feature description needed
+
+**Benefits**: Work on highest priority items automatically, reduce context switching, maintain roadmap sync.
+
+### v2.1.0 (October 2025)
 **GitHub Issues Roadmap Migration** - Complete migration from markdown to GitHub Issues
 
 - **Backend Migration**: `/roadmap` command now uses GitHub Issues instead of markdown files
@@ -61,7 +74,7 @@
 
 **Documentation**: See `docs/github-roadmap-migration.md` for complete guide.
 
-### v1.13.0 (January 2025)
+### v1.13.0 (October 2025)
 **Local Project Integration Workflow** - Automatic merge-to-main for local-only projects
 
 - **New Phase S.4.5a**: Merges feature branch → main/master after successful local build
@@ -77,7 +90,7 @@
 
 **Impact**: Local-only projects now have complete parity with remote deployment models - all features properly integrate to main branch before being marked "Shipped" in roadmap.
 
-### v1.12.1 (January 2025)
+### v1.12.1 (October 2025)
 **Update Command Simplification** - Removed backup overhead for faster, cleaner updates
 
 - **Removed backup creation**: `npx spec-flow update` no longer creates backup folders
@@ -88,7 +101,7 @@
 
 **Why?** The preserveMemory flag already protects user data during updates. Backups created redundant folders that users had to manually clean up. This change simplifies the update process while maintaining safety.
 
-### v1.12.0 (January 2025)
+### v1.12.0 (October 2025)
 **Learnings Persistence & Design Iteration** - Skills learn across npm updates + enhanced design workflow
 
 **Part 1: Learnings Persistence (All 16 Skills)**
