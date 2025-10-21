@@ -5,6 +5,61 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.3] - 2025-10-21
+
+### Fixed - GitHub Issues Roadmap Integration
+
+**Rationale**: Features were not being marked as "Shipped" in GitHub Issues roadmap after deployment.
+
+#### Problem
+
+After migrating to GitHub Issues in v2.1.0, the `/roadmap` command correctly used the new `github-roadmap-manager.sh` functions, but other workflow commands (`/ship`, `/feature`) were still sourcing the old markdown-based `roadmap-manager.sh` and calling outdated function names.
+
+#### Root Cause
+
+**Workflow commands had stale references**:
+- `/ship.md`: Called `mark_feature_shipped()` (old markdown function)
+- `/feature.md`: Called `mark_feature_in_progress()` (old markdown function)
+- Both sourced `roadmap-manager.sh` instead of `github-roadmap-manager.sh`
+
+**Result**: Features started and shipped successfully, but GitHub Issues roadmap never updated.
+
+#### Changes
+
+**Files Updated**:
+- `.claude/commands/ship.md`
+  - Source: `roadmap-manager.sh` → `github-roadmap-manager.sh`
+  - Function: `mark_feature_shipped()` → `mark_issue_shipped()`
+- `.claude/commands/feature.md`
+  - Source: `roadmap-manager.sh` → `github-roadmap-manager.sh`
+  - Function: `mark_feature_in_progress()` → `mark_issue_in_progress()`
+- `.claude/commands/implement.md`
+  - Updated comments to reference new GitHub Issues functions
+
+#### Impact
+
+**Roadmap now correctly updates when features are**:
+
+1. **Started** (`/feature "description"` or `/feature next`):
+   - GitHub Issue: `status:next` → `status:in-progress`
+   - Message: `✅ Marked issue #N as In Progress in roadmap`
+
+2. **Shipped** (`/ship` Phase S.5):
+   - GitHub Issue: → `status:shipped`
+   - Issue closed with reason: "completed"
+   - Comment added: "🚀 Shipped in v{version}" with date and production URL
+   - Message: `✅ Marked issue #N as Shipped (vX.Y.Z) in roadmap`
+
+**User-Visible Changes**:
+- ✅ Roadmap automatically syncs with feature workflow
+- ✅ Issues close when features ship to production
+- ✅ Version history tracked in issue comments
+- ✅ Full traceability from roadmap → implementation → deployment
+
+**Breaking Changes**: None
+
+---
+
 ## [2.1.2] - 2025-10-21
 
 ### Added - /feature next Auto-Pull from Roadmap
