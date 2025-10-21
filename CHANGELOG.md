@@ -5,6 +5,69 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.2] - 2025-01-21
+
+### Added - /feature next Auto-Pull from Roadmap
+
+**Rationale**: Streamline feature workflow initiation by automatically pulling the highest priority roadmap item.
+
+#### New Feature: `/feature next` Command
+
+The `/feature` command now supports automatic roadmap item selection:
+
+**Usage**:
+```bash
+/feature next
+```
+
+**Functionality**:
+- Queries GitHub Issues for highest priority feature
+- Searches `status:next` first, falls back to `status:backlog`
+- Sorts by priority labels (`priority:high` → `priority:medium` → `priority:low`)
+- Extracts slug from YAML frontmatter (or generates from title)
+- Displays feature details with ICE score
+- Auto-updates issue status from `next`/`backlog` → `in-progress`
+- Links workflow state to GitHub issue for tracking
+
+**Example Output**:
+```
+🔍 Searching for highest priority roadmap item...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Next Feature Selected
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Issue: #42
+Title: Dark mode toggle for settings
+Slug: dark-mode-toggle
+
+Priority: high (ICE Score: 8.00)
+  Impact: 8 | Confidence: 10 | Effort: 10
+
+📌 Updating issue status to in-progress...
+✅ Issue #42 marked as in-progress
+
+Starting feature workflow...
+```
+
+**Implementation Details**:
+- Added PARSE ARGUMENTS support for "next" mode
+- New FETCH NEXT FEATURE section with GitHub Issues query
+- Slug extraction from issue frontmatter
+- Auto-status update using GitHub CLI
+- GitHub issue number stored in `workflow-state.yaml`
+
+**Benefits**:
+✅ No manual feature description needed
+✅ Always works on highest priority item
+✅ Automatic roadmap sync (issue status updated)
+✅ Full traceability (workflow linked to issue)
+✅ Reduces context switching
+
+**Breaking Changes**: None
+
+---
+
 ## [2.1.1] - 2025-01-21
 
 ### Changed - Documentation Cleanup
