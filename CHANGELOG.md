@@ -5,6 +5,21 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.2] - 2025-10-22
+
+### Fixed
+- Roadmap update error handling in /ship Phase S.5
+- Removed error suppression (2>/dev/null) that was hiding failures
+- Added FEATURE_SLUG validation before calling mark_issue_shipped
+- Added debug output showing slug and version parameters
+- Added detailed troubleshooting steps for roadmap update failures
+
+### Changed
+- GitHub issues now properly marked as shipped and closed after production deployment
+- Better error visibility for finalization issues
+
+---
+
 ## [2.3.1] - 2025-10-21
 
 ### Fixed
