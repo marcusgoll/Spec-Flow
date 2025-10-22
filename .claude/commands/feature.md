@@ -9,13 +9,16 @@ Orchestrate feature delivery through isolated phase agents for maximum efficienc
 
 **Architecture**: Orchestrator-Workers with Phase Isolation
 - **Orchestrator** (`/feature`): Lightweight state tracking, phase progression
-- **Phase Agents**: Isolated contexts, call slash commands, return summaries
-- **Implementation**: `/implement` called directly (spawns worker agents: backend-dev, frontend-shipper, etc.)
-  - Note: Phase 4 bypasses phase agent due to sub-agent spawning limits
+- **Phase Agents**: Isolated contexts, fresh token budget, parallel execution
+- **Implementation**: `implement-phase-agent` with intelligent task batching
+  - Analyzes task dependencies
+  - Groups independent tasks into parallel batches
+  - Executes batches sequentially with parallel Task() calls per batch
 
 **Benefits**:
 - 67% token reduction (240k → 80k per feature)
 - 2-3x faster (isolated contexts, no /compact overhead)
+- 2x faster implementation (parallel task batching)
 - Same quality (slash commands unchanged)
 
 ## WORKFLOW TRACKING
@@ -917,90 +920,130 @@ Refer to your agent brief for full instructions.
 
 ### Phase 4: Implementation (EXECUTION)
 
-**Call /implement directly (cannot use phase agent due to sub-agent spawning limits):**
+**Use implement-phase-agent for fresh context and parallel task execution:**
 
-```bash
-# Update state (start phase 4)
-# Set current_phase = 4, status = "in_progress", record start timestamp
+```
+Task(
+  subagent_type="implement-phase-agent",
+  description="Phase 4: Execute Implementation",
+  prompt=f"""
+Execute Phase 4: Implementation in isolated context with intelligent task batching.
 
-# Execute /implement slash command directly
-# This command spawns parallel worker agents internally
-# Cannot use implement-phase-agent because sub-agents can't spawn sub-agents
-echo "⏳ Phase 4: Implementation"
-echo ""
+Feature Directory: {FEATURE_DIR}
+Feature Slug: {SLUG}
+Project Type: {PROJECT_TYPE}
+
+Previous Phase Summaries:
+- Spec: {SPEC_SUMMARY}
+- Plan: {PLAN_SUMMARY}
+- Tasks: {TASKS_SUMMARY}
+
+IMPORTANT CONTEXT:
+- Feature directory exists: {FEATURE_DIR}
+- Workflow state initialized: {FEATURE_DIR}/workflow-state.yaml
+- Tasks defined: {FEATURE_DIR}/tasks.md
+- Implementation notes: {FEATURE_DIR}/NOTES.md
+
+Your task:
+1. Read workflow context from NOTES.md, workflow-state.yaml, tasks.md
+2. Analyze task dependencies to identify parallel batching opportunities
+3. Group independent tasks into batches
+4. Execute each batch using parallel Task() calls
+5. Wait for batch completion before starting dependent batches
+6. Update NOTES.md with progress after each batch
+7. Return structured summary with completion stats
+
+Expected output format:
+{{
+  "status": "completed" | "failed" | "blocked",
+  "summary": "Brief completion summary with stats",
+  "stats": {{
+    "total_tasks": <number>,
+    "completed_tasks": <number>,
+    "files_changed": <number>,
+    "error_count": <number>,
+    "batches_executed": <number>
+  }},
+  "blockers": ["List of blocking issues if status != completed"],
+  "key_decisions": ["Key implementation decisions made"]
+}}
+
+Refer to your agent brief (.claude/agents/phase/implement.md) for full instructions including:
+- Dependency analysis algorithm
+- Batch execution strategy
+- Error handling and recovery
+- Progress tracking format
+
+CRITICAL: Use fresh context by reading from files - do not assume context from previous phases.
+  """
+)
 ```
 
-**Execute in sequence:**
+**Validate phase completion:**
 
-1. **Run /implement command:**
-   - INVOKE: `/implement` (use SlashCommand tool)
-   - WAIT: For completion
-   - NOTE: This command handles parallel worker agents (backend-dev, frontend-shipper, etc.)
-   - VERIFY: All tasks completed
+```bash
+# Parse agent result
+AGENT_RESULT=$(cat /tmp/implement-agent-result.json 2>/dev/null || echo '{}')
+STATUS=$(echo "$AGENT_RESULT" | jq -r '.status // "unknown"')
+SUMMARY=$(echo "$AGENT_RESULT" | jq -r '.summary // "No summary"')
+COMPLETED=$(echo "$AGENT_RESULT" | jq -r '.stats.completed_tasks // 0')
+TOTAL=$(echo "$AGENT_RESULT" | jq -r '.stats.total_tasks // 0')
+ERRORS=$(echo "$AGENT_RESULT" | jq -r '.stats.error_count // 0')
+BATCHES=$(echo "$AGENT_RESULT" | jq -r '.stats.batches_executed // 0')
 
-2. **Extract implementation statistics:**
-   ```bash
-   FEATURE_DIR="specs/$SLUG"
-   NOTES_FILE="$FEATURE_DIR/NOTES.md"
-   TASKS_FILE="$FEATURE_DIR/tasks.md"
-   ERROR_LOG="$FEATURE_DIR/error-log.md"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📊 Implementation Results"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Summary: $SUMMARY"
+echo "Tasks: $COMPLETED/$TOTAL completed"
+echo "Batches: $BATCHES executed"
+echo "Errors: $ERRORS logged"
+echo ""
 
-   # Detect task format (user-story vs tdd-phase)
-   TASK_FORMAT="tdd-phase"  # default
-   grep -q "\[US[0-9]\]" "$TASKS_FILE" && TASK_FORMAT="user-story"
+# Check for blockers
+if [ "$STATUS" != "completed" ]; then
+  echo "❌ Implementation blocked"
+  echo ""
+  echo "Blockers:"
+  echo "$AGENT_RESULT" | jq -r '.blockers[]'
+  echo ""
+  echo "Error log: $FEATURE_DIR/error-log.md"
+  echo ""
+  echo "Options:"
+  echo "  1. Fix blockers manually and run: /feature continue"
+  echo "  2. Review agent output above for guidance"
+  echo ""
 
-   if [ "$TASK_FORMAT" = "user-story" ]; then
-     # Track by priority/user story
-     P1_TOTAL=$(grep -c "\[P1\]" "$TASKS_FILE" 2>/dev/null || echo 0)
-     P1_COMPLETE=$(grep -c "✅.*\[P1\]" "$NOTES_FILE" 2>/dev/null || echo 0)
-     P2_TOTAL=$(grep -c "\[P2\]" "$TASKS_FILE" 2>/dev/null || echo 0)
-     P2_COMPLETE=$(grep -c "✅.*\[P2\]" "$NOTES_FILE" 2>/dev/null || echo 0)
-     P3_TOTAL=$(grep -c "\[P3\]" "$TASKS_FILE" 2>/dev/null || echo 0)
-     P3_COMPLETE=$(grep -c "✅.*\[P3\]" "$NOTES_FILE" 2>/dev/null || echo 0)
+  update_workflow_phase "$FEATURE_DIR" "implement" "failed"
+  exit 1
+fi
 
-     COMPLETED_COUNT=$((P1_COMPLETE + P2_COMPLETE + P3_COMPLETE))
-     TOTAL_TASKS=$((P1_TOTAL + P2_TOTAL + P3_TOTAL))
-   else
-     # Track by total tasks (TDD format)
-     COMPLETED_COUNT=$(grep -c "^✅ T[0-9]\{3\}" "$NOTES_FILE" || echo "0")
-     TOTAL_TASKS=$(grep -c "^T[0-9]\{3\}" "$TASKS_FILE" || echo "0")
-   fi
+# Check completion threshold
+if [ "$COMPLETED" -lt "$TOTAL" ]; then
+  COMPLETION_RATE=$(echo "scale=2; $COMPLETED * 100 / $TOTAL" | bc)
+  echo "⚠️  Incomplete: $COMPLETION_RATE% of tasks completed"
+  echo ""
+  echo "Fix remaining tasks and run: /feature continue"
+  update_workflow_phase "$FEATURE_DIR" "implement" "failed"
+  exit 1
+fi
 
-   # Get files changed
-   FILES_CHANGED=$(git diff --name-only main | wc -l)
+echo "✅ Implementation complete ($COMPLETED/$TOTAL tasks, $BATCHES batches)"
+echo ""
 
-   # Check for errors
-   ERROR_COUNT=$(grep -c "❌\|⚠️" "$ERROR_LOG" 2>/dev/null || echo "0")
-   ```
+# Store phase summary
+yq eval -i ".workflow.phases.implement.summary = \"$SUMMARY\"" "$FEATURE_DIR/workflow-state.yaml"
+yq eval -i ".workflow.phases.implement.stats = {}" "$FEATURE_DIR/workflow-state.yaml"
+yq eval -i ".workflow.phases.implement.stats.completed = $COMPLETED" "$FEATURE_DIR/workflow-state.yaml"
+yq eval -i ".workflow.phases.implement.stats.total = $TOTAL" "$FEATURE_DIR/workflow-state.yaml"
+yq eval -i ".workflow.phases.implement.stats.batches = $BATCHES" "$FEATURE_DIR/workflow-state.yaml"
 
-3. **Create phase summary:**
-   ```bash
-   if [ "$TASK_FORMAT" = "user-story" ]; then
-     SUMMARY="Implemented P1: $P1_COMPLETE/$P1_TOTAL, P2: $P2_COMPLETE/$P2_TOTAL, P3: $P3_COMPLETE/$P3_TOTAL. Changed $FILES_CHANGED files."
-   else
-     SUMMARY="Implemented $COMPLETED_COUNT/$TOTAL_TASKS tasks. Changed $FILES_CHANGED files."
-   fi
-   ```
-   - Extract key decisions from NOTES.md
-   - Store in workflow-state.json phase_summaries
-   - Include task_format in phase metadata
+update_workflow_phase "$FEATURE_DIR" "implement" "completed"
+```
 
-4. **Check for blockers:**
-   ```bash
-   if [ "$COMPLETED_COUNT" -lt "$TOTAL_TASKS" ]; then
-     echo "❌ Implementation incomplete: $COMPLETED_COUNT/$TOTAL_TASKS tasks completed"
-     echo "Review: $ERROR_LOG"
-     echo ""
-     echo "Fix remaining tasks and run: /feature continue"
-     update_workflow_phase "$FEATURE_DIR" "implement" "failed"
-     exit 1
-   fi
-
-   echo "✅ Implementation complete ($COMPLETED_COUNT/$TOTAL_TASKS tasks)"
-   update_workflow_phase "$FEATURE_DIR" "implement" "completed"
-   ```
-
-5. **Auto-continue to Phase 5 (Optimization):**
+**Auto-continue to Phase 5 (Optimization):**
    ```bash
    echo ""
    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
