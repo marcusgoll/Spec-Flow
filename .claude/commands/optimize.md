@@ -264,6 +264,328 @@ if [ -d "apps/app/$SLUG" ]; then
 fi
 ```
 
+## PARALLEL OPTIMIZATION CHECKS
+
+**Launch all optimization checks in parallel for 4-5x speedup:**
+
+```javascript
+// IMPORTANT: All 5 checks must be launched in a SINGLE message with multiple Task() calls
+// This ensures parallel execution rather than sequential
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🚀 Launching Parallel Optimization Checks"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Running in parallel:"
+echo "  - Performance benchmarks (frontend + backend)"
+echo "  - Security scans (dependencies + penetration tests)"
+echo "  - Accessibility audits (WCAG + a11y tests)"
+echo "  - Senior code review (contracts + quality)"
+echo "  - Migration validation (if schema changes)"
+echo ""
+
+// Check 1: Performance Benchmarks
+Task({
+  subagent_type: "general-purpose",
+  description: "Performance benchmarks",
+  prompt: `Run performance validation for feature at ${FEATURE_DIR}:
+
+1. Backend Performance:
+   - Run API benchmark tests: cd api && uv run pytest tests/performance/ -v
+   - Extract p50, p95, p99 response times
+   - Compare against targets in ${PLAN_FILE}
+   - Report: ${FEATURE_DIR}/perf-backend.log
+
+2. Frontend Performance (if UI feature):
+   - Check if dev server running on port 3000
+   - If not running, start: cd apps/app && pnpm dev (background)
+   - Run Lighthouse on main routes (if polished designs exist in apps/web/mock/${SLUG})
+   - Extract performance and accessibility scores
+   - Report: ${FEATURE_DIR}/perf-frontend.log
+
+3. Bundle Size (if UI feature):
+   - Run build: cd apps/app && pnpm build
+   - Extract bundle size from build output
+   - Compare against targets in plan.md
+   - Report: ${FEATURE_DIR}/bundle-size.log
+
+Output summary to ${FEATURE_DIR}/optimization-performance.md with:
+- Performance metrics (actual vs targets)
+- Issues found (if any)
+- Status: PASSED/FAILED
+`
+})
+
+// Check 2: Security Scans
+Task({
+  subagent_type: "general-purpose",
+  description: "Security scans",
+  prompt: `Run security validation for feature at ${FEATURE_DIR}:
+
+1. Backend Security:
+   - Dependency scan: cd api && uv run bandit -r app/ -ll
+   - Safety check: cd api && uv run safety check
+   - Report vulnerabilities: ${FEATURE_DIR}/security-backend.log
+
+2. Frontend Security:
+   - Audit: pnpm --filter @cfipros/marketing audit || true
+   - Audit: pnpm --filter @cfipros/app audit || true
+   - Report vulnerabilities: ${FEATURE_DIR}/security-frontend.log
+
+3. Penetration Tests:
+   - API security tests: cd api && uv run pytest tests/security/ -v
+   - Check auth/authz on protected routes
+   - Report: ${FEATURE_DIR}/security-tests.log
+
+Output summary to ${FEATURE_DIR}/optimization-security.md with:
+- Vulnerability count by severity (critical/high/medium/low)
+- Critical issues (must fix before deployment)
+- Status: PASSED/FAILED (fail if critical vulnerabilities)
+`
+})
+
+// Check 3: Accessibility Audits
+Task({
+  subagent_type: "general-purpose",
+  description: "Accessibility audits",
+  prompt: `Run accessibility validation for feature at ${FEATURE_DIR}:
+
+1. WCAG Compliance:
+   - Extract WCAG level requirement from ${PLAN_FILE}
+   - Run a11y tests: pnpm --filter @cfipros/marketing test -- --runInBand
+   - Run a11y tests: pnpm --filter @cfipros/app test -- --runInBand
+   - Report: ${FEATURE_DIR}/a11y-tests.log
+
+2. Lighthouse A11y (if UI feature):
+   - Use Lighthouse results from performance check (if available)
+   - Extract accessibility score
+   - Target: ≥95
+   - Report: ${FEATURE_DIR}/a11y-lighthouse.log
+
+3. Manual Checklist Validation:
+   - Keyboard navigation (check aria labels, focus indicators)
+   - Color contrast ratios (4.5:1 text, 3:1 UI)
+   - Screen reader compatibility
+   - Report: ${FEATURE_DIR}/a11y-manual.log
+
+Output summary to ${FEATURE_DIR}/optimization-accessibility.md with:
+- WCAG compliance status
+- Lighthouse a11y score
+- Issues found
+- Status: PASSED/FAILED (fail if Lighthouse <95 or WCAG violations)
+`
+})
+
+// Check 4: Senior Code Review
+Task({
+  subagent_type: "senior-code-reviewer",
+  description: "Senior code review",
+  prompt: `Review feature at ${FEATURE_DIR} for contract compliance and quality gates:
+
+Focus on:
+1. API Contract Compliance:
+   - Check ${FEATURE_DIR}/api-contracts/*.yaml (if exists)
+   - Verify OpenAPI spec alignment
+   - Check request/response schemas match implementation
+
+2. KISS/DRY Principle Violations:
+   - Check for over-engineering
+   - Check for code duplication
+   - Check for unnecessary complexity
+
+3. Security Vulnerabilities:
+   - SQL injection risks (parameterized queries?)
+   - XSS risks (input sanitization?)
+   - Authentication/authorization gaps
+
+4. Test Coverage:
+   - Run coverage: cd api && uv run pytest --cov=app tests/
+   - Run coverage: pnpm --filter @cfipros/app test --coverage
+   - Target: ≥80%
+
+5. Quality Gates:
+   - Lint: cd api && uv run ruff check .
+   - Types: cd api && uv run mypy app/ --strict
+   - Lint: pnpm --filter @cfipros/app lint
+   - Types: pnpm --filter @cfipros/app type-check
+
+Output detailed findings to ${FEATURE_DIR}/code-review.md with:
+- Critical issues (Severity: CRITICAL) - must fix before deployment
+- High priority issues (Severity: HIGH) - should fix
+- Minor suggestions (Severity: MEDIUM/LOW) - consider
+- Quality metrics (lint, types, tests, coverage)
+- Status: PASSED/FAILED (fail if critical issues found)
+`
+})
+
+// Check 5: Migration Validation (if schema changes)
+Task({
+  subagent_type: "general-purpose",
+  description: "Migration validation",
+  prompt: `Validate database migrations for feature at ${FEATURE_DIR}:
+
+1. Check if migrations exist:
+   - Look for ${FEATURE_DIR}/migration-plan.md
+   - If not found, skip validation (no schema changes)
+
+2. If migrations exist:
+   - Find migration files: find api/alembic/versions -name "*.py" -newer ${FEATURE_DIR}/migration-plan.md
+   - Check reversibility: verify all have downgrade() function
+   - Test upgrade/downgrade cycle:
+     cd api && uv run alembic upgrade head
+     cd api && uv run alembic downgrade -1
+     cd api && uv run alembic upgrade +1
+   - Check schema drift: cd api && uv run alembic check
+
+3. Report:
+   - ${FEATURE_DIR}/migration-validation.log
+
+Output summary to ${FEATURE_DIR}/optimization-migrations.md with:
+- Migration files found
+- Reversibility status
+- Upgrade/downgrade test results
+- Schema drift status
+- Status: PASSED/FAILED/SKIPPED
+`
+})
+
+echo ""
+echo "⏳ Waiting for all checks to complete..."
+echo ""
+
+// Wait for all Task() calls to complete
+// Claude Code will execute these in parallel and aggregate results
+```
+
+**After all parallel checks complete, aggregate results:**
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📊 Aggregating Optimization Results"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Initialize aggregation
+CRITICAL_ISSUES=0
+BLOCKING_CHECKS=()
+FAILED_CHECKS=()
+PASSED_CHECKS=()
+
+# Check 1: Performance
+if [ -f "$FEATURE_DIR/optimization-performance.md" ]; then
+  if grep -q "Status: FAILED" "$FEATURE_DIR/optimization-performance.md"; then
+    FAILED_CHECKS+=("Performance")
+    echo "⚠️  Performance: Some targets missed"
+  elif grep -q "Status: PASSED" "$FEATURE_DIR/optimization-performance.md"; then
+    PASSED_CHECKS+=("Performance")
+    echo "✅ Performance: All targets met"
+  fi
+fi
+
+# Check 2: Security
+if [ -f "$FEATURE_DIR/optimization-security.md" ]; then
+  CRITICAL_VULNS=$(grep -c "Severity: CRITICAL\|Severity: HIGH" "$FEATURE_DIR/optimization-security.md" 2>/dev/null || echo 0)
+
+  if [ "$CRITICAL_VULNS" -gt 0 ]; then
+    CRITICAL_ISSUES=$((CRITICAL_ISSUES + CRITICAL_VULNS))
+    BLOCKING_CHECKS+=("Security: $CRITICAL_VULNS critical vulnerabilities")
+    echo "❌ Security: $CRITICAL_VULNS critical vulnerabilities found"
+  else
+    PASSED_CHECKS+=("Security")
+    echo "✅ Security: No critical vulnerabilities"
+  fi
+fi
+
+# Check 3: Accessibility
+if [ -f "$FEATURE_DIR/optimization-accessibility.md" ]; then
+  if grep -q "Status: FAILED" "$FEATURE_DIR/optimization-accessibility.md"; then
+    CRITICAL_ISSUES=$((CRITICAL_ISSUES + 1))
+    BLOCKING_CHECKS+=("Accessibility: WCAG violations or score <95")
+    echo "❌ Accessibility: WCAG violations or score <95"
+  else
+    PASSED_CHECKS+=("Accessibility")
+    echo "✅ Accessibility: WCAG compliant"
+  fi
+fi
+
+# Check 4: Code Review
+if [ -f "$FEATURE_DIR/code-review.md" ]; then
+  CODE_REVIEW_CRITICAL=$(grep -c "Severity: CRITICAL" "$FEATURE_DIR/code-review.md" 2>/dev/null || echo 0)
+
+  if [ "$CODE_REVIEW_CRITICAL" -gt 0 ]; then
+    CRITICAL_ISSUES=$((CRITICAL_ISSUES + CODE_REVIEW_CRITICAL))
+    BLOCKING_CHECKS+=("Code Review: $CODE_REVIEW_CRITICAL critical issues")
+    echo "❌ Code Review: $CODE_REVIEW_CRITICAL critical issues found"
+  else
+    PASSED_CHECKS+=("Code Review")
+    echo "✅ Code Review: No critical issues"
+  fi
+fi
+
+# Check 5: Migrations
+if [ -f "$FEATURE_DIR/optimization-migrations.md" ]; then
+  if grep -q "Status: FAILED" "$FEATURE_DIR/optimization-migrations.md"; then
+    CRITICAL_ISSUES=$((CRITICAL_ISSUES + 1))
+    BLOCKING_CHECKS+=("Migrations: Reversibility or drift issues")
+    echo "❌ Migrations: Reversibility or drift issues"
+  elif grep -q "Status: PASSED" "$FEATURE_DIR/optimization-migrations.md"; then
+    PASSED_CHECKS+=("Migrations")
+    echo "✅ Migrations: All checks passed"
+  else
+    echo "⏭️  Migrations: Skipped (no schema changes)"
+  fi
+fi
+
+echo ""
+echo "Summary:"
+echo "  Passed: ${#PASSED_CHECKS[@]}"
+echo "  Failed: ${#FAILED_CHECKS[@]}"
+echo "  Blocking: ${#BLOCKING_CHECKS[@]}"
+echo ""
+
+# If critical issues found, offer auto-fix or block
+if [ "$CRITICAL_ISSUES" -gt 0 ]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "❌ CRITICAL ISSUES FOUND ($CRITICAL_ISSUES)"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "Blocking issues:"
+  for issue in "${BLOCKING_CHECKS[@]}"; do
+    echo "  - $issue"
+  done
+  echo ""
+  echo "Review detailed reports:"
+  echo "  - Security: $FEATURE_DIR/optimization-security.md"
+  echo "  - Accessibility: $FEATURE_DIR/optimization-accessibility.md"
+  echo "  - Code Review: $FEATURE_DIR/code-review.md"
+  echo "  - Migrations: $FEATURE_DIR/optimization-migrations.md"
+  echo ""
+
+  # Update workflow state to failed
+  update_workflow_phase "$FEATURE_DIR" "optimize" "failed"
+
+  echo "Options:"
+  echo "  1. Fix issues manually and run: /feature continue"
+  echo "  2. Run auto-fix: /optimize with auto-fix enabled"
+  echo ""
+  exit 1
+fi
+
+echo "✅ All optimization checks passed"
+echo ""
+
+# Update workflow state to completed
+update_workflow_phase "$FEATURE_DIR" "optimize" "completed"
+
+echo "Next: /feature auto-continues to /ship"
+echo ""
+```
+
+## DETAILED PHASE DESCRIPTIONS (Reference)
+
+The following sections provide detailed documentation for each optimization phase.
+The actual execution uses the parallel Task() calls above for 4-5x speedup.
+
 ## PHASE 5.1: FRONTEND PERFORMANCE
 
 **Local Lighthouse validation:**

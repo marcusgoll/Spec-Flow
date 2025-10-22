@@ -986,208 +986,122 @@ echo ""
    - Include task_format in phase metadata
 
 4. **Check for blockers:**
-   - IF COMPLETED_COUNT < TOTAL_TASKS:
-     - LOG: "❌ Implementation incomplete: {COMPLETED_COUNT}/{TOTAL_TASKS} tasks completed"
-     - LOG: "Review: {ERROR_LOG}"
-     - PAUSE: Exit workflow, return control to user
-   - ELSE:
-     - LOG: "✅ Implementation complete ({COMPLETED_COUNT}/{TOTAL_TASKS} tasks)"
-     - CONTINUE to Phase 5 (no user input needed)
+   ```bash
+   if [ "$COMPLETED_COUNT" -lt "$TOTAL_TASKS" ]; then
+     echo "❌ Implementation incomplete: $COMPLETED_COUNT/$TOTAL_TASKS tasks completed"
+     echo "Review: $ERROR_LOG"
+     echo ""
+     echo "Fix remaining tasks and run: /feature continue"
+     update_workflow_phase "$FEATURE_DIR" "implement" "failed"
+     exit 1
+   fi
 
-5. **Update state (complete phase 4):**
-   - Add 4 to phases_completed
-   - Record end timestamp
-   - Update last_updated
+   echo "✅ Implementation complete ($COMPLETED_COUNT/$TOTAL_TASKS tasks)"
+   update_workflow_phase "$FEATURE_DIR" "implement" "completed"
+   ```
 
-### Phase 5: Optimization (QUALITY)
+5. **Auto-continue to Phase 5 (Optimization):**
+   ```bash
+   echo ""
+   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+   echo "🔧 Auto-continuing to Phase 5: Optimization"
+   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+   echo ""
 
-**Invoke phase agent:**
+   # Call /optimize directly (handles parallel execution internally)
+   /optimize
 
-```
-Task(
-  subagent_type="phase/optimize",
-  description="Phase 5: Code Review & Optimization",
-  prompt=f"""
-Execute Phase 5: Optimization in isolated context.
+   # Check if optimization completed successfully
+   if ! test_phase_completed "$FEATURE_DIR" "optimize"; then
+     echo "❌ Optimization failed. Review issues and run: /feature continue"
+     exit 1
+   fi
 
-Feature Slug: {SLUG}
-Previous Phase Summary: {IMPLEMENT_SUMMARY}
+   # Check for critical code review issues
+   CRITICAL_ISSUES=0
+   if [ -f "$FEATURE_DIR/code-review.md" ]; then
+     CRITICAL_ISSUES=$(grep -c "Severity: CRITICAL" "$FEATURE_DIR/code-review.md" 2>/dev/null || echo 0)
+   fi
 
-Your task:
-1. Call /optimize slash command
-2. Extract quality metrics and critical findings
-3. Return structured JSON summary
+   if [ "$CRITICAL_ISSUES" -gt 0 ]; then
+     echo ""
+     echo "❌ $CRITICAL_ISSUES critical code review issues found"
+     echo "Review: $FEATURE_DIR/code-review.md"
+     echo ""
+     echo "Options:"
+     echo "  1. Fix issues manually and run: /feature continue"
+     echo "  2. Re-run /optimize with auto-fix enabled"
+     echo ""
+     exit 1
+   fi
 
-Refer to your agent brief for full instructions.
-  """
-)
+   echo "✅ Optimization complete - no critical issues"
+   ```
 
-# Check for critical issues (block if found)
-# Validate, store summary, log progress with metrics
-```
+6. **Auto-continue to Phase 6 (Ship):**
+   ```bash
+   echo ""
+   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+   echo "🚀 Auto-continuing to Phase 6: Ship"
+   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+   echo ""
 
-### MANUAL GATE 1: Preview (USER VALIDATION)
+   # Call /ship directly (handles all deployment phases and manual gates)
+   /ship
 
-**Pause for user validation:**
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🎨 MANUAL GATE: PREVIEW"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Next: /preview"
-echo ""
-echo "Action required:"
-echo "1. Run /preview to start local dev server"
-echo "2. Test UI/UX flows manually"
-echo "3. Verify acceptance criteria from spec"
-echo "4. When satisfied, continue: /feature continue"
-echo ""
-
-# Update workflow-state.yaml status to "awaiting_preview"
-# Save and exit (user will run /feature continue after testing)
-```
-
-### Phase 6: Ship to Staging (DEPLOYMENT)
-
-**Check project type (skip for local-only):**
-
-```bash
-PROJECT_TYPE=$(yq eval '.deployment_model' "$STATE_FILE")
-
-if [ "$PROJECT_TYPE" = "local-only" ]; then
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "📦 Local-only project detected"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "Skipping staging deployment (no remote repository configured)."
-  echo ""
-  echo "✅ Feature implementation complete!"
-  echo ""
-  echo "Next steps (manual deployment):"
-  echo "  1. Review changes: git diff main"
-  echo "  2. Merge to main: git checkout main && git merge \$FEATURE_BRANCH"
-  echo "  3. Tag release: git tag v1.0.0"
-  echo "  4. Deploy manually to your environment"
-  echo ""
-
-  # Mark workflow complete and exit
-  exit 0
-fi
-```
-
-**For remote projects, invoke phase agent:**
-
-```
-Task(
-  subagent_type="phase/ship-staging",
-  description="Phase 6: Deploy to Staging",
-  prompt=f"""
-Execute Phase 6: Ship to Staging in isolated context.
-
-Feature Slug: {SLUG}
-Project Type: {PROJECT_TYPE}
-
-Your task:
-1. Call /phase-1-ship slash command
-2. Extract deployment status and PR info
-3. Return structured JSON summary
-
-Refer to your agent brief for full instructions.
-  """
-)
-
-# Validate, store summary, log progress with PR/URL info
-```
-
-### MANUAL GATE 2: Validate Staging (USER VALIDATION)
-
-**Pause for staging validation:**
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🧪 MANUAL GATE: STAGING VALIDATION"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Next: /validate-staging"
-echo ""
-echo "Action required:"
-echo "1. Test feature on staging environment"
-echo "2. Verify E2E tests passed (GitHub Actions)"
-echo "3. Check Lighthouse CI scores"
-echo "4. When approved, continue: /feature continue"
-echo ""
-
-# Update workflow-state.yaml status to "awaiting_staging_validation"
-# Save and exit
-```
-
-### Phase 7: Ship to Production (DEPLOYMENT)
-
-**Invoke phase agent:**
-
-```
-Task(
-  subagent_type="phase/ship-prod",
-  description="Phase 7: Deploy to Production",
-  prompt=f"""
-Execute Phase 7: Ship to Production in isolated context.
-
-Feature Slug: {SLUG}
-Project Type: {PROJECT_TYPE}
-
-Your task:
-1. Call /phase-2-ship slash command
-2. Extract deployment status and release version
-3. Return structured JSON summary
-
-Refer to your agent brief for full instructions.
-  """
-)
-
-# Validate, store summary, log progress with release/URL info
-```
-
-### Phase 7.5: Finalize (DOCUMENTATION)
-
-**Invoke phase agent:**
-
-```
-Task(
-  subagent_type="phase/finalize",
-  description="Phase 7.5: Finalize Documentation",
-  prompt=f"""
-Execute Phase 7.5: Finalization in isolated context.
-
-Feature Slug: {SLUG}
-Project Type: {PROJECT_TYPE}
-
-Your task:
-1. Call /finalize slash command
-2. Extract documentation updates
-3. Return structured JSON summary
-
-Refer to your agent brief for full instructions.
-  """
-)
-
-# Validate, store summary, mark workflow complete
-```
+   # If /ship completes, workflow is done
+   echo ""
+   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+   echo "🎉 Feature Workflow Complete!"
+   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+   echo ""
+   echo "Feature: $SLUG"
+   echo "Summary: $FEATURE_DIR/ship-summary.md"
+   echo ""
+   ```
 
 ### Completion
 
+The `/feature` command now automatically continues from implementation through optimization to deployment, stopping only at:
+- **Blocking errors**: Build failures, critical code review issues, deployment failures
+- **Manual gates**: MVP gate (during implement), pre-flight approval, preview testing, staging validation (all handled by respective commands)
+
+To resume after a manual gate or fix blocking errors:
 ```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🎉 Feature Workflow Complete!"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Feature: $SLUG"
-echo "Status: Shipped to Production"
-echo ""
-echo "Summary:"
-# Print phase summaries from workflow-state.yaml
-echo ""
-echo "Workflow state saved to specs/$SLUG/workflow-state.yaml"
+/feature continue
+```
+
+### Old Phases (Removed)
+
+The following phase descriptions are removed as they're now handled by auto-continue:
+- Phase 5: Optimization (handled by `/optimize` call)
+- Manual Gates: Preview, Staging Validation (handled by `/ship` command)
+- Phase 6 & 7: Deployment phases (handled by `/ship` command)
+
+## Resume After Manual Gates or Errors
+
+If the workflow stops at a manual gate or encounters an error, you can resume with:
+
+```bash
+/feature continue
+```
+
+This will:
+- Load the most recent feature from `workflow-state.yaml`
+- Determine which phase was in progress or failed
+- Resume from that phase automatically
+
+**Resume conditions:**
+- If implementation incomplete → Retry `/implement`
+- If optimization failed → Retry `/optimize`
+- If critical issues found → Fix then retry
+- If at manual gate → Continue to next phase
+
+**Example:**
+```bash
+# Workflow stopped after preview manual gate
+/feature continue
+# → Continues to /ship deployment phases
 ```
 
 ## ERROR HANDLING

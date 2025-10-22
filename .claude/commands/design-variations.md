@@ -268,6 +268,72 @@ if [ "$TOTAL_FILES" -gt 50 ]; then
 fi
 ```
 
+### Parallel Screen Generation (Performance Optimization)
+
+**When generating variants for multiple screens, use parallel execution:**
+
+```javascript
+// IMPORTANT: For features with multiple screens, launch variant generation in parallel
+// This provides Nx speedup (where N = number of screens)
+
+// Example: Feature with 3 screens (upload, dashboard, settings)
+// Generate all screens in parallel using separate Task() calls in a SINGLE message
+
+const screens = ['upload', 'dashboard', 'settings']; // From SCREEN_IDS array
+
+// Launch parallel generation (all in one message)
+screens.forEach(screenId => {
+  Task({
+    subagent_type: "frontend-shipper",
+    description: `Generate ${VARIANT_COUNT} variants for ${screenId} screen`,
+    prompt: `Generate design variations for ${screenId} screen at ${MOCK_DIR}/${screenId}:
+
+Context:
+- Feature: ${SLUG}
+- Screens YAML: ${SCREENS_YAML}
+- Screen ID: ${screenId}
+- Variant Count: ${VARIANT_COUNT}
+- States: ${STATES_${screenId}}
+
+Tasks:
+1. Create route structure: ${MOCK_DIR}/${screenId}/v[1-${VARIANT_COUNT}]/page.tsx
+2. Generate ${VARIANT_COUNT} grayscale variants exploring:
+   - Layout variations (stacked, side-by-side, grid, list)
+   - Interaction patterns (inline, modal, sheet, redirect)
+   - Copy density (concise, descriptive, verbose)
+   - Component choices (from ui-inventory.md only)
+   - State handling (inline progress, redirect, optimistic UI)
+
+3. Constraints (MUST enforce):
+   - ✅ Grayscale only (no brand colors)
+   - ✅ System components only (from ui-inventory.md)
+   - ✅ All states reachable via ?state= query param
+   - ✅ Real copy from copy.md
+   - ✅ Mobile-first responsive
+   - ✅ Small diffs between variants
+
+4. Create variant index: ${MOCK_DIR}/${screenId}/page.tsx
+5. Create compare page: ${MOCK_DIR}/${screenId}/compare/page.tsx
+
+Output:
+- ${VARIANT_COUNT} variant pages
+- Variant index with links to all variants + states
+- Compare page for side-by-side comparison
+`
+  })
+})
+
+// Wait for all parallel generations to complete
+// Then aggregate results and proceed to design crit
+```
+
+**Benefits of parallel generation:**
+- **3 screens**: 3x faster than sequential
+- **5 screens**: 5x faster than sequential
+- **N screens**: Nx faster (linear speedup)
+
+**Fallback to sequential:** If only 1 screen, skip parallel execution and generate directly.
+
 ### Variant Generation Strategy
 
 **Generate $VARIANT_COUNT variants exploring:**
