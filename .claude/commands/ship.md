@@ -1178,9 +1178,19 @@ fi
 
 # Mark feature as shipped in roadmap (GitHub Issues)
 if [ -n "$NEW_VERSION" ]; then
-  mark_issue_shipped "$FEATURE_SLUG" "$NEW_VERSION" "$(date +%Y-%m-%d)" "$PROD_URL" 2>/dev/null || {
-    echo "⚠️  Could not update roadmap (feature may not be in roadmap yet)"
-  }
+  if [ -z "$FEATURE_SLUG" ]; then
+    echo "⚠️  Cannot update roadmap: FEATURE_SLUG is empty"
+  else
+    echo "📌 Updating roadmap: slug=$FEATURE_SLUG version=$NEW_VERSION"
+    if mark_issue_shipped "$FEATURE_SLUG" "$NEW_VERSION" "$(date +%Y-%m-%d)" "$PROD_URL"; then
+      echo "✅ Roadmap updated successfully"
+    else
+      echo "❌ Failed to update roadmap - check that:"
+      echo "   1. Feature exists in GitHub Issues with 'slug: $FEATURE_SLUG' in body"
+      echo "   2. GitHub authentication is configured (gh auth status)"
+      echo "   3. Repository is correctly set in git remote"
+    fi
+  fi
 else
   echo "⏭️  Skipped roadmap update (no version)"
 fi
