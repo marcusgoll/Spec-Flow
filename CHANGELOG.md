@@ -5,6 +5,20 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2025-10-21
+
+### Fixed
+- Critical bug in /ship command calling non-existent /phase-1-ship and /phase-2-ship
+- Corrected to call /ship-staging and /ship-prod for staging-prod deployments
+- Fixed phase names in workflow-state.yaml (ship:staging, ship:production)
+- Race condition in /feature next preventing multiple worktrees from claiming same issue
+
+### Changed
+- GitHub issue status update moved to immediately after selection (race window: 100ms → 5ms)
+- All deployment model workflows now use consistent command naming
+
+---
+
 ## [2.3.0] - 2025-10-21
 
 ### Added
