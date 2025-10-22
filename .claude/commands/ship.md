@@ -8,7 +8,7 @@
 - `/ship status` - Display current deployment status
 
 **Deployment Models**:
-- **staging-prod**: Full staging validation before production (optimize → preview → phase-1-ship → validate-staging → phase-2-ship → finalize)
+- **staging-prod**: Full staging validation before production (optimize → preview → ship-staging → validate-staging → ship-prod → finalize)
 - **direct-prod**: Direct production deployment (optimize → preview → deploy-prod → finalize)
 - **local-only**: Local build and integration (optimize → preview → build-local → merge-to-main → finalize)
 
@@ -235,7 +235,7 @@ echo "Model: $DEPLOYMENT_MODEL"
 
 case "$DEPLOYMENT_MODEL" in
   staging-prod)
-    echo "Workflow: Optimize → Preview → Phase-1-Ship → Validate-Staging → Phase-2-Ship → Finalize"
+    echo "Workflow: Optimize → Preview → Ship-Staging → Validate-Staging → Ship-Prod → Finalize"
     ;;
   direct-prod)
     echo "Workflow: Optimize → Preview → Deploy-Prod → Finalize"
@@ -663,10 +663,10 @@ case "$DEPLOYMENT_MODEL" in
     echo "📦 Phase S.4a: Deploy to Staging"
     echo "─────────────────────────────────────────────"
 
-    # Call /phase-1-ship
-    /phase-1-ship
+    # Call /ship-staging
+    /ship-staging
 
-    if ! test_phase_completed "$FEATURE_DIR" "ship:phase-1-ship"; then
+    if ! test_phase_completed "$FEATURE_DIR" "ship:staging"; then
       echo "❌ Staging deployment failed. Fix issues and run /ship continue"
       exit 1
     fi
@@ -676,7 +676,7 @@ case "$DEPLOYMENT_MODEL" in
     echo ""
 
     # Update state
-    update_workflow_phase "$FEATURE_DIR" "ship:phase-1-ship" "completed"
+    update_workflow_phase "$FEATURE_DIR" "ship:staging" "completed"
     update_workflow_phase "$FEATURE_DIR" "ship:validate-staging" "in_progress"
 
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -753,7 +753,7 @@ echo ""
 ```
 
 **State Updates**:
-- **staging-prod**: Mark phase-1-ship complete, set validate-staging to pending
+- **staging-prod**: Mark ship:staging complete, set validate-staging to pending
 - **direct-prod**: Mark deploy-prod complete
 - **local-only**: Mark build-local complete
 
@@ -970,17 +970,17 @@ else
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 
-  # Call /phase-2-ship
-  /phase-2-ship
+  # Call /ship-prod
+  /ship-prod
 
-  if ! test_phase_completed "$FEATURE_DIR" "ship:phase-2-ship"; then
+  if ! test_phase_completed "$FEATURE_DIR" "ship:production"; then
     echo "❌ Production deployment failed. Check logs and run /ship continue"
     exit 1
   fi
 
   echo ""
   echo "✅ Production deployment complete"
-  update_workflow_phase "$FEATURE_DIR" "ship:phase-2-ship" "completed"
+  update_workflow_phase "$FEATURE_DIR" "ship:production" "completed"
   update_workflow_phase "$FEATURE_DIR" "ship:finalize" "in_progress"
 fi
 
@@ -989,7 +989,7 @@ echo ""
 
 **State Updates**:
 - Mark `ship:validate-staging` as completed
-- Mark `ship:phase-2-ship` as completed
+- Mark `ship:production` as completed
 - Advance to `ship:finalize`
 
 ---
@@ -1326,9 +1326,9 @@ fi
 **Commands Called**:
 - `/optimize` - Code review and production readiness
 - `/preview` - Manual UI/UX testing gate
-- `/phase-1-ship` - Staging deployment (staging-prod model)
+- `/ship-staging` - Staging deployment (staging-prod model)
 - `/validate-staging` - Staging validation (staging-prod model)
-- `/phase-2-ship` - Production deployment (staging-prod model)
+- `/ship-prod` - Production deployment (staging-prod model)
 - `/deploy-prod` - Direct production deployment (direct-prod model)
 - `/build-local` - Local build (local-only model)
 

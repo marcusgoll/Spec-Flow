@@ -246,6 +246,19 @@ fi
 
 # Extract issue details
 ISSUE_NUMBER=$(echo "$NEXT_ISSUE" | jq -r '.number')
+
+# CRITICAL: Update issue status to in-progress IMMEDIATELY to prevent race conditions
+# This must happen before any other operations to ensure multiple worktrees don't select the same issue
+echo "📌 Claiming issue #$ISSUE_NUMBER (updating status to in-progress)..."
+gh issue edit "$ISSUE_NUMBER" \
+  --remove-label "status:next" \
+  --remove-label "status:backlog" \
+  --add-label "status:in-progress" \
+  --repo "$REPO" 2>/dev/null || {
+    echo "⚠️  Warning: Could not update issue status (may already be claimed)"
+  }
+echo ""
+
 ISSUE_TITLE=$(echo "$NEXT_ISSUE" | jq -r '.title')
 ISSUE_BODY=$(echo "$NEXT_ISSUE" | jq -r '.body // ""')
 
@@ -270,12 +283,13 @@ FEATURE_DESCRIPTION="$ISSUE_TITLE"
 
 # Display confirmation
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📋 Next Feature Selected"
+echo "📋 Feature Claimed"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "Issue: #$ISSUE_NUMBER"
 echo "Title: $ISSUE_TITLE"
 echo "Slug: $EXTRACTED_SLUG"
+echo "Status: ✅ in-progress (claimed)"
 echo ""
 
 # Extract priority and ICE score for display
@@ -291,17 +305,6 @@ if [ -n "$ICE_IMPACT" ] && [ -n "$ICE_CONFIDENCE" ] && [ -n "$ICE_EFFORT" ]; the
 else
   echo "Priority: $PRIORITY"
 fi
-echo ""
-
-# Auto-update issue status to in-progress
-echo "📌 Updating issue status to in-progress..."
-gh issue edit "$ISSUE_NUMBER" \
-  --remove-label "status:next" \
-  --remove-label "status:backlog" \
-  --add-label "status:in-progress" \
-  --repo "$REPO"
-
-echo "✅ Issue #$ISSUE_NUMBER marked as in-progress"
 echo ""
 echo "Starting feature workflow..."
 echo ""
