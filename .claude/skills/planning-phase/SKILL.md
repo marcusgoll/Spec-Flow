@@ -68,6 +68,125 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash
 
 ---
 
+### Step 1.5: Load ALL Project Documentation (NEW - Critical)
+
+**Purpose**: Load complete architecture context from `docs/project/` (all 8 docs) to inform planning decisions.
+
+**Why all 8 docs?**: Planning phase needs comprehensive context - tech stack, data model, API patterns, capacity constraints, deployment model, testing strategy.
+
+**Actions**:
+1. Check if project docs exist:
+   ```bash
+   if [ -d "docs/project" ]; then
+     echo "✅ Loading ALL 8 project docs for planning context..."
+   else
+     echo "⚠️  No project docs - planning without architecture context (high risk)"
+     echo "   Strongly recommend: /init-project before planning"
+   fi
+   ```
+
+2. Read all 8 docs sequentially:
+   - `overview.md` - Vision, users, scope, success metrics
+   - `system-architecture.md` - Components, C4 diagrams, data flows
+   - `tech-stack.md` - Frontend, backend, database, deployment platform
+   - `data-architecture.md` - ERD, entities, relationships, migrations
+   - `api-strategy.md` - REST/GraphQL, auth, versioning, error format
+   - `capacity-planning.md` - Scale tier, performance targets, resource limits
+   - `deployment-strategy.md` - CI/CD, environments, deployment model
+   - `development-workflow.md` - Git workflow, testing strategy, code style
+
+3. Generate comprehensive research.md with project context:
+   ```bash
+   cat > $RESEARCH_FILE <<EOF
+# Research & Discovery: $SLUG
+
+## Project Documentation Context
+
+**Source**: \`docs/project/\` (all 8 docs read on $(date -I))
+
+### 1. Overview (from overview.md)
+- **Vision**: [Vision statement]
+- **Target Users**: [Primary personas]
+- **Success Metrics**: [KPIs]
+- **Scope Boundaries**: [What's in/out of scope]
+
+### 2. System Architecture (from system-architecture.md)
+- **Architecture Style**: [Monolith/Microservices/Serverless]
+- **Components**: [Relevant components from C4 diagram]
+- **Integration Points**: [Services this feature touches]
+- **Data Flows**: [How data flows through system]
+- **Constraints**: [Architectural constraints]
+
+### 3. Tech Stack (from tech-stack.md)
+- **Frontend**: [Framework + version]
+- **Backend**: [Framework + version]
+- **Database**: [Type + version]
+- **ORM**: [SQLAlchemy/Prisma/etc.]
+- **Deployment**: [Platform + model]
+
+### 4. Data Architecture (from data-architecture.md)
+- **Existing Entities**: [Entities from ERD]
+- **Relationships**: [Foreign keys, joins relevant to feature]
+- **Naming Conventions**: [snake_case/camelCase/etc.]
+- **Migration Strategy**: [Alembic/Prisma/etc.]
+
+### 5. API Strategy (from api-strategy.md)
+- **API Style**: [REST/GraphQL/tRPC]
+- **Auth**: [Clerk/Auth0/JWT + method]
+- **Versioning**: [/api/v1/ or header-based]
+- **Error Format**: [RFC 7807 or custom]
+- **Rate Limiting**: [Strategy + limits]
+
+### 6. Capacity Planning (from capacity-planning.md)
+- **Current Scale**: [micro/small/medium/large]
+- **Performance Targets**: [Response time, throughput]
+- **Resource Limits**: [DB connections, memory, CPU]
+- **Cost Constraints**: [Budget per tier]
+
+### 7. Deployment Strategy (from deployment-strategy.md)
+- **Deployment Model**: [staging-prod/direct-prod/local-only]
+- **Platform**: [Vercel/Railway/AWS/etc.]
+- **CI/CD**: [GitHub Actions/etc.]
+- **Environments**: [dev, staging, prod]
+
+### 8. Development Workflow (from development-workflow.md)
+- **Git Workflow**: [GitHub Flow/Git Flow]
+- **Testing Strategy**: [Unit 80%, Integration 15%, E2E 5%]
+- **Code Style**: [ESLint/Prettier/Ruff configs]
+- **Definition of Done**: [Checklist from docs]
+
+---
+
+## Planning Constraints (Enforced)
+
+Based on project documentation, this plan MUST:
+- ✅ Use ${TECH_CONSTRAINTS[frontend]} for frontend (tech-stack.md)
+- ✅ Use ${TECH_CONSTRAINTS[backend]} for backend (tech-stack.md)
+- ✅ Use ${TECH_CONSTRAINTS[database]} for database (tech-stack.md)
+- ✅ Follow ${API_CONSTRAINTS[style]} API patterns (api-strategy.md)
+- ✅ Reuse existing entities: ${DATA_CONSTRAINTS[entities]} (data-architecture.md)
+- ✅ Meet performance targets: ${CAPACITY_CONSTRAINTS[perf_targets]} (capacity-planning.md)
+- ✅ Align with ${DEPLOYMENT_CONSTRAINTS[model]} deployment model (deployment-strategy.md)
+- ✅ Follow ${WORKFLOW_CONSTRAINTS[testing_strategy]} testing strategy (development-workflow.md)
+- ❌ MUST NOT hallucinate different tech stack
+- ❌ MUST NOT create duplicate entities
+
+EOF
+   ```
+
+**Quality check**:
+- All 8 docs read? ✅
+- research.md includes complete project context section? ✅
+- Constraints extracted and will be enforced during planning? ✅
+
+**Token Budget**: ~20-25K tokens (all 8 docs)
+
+**Skip if**: No project docs exist (warn strongly, continue with limited context)
+
+**References**: See `.claude/skills/project-docs-integration.md` for extraction helpers
+
+---
+
 ### Step 2: Research Existing Patterns (Code Reuse)
 
 **Actions**:

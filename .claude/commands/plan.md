@@ -211,6 +211,73 @@ else
   echo "Research mode: Full (complex feature)"
 fi
 echo ""
+
+# PROJECT DOCUMENTATION INTEGRATION (Optional)
+PROJECT_DOCS_DIR="docs/project"
+HAS_PROJECT_DOCS=false
+
+if [ -d "$PROJECT_DOCS_DIR" ]; then
+  HAS_PROJECT_DOCS=true
+  echo "✅ Project documentation found - loading architecture context"
+  echo ""
+
+  # Read ALL 8 project docs to inform planning
+  echo "📚 Reading project documentation..."
+
+  # 1. Overview - Vision, users, scope, success metrics
+  # Read: docs/project/overview.md
+  # Extract: Vision statement, target users, core value prop, success metrics, scope boundaries
+  # Purpose: Ensure feature aligns with project vision and serves target users
+
+  # 2. System Architecture - Components, diagrams, data flows
+  # Read: docs/project/system-architecture.md
+  # Extract: Existing components, services, integration points, architectural constraints
+  # Purpose: Identify where this feature fits in the system, what it integrates with
+
+  # 3. Tech Stack - Languages, frameworks, tools
+  # Read: docs/project/tech-stack.md
+  # Extract: Frontend framework, backend framework, database, deployment platform, versions
+  # Purpose: Use correct tech stack, avoid suggesting wrong technologies
+
+  # 4. Data Architecture - ERD, schemas, migrations
+  # Read: docs/project/data-architecture.md
+  # Extract: Existing entities, relationships, naming conventions, migration strategy
+  # Purpose: Reuse existing schemas, follow naming conventions, plan migrations correctly
+
+  # 5. API Strategy - REST patterns, auth, versioning
+  # Read: docs/project/api-strategy.md
+  # Extract: API style (REST/GraphQL/tRPC), auth provider, versioning scheme, error format, rate limiting
+  # Purpose: Follow established API patterns, use correct auth, maintain consistency
+
+  # 6. Capacity Planning - Scale tiers, performance targets
+  # Read: docs/project/capacity-planning.md
+  # Extract: Current scale tier, resource limits, performance targets, cost constraints
+  # Purpose: Design for current scale tier, meet performance targets
+
+  # 7. Deployment Strategy - CI/CD, environments, rollback
+  # Read: docs/project/deployment-strategy.md
+  # Extract: Deployment model (staging-prod/direct-prod/local-only), platforms, CI/CD pipeline
+  # Purpose: Align with deployment process, plan migrations/config correctly
+
+  # 8. Development Workflow - Git flow, PR process, testing
+  # Read: docs/project/development-workflow-template.md
+  # Extract: Git workflow, branch naming, testing strategy, code style, Definition of Done
+  # Purpose: Follow team conventions, plan testing correctly
+
+  # Document all findings in research.md (will be written later)
+  RESEARCH_DECISIONS+=("Project Architecture: Loaded from docs/project/ (8 docs)")
+
+  # Add specific decisions from each doc
+  # (Claude Code will read and extract during research phase)
+
+  echo "✅ Project documentation loaded - plan will align with architecture"
+  echo ""
+else
+  echo "ℹ️  No project documentation found"
+  echo "   Consider running /init-project for project-level design docs"
+  echo "   (Optional - planning works without it)"
+  echo ""
+fi
 ```
 
 **Minimal research** (2-3 tools for simple features):
@@ -248,6 +315,64 @@ RESEARCH_FILE="$FEATURE_DIR/research.md"
 
 cat > "$RESEARCH_FILE" <<EOF
 # Research & Discovery: $SLUG
+
+$(if [ "$HAS_PROJECT_DOCS" = true ]; then
+  echo "## Project Documentation Context"
+  echo ""
+  echo "**Source**: \`docs/project/\` (8 project-level documents)"
+  echo ""
+  echo "### Overview (from overview.md)"
+  echo "- **Vision**: [Vision statement from overview.md]"
+  echo "- **Target Users**: [Primary personas from overview.md]"
+  echo "- **Success Metrics**: [KPIs from overview.md]"
+  echo "- **Scope Boundaries**: [What's in/out of scope from overview.md]"
+  echo ""
+  echo "### System Architecture (from system-architecture.md)"
+  echo "- **Components**: [Relevant components from C4 diagrams]"
+  echo "- **Integration Points**: [Services/APIs this feature integrates with]"
+  echo "- **Data Flows**: [How data flows through the system]"
+  echo "- **Constraints**: [Architectural constraints from docs]"
+  echo ""
+  echo "### Tech Stack (from tech-stack.md)"
+  echo "- **Frontend**: [Framework + version]"
+  echo "- **Backend**: [Framework + version]"
+  echo "- **Database**: [Type + version]"
+  echo "- **Deployment**: [Platform + model]"
+  echo ""
+  echo "### Data Architecture (from data-architecture.md)"
+  echo "- **Existing Entities**: [Entities from ERD relevant to this feature]"
+  echo "- **Relationships**: [Foreign keys, joins]"
+  echo "- **Naming Conventions**: [snake_case/camelCase/etc.]"
+  echo "- **Migration Strategy**: [How to handle schema changes]"
+  echo ""
+  echo "### API Strategy (from api-strategy.md)"
+  echo "- **API Style**: [REST/GraphQL/tRPC]"
+  echo "- **Auth**: [Provider/method - e.g., Clerk, JWT]"
+  echo "- **Versioning**: [Scheme - e.g., /api/v1/]"
+  echo "- **Error Format**: [RFC 7807 or custom]"
+  echo "- **Rate Limiting**: [Strategy and limits]"
+  echo ""
+  echo "### Capacity Planning (from capacity-planning.md)"
+  echo "- **Current Scale**: [micro/small/medium/large]"
+  echo "- **Performance Targets**: [Response time, throughput]"
+  echo "- **Resource Limits**: [DB connections, memory, CPU]"
+  echo "- **Cost Constraints**: [Budget per tier]"
+  echo ""
+  echo "### Deployment Strategy (from deployment-strategy.md)"
+  echo "- **Deployment Model**: [staging-prod/direct-prod/local-only]"
+  echo "- **Platform**: [Vercel/Railway/AWS/etc.]"
+  echo "- **CI/CD Pipeline**: [GitHub Actions/etc.]"
+  echo "- **Environments**: [dev, staging, prod]"
+  echo ""
+  echo "### Development Workflow (from development-workflow.md)"
+  echo "- **Git Workflow**: [GitHub Flow/Git Flow/Trunk-Based]"
+  echo "- **Testing Strategy**: [Unit/Integration/E2E coverage targets]"
+  echo "- **Code Style**: [ESLint/Prettier/Ruff configs]"
+  echo "- **Definition of Done**: [Checklist from docs]"
+  echo ""
+  echo "---"
+  echo ""
+fi)
 
 ## Research Decisions
 

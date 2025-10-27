@@ -85,6 +85,36 @@ Write-Host "✅ GitHub authenticated ($authMethod)" -ForegroundColor Green
 Write-Host "✅ Repository: $repo" -ForegroundColor Green
 ```
 
+## PROJECT CONTEXT (Optional)
+
+**Check for project documentation** (if `/init-project` was run):
+
+```bash
+PROJECT_OVERVIEW="docs/project/overview.md"
+HAS_PROJECT_DOCS=false
+
+if [ -f "$PROJECT_OVERVIEW" ]; then
+  HAS_PROJECT_DOCS=true
+  echo "✅ Project documentation found"
+  echo ""
+
+  # Read project context for validation
+  # - Vision (what problem we're solving)
+  # - Out of scope (explicit exclusions)
+  # - Target users (who we're building for)
+
+  # Will use for:
+  # 1. Vision alignment check when adding features
+  # 2. Out-of-scope validation
+  # 3. ICE scoring context
+else
+  echo "ℹ️  No project documentation found"
+  echo "   Run /init-project to create project design docs"
+  echo "   (Optional - roadmap works without it)"
+  echo ""
+fi
+```
+
 ## CONTEXT
 
 **Backend**: GitHub Issues with label-based state management
@@ -176,6 +206,67 @@ Add a progress widget...
 - Check if slug exists in GitHub Issues via `get_issue_by_slug()`
 - Check if `specs/[slug]/` directory exists
 - If duplicate: Ask "Merge with existing issue #N?"
+
+**Vision alignment validation** (if project docs exist):
+
+```bash
+if [ "$HAS_PROJECT_DOCS" = true ]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📋 VISION ALIGNMENT CHECK"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  # Read project overview for validation
+  # Claude Code: Read docs/project/overview.md
+  # Extract:
+  # - Vision statement (1 paragraph)
+  # - Out of scope (explicit exclusions)
+  # - Target users (primary personas)
+
+  # Validate feature against project context:
+  # 1. Does it align with vision?
+  # 2. Is it explicitly out of scope?
+  # 3. Does it serve target users?
+
+  # If misaligned:
+  echo "⚠️  Potential misalignment detected"
+  echo ""
+  echo "Project vision: [Vision from overview.md]"
+  echo "This feature: $TITLE"
+  echo ""
+  echo "Concerns:"
+  echo "  - [List specific misalignment issues]"
+  echo ""
+  echo "Options:"
+  echo "  A) Add anyway (ignore alignment)"
+  echo "  B) Revise feature to align"
+  echo "  C) Skip (out of scope)"
+  read -p "Choice (A/B/C): " alignment_choice
+
+  case $alignment_choice in
+    B|b)
+      echo "Describe how to revise:"
+      read -p "> " revision
+      # Update TITLE and BODY with revised approach
+      ;;
+    C|c)
+      echo "Feature rejected (out of scope per overview.md)"
+      exit 0
+      ;;
+    A|a)
+      echo "Proceeding anyway (alignment override)"
+      # Add note to issue body
+      BODY="$BODY
+
+---
+
+⚠️  **Alignment Note**: Flagged as potentially out of scope, but added per user request."
+      ;;
+  esac
+
+  echo ""
+fi
+```
 
 **Size validation with auto-split:**
 

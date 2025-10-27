@@ -97,6 +97,83 @@ fi
 
 ---
 
+### Step 2.5: Load Project Documentation Context (NEW)
+
+**Purpose**: Load architecture constraints from `docs/project/` before generating spec to prevent hallucination.
+
+**Actions**:
+1. Check if project docs exist:
+   ```bash
+   if [ -d "docs/project" ]; then
+     HAS_PROJECT_DOCS=true
+     echo "✅ Project documentation found - loading architecture context"
+   else
+     echo "ℹ️  No project documentation (run /init-project recommended)"
+     HAS_PROJECT_DOCS=false
+   fi
+   ```
+
+2. If docs exist, read relevant files for spec phase:
+   - **tech-stack.md** → Avoid suggesting wrong technologies
+   - **api-strategy.md** → Follow established REST/GraphQL patterns
+   - **data-architecture.md** → Reuse existing entities, avoid duplication
+   - **system-architecture.md** → Identify integration points
+
+3. Extract key constraints:
+   ```bash
+   # Extract tech stack
+   FRONTEND=$(grep -A 1 "| Frontend" docs/project/tech-stack.md | tail -1 | awk '{print $3}')
+   BACKEND=$(grep -A 1 "| Backend" docs/project/tech-stack.md | tail -1 | awk '{print $3}')
+   DATABASE=$(grep -A 1 "| Database" docs/project/tech-stack.md | tail -1 | awk '{print $3}')
+
+   # Extract API patterns
+   API_STYLE=$(grep -A 1 "## API Style" docs/project/api-strategy.md | tail -1)
+   AUTH_PROVIDER=$(grep -A 1 "## Authentication" docs/project/api-strategy.md | tail -1)
+
+   # Extract existing entities from ERD
+   ENTITIES=$(grep -oP '[A-Z_]+(?= \{)' docs/project/data-architecture.md)
+   ```
+
+4. Document context in NOTES.md:
+   ```bash
+   cat >> $NOTES_FILE <<EOF
+
+## Project Documentation Context
+
+**Source**: \`docs/project/\` (loaded during spec phase)
+
+### Tech Stack Constraints (from tech-stack.md)
+- **Frontend**: $FRONTEND
+- **Backend**: $BACKEND
+- **Database**: $DATABASE
+
+### API Patterns (from api-strategy.md)
+- **API Style**: $API_STYLE
+- **Auth**: $AUTH_PROVIDER
+
+### Existing Entities (from data-architecture.md)
+- $ENTITIES
+
+**Spec Requirements**:
+- ✅ MUST use documented tech stack (no hallucinating MongoDB if PostgreSQL is documented)
+- ✅ MUST follow API patterns (REST vs GraphQL per api-strategy.md)
+- ✅ MUST check for duplicate entities before proposing new ones
+- ❌ MUST NOT suggest different tech stack without justification
+
+EOF
+   ```
+
+**Quality check**:
+- Project docs loaded? ✅
+- Constraints extracted and documented? ✅
+- NOTES.md includes project context section? ✅
+
+**Skip if**: No project docs exist (warn user but don't block)
+
+**References**: See `.claude/skills/project-docs-integration.md` for detailed extraction logic
+
+---
+
 ### Step 3: Classify Feature
 
 **Actions**:

@@ -451,6 +451,141 @@ EOF
 
 **Result**: Single decision tree evaluated once, determines which artifacts to generate.
 
+## PROJECT DOCUMENTATION CHECK (Optional)
+
+**Check for project-level documentation** (if `/init-project` was run):
+
+```bash
+PROJECT_DOCS_DIR="docs/project"
+HAS_PROJECT_DOCS=false
+
+if [ -d "$PROJECT_DOCS_DIR" ]; then
+  HAS_PROJECT_DOCS=true
+  echo "✅ Project documentation found - validating against project architecture"
+  echo ""
+fi
+```
+
+**Read relevant project docs based on feature type:**
+
+```bash
+if [ "$HAS_PROJECT_DOCS" = true ]; then
+  # Core docs - read for ALL features
+  echo "Reading project context..."
+
+  # 1. Tech stack validation
+  # Read: docs/project/tech-stack.md
+  # Purpose: Avoid suggesting wrong technologies, frameworks, or libraries
+  # Extract: Frontend framework, backend framework, database, deployment platform
+
+  # 2. System architecture review
+  # Read: docs/project/system-architecture.md
+  # Purpose: Identify integration points, understand component boundaries
+  # Extract: Existing components, services, data flows
+
+  # Feature-specific docs - read based on classification flags
+
+  # If backend/API feature (FLAG: $IS_IMPROVEMENT or backend keywords)
+  if [[ "$ARGUMENTS" =~ (api|endpoint|backend|database|migration) ]]; then
+    # 3. API strategy
+    # Read: docs/project/api-strategy.md
+    # Purpose: Follow established REST/GraphQL patterns, auth, versioning
+    # Extract: API style, auth provider, versioning scheme, error format
+
+    # 4. Data architecture
+    # Read: docs/project/data-architecture.md
+    # Purpose: Reuse existing schemas, follow naming conventions
+    # Extract: ERD, entity schemas, relationships, migration strategy
+  fi
+
+  # If deployment/infrastructure feature
+  if [[ "$ARGUMENTS" =~ (deploy|ci|cd|docker|build|environment) ]]; then
+    # 5. Deployment strategy
+    # Read: docs/project/deployment-strategy.md
+    # Purpose: Align with existing CI/CD pipelines and environments
+    # Extract: Deployment model (staging-prod/direct-prod), platforms, rollback
+  fi
+
+  # If performance/scalability feature
+  if [[ "$ARGUMENTS" =~ (performance|scale|optimize|capacity) ]]; then
+    # 6. Capacity planning
+    # Read: docs/project/capacity-planning.md
+    # Purpose: Understand current scale tier and performance targets
+    # Extract: Current tier, resource limits, scaling triggers, cost constraints
+  fi
+
+  # Document findings in NOTES.md
+  cat >> $NOTES_FILE <<EOF
+
+## Project Documentation Findings
+**Tech Stack** (from tech-stack.md):
+- Frontend: [Framework + version]
+- Backend: [Framework + version]
+- Database: [Type + version]
+- Deployment: [Platform]
+
+**System Architecture** (from system-architecture.md):
+- Relevant components: [List components this feature integrates with]
+- Integration points: [APIs, services, databases this feature touches]
+- Constraints: [Any architectural constraints from docs]
+
+EOF
+
+  # Add feature-specific findings if applicable
+  if [[ "$ARGUMENTS" =~ (api|endpoint|backend|database) ]]; then
+    cat >> $NOTES_FILE <<EOF
+**API Strategy** (from api-strategy.md):
+- API style: [REST/GraphQL/tRPC]
+- Auth: [Provider/method]
+- Versioning: [Scheme]
+- Error format: [Standard]
+
+**Data Architecture** (from data-architecture.md):
+- Existing entities: [Relevant entities from ERD]
+- Relationships: [Relevant relationships]
+- Naming conventions: [snake_case/camelCase/etc.]
+
+EOF
+  fi
+
+  if [[ "$ARGUMENTS" =~ (deploy|ci|cd|docker|build) ]]; then
+    cat >> $NOTES_FILE <<EOF
+**Deployment Strategy** (from deployment-strategy.md):
+- Model: [staging-prod/direct-prod/local-only]
+- Platform: [Vercel/Railway/AWS/etc.]
+- CI/CD: [GitHub Actions/etc.]
+
+EOF
+  fi
+
+  if [[ "$ARGUMENTS" =~ (performance|scale|optimize) ]]; then
+    cat >> $NOTES_FILE <<EOF
+**Capacity Planning** (from capacity-planning.md):
+- Current tier: [micro/small/medium/large]
+- Performance targets: [Response time, throughput, etc.]
+- Resource limits: [Database connections, memory, etc.]
+
+EOF
+  fi
+
+  echo "✅ Project documentation validated - spec will align with architecture"
+  echo ""
+else
+  echo "ℹ️  No project documentation found"
+  echo "   Consider running /init-project for project-level design docs"
+  echo "   (Optional - spec-flow works without it)"
+  echo ""
+fi
+```
+
+**Why this matters**: Reading project docs during research prevents:
+- Suggesting wrong technologies (e.g., suggesting MongoDB when project uses PostgreSQL)
+- Violating established API patterns (e.g., using different auth than rest of app)
+- Duplicating existing entities (e.g., creating new User table when one exists)
+- Breaking architectural constraints (e.g., adding microservice to monolith project)
+
+**Anti-hallucination**: Project docs are the single source of truth for architecture decisions. Always cite them when making technical choices in the spec.
+
 ## RESEARCH (Scaled: 1-8 tool calls)
 
 **Determine research depth based on feature complexity:**

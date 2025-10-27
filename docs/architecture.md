@@ -12,15 +12,32 @@ Spec-Flow orchestrates feature work through a fixed series of Claude commands. E
 
     ┌───────────┐
     │   START   │
-    │   IDEAS   │
+    │ NEW PROJECT│
     └─────┬─────┘
+          │
+          ▼
+    ┌─────────────────────┐
+    │Has project docs?    │──Yes──┐
+    │(docs/project/)      │       │
+    └─────────┬───────────┘       │
+              │ No                │
+              │                   │
+              ▼                   │
+   ┌──────────────────┐           │
+   │ /init-project    │ Phase -2: PROJECT DESIGN
+   │ 8 Docs Generated │ Output: docs/project/*.md (8 files)
+   │ Architecture Set │ - overview, architecture, tech-stack,
+   └──────┬───────────┘   data, api, capacity, deployment, workflow
+          │               ← Optional but recommended
+          │
+          └◄──────────────┘
           │
           ▼
    ┌──────────────┐
    │  /roadmap    │ Phase -1: ROADMAP PLANNING
    │ Add Features │ Output: roadmap.md with prioritized features
    │ Prioritize   │ (ICE scoring: Impact × Confidence / Effort)
-   └──────┬───────┘
+   └──────┬───────┘ ← Validates features against overview.md vision
           │
           ▼
     ┌─────────────────────┐
@@ -33,8 +50,8 @@ Spec-Flow orchestrates feature work through a fixed series of Claude commands. E
    │ /spec-flow   │ Phase 0: SPECIFICATION
    │ Create Spec  │ Output: spec.md, NOTES.md, visuals/README.md
    │ from Roadmap │ Links back to roadmap entry
-   └──────┬───────┘
-          │
+   └──────┬───────┘ ← Reads tech-stack, api-strategy, data-architecture,
+          │           system-architecture from docs/project/
           ▼
     ┌─────────────────────┐
     │ Needs clarification?│──Yes──┐
@@ -50,8 +67,8 @@ Spec-Flow orchestrates feature work through a fixed series of Claude commands. E
           ▼
    ┌──────────────┐
    │   /plan      │ Phase 1: PLANNING
-   │ Impl. Plan   │ Output: plan.md, research.md
-   └──────┬───────┘
+   │ Impl. Plan   │ Output: plan.md, research.md (with project context)
+   └──────┬───────┘ ← Reads ALL 8 docs from docs/project/
           │
           ▼
    ┌──────────────┐

@@ -552,12 +552,55 @@ This constitution evolves with the project. To propose changes:
 
 ---
 
+## Project Documentation
+
+**Location**: `docs/project/`
+
+Comprehensive project-level design documentation providing the foundation for all features:
+
+**Core Documents** (8 files):
+1. **overview.md** - Vision, users, scope, success metrics, timeline
+2. **system-architecture.md** - Components, integrations, Mermaid diagrams
+3. **tech-stack.md** - Technology choices with rationale
+4. **data-architecture.md** - ERD, storage strategy, data lifecycle
+5. **api-strategy.md** - REST patterns, auth, versioning
+6. **capacity-planning.md** - Micro → scale tiers with cost models
+7. **deployment-strategy.md** - CI/CD, environments, rollback procedures
+8. **development-workflow.md** - Git flow, PR process, Definition of Done
+
+**Initialization**: Run `/init-project` once per project (one-time setup)
+
+**Maintenance**: Update docs when:
+- Adding new service/component → update `system-architecture.md`
+- Changing tech stack → update `tech-stack.md`
+- Scaling to next tier → update `capacity-planning.md`
+- Adjusting deployment strategy → update `deployment-strategy.md`
+- Team process changes → update `development-workflow.md`
+
+**Workflow Integration**:
+All features MUST align with project architecture:
+- `/roadmap` - Checks `overview.md` for vision alignment, out-of-scope boundaries
+- `/spec` - References project docs during Phase 0 research
+- `/plan` - Heavily integrates with all 8 docs for architecture decisions
+- `/tasks` - Follows patterns from `tech-stack.md`, `api-strategy.md`
+- `/implement` - Adheres to `development-workflow.md` standards
+
+**Benefits**:
+- Single Source of Truth for "what we're building"
+- Faster onboarding (new dev/AI reads 8 docs, understands project)
+- Consistent features (all align with project architecture)
+- Better estimates (capacity planning informs scoping)
+- Prevents tech drift (documented stack stops arbitrary changes)
+
+---
+
 ## References
 
 - **Spec-Flow Commands**: `.claude/commands/`
 - **Templates**: `.spec-flow/templates/`
 - **Roadmap**: `.spec-flow/memory/roadmap.md`
 - **Design Inspirations**: `.spec-flow/memory/design-inspirations.md`
+- **Project Documentation**: `docs/project/` (see above)
 
 ---
 
