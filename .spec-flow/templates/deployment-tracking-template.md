@@ -40,11 +40,16 @@ See [docs/ROLLBACK_RUNBOOK.md](../../docs/ROLLBACK_RUNBOOK.md) for detailed proc
 PREVIOUS_DEPLOY_ID=old123old
 
 # 2. Promote to production
+# SECURITY: VERCEL_TOKEN should be set in environment, not in documentation
 vercel alias set $PREVIOUS_DEPLOY_ID cfipros.com --token=$VERCEL_TOKEN
 
 # 3. Rollback backend
 railway service update api --image ghcr.io/cfipros/monorepo/api:old456
 ```
+
+**Important**: Never hardcode tokens in documentation. Use environment variables:
+- `VERCEL_TOKEN` - Set via: `export VERCEL_TOKEN=$(doppler secrets get VERCEL_TOKEN --plain)`
+- `RAILWAY_TOKEN` - Automatically read from `~/.railway/config.json` by Railway CLI
 
 ## Monitoring Links
 

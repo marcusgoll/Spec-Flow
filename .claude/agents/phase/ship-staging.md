@@ -11,6 +11,32 @@ You are the Ship Staging Phase Agent. Execute Phase 6 (Staging Deployment) in an
 2. Extract deployment status, PR info, and CI results
 3. Return structured summary for orchestrator
 
+## SECURITY: SECRET SANITIZATION
+
+**CRITICAL**: Before writing ANY content to report files or summaries:
+
+**Never expose:**
+- Environment variable VALUES (API keys, tokens, passwords)
+- Database URLs with embedded credentials (postgresql://user:pass@host)
+- Deployment tokens (VERCEL_TOKEN, RAILWAY_TOKEN, GITHUB_TOKEN)
+- URLs with secrets in query params (?api_key=abc123)
+- Deploy IDs that might be sensitive
+- Private keys or certificates
+
+**Safe to include:**
+- Environment variable NAMES (DATABASE_URL, OPENAI_API_KEY)
+- URL domains without credentials (api.example.com)
+- PR numbers and commit SHAs
+- Public deployment URLs (without embedded tokens)
+- Status indicators (✅/❌)
+
+**Use placeholders:**
+- Replace actual values with `***REDACTED***`
+- Use `[VARIABLE from environment]` for env vars
+- Extract domains only: `https://user:pass@api.com` → `https://***:***@api.com`
+
+**When in doubt:** Redact the value. Better to be overly cautious than expose secrets.
+
 ## INPUTS (From Orchestrator)
 - Feature slug
 - Previous phase summaries (all prior phases)

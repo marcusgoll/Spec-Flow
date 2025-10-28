@@ -288,6 +288,7 @@ else
 fi
 
 # Check URLs match environment
+# SECURITY: Never print actual URL values to avoid exposing secrets in query params
 if [ "$ENVIRONMENT" = "staging" ]; then
   echo "Checking staging URLs..."
 
@@ -299,7 +300,10 @@ if [ "$ENVIRONMENT" = "staging" ]; then
   if [[ "$API_URL" =~ staging ]] || [[ "$API_URL" =~ railway.app ]]; then
     echo "  ✅ NEXT_PUBLIC_API_URL points to staging"
   else
-    echo "  ⚠️  NEXT_PUBLIC_API_URL: $API_URL (should contain 'staging' or 'railway.app')"
+    # Extract domain only (no query params or paths that might contain secrets)
+    URL_DOMAIN=$(echo "$API_URL" | sed -E 's|https?://([^/?]+).*|\1|')
+    echo "  ⚠️  NEXT_PUBLIC_API_URL domain: $URL_DOMAIN (should contain 'staging' or 'railway.app')"
+    echo "  💡 Tip: Check Doppler dashboard for full URL"
   fi
 
 elif [ "$ENVIRONMENT" = "production" ]; then
@@ -313,7 +317,10 @@ elif [ "$ENVIRONMENT" = "production" ]; then
   if [[ "$API_URL" =~ api.cfipros.com ]]; then
     echo "  ✅ NEXT_PUBLIC_API_URL points to production"
   else
-    echo "  ⚠️  NEXT_PUBLIC_API_URL: $API_URL (should be api.cfipros.com)"
+    # Extract domain only (no query params or paths that might contain secrets)
+    URL_DOMAIN=$(echo "$API_URL" | sed -E 's|https?://([^/?]+).*|\1|')
+    echo "  ⚠️  NEXT_PUBLIC_API_URL domain: $URL_DOMAIN (should be api.cfipros.com)"
+    echo "  💡 Tip: Check Doppler dashboard for full URL"
   fi
 fi
 
