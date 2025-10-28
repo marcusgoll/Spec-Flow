@@ -1,9 +1,29 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to the Spec-Flow Workflow Kit will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.6.0] - 2025-01-28
+
+### Added
+- TodoWrite tracking to /ship command for all deployment phases (5-8 phases depending on model)
+- TodoWrite tracking to /finalize command for all documentation tasks (10 tasks)
+- Clear visibility into current progress, blockers, and manual gates during deployment
+- Error recovery with specific "Fix [error]" todos when CI/build failures occur
+- Resumability after fixing errors - workflows can continue from failed phase
+
+### Changed
+- /ship command now actively tracks progress instead of running silent bash scripts
+- /finalize command ensures all tasks complete (releases, issues, branches) with visibility
+- Both commands prevent silent failures and provide clear status to users
+
+### Fixed
+- Issue where /ship would stop silently when CI errors occurred
+- Issue where /finalize would skip tasks without user visibility (releases not created, issues not updated, branches not cleaned)
+
+---
 
 ## [2.5.0] - 2025-10-28
 
