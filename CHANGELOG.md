@@ -5,6 +5,27 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2025-10-28
+
+### Added
+- Comprehensive secret sanitization utilities to prevent credential exposure
+- Bash sanitization script (sanitize-secrets.sh) with 11 secret pattern detectors
+- PowerShell sanitization script (Sanitize-Secrets.ps1) for cross-platform support
+- Secret detection test script (test-secret-detection.sh) for pre-commit validation
+- Security guidelines documentation (docs/security-guidelines.md)
+
+### Changed
+- Updated report templates to use placeholders instead of hardcoded URLs
+- Enhanced check-env.md command to sanitize output (extract domains only)
+- Added SECURITY sections to ship-staging, ship-prod, and optimize agent briefs
+
+### Security
+- Prevents accidental exposure of API keys, tokens, passwords in documentation
+- Automated detection with exit code 1 on secret detection for CI/CD blocking
+- Detects: API keys, tokens, passwords, database URLs, AWS keys, GitHub tokens, JWT, private keys
+
+---
+
 ## [2.4.0] - 2025-10-26
 
 ### Added
