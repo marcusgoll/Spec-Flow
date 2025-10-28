@@ -26,6 +26,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.5.1] - 2025-10-28
+
+### Fixed
+- Removed BOM (Byte Order Mark) characters preventing YAML frontmatter parsing in 5 agent files
+- Added missing frontmatter with required 'name' field to project-architect.md agent
+- Fixed agent file parsing errors that caused validation failures
+
+### Changed
+- All agent files now have valid YAML frontmatter with required 'name' field
+
+---
+
 ## [2.4.0] - 2025-10-26
 
 ### Added
