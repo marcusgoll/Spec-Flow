@@ -40,9 +40,25 @@
 </div>
 
 ---
+---
 
 ## 🆕 Recent Updates
 
+### v2.6.0 (January 2025)
+**TodoWrite Progress Tracking** - Clear visibility and error recovery for /ship and /finalize
+
+- **Visual Progress Tracking**: `/ship` now tracks all 5-8 deployment phases with TodoWrite
+- **Documentation Tasks Tracked**: `/finalize` tracks all 10 documentation tasks (CHANGELOG, README, releases, issues, branches)
+- **No More Silent Failures**: See exactly what's happening when CI errors occur
+- **Error Recovery**: Specific "Fix [error]" todos added when builds/deployments fail
+- **Resumability**: Run `/ship continue` after fixing errors to resume from failed phase
+- **Manual Gate Clarity**: Preview and staging validation gates clearly marked as pending
+
+**Problem Solved**: Before v2.6.0, `/ship` would stop silently on CI errors and `/finalize` would skip tasks without visibility. Now users see current progress, blockers, and can resume after fixes.
+
+**Impact**: Deployment workflows are now transparent and recoverable, preventing the frustration of "it stopped and I don't know why."
+
+### v2.1.2 (October 2025)
 ### v2.1.2 (October 2025)
 **/feature next Auto-Pull** - Automatically start highest priority roadmap item
 
