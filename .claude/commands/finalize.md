@@ -1,149 +1,409 @@
-# /finalize - Complete documentation housekeeping after production deployment
+# /finalize - Complete Documentation & Cleanup After Deployment
 
-You are executing the `/finalize` command to complete documentation housekeeping after production deployment.
+**Purpose**: Complete all documentation housekeeping, roadmap updates, and cleanup tasks after successful production deployment.
 
-## Context
+**Dependencies**: Requires successful production deployment (from `/ship-prod` or `/deploy-prod`)
 
-This command runs AFTER `/phase-2-ship` has successfully deployed to production and created:
-- Version tag (e.g., v1.2.3)
-- GitHub release
-- Updated roadmap
+**Usage**: `/finalize`
 
-## Your Task
+<context>
+## TODO TRACKING REQUIREMENT
 
-Execute the finalization script to update all documentation:
+**CRITICAL**: You MUST use TodoWrite to track all finalization tasks.
 
-```bash
-bash \spec-flow/scripts/bash/finalize.sh
+**Why this matters**: The /finalize phase involves 7-10 distinct tasks that users expect to be completed:
+- Without TodoWrite, tasks are silently skipped (releases not created, issues not updated, branches not cleaned)
+- User has no visibility into what's done vs what's pending
+- Hard to resume if errors occur (e.g., GitHub API failures)
+
+**Create todo list IMMEDIATELY** after loading context, then update after EVERY task completes.
+</context>
+
+<instructions>
+
+## Step 1: Initialize & Create Todo List
+
+1. Find most recent feature directory (specs/NNN-slug/)
+2. Read workflow-state.yaml to get:
+   - Feature title and slug
+   - Deployment version (from ship-prod or deploy-prod phase)
+   - Production URL
+3. **IMMEDIATELY create TodoWrite list**:
+
+```
+TodoWrite({
+  todos: [
+    {content: "Load feature context and version info", status: "completed", activeForm: "..."},
+    {content: "Update CHANGELOG.md with new version section", status: "in_progress", activeForm: "Updating CHANGELOG.md"},
+    {content: "Update README.md (features list and version badge)", status: "pending", activeForm: "Updating README.md"},
+    {content: "Generate user documentation (help article)", status: "pending", activeForm: "Generating help docs"},
+    {content: "Update API documentation (if endpoints changed)", status: "pending", activeForm: "Updating API docs"},
+    {content: "Close current GitHub milestone", status: "pending", activeForm: "Closing milestone"},
+    {content: "Create next GitHub milestone", status: "pending", activeForm: "Creating next milestone"},
+    {content: "Update roadmap issue status to 'shipped'", status: "pending", activeForm: "Updating roadmap"},
+    {content: "Commit all documentation changes", status: "pending", activeForm: "Committing documentation"},
+    {content: "Clean up feature branch (delete local and remote)", status: "pending", activeForm: "Cleaning up branch"},
+  ]
+})
 ```
 
-## What the Script Does
+## Step 2: Update CHANGELOG.md
 
-**Phase F.1: Load Context**
-- Find latest ship-report.md
-- Extract version number
-- Get commit range
+1. Read CHANGELOG.md (if exists)
+2. Read git commit history since last version:
+   ```bash
+   git log --oneline --grep="^feat:" --grep="^fix:" --grep="^security:" --grep="^refactor:" --since="[last-version-date]"
+   ```
+3. Categorize commits:
+   - `feat:` → **Added** section
+   - `fix:` → **Fixed** section
+   - `refactor:` → **Changed** section
+   - `security:` → **Security** section
+4. Insert new version section at top of CHANGELOG.md:
+   ```markdown
+   ## [vX.Y.Z] - YYYY-MM-DD
 
-**Phase F.2: Update CHANGELOG.md**
-- Extract changes from commits (feat:, fix:, refactor:, security:)
-- Categorize into Added/Changed/Fixed/Security
-- Insert new version section at top
+   ### Added
+   - Feature description from spec.md
 
-**Phase F.3: Update README.md**
-- Update version badge
-- Add new feature to features list
+   ### Fixed
+   - Bug fixes from commits
 
-**Phase F.4: Generate User Documentation**
-- Create help article: docs/help/features/[slug].md
-- Extract user stories from spec.md
-- Update help index: docs/help/README.md
+   ### Changed
+   - Refactorings from commits
 
-**Phase F.5: Update API Docs**
-- Detect changed API endpoints
-- Flag API_ENDPOINTS.md for manual review if needed
+   ### Security
+   - Security improvements from commits
+   ```
 
-**Phase F.6: Manage GitHub Milestones**
-- Close current milestone (matching version pattern)
-- Link release to milestone
-- Create next milestone (+1 minor version, 2 weeks out)
+**After completion**:
+- **Update TodoWrite**: Mark CHANGELOG as `completed`, mark README as `in_progress`
+- Continue to Step 3
 
-**Phase F.7: Commit Documentation**
-- Stage CHANGELOG.md, README.md, help docs
-- Commit: "docs: update documentation for vX.Y.Z"
-- Push to main
+**If error** (e.g., CHANGELOG.md missing):
+- **Update TodoWrite**: Add "Create CHANGELOG.md file" as new todo
+- Create file with template
+- Retry
 
-**Phase F.8: Output Summary**
-- List updated files
-- Show GitHub milestone updates
-- Suggest next steps
+## Step 3: Update README.md
 
-## Expected Output
+1. Read README.md
+2. Update version badge (if exists):
+   ```markdown
+   ![Version](https://img.shields.io/badge/version-vX.Y.Z-blue)
+   ```
+3. Add new feature to features list (extract from spec.md):
+   ```markdown
+   ## Features
 
-```markdown
+   - 🎉 **New Feature Name** - Brief description (vX.Y.Z)
+   - ... (existing features)
+   ```
+
+**After completion**:
+- **Update TodoWrite**: Mark README as `completed`, mark help docs as `in_progress`
+- Continue to Step 4
+
+## Step 4: Generate User Documentation
+
+1. Check if docs/help/features/ directory exists (create if not)
+2. Create new help article: `docs/help/features/[feature-slug].md`
+3. Extract content from spec.md:
+   - User stories → "How to use" section
+   - Acceptance criteria → "Features" section
+   - Visuals → Screenshots/diagrams
+4. Template:
+   ```markdown
+   # Feature Name
+
+   **Version**: vX.Y.Z
+   **Released**: YYYY-MM-DD
+
+   ## Overview
+
+   [Brief description from spec.md]
+
+   ## How to Use
+
+   [Step-by-step from user stories]
+
+   ## Features
+
+   - [Acceptance criteria as feature list]
+
+   ## Screenshots
+
+   [Embed visuals from spec.md]
+
+   ## Troubleshooting
+
+   [Common issues if any]
+   ```
+5. Update docs/help/README.md index:
+   ```markdown
+   ## Features
+
+   - [Feature Name](features/[feature-slug].md) - Brief description (vX.Y.Z)
+   ```
+
+**After completion**:
+- **Update TodoWrite**: Mark help docs as `completed`, mark API docs as `in_progress`
+- Continue to Step 5
+
+**If error** (e.g., docs directory missing):
+- **Update TodoWrite**: Add "Create docs/help structure" as new todo
+- Create directories
+- Retry
+
+## Step 5: Update API Documentation (Conditional)
+
+1. Check if feature modified API endpoints:
+   - Search spec.md for "API", "endpoint", "route"
+   - Check plan.md for backend changes
+2. If API changes detected:
+   - Read docs/API_ENDPOINTS.md (or similar)
+   - Add new endpoints or update existing ones
+   - Include: Method, Path, Request body, Response body, Auth requirements
+3. If no API changes:
+   - **Update TodoWrite**: Mark API docs as `completed` (skipped)
+   - Continue to Step 6
+
+**After completion**:
+- **Update TodoWrite**: Mark API docs as `completed`, mark milestone closure as `in_progress`
+- Continue to Step 6
+
+## Step 6: Close Current GitHub Milestone
+
+1. Get current version from workflow-state.yaml (e.g., v1.2.3)
+2. Find matching milestone:
+   ```bash
+   gh api repos/:owner/:repo/milestones --jq '.[] | select(.title | test("v?1\\.2"))'
+   ```
+3. Close milestone:
+   ```bash
+   gh api repos/:owner/:repo/milestones/[milestone-number] -X PATCH -f state=closed
+   ```
+
+**After completion**:
+- **Update TodoWrite**: Mark milestone closure as `completed`, mark next milestone as `in_progress`
+- Continue to Step 7
+
+**If error** (e.g., milestone not found):
+- **Update TodoWrite**: Keep as `completed` (optional step)
+- Log warning: "No milestone found matching v1.2.x"
+- Continue to Step 7
+
+## Step 7: Create Next GitHub Milestone
+
+1. Calculate next minor version (v1.2.3 → v1.3.0)
+2. Set due date 2 weeks out:
+   ```bash
+   NEXT_VERSION="v1.3.0"
+   DUE_DATE=$(date -d '+2 weeks' '+%Y-%m-%dT%H:%M:%SZ')
+   gh api repos/:owner/:repo/milestones -f title="$NEXT_VERSION" -f due_on="$DUE_DATE"
+   ```
+
+**After completion**:
+- **Update TodoWrite**: Mark next milestone as `completed`, mark roadmap update as `in_progress`
+- Continue to Step 8
+
+**If error** (e.g., milestone already exists):
+- **Update TodoWrite**: Keep as `completed` (already exists is fine)
+- Continue to Step 8
+
+## Step 8: Update Roadmap Issue
+
+1. Find roadmap issue for this feature:
+   ```bash
+   gh issue list --label type:feature --search "slug: [feature-slug]" --json number,title,body
+   ```
+2. Update issue with shipped status:
+   ```bash
+   gh issue edit [issue-number] --add-label "status:shipped" --remove-label "status:in-progress"
+   ```
+3. Add comment with release details:
+   ```bash
+   gh issue comment [issue-number] --body "🚀 Shipped in v$VERSION on $(date +%Y-%m-%d)
+
+   **Production URL**: [url]
+
+   See [release notes](https://github.com/owner/repo/releases/tag/v$VERSION)"
+   ```
+
+**After completion**:
+- **Update TodoWrite**: Mark roadmap update as `completed`, mark commit docs as `in_progress`
+- Continue to Step 9
+
+**If error** (e.g., issue not found):
+- **Update TodoWrite**: Keep as `completed` (optional step)
+- Log warning: "Roadmap issue not found for slug: [feature-slug]"
+- Continue to Step 9
+
+## Step 9: Commit Documentation Changes
+
+1. Stage all documentation changes:
+   ```bash
+   git add CHANGELOG.md README.md docs/
+   ```
+2. Create commit:
+   ```bash
+   git commit -m "docs: update documentation for v$VERSION
+
+   - Update CHANGELOG.md with v$VERSION section
+   - Update README.md features list
+   - Add help article for [feature-name]
+   - Update API documentation
+
+   🤖 Generated with Claude Code
+   Co-Authored-By: Claude <noreply@anthropic.com>"
+   ```
+3. Push to main:
+   ```bash
+   git push origin main
+   ```
+
+**After completion**:
+- **Update TodoWrite**: Mark commit docs as `completed`, mark branch cleanup as `in_progress`
+- Continue to Step 10
+
+**If error** (e.g., push rejected):
+- **Update TodoWrite**: Add "Resolve git push conflict" as new todo
+- Tell user to pull/resolve and run `/finalize` again
+- **EXIT**
+
+## Step 10: Clean Up Feature Branch
+
+1. Get feature branch name from workflow-state.yaml
+2. Check if already on main:
+   ```bash
+   git branch --show-current
+   ```
+3. If on feature branch, switch to main:
+   ```bash
+   git checkout main
+   ```
+4. Delete local feature branch:
+   ```bash
+   git branch -d [feature-branch]
+   ```
+5. Delete remote feature branch (if exists):
+   ```bash
+   git push origin --delete [feature-branch]
+   ```
+
+**After completion**:
+- **Update TodoWrite**: Mark branch cleanup as `completed`
+- Continue to Step 11 (Summary)
+
+**If error** (e.g., branch not merged):
+- **Update TodoWrite**: Keep as `in_progress`
+- Warn user: "Branch may have unmerged changes. Delete manually if needed: git branch -D [feature-branch]"
+- Continue to Step 11 (optional cleanup)
+
+## Step 11: Display Final Summary
+
+Display comprehensive summary of finalization:
+
+```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📚 Documentation Updated
+📚 Documentation & Cleanup Complete
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Version**: v1.2.3
-**Feature**: aktr-inline-preview
+**Version**: v$VERSION
+**Feature**: [feature-slug]
+**Released**: $(date +%Y-%m-%d)
 
 ### Files Updated
 
-- ✅ CHANGELOG.md (Added v1.2.3 section)
-- ✅ README.md (Updated features, badges)
-- ✅ docs/help/features/aktr-inline-preview.md (New help article)
-- ✅ docs/API_ENDPOINTS.md (No changes needed)
+- ✅ CHANGELOG.md (Added v$VERSION section)
+- ✅ README.md (Updated features and version badge)
+- ✅ docs/help/features/[feature-slug].md (New help article)
+- ✅ docs/API_ENDPOINTS.md (Updated/Skipped)
 
 ### GitHub
 
-- ✅ Closed milestone: #12
-- ✅ Created next milestone: v1.3.0
+- ✅ Closed milestone: v1.2.x (#12)
+- ✅ Created next milestone: v1.3.0 (due: [date])
+- ✅ Updated roadmap issue #45 to "shipped"
 
-### Commits
+### Git
 
-- docs: update documentation for v1.2.3
+- ✅ Committed documentation: [commit-sha]
+- ✅ Pushed to main
+- ✅ Deleted feature branch: [feature-branch]
 
 ### Next Steps
 
 1. Review documentation accuracy
-2. Update marketing site copy (if needed)
-3. Announce release on social media
-4. Monitor user feedback
+2. Announce release (social media, blog, email)
+3. Monitor user feedback and error logs
+4. Plan next feature from roadmap
 
----
-**Workflow complete**: ... → phase-2-ship → finalize ✅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎉 Full workflow complete: /feature → /ship → /finalize ✅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-## Error Handling
+## Error Recovery
 
-**If ship-report.md not found:**
-- Error message with instructions to run /phase-2-ship first
-- Exit with error code 1
+**If any step fails**:
+1. **Update TodoWrite**: Add "Fix [specific error]" as new todo
+2. Keep failed task as `in_progress`
+3. Display error with specific instructions:
+   ```
+   ❌ Failed to close GitHub milestone
 
-**If version tag missing:**
-- Error message indicating /phase-2-ship should have created tag
-- Show git tag command to verify
+   Error: API rate limit exceeded (403)
 
-**If git working tree dirty:**
-- Error message indicating uncommitted changes
-- Request to commit or stash before running
+   Fix: Wait 1 hour or use personal access token with higher limit
+   Then run: /finalize (will resume from failed step)
+   ```
+4. **EXIT** - user will run `/finalize` again after fixing
 
-**If GitHub API calls fail:**
-- Warning (not error) indicating permission issues
-- Continue with local documentation updates
+**Resumability**: When user runs `/finalize` again:
+- Read TodoWrite state
+- Skip completed tasks
+- Resume from first `in_progress` or `pending` task
 
-## Success Criteria
+</instructions>
 
-- ✅ CHANGELOG.md has new version section
-- ✅ README.md has updated features and version badge
-- ✅ Help article created at docs/help/features/[slug].md
-- ✅ Help index updated with new feature
-- ✅ GitHub milestone closed (if found)
-- ✅ Next milestone created
-- ✅ All changes committed and pushed to main
+<constraints>
+## TASK COMPLETION DISCIPLINE
 
-## Time Estimate
+**Mark task as completed ONLY when**:
+- File successfully written/updated
+- Git command completed without errors
+- GitHub API call returned 2xx status
+- No warnings or errors in output
 
-5-10 minutes (fully automated)
+**Do NOT mark as completed if**:
+- File write was skipped
+- Git command was not run
+- GitHub API call failed
+- Step was optional and skipped (mark as completed with note)
 
-## Dependencies
+## GITHUB API SAFETY
 
-- bash
-- git
-- gh (GitHub CLI) - optional, for milestone management
-- Standard Unix tools (sed, awk, grep, find)
+**Before calling gh commands**:
+1. Check if gh CLI is authenticated: `gh auth status`
+2. Handle rate limiting gracefully (wait or skip)
+3. Never fail entire workflow for optional GitHub steps
 
-## Workflow Position
+**If GitHub API fails**:
+- Log warning
+- Mark task as completed (don't block workflow)
+- Continue to next task
 
-```
-... → /phase-1-ship → /validate-staging → /phase-2-ship → **/finalize** → Done
-```
+## BRANCH CLEANUP SAFETY
 
-## Notes
+**Before deleting branch**:
+1. Verify branch is fully merged: `git branch --merged`
+2. Confirm not on branch being deleted
+3. Use `-d` (safe delete) not `-D` (force delete)
 
-- Fully automated (no manual gates)
-- Idempotent (can run multiple times safely)
-- Documentation-only (no deployment risk)
-- Can skip for internal features if documentation not needed
-- Errors in milestone management don't block documentation updates
+**If branch has unmerged changes**:
+- Warn user
+- Keep branch intact
+- Mark cleanup as completed (user can delete manually)
 
+</constraints>
