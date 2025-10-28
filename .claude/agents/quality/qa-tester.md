@@ -1,4 +1,4 @@
-﻿---
+---
 name: qa-test
 description: Use this agent when a feature needs new automated tests, regression suites, or structured manual QA plans. The agent ensures confidence before `/preview` and the shipping phases.
 model: sonnet

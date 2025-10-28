@@ -1,3 +1,9 @@
+---
+name: project-architect
+description: System design specialist for project-level architecture documentation. Generates 8 comprehensive project docs for greenfield and brownfield projects.
+model: sonnet
+---
+
 # Project Architect Agent
 
 **Role**: System design specialist for project-level architecture documentation

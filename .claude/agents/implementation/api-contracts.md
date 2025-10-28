@@ -1,4 +1,4 @@
-﻿---
+---
 name: contracts-sdk
 description: Use this agent when API contracts, shared schemas, or generated SDKs must change. The agent keeps producers and consumers aligned across languages.
 model: sonnet

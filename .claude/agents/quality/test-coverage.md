@@ -1,4 +1,4 @@
-﻿---
+---
 name: coverage-enhancer
 description: Use this agent when a feature needs stronger automated coverage or a measured TDD loop. The agent raises confidence by targeting high-risk areas first.
 model: sonnet

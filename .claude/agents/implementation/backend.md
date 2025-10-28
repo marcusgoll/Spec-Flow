@@ -1,4 +1,4 @@
-﻿---
+---
 name: backend-dev
 description: Use this agent when you need to design or modify backend services, APIs, or background jobs for a Spec-Flow feature. The agent favors small, well-tested changes and contract-first development.
 model: sonnet

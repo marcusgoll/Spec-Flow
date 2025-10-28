@@ -1,4 +1,4 @@
-﻿---
+---
 name: database-architect
 description: Use this agent when a feature requires schema design, migrations, data quality safeguards, or query tuning. The agent keeps storage predictable and observable across environments.
 model: sonnet
