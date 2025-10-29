@@ -5,6 +5,31 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.0] - 2025-10-29
+
+### Added
+- Comprehensive timestamp tracking throughout /feature workflow
+- Phase-level timing for all workflow phases (spec, plan, tasks, implement, optimize, ship)
+- Sub-phase timing for parallel operations (optimize checks, implement batches)
+- Manual gate wait time tracking (preview, staging validation)
+- Workflow metrics aggregation (total duration, active work, manual wait)
+- Beautiful timing summary table display at workflow completion
+- 7 new bash timing functions in workflow-state.sh
+- 7 new PowerShell timing functions in workflow-state.ps1
+- Comprehensive test suite for timing functions (6 test cases)
+- TIMESTAMP_IMPLEMENTATION_GUIDE.md documentation
+
+### Changed
+- workflow-state schema enhanced with phase_timing and metrics sections
+- Schema version bumped to 2.1.0
+- Human-readable duration formatting (30s, 1m 30s, 1h 1m)
+- Cross-platform date parsing (GNU/BSD compatibility)
+
+### Fixed
+- npm publish workflow missing NODE_AUTH_TOKEN environment variable
+
+---
+
 ## [2.10.0] - 2025-10-29
 
 ### Added
