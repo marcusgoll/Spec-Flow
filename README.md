@@ -89,7 +89,23 @@
 
 **Impact**: Deployment workflows are now transparent and recoverable, preventing the frustration of "it stopped and I don't know why."
 
-### v2.1.2 (October 2025)
+### v2.8.1 (October 2025)
+**npm Package Fix** - Properly excludes internal workflow files
+
+- **Fixed npm package**: Internal files (release.md, x-announcement.md) no longer included in published package
+- **Explicit file listing**: package.json files array updated with explicit includes and negation patterns
+- **Enhanced protection**: .npmignore created for additional safety layer
+- **Security**: Prevents accidental exposure of internal API URLs and workflow development files
+
+### v2.8.0 (October 2025)
+**X Announcement Integration** - Automated social media announcements
+
+- **Automated X Posts**: `/release` posts to X automatically with threaded GitHub link reply
+- **Preview & Edit**: 280 character validation with preview before posting
+- **Custom Post Generation**: Extracts CHANGELOG highlights for engaging posts
+- **Graceful Fallback**: Manual posting instructions if X Poster API unavailable
+- **Security**: Internal files gitignored to protect API URLs
+
 ### v2.1.2 (October 2025)
 **/feature next Auto-Pull** - Automatically start highest priority roadmap item
 
