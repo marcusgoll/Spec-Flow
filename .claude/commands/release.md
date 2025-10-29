@@ -56,6 +56,34 @@ npm whoami
 ```
 **If fails**: "❌ Not logged into npm. Run: `npm login`"
 
+### Check 5: CI Status
+```bash
+echo "🔍 Checking CI status..."
+CI_STATUS=$(gh run list --workflow=ci.yml --branch=main --limit=1 --json conclusion --jq '.[0].conclusion')
+
+if [ "$CI_STATUS" != "success" ]; then
+  echo "❌ CI checks are not passing on main branch"
+  echo "Current status: $CI_STATUS"
+  echo ""
+  echo "View CI: https://github.com/marcusgoll/Spec-Flow/actions/workflows/ci.yml"
+  echo ""
+  echo "Options:"
+  echo "1. Fix CI failures and run /release again"
+  echo "2. Wait for CI to complete"
+  echo "3. Override (not recommended): Continue anyway"
+  echo ""
+  read -p "Continue anyway? (yes/no): " OVERRIDE
+  if [ "$OVERRIDE" != "yes" ]; then
+    echo "Release cancelled. Fix CI and try again."
+    exit 1
+  fi
+  echo "⚠️  Proceeding despite CI failures (user override)"
+else
+  echo "✅ CI checks passing"
+fi
+```
+**If fails**: User can override, but warned about risk
+
 **If all checks pass**: Display "✅ Pre-flight checks passed" and continue.
 
 ---
@@ -155,11 +183,14 @@ Ask user for final confirmation:
 
 ```
 Ready to release v{NEW_VERSION}. This will:
+✅ Verify CI checks are passing
 ✅ Update package.json version field
-✅ Add CHANGELOG.md entry for v{NEW_VERSION}
+✅ Update CHANGELOG.md with release notes
+✅ Update README.md Recent Updates section
 ✅ Commit changes with message: "chore: release v{NEW_VERSION}"
 ✅ Create git tag: v{NEW_VERSION}
 ✅ Push to GitHub (origin/main + tag)
+✅ Create GitHub Release with release notes
 ✅ Publish to npm
 
 Proceed with release? (yes/no)
@@ -229,6 +260,52 @@ mv "$TEMP_FILE" CHANGELOG.md
 git diff package.json CHANGELOG.md
 ```
 
+### 4.3: Update README.md
+
+Insert new version entry at top of "Recent Updates" section:
+
+```bash
+# Get month name for README format
+MONTH_NAME=$(date +"%B")  # January, February, etc.
+YEAR=$(date +%Y)
+
+# Extract release notes from CHANGELOG (between new version and next version heading)
+RELEASE_NOTES=$(awk "/## \[$NEW_VERSION\]/,/^## \[/" CHANGELOG.md | \
+  sed '1d;$d' | \
+  sed '/^---$/d' | \
+  sed 's/^### /\*\*/' | \
+  sed 's/$/\*\*/' | \
+  head -20)
+
+# Create README update (insert after "## 🆕 Recent Updates")
+TEMP_README=$(mktemp)
+awk -v version="$NEW_VERSION" -v month="$MONTH_NAME" -v year="$YEAR" -v notes="$RELEASE_NOTES" '
+  /^## 🆕 Recent Updates/ {
+    print
+    print ""
+    print "### v" version " (" month " " year ")"
+    print notes
+    print ""
+    inserted=1
+    next
+  }
+  # Skip old first entry header to avoid duplication
+  /^### v[0-9]/ && !skipped && inserted {
+    skipped=1
+    next
+  }
+  { print }
+' README.md > "$TEMP_README"
+
+mv "$TEMP_README" README.md
+echo "✅ README.md updated"
+```
+
+**Show updated diff**:
+```bash
+git diff package.json CHANGELOG.md README.md
+```
+
 ---
 
 ## Step 5: Commit Changes
@@ -236,13 +313,14 @@ git diff package.json CHANGELOG.md
 Create commit with conventional commit format:
 
 ```bash
-git add package.json CHANGELOG.md
+git add package.json CHANGELOG.md README.md
 
 git commit -m "$(cat <<EOF
 chore: release v${NEW_VERSION}
 
 - Bump version to ${NEW_VERSION}
 - Update CHANGELOG.md with release notes
+- Update README.md with new version
 - Update version references
 
 Release: v${NEW_VERSION}
@@ -301,6 +379,48 @@ git push origin "v${NEW_VERSION}"
 
 **If push succeeds**: Display "✅ Pushed to GitHub"
 
+
+## Step 7.5: Create GitHub Release
+
+Create GitHub Release with release notes extracted from CHANGELOG:
+
+```bash
+echo "📦 Creating GitHub Release..."
+
+# Extract release notes from CHANGELOG (everything between new version and next version heading)
+RELEASE_BODY=$(awk "/## \[$NEW_VERSION\]/,/^## \[/" CHANGELOG.md | \
+  sed '1d;$d' | \
+  sed '/^---$/d' | \
+  sed '/^$/N;/^\n$/D')  # Remove multiple blank lines
+
+# Add footer to release notes
+RELEASE_BODY="${RELEASE_BODY}
+
+---
+
+📦 **Install**: \`npm install spec-flow@${NEW_VERSION}\`
+📚 **Docs**: https://github.com/marcusgoll/Spec-Flow
+🐛 **Issues**: https://github.com/marcusgoll/Spec-Flow/issues
+
+🤖 Released with [Claude Code](https://claude.com/claude-code)"
+
+# Create GitHub Release using gh CLI
+gh release create "v${NEW_VERSION}" \
+  --title "v${NEW_VERSION}" \
+  --notes "$RELEASE_BODY" \
+  --verify-tag
+
+if [ $? -eq 0 ]; then
+  echo "✅ GitHub Release created: https://github.com/marcusgoll/Spec-Flow/releases/tag/v${NEW_VERSION}"
+else
+  echo "⚠️  GitHub Release creation failed (non-blocking)"
+  echo "Create manually: https://github.com/marcusgoll/Spec-Flow/releases/new?tag=v${NEW_VERSION}"
+fi
+```
+
+**Error Handling**: If GitHub Release fails, workflow continues (release still valid via tag + npm)
+
+---
 ---
 
 ## Step 8: Publish to npm
@@ -361,39 +481,25 @@ Display comprehensive success message:
    npm: https://www.npmjs.com/package/spec-flow/v/{NEW_VERSION}
    Install: npm install spec-flow@{NEW_VERSION}
 
-🏷️  Git Tag:
+🏷️  GitHub Release:
+   URL: https://github.com/marcusgoll/Spec-Flow/releases/tag/v{NEW_VERSION}
    Tag: v{NEW_VERSION}
    Commit: {COMMIT_SHA}
-   URL: https://github.com/marcusgoll/Spec-Flow/releases/tag/v{NEW_VERSION}
 
-📝 Repository:
-   Commit: https://github.com/marcusgoll/Spec-Flow/commit/{COMMIT_SHA}
-   Compare: https://github.com/marcusgoll/Spec-Flow/compare/v{LAST_TAG}...v{NEW_VERSION}
+📝 Documentation:
+   README.md: ✅ Updated with v{NEW_VERSION}
+   CHANGELOG.md: ✅ Updated with release notes
+   Release Notes: ✅ Published to GitHub
+
+📊 CI Status: ✅ All checks passing
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📋 Next Steps:
+✅ Release Complete! No manual steps required.
 
-1. **Update CHANGELOG.md** (recommended):
-   - Open CHANGELOG.md
-   - Replace "<!-- Add detailed release notes here -->" with actual changes
-   - Examples: new features, bug fixes, breaking changes
-   - Commit: git add CHANGELOG.md && git commit --amend --no-edit && git push -f
-
-2. **Create GitHub Release** (optional):
-   - Go to: https://github.com/marcusgoll/Spec-Flow/releases/new?tag=v{NEW_VERSION}
-   - Copy release notes from CHANGELOG.md
-   - Add any additional context or screenshots
-   - Publish release
-
-3. **Announce** (optional):
-   - Share on social media
-   - Update documentation sites
-   - Notify users of new features
-
-4. **Verify Installation**:
-   - Test: npx spec-flow@{NEW_VERSION} --version
-   - Should output: {NEW_VERSION}
+Optional Next Steps:
+1. **Announce**: Share release on social media
+2. **Verify**: Test installation with npx spec-flow@{NEW_VERSION} --version
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
