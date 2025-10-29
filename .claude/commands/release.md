@@ -588,17 +588,17 @@ done
 
 ### Reply with GitHub Link
 
-If main post succeeded, reply with the release link:
+If main post succeeded, reply with the release link as a threaded reply:
 
 ```bash
 if [ -n "$TWEET_ID" ]; then
   GITHUB_RELEASE_URL="https://github.com/marcusgoll/Spec-Flow/releases/tag/v${NEW_VERSION}"
   REPLY_CONTENT="🔗 Release notes: ${GITHUB_RELEASE_URL}"
 
-  # Post reply
+  # Post reply as thread (using in_reply_to_tweet_id)
   REPLY_RESPONSE=$(curl -s -X POST "http://5.161.75.135:8080/api/v1/posts/" \
     -H "Content-Type: application/json" \
-    -d "{\"content\": \"$REPLY_CONTENT\", \"scheduled_at\": null}")
+    -d "{\"content\": \"$REPLY_CONTENT\", \"scheduled_at\": null, \"in_reply_to_tweet_id\": \"$TWEET_ID\"}")
 
   REPLY_POST_ID=$(echo "$REPLY_RESPONSE" | jq -r '.id')
 
