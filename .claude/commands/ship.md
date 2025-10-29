@@ -8,9 +8,11 @@
 - `/ship status` - Display current deployment status
 
 **Deployment Models**:
-- **staging-prod**: Full staging validation before production (optimize → preview → ship-staging → validate-staging → ship-prod → finalize)
-- **direct-prod**: Direct production deployment (optimize → preview → deploy-prod → finalize)
-- **local-only**: Local build and integration (optimize → preview → build-local → merge-to-main → finalize)
+- **staging-prod**: Full staging validation before production (optimize → preview → ship-staging → validate-staging → ship-prod → essential finalization)
+- **direct-prod**: Direct production deployment (optimize → preview → deploy-prod → essential finalization)
+- **local-only**: Local build and integration (optimize → preview → build-local → merge-to-main → essential finalization)
+
+**Note**: All models include essential finalization (roadmap update + branch cleanup). Optional full documentation via `/finalize` command.
 
 **Dependencies**: Requires completed `/implement` phase
 
@@ -53,7 +55,7 @@ TodoWrite({
     {content: "Deploy to staging environment", status: "pending", activeForm: "Deploying to staging"},
     {content: "Validate staging environment (manual gate)", status: "pending", activeForm: "Validating staging"},
     {content: "Deploy to production environment", status: "pending", activeForm: "Deploying to production"},
-    {content: "Run /finalize to complete documentation", status: "pending", activeForm: "Finalizing deployment"},
+    {content: "Essential finalization (roadmap + branch cleanup)", status: "pending", activeForm: "Finalizing deployment"},
   ]
 })
 ```
@@ -67,7 +69,7 @@ TodoWrite({
     {content: "Execute /optimize phase", status: "pending", activeForm: "Optimizing for production"},
     {content: "Execute /preview phase (manual gate)", status: "pending", activeForm: "Preparing preview"},
     {content: "Deploy directly to production", status: "pending", activeForm: "Deploying to production"},
-    {content: "Run /finalize to complete documentation", status: "pending", activeForm: "Finalizing deployment"},
+    {content: "Essential finalization (roadmap + branch cleanup)", status: "pending", activeForm: "Finalizing deployment"},
   ]
 })
 ```
@@ -82,7 +84,7 @@ TodoWrite({
     {content: "Execute /preview phase (manual gate)", status: "pending", activeForm: "Preparing preview"},
     {content: "Build locally and validate artifacts", status: "pending", activeForm: "Building locally"},
     {content: "Merge feature branch to main", status: "pending", activeForm: "Merging to main"},
-    {content: "Run /finalize to complete documentation", status: "pending", activeForm: "Finalizing deployment"},
+    {content: "Essential finalization (roadmap + branch cleanup)", status: "pending", activeForm: "Finalizing deployment"},
   ]
 })
 ```
@@ -217,17 +219,123 @@ To abort: /ship abort
    ```
    - **Update TodoWrite**: Mark merge as `completed`, mark finalize as `in_progress`
 
-## Step 6: Finalize
+## Step 6: Essential Finalization (All Models)
 
-Execute the `/finalize` slash command to complete documentation:
+Run core cleanup tasks for EVERY deployment, regardless of deployment model:
 
-```bash
-/finalize
-```
+### 6.1: Update Roadmap Issue to 'Shipped'
 
-After `/finalize` completes:
+1. **Find roadmap issue** for this feature (from workflow-state.yaml):
+   ```bash
+   FEATURE_SLUG=$(yq eval '.feature.slug' workflow-state.yaml)
+   gh issue list --label type:feature --search "slug: $FEATURE_SLUG" --json number,title,body
+   ```
+
+2. **Update issue status** to shipped:
+   ```bash
+   ISSUE_NUMBER=[extracted-from-above]
+   gh issue edit $ISSUE_NUMBER \
+     --add-label "status:shipped" \
+     --remove-label "status:in-progress"
+   ```
+
+3. **Add shipped comment** with deployment details:
+   ```bash
+   # Get production URL from workflow-state.yaml
+   PROD_URL=$(yq eval '.deployment.production.url // "Not recorded"' workflow-state.yaml)
+   VERSION=$(yq eval '.deployment.version // "unknown"' workflow-state.yaml)
+
+   gh issue comment $ISSUE_NUMBER --body "🚀 Shipped in v$VERSION on $(date +%Y-%m-%d)
+
+**Production URL**: $PROD_URL
+
+Deployment complete!"
+   ```
+
+**Error handling**: If issue not found or GitHub API fails, log warning and continue (non-blocking).
+
+### 6.2: Clean Up Feature Branch
+
+1. **Get branch names**:
+   ```bash
+   FEATURE_BRANCH=$(git branch --show-current)
+
+   # Detect main branch (main or master)
+   if git show-ref --verify --quiet refs/heads/main; then
+     MAIN_BRANCH="main"
+   elif git show-ref --verify --quiet refs/heads/master; then
+     MAIN_BRANCH="master"
+   else
+     echo "⚠️  Cannot detect main branch, skipping branch cleanup"
+     # Continue anyway - non-critical
+   fi
+   ```
+
+2. **Switch to main branch** (if not already on it):
+   ```bash
+   if [ "$FEATURE_BRANCH" != "$MAIN_BRANCH" ]; then
+     git checkout $MAIN_BRANCH
+   else
+     echo "Already on $MAIN_BRANCH, no need to switch"
+   fi
+   ```
+
+3. **Delete local feature branch**:
+   ```bash
+   if [ "$FEATURE_BRANCH" != "$MAIN_BRANCH" ]; then
+     git branch -d $FEATURE_BRANCH
+     echo "✅ Deleted local branch: $FEATURE_BRANCH"
+   fi
+   ```
+
+4. **Delete remote feature branch** (if exists):
+   ```bash
+   if git ls-remote --exit-code --heads origin "$FEATURE_BRANCH" >/dev/null 2>&1; then
+     git push origin --delete $FEATURE_BRANCH
+     echo "✅ Deleted remote branch: origin/$FEATURE_BRANCH"
+   else
+     echo "⏭️  Remote branch doesn't exist, nothing to delete"
+   fi
+   ```
+
+**Error handling**: If branch deletion fails (unmerged changes), log warning and continue (non-blocking).
+
+### 6.3: Display Final Summary
+
+After essential finalization completes:
 - **Update TodoWrite**: Mark finalize as `completed`
-- Display final summary with deployment URLs and next steps
+- Display final summary:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Deployment Complete!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[Feature Title]
+Deployment Model: [staging-prod/direct-prod/local-only]
+
+Essential Cleanup Done:
+✅ Roadmap issue #[number] updated to 'shipped'
+✅ Feature branch '[branch-name]' deleted (local + remote)
+
+Production URL: [url]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 Optional: Full Documentation
+
+For comprehensive documentation updates, run:
+  /finalize
+
+This will:
+- Update CHANGELOG.md with release notes
+- Update README.md with new features
+- Generate user documentation
+- Manage GitHub milestones
+- Create release notes
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
 
 ## Error Handling
 
