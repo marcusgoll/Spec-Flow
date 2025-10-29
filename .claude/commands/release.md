@@ -466,7 +466,193 @@ fi
 
 ---
 
-## Step 9: Show Success Summary
+## Step 9: Post X Announcement (Optional)
+
+Announce the release on X (Twitter) using the x-announcement skill.
+
+**Note**: This step uses an internal X Poster API. The skill file is in `.gitignore` and should not be committed to the repository.
+
+### Load Skill
+
+Load the x-announcement skill if it exists (it's gitignored, so may not be available in all environments):
+
+```bash
+if [ -f ".claude/skills/x-announcement.md" ]; then
+  echo "📱 Preparing X announcement..."
+else
+  echo "ℹ️  X announcement skill not available (optional - skipping)"
+  # Skip to Step 10
+  exit 0
+fi
+```
+
+### Generate Post Content
+
+Extract key features from CHANGELOG for this version:
+
+```bash
+# Get release notes for this version
+CHANGELOG_SECTION=$(awk "/^## \[${NEW_VERSION}\]/,/^## \[/" CHANGELOG.md | sed '1d;$d' | sed '/^---$/d')
+
+# Extract features (under ### Added, ### Fixed, ### Changed)
+FEATURES=$(echo "$CHANGELOG_SECTION" | grep -A 10 "^### Added" | grep "^- " | head -3)
+FIXES=$(echo "$CHANGELOG_SECTION" | grep -A 10 "^### Fixed" | grep "^- " | head -2)
+```
+
+### Draft Suggested Post
+
+Generate an engaging X post (follow guidelines from x-announcement.md):
+
+```
+🚀 Spec-Flow v{NEW_VERSION} is here!
+
+{Top 2-3 features from CHANGELOG with emojis}
+
+Ship features faster with less manual work.
+```
+
+**Character limit**: ≤ 280 characters
+
+### Show Preview and Get Confirmation
+
+Display the generated post to the user:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📱 X Announcement Preview
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{Generated post text}
+
+Characters: XXX/280
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Options:
+1. ✅ Post as-is
+2. ✏️  Edit post text
+3. ❌ Skip X announcement
+
+Enter choice (1-3):
+```
+
+**If user chooses "Edit"**:
+- Prompt for edited text
+- Validate character count (≤280)
+- Show updated preview
+- Re-confirm
+
+**If user chooses "Skip"**:
+- Continue to Step 10 (Success Summary)
+
+### Post to X API
+
+Once confirmed, post using the X Poster API:
+
+```bash
+# Post main announcement
+RESPONSE=$(curl -s -X POST "http://5.161.75.135:8080/api/v1/posts/" \
+  -H "Content-Type: application/json" \
+  -d "{\"content\": \"$POST_CONTENT\", \"scheduled_at\": null}")
+
+POST_ID=$(echo "$RESPONSE" | jq -r '.id')
+echo "📤 Posting to X... (ID: $POST_ID)"
+```
+
+### Wait for Publish
+
+Poll for tweet_id (max 60 seconds):
+
+```bash
+MAX_ATTEMPTS=20
+ATTEMPT=0
+
+while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+  STATUS_RESPONSE=$(curl -s "http://5.161.75.135:8080/api/v1/posts/$POST_ID")
+  POST_STATUS=$(echo "$STATUS_RESPONSE" | jq -r '.status')
+  TWEET_ID=$(echo "$STATUS_RESPONSE" | jq -r '.tweet_id // empty')
+
+  if [ "$POST_STATUS" = "posted" ] && [ -n "$TWEET_ID" ]; then
+    echo "✅ Posted to X!"
+    break
+  elif [ "$POST_STATUS" = "failed" ]; then
+    ERROR_REASON=$(echo "$STATUS_RESPONSE" | jq -r '.error_reason')
+    echo "❌ Post failed: $ERROR_REASON"
+    echo "Continuing with release..."
+    break
+  fi
+
+  ATTEMPT=$((ATTEMPT + 1))
+  sleep 3
+done
+```
+
+### Reply with GitHub Link
+
+If main post succeeded, reply with the release link:
+
+```bash
+if [ -n "$TWEET_ID" ]; then
+  GITHUB_RELEASE_URL="https://github.com/marcusgoll/Spec-Flow/releases/tag/v${NEW_VERSION}"
+  REPLY_CONTENT="🔗 Release notes: ${GITHUB_RELEASE_URL}"
+
+  # Post reply
+  REPLY_RESPONSE=$(curl -s -X POST "http://5.161.75.135:8080/api/v1/posts/" \
+    -H "Content-Type: application/json" \
+    -d "{\"content\": \"$REPLY_CONTENT\", \"scheduled_at\": null}")
+
+  REPLY_POST_ID=$(echo "$REPLY_RESPONSE" | jq -r '.id')
+
+  # Wait for reply to post
+  ATTEMPT=0
+  while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+    REPLY_STATUS_RESPONSE=$(curl -s "http://5.161.75.135:8080/api/v1/posts/$REPLY_POST_ID")
+    REPLY_STATUS=$(echo "$REPLY_STATUS_RESPONSE" | jq -r '.status')
+    REPLY_TWEET_ID=$(echo "$REPLY_STATUS_RESPONSE" | jq -r '.tweet_id // empty')
+
+    if [ "$REPLY_STATUS" = "posted" ] && [ -n "$REPLY_TWEET_ID" ]; then
+      echo "✅ GitHub link posted!"
+      break
+    fi
+
+    ATTEMPT=$((ATTEMPT + 1))
+    sleep 3
+  done
+fi
+```
+
+### Store Tweet URLs
+
+Store the tweet URLs for display in Step 10:
+
+```bash
+if [ -n "$TWEET_ID" ]; then
+  X_MAIN_POST_URL="https://x.com/username/status/${TWEET_ID}"
+fi
+
+if [ -n "$REPLY_TWEET_ID" ]; then
+  X_REPLY_POST_URL="https://x.com/username/status/${REPLY_TWEET_ID}"
+fi
+```
+
+### Error Handling
+
+**If API is unreachable**:
+```
+⚠️  X Poster API is unavailable
+
+Release completed successfully, but X announcement could not be posted.
+
+Manual posting option:
+1. Copy the post text above
+2. Post to X: https://x.com/compose
+3. Reply with: 🔗 Release notes: {GITHUB_RELEASE_URL}
+
+Continuing with release...
+```
+
+---
+
+## Step 10: Show Success Summary
 
 Display comprehensive success message:
 
@@ -493,12 +679,17 @@ Display comprehensive success message:
 
 📊 CI Status: ✅ All checks passing
 
+{If X announcement was posted:}
+📱 X Announcement:
+   Main Post: {X_MAIN_POST_URL}
+   Reply: {X_REPLY_POST_URL}
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-✅ Release Complete! No manual steps required.
+✅ Release Complete! {If X posted: "Posted to X!" else: "No manual steps required."}
 
 Optional Next Steps:
-1. **Announce**: Share release on social media
+1. {If X not posted: "**Announce**: Share release on social media" else: "**Engage**: Monitor X for feedback and questions"}
 2. **Verify**: Test installation with npx spec-flow@{NEW_VERSION} --version
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
