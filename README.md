@@ -44,6 +44,21 @@
 
 ## 🆕 Recent Updates
 
+### v2.8.0 (October 2025)
+**X Announcement Integration** - Automated social media announcements for releases
+
+- **Automated X Posts**: `/release` now posts announcements to X (Twitter) automatically with custom post generation
+- **Threaded Replies**: GitHub release link posted as threaded reply using `in_reply_to_tweet_id` API parameter
+- **Preview & Edit**: Review and customize post text before sending (280 character limit validation)
+- **Graceful Fallback**: Manual posting instructions if X Poster API unavailable
+- **Security**: X announcement skill and updated /release command gitignored (internal API URL protection)
+
+**Problem Solved**: Before v2.8.0, release announcements required manual X posting. Now `/release` handles social media automatically with customizable posts and proper threading.
+
+**Impact**: Release visibility increased with zero-friction social announcements. Internal API URLs remain protected.
+
+---
+
 ### v2.7.0 (October 2025)
 **Release Automation & Essential Finalization** - One-command releases and universal branch cleanup
 
