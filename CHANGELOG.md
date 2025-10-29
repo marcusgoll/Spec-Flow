@@ -5,6 +5,20 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2025-10-28
+
+### Added
+- Full automation for /release command with CI validation, README updates, and GitHub release creation
+- Automatic GitHub issue closing after updating feature status to "shipped"
+- Essential finalization tasks (roadmap updates + branch cleanup) now run for all deployment models (direct-prod, local-only, staging-prod)
+
+### Fixed
+- ShellCheck SC2155 warnings in github-roadmap-manager.sh by separating variable declarations from command substitutions
+- CI workflow configuration to exclude non-critical ShellCheck warnings (SC1091: source following, SC2034: unused variables)
+- Resolved all ShellCheck errors in bash scripts for clean CI passes
+
+---
+
 ## [2.6.0] - 2025-01-28
 
 ### Added
