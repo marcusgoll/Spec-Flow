@@ -5,6 +5,25 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2025-10-29
+
+### Added
+- X announcement converted from skill to slash command (`/x-announce`)
+- Direct invocation with `/x-announce "version"` for streamlined release announcements
+- 5-option workflow: post now, schedule, draft, edit, skip
+- Threaded reply support for GitHub release links
+- Integrated into `/release` command Step 9 (optional, non-blocking)
+
+### Changed
+- X announcement workflow simplified from skill-based to command-based execution
+- Release command now invokes `/x-announce` directly instead of loading skill
+- `.claude/commands/x-announce.md` replaces `.claude/skills/x-announcement.md`
+
+### Security
+- `/x-announce` command file added to `.gitignore` (internal API URL protection)
+
+---
+
 ## [2.9.0] - 2025-10-29
 
 ### Added

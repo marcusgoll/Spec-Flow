@@ -44,6 +44,52 @@
 
 ## 🆕 Recent Updates
 
+### v2.10.0 (October 2025)
+**X Announcement Slash Command** - Converted X announcement from skill to slash command
+
+- **Direct Invocation**: `/x-announce "version"` replaces skill-based workflow
+- **5-Option Workflow**: Post now, schedule, draft, edit, or skip
+- **Threaded Replies**: Automatic GitHub release link as reply using `in_reply_to_tweet_id`
+- **Release Integration**: Integrated into `/release` command Step 9 (optional, non-blocking)
+- **Simplified Architecture**: Command-based execution replaces skill loading
+
+**Problem Solved**: Before v2.10.0, X announcements required loading a skill and complex interaction flow. Now `/x-announce` provides direct, streamlined access with same functionality.
+
+**Impact**: Release announcements are faster and simpler. Command structure is more maintainable than skill-based approach.
+
+---
+
+### v2.9.0 (October 2025)
+**Help Command** - Context-aware workflow navigation
+
+- **Contextual Guidance**: `/help` shows where you are and what to do next
+- **Six Output Modes**: Adapts to context (no feature, in feature, at gate, blocked, complete, corrupted)
+- **Progress Visualization**: Emoji indicators show phase status (✅ ⏳ ⬜ ❌)
+- **Deployment Model Aware**: Shows correct phase sequences for staging-prod, direct-prod, local-only
+- **Error Recovery**: Highlights blockers with specific recovery options
+- **Verbose Mode**: `/help verbose` for detailed state (quality gates, deployments, artifacts)
+- **Always Actionable**: Shows next command to run based on current state
+
+**Problem Solved**: Before v2.9.0, users had to manually track workflow state and remember next steps. Now `/help` provides instant orientation and guidance.
+
+**Impact**: Reduced cognitive load and faster error recovery. No more "what do I run next?" confusion.
+
+---
+
+### v2.8.1 (October 2025)
+**npm Package Fix** - Properly excludes internal workflow files
+
+- **Fixed npm package**: Internal files (release.md, x-announcement.md) no longer included in published package
+- **Explicit file listing**: package.json files array updated with explicit includes and negation patterns
+- **Enhanced protection**: .npmignore created for additional safety layer
+- **Security**: Prevents accidental exposure of internal API URLs and workflow development files
+
+**Problem Solved**: Before v2.8.1, internal workflow development files leaked into npm package. Now proper exclusion prevents exposure.
+
+**Impact**: Enhanced security - internal API URLs and development files stay private.
+
+---
+
 ### v2.8.0 (October 2025)
 **X Announcement Integration** - Automated social media announcements for releases
 
