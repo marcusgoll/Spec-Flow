@@ -38,6 +38,11 @@ cat "$TASKS_FILE"
 cat "$NOTES_FILE"
 cat "$PLAN_FILE" | head -100  # First 100 lines for architecture context
 cat "$STATE_FILE"
+n# Source timing functions
+source .spec-flow/scripts/bash/workflow-state.sh
+
+# Start timing for implement phase
+start_phase_timing "$FEATURE_DIR" "implement"
 ```
 
 ### Step 2: Analyze Task Dependencies
@@ -84,6 +89,8 @@ Batch 4 (final):
   - T015: Documentation (depends on all)
 ```
 
+n# Start timing for Batch 1
+start_sub_phase_timing "$FEATURE_DIR" "implement" "batch_1"
 ### Step 3: Execute Batches with Parallel Task() Calls
 
 **For each batch, launch parallel Task() calls in SINGLE message:**
@@ -138,12 +145,20 @@ BATCH_1_COMPLETE=$(grep -c "✅ T00[123]" "$NOTES_FILE")
 if [ "$BATCH_1_COMPLETE" -ne 3 ]; then
   echo "❌ Batch 1 incomplete: $BATCH_1_COMPLETE/3 tasks completed"
   # Log errors and return failure
+n# Complete timing for Batch 1
+complete_sub_phase_timing "$FEATURE_DIR" "implement" "batch_1"
 fi
 
 # Create checkpoint commit
 git add .
 git commit -m "feat: implement batch 1 (schema, routes, components setup)"
 
+n**IMPORTANT**: Repeat the sub-phase timing pattern for each batch:
+```bash
+start_sub_phase_timing "$FEATURE_DIR" "implement" "batch_N"
+# ... execute batch tasks ...
+complete_sub_phase_timing "$FEATURE_DIR" "implement" "batch_N"
+```
 echo "✅ Batch 1 complete (3 tasks)"
 ```
 
@@ -167,6 +182,9 @@ ERROR_COUNT=$(grep -c "❌\|⚠️" "$ERROR_LOG" 2>/dev/null || echo "0")
 # Count batches executed
 BATCHES_EXECUTED=4  # Track during execution
 ```
+
+n# Complete timing for implement phase
+complete_phase_timing "$FEATURE_DIR" "implement"
 
 ### Step 5: Return Summary
 

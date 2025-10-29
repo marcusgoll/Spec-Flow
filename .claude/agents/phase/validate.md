@@ -19,6 +19,12 @@ You are the Analysis Phase Agent. Execute Phase 3 (Cross-Artifact Analysis) in a
 ## EXECUTION
 
 ### Step 1: Call Slash Command
+n### Step 0: Start Phase Timing
+```bash
+FEATURE_DIR="specs/$SLUG"
+source .spec-flow/scripts/bash/workflow-state.sh
+start_phase_timing "$FEATURE_DIR" "validate"
+```
 Use SlashCommand tool to execute:
 ```
 /analyze
@@ -48,6 +54,10 @@ if grep -q "Status: ✅ Ready for Implementation" "$ANALYSIS_FILE"; then
   STATUS="ready"
 elif grep -q "Status: ⚠️" "$ANALYSIS_FILE"; then
   STATUS="warnings"
+n### Step 2.5: Complete Phase Timing
+```bash
+complete_phase_timing "$FEATURE_DIR" "validate"
+```
 else
   STATUS="blocked"
 fi

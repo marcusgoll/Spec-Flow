@@ -19,6 +19,12 @@ You are the Tasks Phase Agent. Execute Phase 2 (Task Breakdown) in an isolated c
 ## EXECUTION
 
 ### Step 1: Call Slash Command
+n### Step 0: Start Phase Timing
+```bash
+FEATURE_DIR="specs/$SLUG"
+source .spec-flow/scripts/bash/workflow-state.sh
+start_phase_timing "$FEATURE_DIR" "tasks"
+```
 Use SlashCommand tool to execute:
 ```
 /tasks
@@ -48,6 +54,10 @@ PRIORITY_COUNT=$(grep -c "\[P\]" "$TASKS_FILE" || echo "0")
 # Extract task categories
 BACKEND_TASKS=$(grep -c "api/\|backend\|service" "$TASKS_FILE" || echo "0")
 FRONTEND_TASKS=$(grep -c "apps/\|frontend\|component" "$TASKS_FILE" || echo "0")
+n### Step 2.5: Complete Phase Timing
+```bash
+complete_phase_timing "$FEATURE_DIR" "tasks"
+```
 DATABASE_TASKS=$(grep -c "migration\|alembic\|schema" "$TASKS_FILE" || echo "0")
 TEST_TASKS=$(grep -c "test.*\.py\|\.test\.ts" "$TASKS_FILE" || echo "0")
 ```

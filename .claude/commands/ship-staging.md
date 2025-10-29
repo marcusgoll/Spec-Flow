@@ -41,6 +41,9 @@ if [ ! -d "$FEATURE_DIR" ]; then
   exit 1
 fi
 ```
+n# Start timing for ship-staging phase
+source .spec-flow/scripts/bash/workflow-state.sh
+start_phase_timing "$FEATURE_DIR" "ship:phase-1-ship"
 
 **Validate on feature branch:**
 
@@ -1555,6 +1558,8 @@ Brief summary:
 Feature: $TITLE
 PR: #$PR_NUMBER
 URL: $PR_URL
+n# Complete timing for ship-staging phase
+complete_phase_timing "$FEATURE_DIR" "ship:phase-1-ship"
 
 Status:
 ✅ Auto-merge enabled

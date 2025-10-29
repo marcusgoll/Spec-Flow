@@ -264,6 +264,12 @@ if [ -d "apps/app/$SLUG" ]; then
 fi
 ```
 
+n# Source timing functions
+source .spec-flow/scripts/bash/workflow-state.sh
+
+# Start timing for optimize phase
+start_phase_timing "$FEATURE_DIR" "optimize"
+
 ## PARALLEL OPTIMIZATION CHECKS
 
 **Launch all optimization checks in parallel for 4-5x speedup:**
@@ -289,6 +295,10 @@ Task({
   subagent_type: "general-purpose",
   description: "Performance benchmarks",
   prompt: `Run performance validation for feature at ${FEATURE_DIR}:
+n# Start sub-phase timing
+source .spec-flow/scripts/bash/workflow-state.sh
+start_sub_phase_timing "$FEATURE_DIR" "optimize" "performance"
+
 
 1. Backend Performance:
    - Run API benchmark tests: cd api && uv run pytest tests/performance/ -v
@@ -311,6 +321,8 @@ Task({
 
 Output summary to ${FEATURE_DIR}/optimization-performance.md with:
 - Performance metrics (actual vs targets)
+n# Complete sub-phase timing
+complete_sub_phase_timing "$FEATURE_DIR" "optimize" "performance"
 - Issues found (if any)
 - Status: PASSED/FAILED
 `
@@ -324,6 +336,10 @@ Task({
 
 1. Backend Security:
    - Dependency scan: cd api && uv run bandit -r app/ -ll
+n# Start sub-phase timing
+source .spec-flow/scripts/bash/workflow-state.sh
+start_sub_phase_timing "$FEATURE_DIR" "optimize" "security"
+
    - Safety check: cd api && uv run safety check
    - Report vulnerabilities: ${FEATURE_DIR}/security-backend.log
 
@@ -336,6 +352,8 @@ Task({
    - API security tests: cd api && uv run pytest tests/security/ -v
    - Check auth/authz on protected routes
    - Report: ${FEATURE_DIR}/security-tests.log
+n# Complete sub-phase timing
+complete_sub_phase_timing "$FEATURE_DIR" "optimize" "security"
 
 Output summary to ${FEATURE_DIR}/optimization-security.md with:
 - Vulnerability count by severity (critical/high/medium/low)
@@ -352,6 +370,10 @@ Task({
 
 1. WCAG Compliance:
    - Extract WCAG level requirement from ${PLAN_FILE}
+n# Start sub-phase timing
+source .spec-flow/scripts/bash/workflow-state.sh
+start_sub_phase_timing "$FEATURE_DIR" "optimize" "accessibility"
+
    - Run a11y tests: pnpm --filter @cfipros/marketing test -- --runInBand
    - Run a11y tests: pnpm --filter @cfipros/app test -- --runInBand
    - Report: ${FEATURE_DIR}/a11y-tests.log
@@ -362,6 +384,8 @@ Task({
    - Target: ≥95
    - Report: ${FEATURE_DIR}/a11y-lighthouse.log
 
+n# Complete sub-phase timing
+complete_sub_phase_timing "$FEATURE_DIR" "optimize" "accessibility"
 3. Manual Checklist Validation:
    - Keyboard navigation (check aria labels, focus indicators)
    - Color contrast ratios (4.5:1 text, 3:1 UI)
@@ -378,6 +402,10 @@ Output summary to ${FEATURE_DIR}/optimization-accessibility.md with:
 
 // Check 4: Senior Code Review
 Task({
+n# Start sub-phase timing
+source .spec-flow/scripts/bash/workflow-state.sh
+start_sub_phase_timing "$FEATURE_DIR" "optimize" "code_review"
+
   subagent_type: "senior-code-reviewer",
   description: "Senior code review",
   prompt: `Review feature at ${FEATURE_DIR} for contract compliance and quality gates:
@@ -404,6 +432,8 @@ Focus on:
    - Target: ≥80%
 
 5. Quality Gates:
+n# Complete sub-phase timing
+complete_sub_phase_timing "$FEATURE_DIR" "optimize" "code_review"
    - Lint: cd api && uv run ruff check .
    - Types: cd api && uv run mypy app/ --strict
    - Lint: pnpm --filter @cfipros/app lint
@@ -423,6 +453,10 @@ Task({
   subagent_type: "general-purpose",
   description: "Migration validation",
   prompt: `Validate database migrations for feature at ${FEATURE_DIR}:
+
+n# Start sub-phase timing
+source .spec-flow/scripts/bash/workflow-state.sh
+start_sub_phase_timing "$FEATURE_DIR" "optimize" "migrations"
 
 1. Check if migrations exist:
    - Look for ${FEATURE_DIR}/migration-plan.md
@@ -449,6 +483,8 @@ Output summary to ${FEATURE_DIR}/optimization-migrations.md with:
 `
 })
 
+n# Complete sub-phase timing
+complete_sub_phase_timing "$FEATURE_DIR" "optimize" "migrations"
 echo ""
 echo "⏳ Waiting for all checks to complete..."
 echo ""
@@ -575,6 +611,8 @@ echo "✅ All optimization checks passed"
 echo ""
 
 # Update workflow state to completed
+n# Complete timing for optimize phase
+complete_phase_timing "$FEATURE_DIR" "optimize"
 update_workflow_phase "$FEATURE_DIR" "optimize" "completed"
 
 echo "Next: /feature auto-continues to /ship"

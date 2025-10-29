@@ -58,6 +58,8 @@ fi
 
 # Update phase
 update_workflow_phase "$FEATURE_DIR" "ship:build-local" "in_progress"
+n# Start timing for build-local phase
+start_phase_timing "$FEATURE_DIR" "ship:build-local"
 
 echo "🏠 Local Build & Validation"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -761,6 +763,8 @@ echo "📄 Local build report created: $FEATURE_DIR/local-build-report.md"
 echo ""
 
 # Update workflow state
+n# Complete timing for build-local phase
+complete_phase_timing "$FEATURE_DIR" "ship:build-local"
 update_workflow_phase "$FEATURE_DIR" "ship:build-local" "completed"
 
 echo "✅ Local build complete!"

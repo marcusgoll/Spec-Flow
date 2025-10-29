@@ -51,6 +51,8 @@ fi
 
 # Update phase
 update_workflow_phase "$FEATURE_DIR" "ship:deploy-prod" "in_progress"
+n# Start timing for deploy-prod phase
+start_phase_timing "$FEATURE_DIR" "ship:deploy-prod"
 
 echo "🚀 Direct Production Deployment"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -664,6 +666,8 @@ EOF
 
 echo "📄 Production report created: $FEATURE_DIR/production-ship-report.md"
 echo ""
+n# Complete timing for deploy-prod phase
+complete_phase_timing "$FEATURE_DIR" "ship:deploy-prod"
 
 # Update workflow state
 update_workflow_phase "$FEATURE_DIR" "ship:deploy-prod" "completed"

@@ -506,6 +506,8 @@ mkdir -p "$FEATURE_DIR"
 # - Deployment state (staging, production)
 # - Artifacts paths
 initialize_workflow_state "$FEATURE_DIR" "$SLUG" "$FEATURE_DESCRIPTION" "$BRANCH_NAME"
+n# Start timing for spec-flow phase
+start_phase_timing "$FEATURE_DIR" "spec-flow"
 
 # If using /feature next, store GitHub issue number for tracking
 if [ -n "$ISSUE_NUMBER" ]; then
@@ -648,6 +650,8 @@ if [ "$STATUS" != "completed" ]; then
 fi
 
 # Update workflow state: mark spec-flow phase complete
+n# Complete timing for spec-flow phase
+complete_phase_timing "$FEATURE_DIR" "spec-flow"
 update_workflow_phase "$FEATURE_DIR" "spec-flow" "completed"
 
 # Store phase summary in artifacts
@@ -1104,6 +1108,8 @@ update_workflow_phase "$FEATURE_DIR" "implement" "completed"
    echo "Feature: $SLUG"
    echo "Summary: $FEATURE_DIR/ship-summary.md"
    echo ""
+n   # Display comprehensive timing summary
+   display_workflow_summary "$FEATURE_DIR"
    ```
 
 ### Completion

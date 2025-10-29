@@ -19,6 +19,12 @@ You are the Planning Phase Agent. Execute Phase 1 (Planning) in an isolated cont
 ## EXECUTION
 
 ### Step 1: Call Slash Command
+n### Step 0: Start Phase Timing
+```bash
+FEATURE_DIR="specs/$SLUG"
+source .spec-flow/scripts/bash/workflow-state.sh
+start_phase_timing "$FEATURE_DIR" "plan"
+```
 Use SlashCommand tool to execute:
 ```
 /plan
@@ -48,6 +54,10 @@ PLAN_DECISIONS=$(sed -n '/## Key Decisions/,/^## /p' "$NOTES_FILE" 2>/dev/null |
 
 # Check for blockers
 BLOCKERS=$(grep -i "BLOCKER" "$PLAN_FILE" || echo "")
+n### Step 2.5: Complete Phase Timing
+```bash
+complete_phase_timing "$FEATURE_DIR" "plan"
+```
 ```
 
 ### Step 3: Return Summary

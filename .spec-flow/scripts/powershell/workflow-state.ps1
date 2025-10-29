@@ -10,7 +10,7 @@
     Auto-migrates from JSON to YAML format for backward compatibility.
 
 .NOTES
-    Version: 2.0.0
+    Version: 2.1.0 (Timing Functions)
     Author: Spec-Flow Workflow Kit
     Requires: powershell-yaml module (Install-Module -Name powershell-yaml)
 #>
@@ -120,6 +120,8 @@ function Initialize-WorkflowState {
             completed_phases = @()
             failed_phases = @()
             manual_gates = @{}
+            phase_timing = @{}
+            metrics = @{}
         }
         context = @{
             token_budget = @{
@@ -153,8 +155,8 @@ function Initialize-WorkflowState {
         }
         quality_gates = @{}
         metadata = @{
-            schema_version = "2.0.0"
-            workflow_version = "2.0.0"
+            schema_version = "2.1.0"
+            workflow_version = "2.1.0"
         }
     }
 
@@ -621,6 +623,521 @@ function Get-DeploymentModel {
     }
 }
 
+
+# ============================================================================
+# Timing Functions
+# ============================================================================
+
+function Start-PhaseTiming {
+    <#
+    .SYNOPSIS
+        Mark the start of a workflow phase for timing tracking
+
+    .PARAMETER FeatureDir
+        Path to feature directory
+
+    .PARAMETER Phase
+        Phase name (e.g., "spec-flow", "plan", "implement")
+
+    .EXAMPLE
+        Start-PhaseTiming -FeatureDir "specs/001-login" -Phase "implement"
+    #>
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$FeatureDir,
+
+        [Parameter(Mandatory=$true)]
+        [string]$Phase
+    )
+
+    $stateFile = Test-MigrateJsonToYaml -FeatureDir $FeatureDir
+
+    if (-not (Test-Path $stateFile)) {
+        Write-Error "Workflow state not found: $stateFile"
+        return
+    }
+
+    $state = Get-Content $stateFile -Raw | ConvertFrom-Yaml -Ordered
+    $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+    # Initialize phase timing entry
+    if (-not $state.workflow.phase_timing) {
+        $state.workflow.phase_timing = @{}
+    }
+
+    $state.workflow.phase_timing[$Phase] = @{
+        started_at = $timestamp
+        status = "in_progress"
+    }
+
+    $state.feature.last_updated = $timestamp
+
+    $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
+}
+
+function Complete-PhaseTiming {
+    <#
+    .SYNOPSIS
+        Mark the completion of a workflow phase and calculate duration
+
+    .PARAMETER FeatureDir
+        Path to feature directory
+
+    .PARAMETER Phase
+        Phase name (e.g., "spec-flow", "plan", "implement")
+
+    .EXAMPLE
+        Complete-PhaseTiming -FeatureDir "specs/001-login" -Phase "implement"
+    #>
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$FeatureDir,
+
+        [Parameter(Mandatory=$true)]
+        [string]$Phase
+    )
+
+    $stateFile = Test-MigrateJsonToYaml -FeatureDir $FeatureDir
+
+    if (-not (Test-Path $stateFile)) {
+        Write-Error "Workflow state not found: $stateFile"
+        return
+    }
+
+    $state = Get-Content $stateFile -Raw | ConvertFrom-Yaml -Ordered
+    $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+    # Get started_at timestamp
+    if (-not $state.workflow.phase_timing -or -not $state.workflow.phase_timing[$Phase]) {
+        Write-Warning "Phase $Phase has no start time, skipping duration calculation"
+        if (-not $state.workflow.phase_timing) {
+            $state.workflow.phase_timing = @{}
+        }
+        $state.workflow.phase_timing[$Phase] = @{
+            completed_at = $timestamp
+            status = "completed"
+        }
+        $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
+        return
+    }
+
+    $startedAt = $state.workflow.phase_timing[$Phase].started_at
+
+    if (-not $startedAt) {
+        Write-Warning "Phase $Phase has no start time, skipping duration calculation"
+        $state.workflow.phase_timing[$Phase].completed_at = $timestamp
+        $state.workflow.phase_timing[$Phase].status = "completed"
+        $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
+        return
+    }
+
+    # Calculate duration
+    try {
+        $startedEpoch = [DateTimeOffset]::Parse($startedAt).ToUnixTimeSeconds()
+        $completedEpoch = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        $duration = $completedEpoch - $startedEpoch
+
+        # Update phase timing
+        $state.workflow.phase_timing[$Phase].completed_at = $timestamp
+        $state.workflow.phase_timing[$Phase].duration_seconds = $duration
+        $state.workflow.phase_timing[$Phase].status = "completed"
+        $state.feature.last_updated = $timestamp
+
+        $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
+    } catch {
+        Write-Warning "Unable to parse date format, skipping duration calculation: $_"
+        $state.workflow.phase_timing[$Phase].completed_at = $timestamp
+        $state.workflow.phase_timing[$Phase].status = "completed"
+        $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
+    }
+}
+
+function Start-SubPhaseTiming {
+    <#
+    .SYNOPSIS
+        Mark the start of a sub-phase within a parent phase
+
+    .PARAMETER FeatureDir
+        Path to feature directory
+
+    .PARAMETER ParentPhase
+        Parent phase name (e.g., "optimize")
+
+    .PARAMETER SubPhase
+        Sub-phase name (e.g., "performance", "security")
+
+    .EXAMPLE
+        Start-SubPhaseTiming -FeatureDir "specs/001-login" -ParentPhase "optimize" -SubPhase "performance"
+    #>
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$FeatureDir,
+
+        [Parameter(Mandatory=$true)]
+        [string]$ParentPhase,
+
+        [Parameter(Mandatory=$true)]
+        [string]$SubPhase
+    )
+
+    $stateFile = Test-MigrateJsonToYaml -FeatureDir $FeatureDir
+
+    if (-not (Test-Path $stateFile)) {
+        Write-Error "Workflow state not found: $stateFile"
+        return
+    }
+
+    $state = Get-Content $stateFile -Raw | ConvertFrom-Yaml -Ordered
+    $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+    # Initialize sub-phase timing entry
+    if (-not $state.workflow.phase_timing) {
+        $state.workflow.phase_timing = @{}
+    }
+    if (-not $state.workflow.phase_timing[$ParentPhase]) {
+        $state.workflow.phase_timing[$ParentPhase] = @{}
+    }
+    if (-not $state.workflow.phase_timing[$ParentPhase].sub_phases) {
+        $state.workflow.phase_timing[$ParentPhase].sub_phases = @{}
+    }
+
+    $state.workflow.phase_timing[$ParentPhase].sub_phases[$SubPhase] = @{
+        started_at = $timestamp
+    }
+
+    $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
+}
+
+function Complete-SubPhaseTiming {
+    <#
+    .SYNOPSIS
+        Mark the completion of a sub-phase and calculate duration
+
+    .PARAMETER FeatureDir
+        Path to feature directory
+
+    .PARAMETER ParentPhase
+        Parent phase name (e.g., "optimize")
+
+    .PARAMETER SubPhase
+        Sub-phase name (e.g., "performance", "security")
+
+    .EXAMPLE
+        Complete-SubPhaseTiming -FeatureDir "specs/001-login" -ParentPhase "optimize" -SubPhase "performance"
+    #>
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$FeatureDir,
+
+        [Parameter(Mandatory=$true)]
+        [string]$ParentPhase,
+
+        [Parameter(Mandatory=$true)]
+        [string]$SubPhase
+    )
+
+    $stateFile = Test-MigrateJsonToYaml -FeatureDir $FeatureDir
+
+    if (-not (Test-Path $stateFile)) {
+        Write-Error "Workflow state not found: $stateFile"
+        return
+    }
+
+    $state = Get-Content $stateFile -Raw | ConvertFrom-Yaml -Ordered
+    $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+    # Get started_at timestamp
+    if (-not $state.workflow.phase_timing[$ParentPhase].sub_phases[$SubPhase]) {
+        Write-Warning "Sub-phase $SubPhase has no start time, skipping duration calculation"
+        $state.workflow.phase_timing[$ParentPhase].sub_phases[$SubPhase] = @{
+            completed_at = $timestamp
+        }
+        $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
+        return
+    }
+
+    $startedAt = $state.workflow.phase_timing[$ParentPhase].sub_phases[$SubPhase].started_at
+
+    if (-not $startedAt) {
+        Write-Warning "Sub-phase $SubPhase has no start time, skipping duration calculation"
+        $state.workflow.phase_timing[$ParentPhase].sub_phases[$SubPhase].completed_at = $timestamp
+        $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
+        return
+    }
+
+    # Calculate duration
+    try {
+        $startedEpoch = [DateTimeOffset]::Parse($startedAt).ToUnixTimeSeconds()
+        $completedEpoch = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        $duration = $completedEpoch - $startedEpoch
+
+        $state.workflow.phase_timing[$ParentPhase].sub_phases[$SubPhase].completed_at = $timestamp
+        $state.workflow.phase_timing[$ParentPhase].sub_phases[$SubPhase].duration_seconds = $duration
+
+        $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
+    } catch {
+        Write-Warning "Unable to parse date format, skipping duration calculation: $_"
+        $state.workflow.phase_timing[$ParentPhase].sub_phases[$SubPhase].completed_at = $timestamp
+        $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
+    }
+}
+
+function Get-WorkflowMetrics {
+    <#
+    .SYNOPSIS
+        Calculate and update overall workflow metrics
+
+    .PARAMETER FeatureDir
+        Path to feature directory
+
+    .EXAMPLE
+        Get-WorkflowMetrics -FeatureDir "specs/001-login"
+    #>
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$FeatureDir
+    )
+
+    $stateFile = Test-MigrateJsonToYaml -FeatureDir $FeatureDir
+
+    if (-not (Test-Path $stateFile)) {
+        Write-Error "Workflow state not found: $stateFile"
+        return
+    }
+
+    $state = Get-Content $stateFile -Raw | ConvertFrom-Yaml -Ordered
+
+    # Sum all phase durations
+    $totalDuration = 0
+    if ($state.workflow.phase_timing) {
+        foreach ($phase in $state.workflow.phase_timing.Keys) {
+            $duration = $state.workflow.phase_timing[$phase].duration_seconds
+            if ($duration) {
+                $totalDuration += $duration
+            }
+        }
+    }
+
+    # Calculate manual wait time
+    $manualWait = 0
+    if ($state.workflow.manual_gates) {
+        foreach ($gate in $state.workflow.manual_gates.Keys) {
+            $startedAt = $state.workflow.manual_gates[$gate].started_at
+            $approvedAt = $state.workflow.manual_gates[$gate].approved_at
+
+            if ($startedAt -and $approvedAt) {
+                try {
+                    $startedEpoch = [DateTimeOffset]::Parse($startedAt).ToUnixTimeSeconds()
+                    $approvedEpoch = [DateTimeOffset]::Parse($approvedAt).ToUnixTimeSeconds()
+                    $gateWait = $approvedEpoch - $startedEpoch
+                    $manualWait += $gateWait
+
+                    # Store wait duration in gate entry
+                    $state.workflow.manual_gates[$gate].wait_duration_seconds = $gateWait
+                } catch {
+                    # Skip if unable to parse
+                    continue
+                }
+            }
+        }
+    }
+
+    # Calculate active work time
+    $activeWork = $totalDuration - $manualWait
+
+    # Count phases and gates
+    $phasesCount = if ($state.workflow.phase_timing) { $state.workflow.phase_timing.Count } else { 0 }
+    $gatesCount = if ($state.workflow.manual_gates) { $state.workflow.manual_gates.Count } else { 0 }
+
+    # Update metrics
+    if (-not $state.workflow.metrics) {
+        $state.workflow.metrics = @{}
+    }
+
+    $state.workflow.metrics.total_duration_seconds = $totalDuration
+    $state.workflow.metrics.active_work_seconds = $activeWork
+    $state.workflow.metrics.manual_wait_seconds = $manualWait
+    $state.workflow.metrics.phases_count = $phasesCount
+    $state.workflow.metrics.manual_gates_count = $gatesCount
+
+    $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
+
+    return $state.workflow.metrics
+}
+
+function Format-Duration {
+    <#
+    .SYNOPSIS
+        Format seconds into human-readable duration
+
+    .PARAMETER Seconds
+        Duration in seconds
+
+    .EXAMPLE
+        Format-Duration -Seconds 3661
+        # Returns "1h 1m"
+    #>
+    param(
+        [Parameter(Mandatory=$true)]
+        [int]$Seconds
+    )
+
+    if ($Seconds -lt 60) {
+        return "${Seconds}s"
+    } elseif ($Seconds -lt 3600) {
+        $minutes = [Math]::Floor($Seconds / 60)
+        $secs = $Seconds % 60
+        return "${minutes}m ${secs}s"
+    } else {
+        $hours = [Math]::Floor($Seconds / 3600)
+        $minutes = [Math]::Floor(($Seconds % 3600) / 60)
+        return "${hours}h ${minutes}m"
+    }
+}
+
+function Show-WorkflowSummary {
+    <#
+    .SYNOPSIS
+        Display comprehensive workflow timing summary
+
+    .PARAMETER FeatureDir
+        Path to feature directory
+
+    .EXAMPLE
+        Show-WorkflowSummary -FeatureDir "specs/001-login"
+    #>
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$FeatureDir
+    )
+
+    $stateFile = Test-MigrateJsonToYaml -FeatureDir $FeatureDir
+
+    if (-not (Test-Path $stateFile)) {
+        Write-Error "Workflow state not found: $stateFile"
+        return
+    }
+
+    # Calculate metrics first
+    $metrics = Get-WorkflowMetrics -FeatureDir $FeatureDir
+
+    $state = Get-Content $stateFile -Raw | ConvertFrom-Yaml -Ordered
+
+    # Extract feature info
+    $featureTitle = $state.feature.title
+    $deploymentModel = $state.deployment_model
+
+    # Extract metrics
+    $totalDuration = $metrics.total_duration_seconds
+    $activeWork = $metrics.active_work_seconds
+    $manualWait = $metrics.manual_wait_seconds
+
+    # Format durations
+    $totalFmt = Format-Duration -Seconds $totalDuration
+    $activeFmt = Format-Duration -Seconds $activeWork
+    $manualFmt = Format-Duration -Seconds $manualWait
+
+    # Extract deployment info
+    $prodUrl = $state.deployment.production.url
+    $prodVersion = $state.deployment.production.version
+
+    # Display summary
+    Write-Host ""
+    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+    Write-Host "✅ Feature Workflow Complete: $featureTitle" -ForegroundColor Green
+    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "📊 Workflow Timing Summary" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Total Duration:        $totalFmt ($totalDuration seconds)"
+    Write-Host "Active Work:           $activeFmt ($activeWork seconds)"
+    if ($manualWait -gt 0) {
+        Write-Host "Manual Waiting:        $manualFmt ($manualWait seconds)"
+    }
+    Write-Host ""
+    Write-Host "Phase Breakdown:"
+    Write-Host "┌────────────────────────────┬──────────────────┬─────────────┬──────────┐"
+    Write-Host "│ Phase                      │ Started (UTC)    │ Duration    │ Status   │"
+    Write-Host "├────────────────────────────┼──────────────────┼─────────────┼──────────┤"
+
+    # Display phases
+    if ($state.workflow.phase_timing) {
+        foreach ($phase in $state.workflow.phase_timing.Keys | Sort-Object) {
+            $phaseData = $state.workflow.phase_timing[$phase]
+            $startedAt = $phaseData.started_at
+            $duration = $phaseData.duration_seconds
+            $status = $phaseData.status
+
+            # Format time
+            $timePart = if ($startedAt) { $startedAt.Split('T')[1].Split('Z')[0] } else { "—" }
+
+            # Format duration
+            $durationFmt = if ($duration) { Format-Duration -Seconds $duration } else { "—" }
+
+            # Status icon
+            $statusIcon = switch ($status) {
+                "completed" { "✅" }
+                "in_progress" { "🔄" }
+                "failed" { "❌" }
+                default { "—" }
+            }
+
+            Write-Host ("│ {0,-26} │ {1,-16} │ {2,-11} │ {3,-8} │" -f $phase, $timePart, $durationFmt, $statusIcon)
+
+            # Display sub-phases if present
+            if ($phaseData.sub_phases) {
+                foreach ($subPhase in $phaseData.sub_phases.Keys | Sort-Object) {
+                    $subDuration = $phaseData.sub_phases[$subPhase].duration_seconds
+                    if ($subDuration) {
+                        $subDurationFmt = Format-Duration -Seconds $subDuration
+                        Write-Host ("│   ├─ {0,-22} │                  │ {1,-11} │          │" -f $subPhase, $subDurationFmt)
+                    }
+                }
+            }
+        }
+    }
+
+    # Display manual gates
+    if ($state.workflow.manual_gates) {
+        foreach ($gate in $state.workflow.manual_gates.Keys | Sort-Object) {
+            $gateData = $state.workflow.manual_gates[$gate]
+            $gateStatus = $gateData.status
+            $waitDuration = $gateData.wait_duration_seconds
+            $startedAt = $gateData.started_at
+
+            $timePart = if ($startedAt) { $startedAt.Split('T')[1].Split('Z')[0] } else { "—" }
+            $waitFmt = if ($waitDuration) { Format-Duration -Seconds $waitDuration } else { "—" }
+
+            $statusIcon = switch ($gateStatus) {
+                "approved" { "✅" }
+                "pending" { "⏳" }
+                "rejected" { "❌" }
+                default { "—" }
+            }
+
+            $gateLabel = "[Manual Gate: $gate]"
+            Write-Host ("│ {0,-26} │ {1,-16} │ {2,-11} │ {3,-8} │" -f $gateLabel, $timePart, $waitFmt, $statusIcon)
+        }
+    }
+
+    Write-Host "└────────────────────────────┴──────────────────┴─────────────┴──────────┘"
+    Write-Host ""
+    Write-Host "Deployment Model: $deploymentModel"
+
+    if ($prodUrl) {
+        Write-Host "Production URL: $prodUrl"
+    }
+
+    if ($prodVersion) {
+        Write-Host "Version: $prodVersion"
+    }
+
+    Write-Host ""
+    Write-Host "For detailed metrics: cat $stateFile"
+    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+    Write-Host ""
+}
+
 # Export functions
 Export-ModuleMember -Function @(
     'Initialize-WorkflowState',
@@ -633,5 +1150,12 @@ Export-ModuleMember -Function @(
     'Test-PhaseCompleted',
     'Get-NextPhase',
     'Get-DeploymentModel',
-    'Test-MigrateJsonToYaml'
+    'Test-MigrateJsonToYaml',
+    'Start-PhaseTiming',
+    'Complete-PhaseTiming',
+    'Start-SubPhaseTiming',
+    'Complete-SubPhaseTiming',
+    'Get-WorkflowMetrics',
+    'Format-Duration',
+    'Show-WorkflowSummary'
 )
