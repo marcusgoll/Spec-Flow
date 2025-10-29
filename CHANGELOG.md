@@ -5,6 +5,25 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2025-10-29
+
+### Added
+- X (Twitter) announcement integration for releases - automatically posts release announcements with GitHub link
+- Threaded reply support using `in_reply_to_tweet_id` parameter for proper tweet threading
+- Custom post generation from CHANGELOG highlights with preview and edit capabilities
+- Graceful fallback with manual posting instructions if X Poster API is unavailable
+
+### Changed
+- /release command now includes optional Step 9 for X announcements
+- Success summary displays X post URLs when announcements are posted
+
+### Security
+- X announcement skill (x-announcement.md) added to .gitignore (internal API URL protection)
+- /release command added to .gitignore (internal workflow development only)
+- Both files excluded from npm package distribution
+
+---
+
 ## [2.7.0] - 2025-10-28
 
 ### Added
