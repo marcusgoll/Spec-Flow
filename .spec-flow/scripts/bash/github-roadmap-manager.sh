@@ -151,7 +151,8 @@ create_roadmap_issue() {
   frontmatter=$(generate_ice_frontmatter "$impact" "$effort" "$confidence" "$area" "$role" "$slug")
 
   # Combine frontmatter with body
-  local full_body=$(cat <<EOF
+  local full_body
+  full_body=$(cat <<EOF
 $frontmatter
 
 $body
@@ -197,7 +198,8 @@ EOF
     local label_array
     label_array=$(echo "$all_labels" | jq -R 'split(",") | map(gsub("^ +| +$";""))')
 
-    local json_body=$(jq -n \
+    local json_body
+    json_body=$(jq -n \
       --arg title "$title" \
       --arg body "$full_body" \
       --argjson labels "$label_array" \
@@ -304,7 +306,8 @@ update_issue_ice() {
   new_frontmatter=$(generate_ice_frontmatter "$impact" "$effort" "$confidence" "$area" "$role" "$slug")
 
   # Combine
-  local new_body=$(cat <<EOF
+  local new_body
+  new_body=$(cat <<EOF
 $new_frontmatter
 
 $body_without_frontmatter
@@ -363,7 +366,8 @@ mark_issue_in_progress() {
     local api_url="https://api.github.com/repos/$repo/issues/$issue_number"
 
     # Get current labels
-    local current_labels=$(curl -s \
+    local current_labels
+    current_labels=$(curl -s \
       -H "Authorization: token $GITHUB_TOKEN" \
       -H "Accept: application/vnd.github.v3+json" \
       "$api_url" | jq -r '.labels[].name')
@@ -443,7 +447,8 @@ mark_issue_shipped() {
     local api_url="https://api.github.com/repos/$repo/issues/$issue_number"
 
     # Get current labels
-    local current_labels=$(curl -s \
+    local current_labels
+    current_labels=$(curl -s \
       -H "Authorization: token $GITHUB_TOKEN" \
       -H "Accept: application/vnd.github.v3+json" \
       "$api_url" | jq -r '.labels[].name')
@@ -456,7 +461,8 @@ mark_issue_shipped() {
     # Update labels and close
     local label_array
     label_array=$(echo "$new_labels" | jq -R 'split(",") | map(gsub("^ +| +$";""))')
-    local json_body=$(jq -n \
+    local json_body
+    json_body=$(jq -n \
       --argjson labels "$label_array" \
       '{state: "closed", labels: $labels}')
 
