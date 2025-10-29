@@ -89,6 +89,17 @@
 
 **Impact**: Deployment workflows are now transparent and recoverable, preventing the frustration of "it stopped and I don't know why."
 
+### v2.9.0 (October 2025)
+**Help Command** - Context-aware workflow navigation
+
+- **Contextual Guidance**: `/help` shows where you are and what to do next
+- **Six Output Modes**: Adapts to context (no feature, in feature, at gate, blocked, complete, corrupted)
+- **Progress Visualization**: Emoji indicators show phase status (✅ ⏳ ⬜ ❌)
+- **Deployment Model Aware**: Shows correct phase sequences for staging-prod, direct-prod, local-only
+- **Error Recovery**: Highlights blockers with specific recovery options
+- **Verbose Mode**: `/help verbose` for detailed state (quality gates, deployments, artifacts)
+- **Always Actionable**: Shows next command to run based on current state
+
 ### v2.8.1 (October 2025)
 **npm Package Fix** - Properly excludes internal workflow files
 

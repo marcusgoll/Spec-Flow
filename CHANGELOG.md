@@ -5,6 +5,25 @@ All notable changes to the Spec-Flow Workflow Kit will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2025-10-29
+
+### Added
+- `/help` command for contextual workflow navigation and guidance
+- Context-aware help that shows current phase, progress, and next steps
+- Six different output modes based on user context (no feature, in feature, at gate, blocked, complete, corrupted state)
+- Visual progress indicators with emoji (✅ completed, ⏳ current, ⬜ pending, ❌ failed)
+- Deployment model-specific phase sequences (staging-prod, direct-prod, local-only)
+- Manual gate detection with approval instructions
+- Error/blocker highlighting with recovery options
+- Verbose mode for detailed state information (quality gates, deployments, artifacts)
+- Automatic workflow-state.json to YAML migration
+
+### Changed
+- Updated docs/commands.md with new Navigation & Utility section
+- Updated CLAUDE.md with Navigation & Help guidance
+
+---
+
 ## [2.8.1] - 2025-10-29
 
 ### Fixed
