@@ -29,12 +29,14 @@ check_github_auth() {
 
 # Get repository owner/name
 get_repo_info() {
-  local auth_method=$(check_github_auth)
+  local auth_method
+  auth_method=$(check_github_auth)
 
   if [ "$auth_method" = "gh_cli" ]; then
     gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo ""
   elif [ "$auth_method" = "api" ]; then
-    local remote_url=$(git config --get remote.origin.url 2>/dev/null || echo "")
+    local remote_url
+    remote_url=$(git config --get remote.origin.url 2>/dev/null || echo "")
     echo "$remote_url" | sed -E 's/.*github\.com[:/](.*)\.git/\1/' | sed 's/\.git$//'
   else
     echo ""
@@ -60,7 +62,8 @@ parse_ice_from_body() {
   local body="$1"
 
   # Extract YAML frontmatter between --- delimiters
-  local frontmatter=$(echo "$body" | awk '/^---$/,/^---$/ {if (!/^---$/) print}')
+  local frontmatter
+  frontmatter=$(echo "$body" | awk '/^---$/,/^---$/ {if (!/^---$/) print}')
 
   if [ -z "$frontmatter" ]; then
     echo "{}"
@@ -68,12 +71,18 @@ parse_ice_from_body() {
   fi
 
   # Parse ICE values
-  local impact=$(echo "$frontmatter" | grep "impact:" | sed 's/.*impact: *//' | tr -d ' ')
-  local effort=$(echo "$frontmatter" | grep "effort:" | sed 's/.*effort: *//' | tr -d ' ')
-  local confidence=$(echo "$frontmatter" | grep "confidence:" | sed 's/.*confidence: *//' | tr -d ' ')
-  local area=$(echo "$frontmatter" | grep "area:" | sed 's/.*area: *//' | tr -d ' ')
-  local role=$(echo "$frontmatter" | grep "role:" | sed 's/.*role: *//' | tr -d ' ')
-  local slug=$(echo "$frontmatter" | grep "slug:" | sed 's/.*slug: *//' | tr -d ' ')
+  local impact
+  impact=$(echo "$frontmatter" | grep "impact:" | sed 's/.*impact: *//' | tr -d ' ')
+  local effort
+  effort=$(echo "$frontmatter" | grep "effort:" | sed 's/.*effort: *//' | tr -d ' ')
+  local confidence
+  confidence=$(echo "$frontmatter" | grep "confidence:" | sed 's/.*confidence: *//' | tr -d ' ')
+  local area
+  area=$(echo "$frontmatter" | grep "area:" | sed 's/.*area: *//' | tr -d ' ')
+  local role
+  role=$(echo "$frontmatter" | grep "role:" | sed 's/.*role: *//' | tr -d ' ')
+  local slug
+  slug=$(echo "$frontmatter" | grep "slug:" | sed 's/.*slug: *//' | tr -d ' ')
 
   # Return JSON
   cat <<EOF
@@ -96,7 +105,8 @@ generate_ice_frontmatter() {
   local area="${4:-app}"
   local role="${5:-all}"
   local slug="$6"
-  local score=$(calculate_ice_score "$impact" "$effort" "$confidence")
+  local score
+  score=$(calculate_ice_score "$impact" "$effort" "$confidence")
 
   cat <<EOF
 ---
@@ -129,14 +139,16 @@ create_roadmap_issue() {
   local slug="$8"
   local labels="${9:-type:feature,status:backlog}"
 
-  local repo=$(get_repo_info)
+  local repo
+  repo=$(get_repo_info)
   if [ -z "$repo" ]; then
     echo "Error: Could not determine repository" >&2
     return 1
   fi
 
   # Generate frontmatter
-  local frontmatter=$(generate_ice_frontmatter "$impact" "$effort" "$confidence" "$area" "$role" "$slug")
+  local frontmatter
+  frontmatter=$(generate_ice_frontmatter "$impact" "$effort" "$confidence" "$area" "$role" "$slug")
 
   # Combine frontmatter with body
   local full_body=$(cat <<EOF
@@ -159,7 +171,8 @@ EOF
   esac
 
   # Determine priority label based on ICE score
-  local score=$(calculate_ice_score "$impact" "$effort" "$confidence")
+  local score
+  score=$(calculate_ice_score "$impact" "$effort" "$confidence")
   local priority="medium"
   if awk "BEGIN {exit !($score >= 1.5)}"; then
     priority="high"
@@ -169,7 +182,8 @@ EOF
   all_labels="$all_labels,priority:$priority"
 
   # Create issue
-  local auth_method=$(check_github_auth)
+  local auth_method
+  auth_method=$(check_github_auth)
 
   if [ "$auth_method" = "gh_cli" ]; then
     gh issue create \
@@ -180,7 +194,8 @@ EOF
   elif [ "$auth_method" = "api" ]; then
     # Use GitHub API
     local api_url="https://api.github.com/repos/$repo/issues"
-    local label_array=$(echo "$all_labels" | jq -R 'split(",") | map(gsub("^ +| +$";""))')
+    local label_array
+    label_array=$(echo "$all_labels" | jq -R 'split(",") | map(gsub("^ +| +$";""))')
 
     local json_body=$(jq -n \
       --arg title "$title" \
@@ -202,14 +217,16 @@ EOF
 # Get issue by slug (searches in frontmatter)
 get_issue_by_slug() {
   local slug="$1"
-  local repo=$(get_repo_info)
+  local repo
+  repo=$(get_repo_info)
 
   if [ -z "$repo" ]; then
     echo "Error: Could not determine repository" >&2
     return 1
   fi
 
-  local auth_method=$(check_github_auth)
+  local auth_method
+  auth_method=$(check_github_auth)
 
   if [ "$auth_method" = "gh_cli" ]; then
     # Search for issues containing the slug
@@ -242,14 +259,16 @@ update_issue_ice() {
   local effort="$3"
   local confidence="$4"
 
-  local repo=$(get_repo_info)
+  local repo
+  repo=$(get_repo_info)
 
   if [ -z "$repo" ]; then
     echo "Error: Could not determine repository" >&2
     return 1
   fi
 
-  local auth_method=$(check_github_auth)
+  local auth_method
+  auth_method=$(check_github_auth)
 
   # Get current issue body
   local current_body=""
@@ -267,16 +286,22 @@ update_issue_ice() {
   fi
 
   # Parse existing metadata
-  local metadata=$(parse_ice_from_body "$current_body")
-  local area=$(echo "$metadata" | jq -r '.area')
-  local role=$(echo "$metadata" | jq -r '.role')
-  local slug=$(echo "$metadata" | jq -r '.slug')
+  local metadata
+  metadata=$(parse_ice_from_body "$current_body")
+  local area
+  area=$(echo "$metadata" | jq -r '.area')
+  local role
+  role=$(echo "$metadata" | jq -r '.role')
+  local slug
+  slug=$(echo "$metadata" | jq -r '.slug')
 
   # Remove old frontmatter
-  local body_without_frontmatter=$(echo "$current_body" | sed '/^---$/,/^---$/d' | sed '/^$/d')
+  local body_without_frontmatter
+  body_without_frontmatter=$(echo "$current_body" | sed '/^---$/,/^---$/d' | sed '/^$/d')
 
   # Generate new frontmatter
-  local new_frontmatter=$(generate_ice_frontmatter "$impact" "$effort" "$confidence" "$area" "$role" "$slug")
+  local new_frontmatter
+  new_frontmatter=$(generate_ice_frontmatter "$impact" "$effort" "$confidence" "$area" "$role" "$slug")
 
   # Combine
   local new_body=$(cat <<EOF
@@ -291,7 +316,8 @@ EOF
     echo "$new_body" | gh issue edit "$issue_number" --repo "$repo" --body-file -
   elif [ "$auth_method" = "api" ]; then
     local api_url="https://api.github.com/repos/$repo/issues/$issue_number"
-    local json_body=$(jq -n --arg body "$new_body" '{body: $body}')
+    local json_body
+    json_body=$(jq -n --arg body "$new_body" '{body: $body}')
 
     curl -s -X PATCH \
       -H "Authorization: token $GITHUB_TOKEN" \
@@ -304,7 +330,8 @@ EOF
 # Mark issue as in progress
 mark_issue_in_progress() {
   local slug="$1"
-  local repo=$(get_repo_info)
+  local repo
+  repo=$(get_repo_info)
 
   if [ -z "$repo" ]; then
     echo "Error: Could not determine repository" >&2
@@ -312,17 +339,20 @@ mark_issue_in_progress() {
   fi
 
   # Find issue by slug
-  local issue=$(get_issue_by_slug "$slug")
+  local issue
+  issue=$(get_issue_by_slug "$slug")
 
   if [ -z "$issue" ] || [ "$issue" = "null" ]; then
     echo "⚠️  Issue with slug '$slug' not found in roadmap" >&2
     return 1
   fi
 
-  local issue_number=$(echo "$issue" | jq -r '.number')
+  local issue_number
+  issue_number=$(echo "$issue" | jq -r '.number')
 
   # Add in-progress label, remove backlog/next/later labels
-  local auth_method=$(check_github_auth)
+  local auth_method
+  auth_method=$(check_github_auth)
 
   if [ "$auth_method" = "gh_cli" ]; then
     gh issue edit "$issue_number" \
@@ -339,12 +369,15 @@ mark_issue_in_progress() {
       "$api_url" | jq -r '.labels[].name')
 
     # Filter out status labels and add in-progress
-    local new_labels=$(echo "$current_labels" | grep -v "^status:" | tr '\n' ',' | sed 's/,$//')
+    local new_labels
+    new_labels=$(echo "$current_labels" | grep -v "^status:" | tr '\n' ',' | sed 's/,$//')
     new_labels="$new_labels,status:in-progress"
 
     # Update
-    local label_array=$(echo "$new_labels" | jq -R 'split(",") | map(gsub("^ +| +$";""))')
-    local json_body=$(jq -n --argjson labels "$label_array" '{labels: $labels}')
+    local label_array
+    label_array=$(echo "$new_labels" | jq -R 'split(",") | map(gsub("^ +| +$";""))')
+    local json_body
+    json_body=$(jq -n --argjson labels "$label_array" '{labels: $labels}')
 
     curl -s -X PATCH \
       -H "Authorization: token $GITHUB_TOKEN" \
@@ -363,7 +396,8 @@ mark_issue_shipped() {
   local date="${3:-$(date +%Y-%m-%d)}"
   local prod_url="${4:-}"
 
-  local repo=$(get_repo_info)
+  local repo
+  repo=$(get_repo_info)
 
   if [ -z "$repo" ]; then
     echo "Error: Could not determine repository" >&2
@@ -371,17 +405,20 @@ mark_issue_shipped() {
   fi
 
   # Find issue by slug
-  local issue=$(get_issue_by_slug "$slug")
+  local issue
+  issue=$(get_issue_by_slug "$slug")
 
   if [ -z "$issue" ] || [ "$issue" = "null" ]; then
     echo "⚠️  Issue with slug '$slug' not found in roadmap" >&2
     return 1
   fi
 
-  local issue_number=$(echo "$issue" | jq -r '.number')
+  local issue_number
+  issue_number=$(echo "$issue" | jq -r '.number')
 
   # Add shipped label, close issue
-  local auth_method=$(check_github_auth)
+  local auth_method
+  auth_method=$(check_github_auth)
 
   # Prepare comment with deployment info
   local comment="🚀 **Shipped in v$version**\n\n"
@@ -412,11 +449,13 @@ mark_issue_shipped() {
       "$api_url" | jq -r '.labels[].name')
 
     # Filter out status labels and add shipped
-    local new_labels=$(echo "$current_labels" | grep -v "^status:" | tr '\n' ',' | sed 's/,$//')
+    local new_labels
+    new_labels=$(echo "$current_labels" | grep -v "^status:" | tr '\n' ',' | sed 's/,$//')
     new_labels="$new_labels,status:shipped"
 
     # Update labels and close
-    local label_array=$(echo "$new_labels" | jq -R 'split(",") | map(gsub("^ +| +$";""))')
+    local label_array
+    label_array=$(echo "$new_labels" | jq -R 'split(",") | map(gsub("^ +| +$";""))')
     local json_body=$(jq -n \
       --argjson labels "$label_array" \
       '{state: "closed", labels: $labels}')
@@ -429,7 +468,8 @@ mark_issue_shipped() {
 
     # Add comment
     local comment_url="$api_url/comments"
-    local comment_body=$(jq -n --arg body "$comment" '{body: $body}')
+    local comment_body
+    comment_body=$(jq -n --arg body "$comment" '{body: $body}')
 
     curl -s -X POST \
       -H "Authorization: token $GITHUB_TOKEN" \
@@ -444,14 +484,16 @@ mark_issue_shipped() {
 # List issues by status label
 list_issues_by_status() {
   local status="$1" # backlog, next, later, in-progress, shipped
-  local repo=$(get_repo_info)
+  local repo
+  repo=$(get_repo_info)
 
   if [ -z "$repo" ]; then
     echo "Error: Could not determine repository" >&2
     return 1
   fi
 
-  local auth_method=$(check_github_auth)
+  local auth_method
+  auth_method=$(check_github_auth)
   local label="status:$status"
 
   if [ "$auth_method" = "gh_cli" ]; then
@@ -498,7 +540,8 @@ suggest_feature_addition() {
       echo "Creating GitHub issue..."
 
       # Generate slug from description
-      local slug=$(echo "$description" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | cut -c1-30)
+      local slug
+      slug=$(echo "$description" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | cut -c1-30)
 
       # Create issue with defaults
       local title="$description"
