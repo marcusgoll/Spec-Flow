@@ -1,5 +1,13 @@
 ﻿# Command Catalog
 
+## Navigation & Utility
+
+| Command | Purpose | Key Artifacts |
+|---------|---------|---------------|
+| `/help` | Show current workflow state, progress, and next steps. Context-aware guidance. | Current phase status, actionable recommendations |
+
+## Workflow Commands
+
 | Command | Purpose | Key Artifacts |
 |---------|---------|---------------|
 | `/roadmap` | Add features to roadmap, prioritize with ICE scoring, organize into stages. | `roadmap.md` with Backlog/Next/In Progress/Shipped |

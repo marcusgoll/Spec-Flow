@@ -65,6 +65,13 @@ Model-specific workflow:
 - Use `/ship status` to check current progress
 - Commands are defined in `.claude/commands/`
 
+**Navigation & Help**:
+
+- Use `/help` anytime to see where you are in the workflow and what to do next
+- Shows current phase, completed phases, blockers, and recommended next steps
+- Context-aware: different output based on whether you're in a feature, at a manual gate, or blocked
+- Run `/help verbose` for detailed state information (quality gates, deployments, artifacts)
+
 ## Project Design Workflow
 
 **When to use**: Before building any features, run `/init-project` to create comprehensive project-level design documentation.
