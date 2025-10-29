@@ -19,11 +19,21 @@ jobs:
       - name: Register PowerShell Gallery
         shell: pwsh
         run: |
-          # Ensure PowerShell Gallery is registered and trusted
+          # Ensure NuGet provider is installed
+          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser
+
+          # Register PSGallery explicitly with all required parameters
           if (-not (Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue)) {
-            Register-PSRepository -Default
+            Register-PSRepository -Name PSGallery `
+              -SourceLocation https://www.powershellgallery.com/api/v2 `
+              -PublishLocation https://www.powershellgallery.com/api/v2/package/ `
+              -ScriptSourceLocation https://www.powershellgallery.com/api/v2/items/psscript `
+              -ScriptPublishLocation https://www.powershellgallery.com/api/v2/package/ `
+              -InstallationPolicy Trusted `
+              -PackageManagementProvider NuGet
+          } else {
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
           }
-          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
       - name: Install PowerShell modules
         shell: pwsh
