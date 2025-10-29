@@ -1,41 +1,54 @@
-# NPM Ignore - Files not to publish to npm registry
+# NPM Package Exclusions
+# Files to exclude from npm publish (even if committed to git)
 
-# Internal development scripts (DO NOT SHIP)
-.spec-flow/scripts/internal/
+# Internal workflow development files
+.claude/commands/release.md
+.claude/skills/x-announcement.md
 
-# Development files
-*.log
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
+# Local settings and overrides
+.claude/settings.local.json
+
+# Development and testing
+*.test.js
+*.spec.js
+.vscode/
+.idea/
 
 # Git files
-.git/
 .gitignore
 .gitattributes
 
-# IDE files
-.vscode/
-.idea/
-*.sublime-*
+# CI/CD (keep workflows but exclude run artifacts)
+.github/workflows/*.log
 
-# Test files
-test/
-tests/
-*.test.js
-*.spec.js
-
-# CI/CD
-.github/workflows/
-
-# Development docs
+# Documentation for contributors (keep user docs)
 CONTRIBUTING.md
 CODE_OF_CONDUCT.md
 
-# Spec-Flow development artifacts (examples from using the workflow on itself)
-specs/
+# Temporary files
+*.tmp
+*.log
+*.bak
 
-# Error logs from workflow development
-error-log.md
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+
+# Local test directories
+test-projects/
+examples/local/
+
+# Build artifacts that shouldn't be published
+dist/
+build/
+coverage/
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
