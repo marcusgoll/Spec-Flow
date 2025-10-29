@@ -8,6 +8,8 @@ Thumbs.db
 
 # Local agent overrides
 .claude/settings.local.json
+.claude/skills/x-announcement.md
+.claude/commands/release.md
 
 # Logs and scratch files
 *.log
