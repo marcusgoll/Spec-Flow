@@ -65,6 +65,7 @@
     ".claude/skills/",
     "!.claude/skills/x-announcement.md",
     "!.claude/commands/release.md",
+    "!.claude/commands/x-announce.md",
     ".spec-flow/",
     ".github/ISSUE_TEMPLATE/",
     "CLAUDE.md",
@@ -88,11 +89,12 @@
     "win32"
   ],
   "dependencies": {
-    "commander": "^11.1.0",
     "chalk": "^4.1.2",
-    "inquirer": "^8.2.6",
+    "commander": "^11.1.0",
     "fs-extra": "^11.2.0",
-    "ora": "^5.4.1"
+    "inquirer": "^8.2.6",
+    "ora": "^5.4.1",
+    "spec-flow": "file:2.9.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.6"
