@@ -16,6 +16,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Register PowerShell Gallery
+        shell: pwsh
+        run: |
+          # Ensure PowerShell Gallery is registered and trusted
+          if (-not (Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue)) {
+            Register-PSRepository -Default
+          }
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+
       - name: Install PowerShell modules
         shell: pwsh
         run: |
