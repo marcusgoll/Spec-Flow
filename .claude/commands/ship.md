@@ -252,6 +252,12 @@ Run core cleanup tasks for EVERY deployment, regardless of deployment model:
 Deployment complete!"
    ```
 
+4. **Close the issue**:
+   ```bash
+   gh issue close $ISSUE_NUMBER --comment "Closing as shipped."
+   echo "✅ Issue #$ISSUE_NUMBER closed"
+   ```
+
 **Error handling**: If issue not found or GitHub API fails, log warning and continue (non-blocking).
 
 ### 6.2: Clean Up Feature Branch
@@ -315,7 +321,7 @@ After essential finalization completes:
 Deployment Model: [staging-prod/direct-prod/local-only]
 
 Essential Cleanup Done:
-✅ Roadmap issue #[number] updated to 'shipped'
+✅ Roadmap issue #[number] updated to 'shipped' and closed
 ✅ Feature branch '[branch-name]' deleted (local + remote)
 
 Production URL: [url]
