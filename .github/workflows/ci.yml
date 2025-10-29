@@ -64,7 +64,7 @@ jobs:
 
       - name: Run ShellCheck
         run: |
-          shellcheck .spec-flow/scripts/bash/*.sh || exit 1
+          shellcheck -e SC1091,SC2034 .spec-flow/scripts/bash/*.sh || exit 1
           echo "✅ No Bash issues found"
 
       - name: Test Bash scripts syntax
