@@ -60,7 +60,7 @@
 
 ---
 
-### v2.6.0 (January 2025)
+### v2.6.0 (October 2025)
 **TodoWrite Progress Tracking** - Clear visibility and error recovery for /ship and /finalize
 
 - **Visual Progress Tracking**: `/ship` now tracks all 5-8 deployment phases with TodoWrite
