@@ -45,6 +45,39 @@ sed -n '/## Key Decisions/,/^## /p' specs/$SLUG/NOTES.md | head -20
 sed -n '/## Blockers/,/^## /p' specs/$SLUG/NOTES.md | head -20
 ```
 
+## Design System Integration
+
+**When `design/$FEATURE_SLUG/implementation-spec.md` exists, achieve pixel-perfect fidelity.**
+
+### Pre-Implementation Checklist
+
+Read if design artifacts exist:
+
+1. `design/$FEATURE_SLUG/implementation-spec.md` - Component breakdown, tokens, interactions
+2. `design/design-system/tokens.json` - Colors, typography, spacing, elevations
+3. `mock/*/polished/*.tsx` - Visual reference for layout
+
+### Token-Based Styling Rules
+
+✅ **Use Tailwind tokens**: `bg-blue-600`, `shadow-md`, `space-y-4`, `text-4xl`
+❌ **Never hardcode**: `style={{color: '#fff'}}`, `text-[#000]`, `space-y-[17px]`
+
+### Post-Implementation Validation
+
+```bash
+# Run design lint (0 critical, 0 errors required)
+node ../.spec-flow/scripts/design-lint.js apps/app/
+```
+
+### Design Quality Gates
+
+**Added to standard gates when design artifacts exist:**
+
+- Token compliance: No hex colors, no arbitrary values
+- Elevation scale: Shadows over borders (z-0 to z-5)
+- Hierarchy: 2:1 heading ratios (H2 = 1.5-2x H3, H3 = 2x body)
+- Gradients: Subtle only (<20% opacity, 2 stops max, monochromatic)
+
 ## Environment Setup (3 minutes)
 
 ```bash
