@@ -753,11 +753,166 @@ EOF
 
 ---
 
+## DESIGN LINT VALIDATION (Automated)
+
+**After generating all variants, automatically validate against S-tier design principles:**
+
+```bash
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🎨 RUNNING DESIGN LINT VALIDATION"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Run design lint on generated variants
+node .spec-flow/scripts/design-lint.js "$MOCK_DIR/$SCREEN_ID"
+
+# Capture exit code
+LINT_EXIT_CODE=$?
+
+# Read lint report
+if [ -f "design/lint-report.md" ]; then
+  # Extract summary counts
+  CRITICAL_COUNT=$(grep -c "^## 🚨 CRITICAL" design/lint-report.md || echo 0)
+  ERROR_COUNT=$(grep -c "^## ❌ ERROR" design/lint-report.md || echo 0)
+  WARNING_COUNT=$(grep -c "^## ⚠️  WARNING" design/lint-report.md || echo 0)
+  INFO_COUNT=$(grep -c "^## ℹ️  INFO" design/lint-report.md || echo 0)
+
+  echo "Validation Results:"
+  echo "  🚨 Critical: $CRITICAL_COUNT"
+  echo "  ❌ Error: $ERROR_COUNT"
+  echo "  ⚠️  Warning: $WARNING_COUNT"
+  echo "  ℹ️  Info: $INFO_COUNT"
+  echo ""
+
+  # Copy lint report to feature directory
+  cp design/lint-report.md "$FEATURE_DIR/design/lint-report.md"
+
+  # Block if critical issues
+  if [ "$CRITICAL_COUNT" -gt 0 ] && [ "$LINT_EXIT_CODE" -eq 1 ]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🚨 CRITICAL DESIGN VIOLATIONS DETECTED"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Review: $FEATURE_DIR/design/lint-report.md"
+    echo ""
+    echo "Common issues:"
+    echo "  - Hardcoded colors (use tokens from tokens.json)"
+    echo "  - Missing interactive labels (add aria-label or visible text)"
+    echo "  - WCAG contrast failures (requires 4.5:1 minimum)"
+    echo ""
+    echo "Fix critical issues before proceeding to human review."
+    exit 1
+  fi
+
+  # Warn if errors
+  if [ "$ERROR_COUNT" -gt 0 ]; then
+    echo "⚠️  $ERROR_COUNT error(s) detected (non-blocking)"
+    echo "   Review: $FEATURE_DIR/design/lint-report.md"
+    echo "   Fix before /design-functional phase"
+    echo ""
+  fi
+else
+  echo "⚠️  Lint report not generated (design-lint.js may have failed)"
+  echo ""
+fi
+```
+
+**What design-lint validates**:
+- ✅ No hardcoded colors (hex, rgb, arbitrary Tailwind)
+- ✅ Borders on cards/modals → suggest shadows (elevation scale)
+- ✅ Gradient rules (<20% opacity, max 2 stops, no diagonals)
+- ✅ Reading hierarchy (2:1 heading ratios, weight progression)
+- ✅ Interactive labels (aria-label or visible text)
+- ✅ Custom components (flag if not in shadcn/ui)
+- ✅ Spacing grid (8px compliance)
+
+**Severity levels**:
+- **Critical** (blocks): Hardcoded colors, WCAG failures, missing labels
+- **Error** (warns): Borders instead of shadows, bad gradients, hierarchy issues
+- **Warning** (suggests): Custom components, spacing off-grid
+- **Info** (tips): Optimization opportunities
+
+---
+
+## AUTO-OPEN SANDBOX (Development Mode)
+
+**Automatically open variants in browser for review:**
+
+```bash
+# Check if dev server is running
+DEV_SERVER_RUNNING=false
+if curl -s http://localhost:3000 > /dev/null 2>&1; then
+  DEV_SERVER_RUNNING=true
+fi
+
+# Start dev server if not running
+if [ "$DEV_SERVER_RUNNING" = false ]; then
+  echo ""
+  echo "🚀 Starting development server..."
+  npm run dev > /dev/null 2>&1 &
+  DEV_SERVER_PID=$!
+
+  # Wait for server to start (max 10s)
+  for i in {1..20}; do
+    if curl -s http://localhost:3000 > /dev/null 2>&1; then
+      echo "✅ Dev server ready"
+      DEV_SERVER_RUNNING=true
+      break
+    fi
+    sleep 0.5
+  done
+
+  if [ "$DEV_SERVER_RUNNING" = false ]; then
+    echo "⚠️  Dev server failed to start"
+    echo "   Start manually: npm run dev"
+    echo "   Then open: http://localhost:3000/mock/$SLUG"
+  fi
+fi
+
+# Auto-open variant index in browser
+if [ "$DEV_SERVER_RUNNING" = true ]; then
+  echo ""
+  echo "🌐 Opening variants in browser..."
+
+  # Determine first screen (or use screen filter if specified)
+  if [ -n "$SCREEN_FILTER" ]; then
+    FIRST_SCREEN="$SCREEN_FILTER"
+  else
+    FIRST_SCREEN="${SCREEN_IDS[0]}"
+  fi
+
+  VARIANT_URL="http://localhost:3000/mock/$SLUG/$FIRST_SCREEN"
+  COMPARE_URL="http://localhost:3000/mock/$SLUG/$FIRST_SCREEN/compare"
+
+  # Open in default browser (OS-specific)
+  if command -v xdg-open > /dev/null; then
+    xdg-open "$VARIANT_URL"  # Linux
+  elif command -v open > /dev/null; then
+    open "$VARIANT_URL"      # macOS
+  elif command -v start > /dev/null; then
+    start "$VARIANT_URL"     # Windows
+  else
+    echo "📖 Open manually: $VARIANT_URL"
+  fi
+
+  echo ""
+  echo "📖 Variant Index: $VARIANT_URL"
+  echo "🔍 Comparison: $COMPARE_URL"
+  echo ""
+fi
+```
+
+**Hot reload enabled**: Next.js automatically reloads on file changes
+
+---
+
 ## GIT COMMIT
 
 ```bash
 git add $MOCK_DIR/
 git add $FEATURE_DIR/design/crit.md
+git add $FEATURE_DIR/design/lint-report.md  # Include lint results
 git commit -m "design:variations: generate grayscale variants for $SLUG
 
 Phase 1: Diverge Fast
@@ -768,6 +923,12 @@ Phase 1: Diverge Fast
 
 Screens: [list screen IDs]
 Components: Card, Button, Progress, Alert (from ui-inventory.md)
+
+Design Lint Results:
+- Critical: $CRITICAL_COUNT (blocking issues)
+- Error: $ERROR_COUNT (requires fix)
+- Warning: $WARNING_COUNT (suggestions)
+- Info: $INFO_COUNT (optimization tips)
 
 Next: Human review → /design-functional
 
@@ -807,28 +968,69 @@ Constraints enforced:
 ✅ Mobile-responsive
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎨 DESIGN LINT RESULTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Validation: [PASSED/FAILED]
+- 🚨 Critical: ${CRITICAL_COUNT} (hardcoded colors, WCAG, labels)
+- ❌ Error: ${ERROR_COUNT} (borders→shadows, gradients, hierarchy)
+- ⚠️  Warning: ${WARNING_COUNT} (custom components, spacing grid)
+- ℹ️  Info: ${INFO_COUNT} (optimization tips)
+
+${if CRITICAL_COUNT > 0}
+⚠️  Critical issues must be fixed before proceeding
+Review: design/features/[feat]/lint-report.md
+${endif}
+
+${if ERROR_COUNT > 0 || WARNING_COUNT > 0}
+💡 Recommendations:
+  - Replace hardcoded colors with tokens (bg-primary, text-primary)
+  - Use box shadows instead of borders (shadow-md, shadow-lg)
+  - Ensure 2:1 heading size ratios (text-4xl → text-2xl)
+  - Check WCAG AAA contrast (7:1 for body text)
+${endif}
+
+Full report: design/features/[feat]/lint-report.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌐 SANDBOX READY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 Dev server: http://localhost:3000 (running)
+📖 Variant index: http://localhost:3000/mock/[feature]/[screen]
+🔍 Comparison: http://localhost:3000/mock/[feature]/[screen]/compare
+
+✨ Hot reload enabled (save to refresh)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 HUMAN CHECKPOINT (Required)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Review variants:
-1. Open: http://localhost:3000/mock/[feature]/[screen] (variant index)
-2. Test: Each variant + all states (?state=)
-3. Critique: Fill design/features/[feat]/crit.md
+1. Open: Variant index (auto-opened in browser)
+2. Test: Each variant + all states (?state=default, loading, error, empty)
+3. Lint: Review design/features/[feat]/lint-report.md
+4. Critique: Fill design/features/[feat]/crit.md
 
 Decision matrix:
 - KEEP: This variant (or elements) for main
 - CHANGE: Good idea, needs tweaks (list specific changes)
 - KILL: Discard (explain why in crit.md)
 
+S-Tier Principles Checklist:
+- [ ] Depth through elevation (shadows, not borders)
+- [ ] Subtle gradients (<20% opacity, max 2 stops)
+- [ ] Reading hierarchy (2:1 heading ratios)
+- [ ] Don't make user think (clear labels, obvious actions)
+- [ ] WCAG AAA contrast (7:1 for body text)
+- [ ] Spacing on 8px grid
+- [ ] One primary CTA per screen
+
 Guidance (Jobs Principles):
 - Focus on HEART hypothesis (does this move the metric?)
 - Consider mobile (50%+ traffic)
 - Check system-first (are we reusing or reinventing?)
 - One primary CTA per screen (no button soup)
-- Jobs checklist (run validation):
-  ```bash
-  bash \spec-flow/scripts/verify-design-principles.sh
-  ```
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 NEXT STEPS
@@ -839,8 +1041,9 @@ After filling crit.md:
 
 This will:
 - Read your critique (keep/change/kill decisions)
-- Merge selected components → /mock/[feature]/[screen]/main
+- Merge selected components → /mock/[feature]/[screen]/functional
 - Add keyboard navigation + aria labels
+- Validate reading hierarchy (F-pattern, 2:1 ratios)
 - Create Playwright tests (visual snapshots + a11y)
 - Define analytics event names
 ```
@@ -856,22 +1059,36 @@ This will:
 - [ ] Variant index page links to all variants + states
 - [ ] crit.md template created (empty, ready for human input)
 - [ ] No brand colors used (grayscale only)
+- [ ] **Design lint executed** (lint-report.md generated)
+- [ ] **No critical lint issues** (hardcoded colors, WCAG, labels)
+- [ ] **Dev server auto-opened** (sandbox ready for review)
+
+**Design Lint Validation (automated):**
+- [ ] Zero hardcoded colors (all use tokens or grayscale)
+- [ ] Zero borders on cards/modals/dropdowns (use shadows)
+- [ ] Gradients follow rules (<20% opacity, max 2 stops, no diagonals)
+- [ ] Heading hierarchy ≥2:1 size ratios
+- [ ] All interactive elements have labels (aria-label or text)
+- [ ] Custom components flagged (warnings OK, document rationale)
+- [ ] Spacing on 8px grid (warnings OK for edge cases)
+- [ ] WCAG AA minimum (4.5:1 for text)
 
 **Jobs Principles Validation (manual checks, record in crit.md):**
 - [ ] Primary action describable in ≤5 words?
 - [ ] All variants ≤2 clicks to complete primary action?
 - [ ] Zero tooltips needed (design is obvious)?
-- [ ] Spacing on 8px grid (run: `bash \spec-flow/scripts/verify-design-principles.sh`)?
 - [ ] Transitions 200-300ms?
 - [ ] At least 2 variants break from conventional patterns?
 - [ ] Real copy from copy.md (no Lorem Ipsum)
 - [ ] NOTES.md per variant documents rationale + tradeoffs
 
-**Reject if:**
+**Reject if (blocks proceeding):**
 - ❌ Custom components created (not in ui-inventory.md)
 - ❌ Brand colors applied (should be grayscale)
 - ❌ States hardcoded (must use ?state= query param)
 - ❌ Placeholder copy used (must be real copy from copy.md)
+- ❌ **Critical lint issues** (hardcoded colors, WCAG failures, missing labels)
+- ❌ **Design lint not run** (must validate before human review)
 
 ---
 
