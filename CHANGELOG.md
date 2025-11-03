@@ -1,3 +1,45 @@
+## [2.12.0] - 2025-11-03
+
+### Added
+- **S-Tier Design Workflow System**: Complete three-phase design pipeline without Figma
+  - `/design` unified orchestrator command (Variations → Functional → Polish)
+  - `/research-design` multi-source inspiration gathering command
+  - `/init-brand-tokens` smart token initialization with brownfield/greenfield detection
+- **Design Validation Engine**: Automated enforcement of design principles
+  - `design-lint.js` validation engine with 4 severity levels (critical/error/warning/info)
+  - Token compliance scanning (100% required before implementation)
+  - Elevation scale validation (z-0 to z-5, shadows over borders)
+  - Hierarchy validation (2:1 heading ratios, F-pattern optimization)
+  - Gradient compliance checks (subtle, monochromatic, max 2 stops)
+- **Design Handoff Templates** (71KB total):
+  - `implementation-spec.md`: Comprehensive component breakdown, token usage, interactions, accessibility, testing strategy (26KB)
+  - `dont-make-me-think-checklist.md`: 10-category usability evaluation with 130 checkpoints (18KB)
+  - `design-principles.md`: Complete S-tier design codex (depth through elevation, reading hierarchy, subtle gradients) (4.7KB)
+- **Brownfield Token Scanner**: Codebase analysis tool for existing design patterns
+  - Scans colors (hex, rgb, hsl, Tailwind), typography, spacing
+  - Consolidation recommendations (e.g., 47 colors → 12 tokens)
+  - Generates `detected-tokens.json` and analysis reports
+- **Design System Templates**:
+  - Enhanced `tokens.json` with elevation scale (z-0 to z-5) and gradient rules
+  - `patterns.md` updated with S-tier examples
+- **Frontend-Shipper Integration**: Design validation added to implementation workflow
+  - Pre-implementation checklist for design artifacts
+  - Token-based styling rules enforcement
+  - Post-implementation design lint validation
+  - Design quality gates (token compliance, elevation scale, hierarchy, gradients)
+
+### Changed
+- `design-variations.md` enhanced with automated design lint validation and auto-open sandbox
+- `design-functional.md` enhanced with comprehensive hierarchy validation and F-pattern checks
+- `design-polish.md` enhanced with 5-validation token compliance system (blocks at <100%)
+- Phase gates now include design validation when design artifacts exist
+- Frontend implementation requires pixel-perfect fidelity to polished prototypes
+
+### Fixed
+- CI workflow PowerShell module installation (NuGet provider registration)
+
+---
+
 # Changelog
 
 All notable changes to the Spec-Flow Workflow Kit will be documented here.
