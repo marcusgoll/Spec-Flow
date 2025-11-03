@@ -19,18 +19,18 @@ jobs:
       - name: Register PowerShell Gallery
         shell: pwsh
         run: |
-          # Ensure NuGet provider is installed
-          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser
+          # Bootstrap NuGet provider using PackageManagement
+          # This avoids the "No match was found" error on GitHub Actions
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser -ErrorAction SilentlyContinue
 
-          # Register PSGallery explicitly with all required parameters
-          if (-not (Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue)) {
-            Register-PSRepository -Name PSGallery `
-              -SourceLocation https://www.powershellgallery.com/api/v2 `
-              -PublishLocation https://www.powershellgallery.com/api/v2/package/ `
-              -ScriptSourceLocation https://www.powershellgallery.com/api/v2/items/psscript `
-              -ScriptPublishLocation https://www.powershellgallery.com/api/v2/package/ `
-              -InstallationPolicy Trusted `
-              -PackageManagementProvider NuGet
+          # Alternative: Import PackageManagement to trigger auto-bootstrap
+          Import-Module PackageManagement -Force
+
+          # Ensure PSGallery is registered and trusted
+          $psGallery = Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue
+          if (-not $psGallery) {
+            Register-PSRepository -Default -InstallationPolicy Trusted
           } else {
             Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
           }
