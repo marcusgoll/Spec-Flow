@@ -44,6 +44,23 @@
 
 ## 🆕 Recent Updates
 
+### v2.12.0 (November 2025)
+**S-Tier Design Workflow** - Complete UI/UX design system without Figma
+
+- **Three-Phase Pipeline**: `/design` orchestrator chains Variations → Functional → Polish with human approval gates
+- **Token-Based Design System**: Smart initialization with brownfield/greenfield detection via `/init-brand-tokens`
+- **Automated Validation**: `design-lint.js` enforces principles (elevation scale, 2:1 hierarchy, subtle gradients, token compliance)
+- **Comprehensive Handoff**: `implementation-spec.md` (26KB) provides pixel-perfect component breakdown, interactions, accessibility, testing strategy
+- **Usability Evaluation**: `dont-make-me-think-checklist.md` with 130 checkpoints across 10 categories (visual clarity, navigation, content, interactions, feedback, cognitive load, conventions, error prevention, mobile, accessibility)
+- **Brownfield Scanner**: Analyzes existing codebases to detect and consolidate design patterns (e.g., 47 colors → 12 tokens)
+- **Frontend Integration**: Frontend-shipper agent validates implementation against design artifacts with automated design lint checks
+
+**Problem Solved**: Before v2.12.0, achieving high-quality UI/UX required Figma and manual design handoff, leading to inconsistent implementations and design-dev drift. Manual validation of design principles (elevation, hierarchy, gradients) was error-prone.
+
+**Impact**: Systematic enforcement of S-tier design principles from wireframes through implementation. 100% token compliance ensures consistent UI. Pixel-perfect handoff documentation eliminates design-dev miscommunication. Brownfield support enables design system adoption in existing projects.
+
+---
+
 ### v2.10.0 (October 2025)
 **X Announcement Slash Command** - Converted X announcement from skill to slash command
 
