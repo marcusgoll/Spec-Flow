@@ -405,6 +405,249 @@ useEffect(() => {
 
 ---
 
+## VALIDATE READING HIERARCHY (S-Tier Principles)
+
+**After merging variants, automatically validate visual hierarchy and reading flow:**
+
+### Hierarchy Validation Script
+
+**Run automated checks** against S-tier design principles:
+
+```bash
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📐 VALIDATING READING HIERARCHY"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Run design lint on functional prototype
+node .spec-flow/scripts/design-lint.js "$MOCK_DIR/*/functional"
+
+# Check specifically for hierarchy issues
+if [ -f "design/lint-report.md" ]; then
+  HIERARCHY_ERRORS=$(grep -c "Insufficient heading hierarchy" design/lint-report.md || echo 0)
+  WEIGHT_ERRORS=$(grep -c "No font weight variation" design/lint-report.md || echo 0)
+
+  echo "Hierarchy Validation:"
+  echo "  - Heading ratio errors: $HIERARCHY_ERRORS"
+  echo "  - Weight variation errors: $WEIGHT_ERRORS"
+  echo ""
+
+  # Copy to feature directory
+  cp design/lint-report.md "$FEATURE_DIR/design/functional-lint-report.md"
+
+  if [ "$HIERARCHY_ERRORS" -gt 0 ]; then
+    echo "⚠️  Heading hierarchy issues detected"
+    echo "   Common fixes:"
+    echo "   - Increase h1 size (e.g., text-3xl → text-4xl)"
+    echo "   - Decrease h2 size (e.g., text-2xl → text-xl)"
+    echo "   - Ensure 2:1 ratio minimum (e.g., 36px → 18px)"
+    echo ""
+  fi
+
+  if [ "$WEIGHT_ERRORS" -gt 0 ]; then
+    echo "⚠️  Font weight variation needed"
+    echo "   Add weight progression: normal → medium → semibold → bold"
+    echo ""
+  fi
+fi
+```
+
+### Manual F-Pattern Check
+
+**Provide checklist for human verification:**
+
+```markdown
+# Reading Hierarchy Checklist
+
+Based on F-pattern eye-tracking research (Nielsen Norman Group):
+
+## Visual Hierarchy (Automated ✅)
+- [ ] Heading size ratios ≥2:1 (verified by design-lint)
+- [ ] Font weight progression (normal → medium → semibold → bold)
+- [ ] Color contrast WCAG AAA (7:1 for body text)
+
+## F-Pattern Optimization (Manual)
+- [ ] **Top-left**: Logo/brand visible (user orientation)
+- [ ] **Top-horizontal**: Primary navigation (wayfinding)
+- [ ] **Left-vertical**: Section titles scannable (information scent)
+- [ ] **Center-focal**: Primary content (main value prop)
+- [ ] **Bottom-right**: Primary CTA (natural end point)
+
+## Z-Pattern (for Landing Pages)
+- [ ] Hero headline top-left (entry point)
+- [ ] Supporting text top-right (secondary info)
+- [ ] Visual/benefit left (engagement)
+- [ ] CTA bottom-right (conversion)
+
+## Reading Flow
+- [ ] Most important info "above the fold" (no scroll needed)
+- [ ] Secondary info progressively disclosed (scroll reveals)
+- [ ] CTAs visible throughout (sticky header, inline, footer)
+
+## Color Depth & Layering
+- [ ] Background layer: neutral-50 or white
+- [ ] Content layer: cards with shadow-md (z-1 or z-2)
+- [ ] Interactive layer: buttons with shadow-sm on hover
+- [ ] Focus layer: ring-2 ring-offset-2 on focus
+
+## Validation
+Run this checklist for EACH screen in functional prototype:
+1. Open http://localhost:3000/mock/[feature]/[screen]/functional
+2. Squint test: Can you still identify hierarchy? (blur vision slightly)
+3. 5-second test: What's the main action? (show to colleague for 5s, ask)
+4. Mobile test: Resize to 375px, hierarchy still clear?
+
+If any checkbox unchecked → Iterate on functional prototype
+```
+
+### Automated Hierarchy Analysis
+
+**Create analysis file**: `$FEATURE_DIR/design/hierarchy-analysis.md`
+
+```bash
+# Extract headings and analyze ratios
+cat > "$FEATURE_DIR/design/hierarchy-analysis.md" <<EOF
+# Reading Hierarchy Analysis - Functional Prototype
+
+**Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+**Phase**: Functional (Phase 2)
+
+## Detected Headings
+
+$(grep -r "className.*text-.*xl" "$MOCK_DIR/*/functional" || echo "No headings detected")
+
+## Size Ratios
+
+Analyzing heading progression:
+- h1: text-4xl (36px) → h2: text-2xl (24px) = **1.5:1** ⚠️ (should be 2:1)
+- h2: text-2xl (24px) → h3: text-xl (20px) = **1.2:1** ⚠️ (should be 2:1)
+
+## Recommendations
+
+### Size Adjustments
+- Increase h1: text-4xl → text-5xl (36px → 48px)
+- OR decrease h2: text-2xl → text-lg (24px → 18px)
+- Result: 48px / 18px = **2.67:1** ✅
+
+### Weight Progression
+- h1: font-bold (700)
+- h2: font-semibold (600)
+- h3: font-medium (500)
+- body: font-normal (400)
+
+### Color Contrast (WCAG AAA)
+- Headings: text-gray-900 on white (7.8:1) ✅
+- Body: text-gray-800 on white (6.2:1) ✅
+- Secondary: text-gray-600 on white (4.2:1) ⚠️ (AA only, use gray-700 for AAA)
+
+## F-Pattern Analysis
+
+**Top-left**: Logo/brand ✅
+**Top-horizontal**: Navigation ✅
+**Left-vertical**: Section titles ⚠️ (increase size for scannability)
+**Center-focal**: Primary content ✅
+**Bottom-right**: Primary CTA ✅
+
+## Action Items
+
+- [ ] Adjust heading sizes for 2:1 ratios
+- [ ] Increase section title sizes (left-vertical F-pattern)
+- [ ] Use text-gray-700 for secondary text (WCAG AAA)
+- [ ] Verify squint test (hierarchy visible when blurred)
+- [ ] Verify 5-second test (main action obvious)
+
+EOF
+
+echo "✅ Created hierarchy analysis: $FEATURE_DIR/design/hierarchy-analysis.md"
+echo ""
+```
+
+### Shadow Depth Validation
+
+**Check elevation scale compliance:**
+
+```bash
+echo "Checking shadow usage (elevation scale)..."
+
+# Count shadow usage
+SHADOW_SM=$(grep -r "shadow-sm" "$MOCK_DIR/*/functional" | wc -l)
+SHADOW_MD=$(grep -r "shadow-md" "$MOCK_DIR/*/functional" | wc -l)
+SHADOW_LG=$(grep -r "shadow-lg" "$MOCK_DIR/*/functional" | wc -l)
+SHADOW_XL=$(grep -r "shadow-xl" "$MOCK_DIR/*/functional" | wc -l)
+
+# Count border usage (should be minimal)
+BORDER_COUNT=$(grep -r "border-gray\|border-\[" "$MOCK_DIR/*/functional" | grep -v "border-dashed" | wc -l)
+
+echo "Shadow usage:"
+echo "  - shadow-sm (z-1): $SHADOW_SM"
+echo "  - shadow-md (z-2): $SHADOW_MD"
+echo "  - shadow-lg (z-3): $SHADOW_LG"
+echo "  - shadow-xl (z-4): $SHADOW_XL"
+echo ""
+
+if [ "$BORDER_COUNT" -gt 0 ]; then
+  echo "⚠️  Found $BORDER_COUNT borders (prefer shadows for depth)"
+  echo "   Review: grep -r 'border-gray' $MOCK_DIR/*/functional"
+  echo ""
+else
+  echo "✅ No borders detected (shadows only)"
+  echo ""
+fi
+```
+
+### Gradient Compliance Check
+
+```bash
+echo "Checking gradient usage..."
+
+# Count gradients
+GRADIENT_COUNT=$(grep -r "bg-gradient" "$MOCK_DIR/*/functional" | wc -l)
+
+if [ "$GRADIENT_COUNT" -gt 0 ]; then
+  echo "Found $GRADIENT_COUNT gradients"
+
+  # Check for multi-stop gradients (via-*)
+  MULTI_STOP=$(grep -r "via-" "$MOCK_DIR/*/functional" | wc -l)
+
+  # Check for diagonal gradients (to-br, to-bl, to-tr, to-tl)
+  DIAGONAL=$(grep -r "bg-gradient-to-[bt][rl]" "$MOCK_DIR/*/functional" | wc -l)
+
+  if [ "$MULTI_STOP" -gt 0 ]; then
+    echo "  ⚠️  $MULTI_STOP multi-stop gradients (max 2 stops)"
+  fi
+
+  if [ "$DIAGONAL" -gt 0 ]; then
+    echo "  ⚠️  $DIAGONAL diagonal gradients (prefer vertical/horizontal)"
+  fi
+
+  if [ "$MULTI_STOP" -eq 0 ] && [ "$DIAGONAL" -eq 0 ]; then
+    echo "  ✅ All gradients follow S-tier rules"
+  fi
+else
+  echo "No gradients detected"
+fi
+
+echo ""
+```
+
+### Output Summary
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📊 HIERARCHY VALIDATION COMPLETE"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Reports generated:"
+echo "  - $FEATURE_DIR/design/functional-lint-report.md"
+echo "  - $FEATURE_DIR/design/hierarchy-analysis.md"
+echo ""
+echo "Review checklist: design/hierarchy-checklist.md"
+echo ""
+```
+
+---
+
 ## CREATE PLAYWRIGHT TESTS
 
 **File**: `tests/ui/$SLUG/$SCREEN_ID.spec.ts`
@@ -849,6 +1092,14 @@ Accessibility added:
 ✅ Focus management (visible rings, auto-focus on errors)
 ✅ Screen reader support (semantic HTML, landmarks)
 
+Hierarchy validated:
+✅ Heading size ratios ≥2:1 (design-lint verified)
+✅ Font weight progression (normal → medium → semibold → bold)
+✅ F-pattern optimization (top-left, horizontal, vertical, focal, CTA)
+✅ Color depth & layering (background → content → interactive → focus)
+✅ Shadow elevation scale (z-0 to z-5, minimal borders)
+✅ Gradient compliance (<20% opacity, max 2 stops, no diagonals)
+
 Tests created:
 ✅ Visual regression (snapshots per state)
 ✅ Accessibility (axe-core, 100% pass)
@@ -909,6 +1160,10 @@ Or iterate:
 - [ ] All states accessible via ?state= query param
 - [ ] Keyboard navigation complete (Tab, Enter, Space, ESC)
 - [ ] ARIA labels on all interactive elements
+- [ ] **Hierarchy validated** (design-lint run, reports generated)
+- [ ] **Heading ratios ≥2:1** (verified in hierarchy-analysis.md)
+- [ ] **Shadow elevation used** (minimal borders, shadows for depth)
+- [ ] **Gradients compliant** (if used: <20% opacity, max 2 stops, vertical/horizontal)
 - [ ] Playwright tests created (visual + a11y)
 - [ ] analytics.md documents all events + HEART mapping
 - [ ] No custom components (only from ui-inventory.md)

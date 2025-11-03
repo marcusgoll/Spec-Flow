@@ -287,6 +287,316 @@ echo ""
 
 ---
 
+## TOKEN COMPLIANCE SCANNING (Pre-Polish Gate)
+
+**Before applying brand tokens, validate functional prototype has ZERO hardcoded values:**
+
+### Run Design Lint
+
+```bash
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 TOKEN COMPLIANCE SCAN (Blocking Gate)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Run design lint on functional prototypes
+node .spec-flow/scripts/design-lint.js "$MOCK_DIR/*/functional"
+
+LINT_EXIT=$?
+
+# Parse lint results
+if [ -f "design/lint-report.md" ]; then
+  CRITICAL_COUNT=$(grep -c "^## 🚨 CRITICAL" design/lint-report.md || echo 0)
+  ERROR_COUNT=$(grep -c "^## ❌ ERROR" design/lint-report.md || echo 0)
+  WARNING_COUNT=$(grep -c "^## ⚠️  WARNING" design/lint-report.md || echo 0)
+
+  # Copy to feature directory
+  cp design/lint-report.md "$FEATURE_DIR/design/polish-compliance-report.md"
+
+  echo "Token Compliance Results:"
+  echo "  🚨 Critical: $CRITICAL_COUNT (hardcoded colors, WCAG, labels)"
+  echo "  ❌ Error: $ERROR_COUNT (borders→shadows, gradients, hierarchy)"
+  echo "  ⚠️  Warning: $WARNING_COUNT (custom components, spacing)"
+  echo ""
+
+  # Block if ANY violations (Phase 3 requires 100% compliance)
+  if [ "$CRITICAL_COUNT" -gt 0 ] || [ "$ERROR_COUNT" -gt 0 ]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🚨 TOKEN COMPLIANCE FAILURES (BLOCKING)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Phase 3 requires 100% token compliance before applying brand."
+    echo ""
+    echo "Common issues:"
+    echo "  - Hardcoded colors (use bg-gray-200, not bg-[#e5e5e5])"
+    echo "  - Borders on cards/modals (use shadow-md, shadow-lg)"
+    echo "  - Multi-stop gradients (max 2 stops allowed)"
+    echo "  - Diagonal gradients (use to-b, to-t, to-r, to-l only)"
+    echo "  - Heading ratios <2:1 (increase h1 or decrease h2)"
+    echo ""
+    echo "Review: $FEATURE_DIR/design/polish-compliance-report.md"
+    echo ""
+    echo "Fix violations in functional prototype, then retry."
+    exit 1
+  fi
+
+  if [ "$WARNING_COUNT" -gt 0 ]; then
+    echo "⚠️  $WARNING_COUNT warnings detected (non-blocking)"
+    echo "   Review: $FEATURE_DIR/design/polish-compliance-report.md"
+    echo ""
+  else
+    echo "✅ 100% token compliance - Ready for brand application"
+    echo ""
+  fi
+else
+  echo "⚠️  Lint report not generated (design-lint may have failed)"
+  echo ""
+fi
+```
+
+### Hardcoded Value Detection
+
+**Scan for violations that design-lint might miss:**
+
+```bash
+echo "Scanning for hardcoded values..."
+
+# Check for hardcoded hex colors in style attributes
+HEX_IN_STYLE=$(grep -r "style.*#[0-9a-fA-F]\{6\}" "$MOCK_DIR/*/functional" | wc -l)
+
+# Check for arbitrary Tailwind values
+ARBITRARY_COLORS=$(grep -r "\[#[0-9a-fA-F]\{6\}\]" "$MOCK_DIR/*/functional" | wc -l)
+ARBITRARY_SPACING=$(grep -r "\[[0-9]\+px\]" "$MOCK_DIR/*/functional" | wc -l)
+
+# Check for custom RGB/HSL values
+RGB_VALUES=$(grep -r "rgb\|hsl" "$MOCK_DIR/*/functional" | wc -l)
+
+TOTAL_VIOLATIONS=$((HEX_IN_STYLE + ARBITRARY_COLORS + ARBITRARY_SPACING + RGB_VALUES))
+
+echo "Hardcoded value scan:"
+echo "  - Hex in style: $HEX_IN_STYLE"
+echo "  - Arbitrary colors: $ARBITRARY_COLORS"
+echo "  - Arbitrary spacing: $ARBITRARY_SPACING"
+echo "  - RGB/HSL values: $RGB_VALUES"
+echo "  - Total: $TOTAL_VIOLATIONS"
+echo ""
+
+if [ "$TOTAL_VIOLATIONS" -gt 0 ]; then
+  echo "⚠️  Found hardcoded values (must fix before polish)"
+  echo ""
+  echo "Examples:"
+  if [ "$HEX_IN_STYLE" -gt 0 ]; then
+    echo "  style={{ backgroundColor: '#3b82f6' }}"
+    echo "  → className=\"bg-primary\""
+    echo ""
+  fi
+  if [ "$ARBITRARY_COLORS" -gt 0 ]; then
+    echo "  className=\"bg-[#3b82f6]\""
+    echo "  → className=\"bg-primary\""
+    echo ""
+  fi
+  if [ "$ARBITRARY_SPACING" -gt 0 ]; then
+    echo "  className=\"p-[15px]\""
+    echo "  → className=\"p-4\" (16px on 8px grid)"
+    echo ""
+  fi
+
+  echo "Full list:"
+  echo "  grep -r 'style.*#' $MOCK_DIR/*/functional"
+  echo "  grep -r '\[#' $MOCK_DIR/*/functional"
+  echo ""
+
+  # Block if critical
+  if [ "$HEX_IN_STYLE" -gt 0 ] || [ "$ARBITRARY_COLORS" -gt 0 ]; then
+    echo "🚨 BLOCKING: Hardcoded colors must be removed"
+    echo "Fix and retry: /design-polish $SLUG"
+    exit 1
+  fi
+else
+  echo "✅ No hardcoded values detected"
+  echo ""
+fi
+```
+
+### Design System Compliance Check
+
+**Validate component usage:**
+
+```bash
+echo "Checking design system compliance..."
+
+# Extract all component imports
+COMPONENT_IMPORTS=$(grep -r "from '@/components/" "$MOCK_DIR/*/functional" | \
+                    sed "s/.*from '@\/components\/ui\///;s/'.*//;s/;.*//" | \
+                    sort -u)
+
+# Load allowed components from ui-inventory
+if [ -f "$UI_INVENTORY" ]; then
+  ALLOWED_COMPONENTS=$(grep "^## " "$UI_INVENTORY" | sed 's/## //' | tr '\n' '|' | sed 's/|$//')
+
+  # Check for custom components (not in inventory)
+  CUSTOM_COMPONENTS=()
+  while IFS= read -r component; do
+    if ! echo "$component" | grep -qE "$ALLOWED_COMPONENTS"; then
+      CUSTOM_COMPONENTS+=("$component")
+    fi
+  done <<< "$COMPONENT_IMPORTS"
+
+  if [ ${#CUSTOM_COMPONENTS[@]} -gt 0 ]; then
+    echo "⚠️  Custom components detected:"
+    for comp in "${CUSTOM_COMPONENTS[@]}"; do
+      echo "    - $comp"
+    done
+    echo ""
+    echo "Options:"
+    echo "  1. Replace with shadcn/ui component from ui-inventory.md"
+    echo "  2. Document in design/systems/proposals/$comp.md"
+    echo "  3. Add to ui-inventory.md after approval"
+    echo ""
+  else
+    echo "✅ All components from ui-inventory.md"
+    echo ""
+  fi
+else
+  echo "⚠️  ui-inventory.md not found (skipping component check)"
+  echo ""
+fi
+```
+
+### Elevation Scale Compliance
+
+**Validate shadow usage:**
+
+```bash
+echo "Checking elevation scale compliance..."
+
+# Count shadow classes
+SHADOW_NONE=$(grep -r "shadow-none" "$MOCK_DIR/*/functional" | wc -l)
+SHADOW_SM=$(grep -r "shadow-sm" "$MOCK_DIR/*/functional" | wc -l)
+SHADOW_MD=$(grep -r "shadow-md" "$MOCK_DIR/*/functional" | wc -l)
+SHADOW_LG=$(grep -r "shadow-lg" "$MOCK_DIR/*/functional" | wc -l)
+SHADOW_XL=$(grep -r "shadow-xl" "$MOCK_DIR/*/functional" | wc -l)
+SHADOW_2XL=$(grep -r "shadow-2xl" "$MOCK_DIR/*/functional" | wc -l)
+
+# Count arbitrary shadows (not on elevation scale)
+ARBITRARY_SHADOWS=$(grep -r "shadow-\[" "$MOCK_DIR/*/functional" | wc -l)
+
+# Count borders (should be minimal)
+BORDER_COUNT=$(grep -r "border-gray\|border-\[" "$MOCK_DIR/*/functional" | \
+                grep -v "border-dashed\|border-none" | wc -l)
+
+echo "Elevation scale usage:"
+echo "  - shadow-none (z-0): $SHADOW_NONE"
+echo "  - shadow-sm (z-1): $SHADOW_SM"
+echo "  - shadow-md (z-2): $SHADOW_MD"
+echo "  - shadow-lg (z-3): $SHADOW_LG"
+echo "  - shadow-xl (z-4): $SHADOW_XL"
+echo "  - shadow-2xl (z-5): $SHADOW_2XL"
+echo ""
+
+if [ "$ARBITRARY_SHADOWS" -gt 0 ]; then
+  echo "⚠️  $ARBITRARY_SHADOWS arbitrary shadows (use elevation scale instead)"
+  grep -r "shadow-\[" "$MOCK_DIR/*/functional" | head -3
+  echo ""
+fi
+
+if [ "$BORDER_COUNT" -gt 5 ]; then
+  echo "⚠️  $BORDER_COUNT borders detected (prefer shadows for depth)"
+  echo "   Borders OK for: dividers, input focus rings, tab indicators"
+  echo "   Replace borders on: cards, modals, dropdowns (use shadows)"
+  echo ""
+else
+  echo "✅ Minimal border usage (shadows for depth)"
+  echo ""
+fi
+```
+
+### Gradient Compliance
+
+**Validate gradient rules:**
+
+```bash
+echo "Checking gradient compliance..."
+
+GRADIENT_COUNT=$(grep -r "bg-gradient" "$MOCK_DIR/*/functional" | wc -l)
+
+if [ "$GRADIENT_COUNT" -gt 0 ]; then
+  echo "Found $GRADIENT_COUNT gradients"
+
+  # Check violations
+  MULTI_STOP=$(grep -r "via-" "$MOCK_DIR/*/functional" | wc -l)
+  DIAGONAL=$(grep -r "bg-gradient-to-[bt][rl]" "$MOCK_DIR/*/functional" | wc -l)
+  MULTI_COLOR=$(grep -r "from-\w\+-\d\+ to-\w\+-\d\+" "$MOCK_DIR/*/functional" | \
+                 grep -v "from-gray\|from-neutral" | wc -l)
+
+  VIOLATIONS=$((MULTI_STOP + DIAGONAL + MULTI_COLOR))
+
+  if [ "$VIOLATIONS" -gt 0 ]; then
+    echo "  ⚠️  Gradient violations detected:"
+    [ "$MULTI_STOP" -gt 0 ] && echo "    - $MULTI_STOP multi-stop (max 2 allowed)"
+    [ "$DIAGONAL" -gt 0 ] && echo "    - $DIAGONAL diagonal (use vertical/horizontal)"
+    [ "$MULTI_COLOR" -gt 0 ] && echo "    - $MULTI_COLOR multi-color (use monochromatic)"
+    echo ""
+    echo "  S-tier gradient rules:"
+    echo "    - Max 2 stops (from-X to-Y only)"
+    echo "    - Max 20% opacity delta"
+    echo "    - Vertical/horizontal only (to-b, to-t, to-r, to-l)"
+    echo "    - Monochromatic (same color family)"
+    echo ""
+  else
+    echo "  ✅ All gradients follow S-tier rules"
+  fi
+else
+  echo "No gradients detected (grayscale design)"
+fi
+
+echo ""
+```
+
+### Summary
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📊 TOKEN COMPLIANCE SCAN COMPLETE"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Calculate overall compliance score
+TOTAL_CHECKS=5
+PASSED_CHECKS=0
+
+[ "$CRITICAL_COUNT" -eq 0 ] && [ "$ERROR_COUNT" -eq 0 ] && PASSED_CHECKS=$((PASSED_CHECKS + 1))
+[ "$TOTAL_VIOLATIONS" -eq 0 ] && PASSED_CHECKS=$((PASSED_CHECKS + 1))
+[ ${#CUSTOM_COMPONENTS[@]} -eq 0 ] && PASSED_CHECKS=$((PASSED_CHECKS + 1))
+[ "$ARBITRARY_SHADOWS" -eq 0 ] && [ "$BORDER_COUNT" -le 5 ] && PASSED_CHECKS=$((PASSED_CHECKS + 1))
+[ "$VIOLATIONS" -eq 0 ] && PASSED_CHECKS=$((PASSED_CHECKS + 1))
+
+COMPLIANCE_SCORE=$((PASSED_CHECKS * 100 / TOTAL_CHECKS))
+
+echo "Compliance Score: $COMPLIANCE_SCORE% ($PASSED_CHECKS/$TOTAL_CHECKS checks passed)"
+echo ""
+
+if [ "$COMPLIANCE_SCORE" -lt 100 ]; then
+  echo "⚠️  Fix violations before applying brand tokens"
+  echo "   Review: $FEATURE_DIR/design/polish-compliance-report.md"
+  echo ""
+  echo "Common fixes:"
+  echo "  - Replace hardcoded colors: bg-[#xxx] → bg-gray-200"
+  echo "  - Use shadows: border → shadow-md"
+  echo "  - Simplify gradients: via-X → remove (2 stops max)"
+  echo "  - Use system components: custom → shadcn/ui"
+  echo ""
+  echo "After fixes, retry: /design-polish $SLUG"
+  exit 1
+else
+  echo "✅ 100% compliant - Ready for brand token application"
+  echo ""
+fi
+```
+
+---
+
 ## VALIDATE FUNCTIONAL PROTOTYPE
 
 **Pre-polish quality gates:**
