@@ -1,3 +1,30 @@
+## [3.0.0] - 2025-11-04
+
+### BREAKING CHANGES
+- **Constitution File Structure Reorganized**: Split monolithic constitution.md into 3 focused files
+  - `docs/project/engineering-principles.md` - User-editable 8 core engineering principles
+  - `docs/project/project-configuration.md` - User-editable deployment model and scale tier settings
+  - `.spec-flow/memory/workflow-mechanics.md` - Workflow system mechanics (roadmap, versioning, quality gates)
+
+### Changed
+- `/init-project` now generates 10 comprehensive docs (was 8): Added engineering-principles.md and project-configuration.md
+- Renamed `/setup-constitution` → `/update-project-config` (76% size reduction: 862→207 lines)
+- Rewrote `/constitution` command to update engineering-principles.md
+- Removed stale roadmap.md references from `/spec` and `/ship-prod` (migrated to GitHub Issues)
+- Updated `/roadmap brainstorm` to read tech-stack.md and capacity-planning.md for technically grounded features
+- Added automatic foundation issue creation for greenfield projects in `/init-project`
+
+### Fixed
+- Fixed broken command references to non-existent setup-constitution.md
+- Fixed `/roadmap` not considering tech stack constraints during brainstorming
+
+### Documentation
+- Archived legacy constitution.md as constitution-legacy-2025-11-04.md
+- Updated CLAUDE.md with comprehensive v2.4.0 and v2.5.0 release notes
+- Clear separation: user files (docs/project/) vs workflow system files (.spec-flow/memory/)
+
+---
+
 ## [2.12.0] - 2025-11-03
 
 ### Added

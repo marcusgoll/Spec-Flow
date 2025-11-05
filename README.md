@@ -44,6 +44,26 @@
 
 ## 🆕 Recent Updates
 
+### v3.0.0 (November 2025)
+**Constitution Cleanup** - Simplified project structure and documentation
+
+- **BREAKING CHANGE**: Constitution file structure reorganized
+  - Split monolithic `constitution.md` into 3 focused files:
+    - `docs/project/engineering-principles.md` - User-editable 8 core engineering principles
+    - `docs/project/project-configuration.md` - User-editable deployment model and scale tier settings
+    - `.spec-flow/memory/workflow-mechanics.md` - Workflow system mechanics (roadmap, versioning, quality gates)
+- **Enhanced /init-project**: Now generates 10 comprehensive docs (was 8)
+- **Renamed Commands**: `/setup-constitution` → `/update-project-config` (76% size reduction: 862→207 lines)
+- **Roadmap Integration**: `/roadmap brainstorm` now reads tech-stack.md and capacity-planning.md for technically grounded features
+- **Greenfield Support**: Automatic foundation issue creation for new projects
+- **Fixed Broken References**: Updated all commands to reference new file structure
+
+**Problem Solved**: Before v3.0.0, constitution.md was a monolithic 609-line file mixing user project settings with workflow system mechanics. Confusing dual-constitution naming (`constitution.md` vs `setup-constitution.md`). Roadmap brainstorming didn't consider technical constraints.
+
+**Impact**: Clear separation of concerns - user files vs workflow files. Smaller, focused files easier to maintain. Foundation setup automated for greenfield projects. Features are technically validated from brainstorming phase.
+
+---
+
 ### v2.12.0 (November 2025)
 **S-Tier Design Workflow** - Complete UI/UX design system without Figma
 
