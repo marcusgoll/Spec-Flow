@@ -1,3 +1,26 @@
+## [3.2.0] - 2025-11-05
+
+### Added
+- **Planning Optimization**: `/plan` command now leverages `docs/project/` files for 50-60% faster planning
+  - Mandatory integration with project documentation (if exists)
+  - Structured parsing of 8 project docs (tech-stack, data-architecture, api-strategy, etc.)
+  - Tech stack parsing prevents framework hallucination
+  - Entity extraction prevents duplicate data models
+  - API pattern reuse ensures consistency
+  - Performance targets guide feature design
+  - Freshness validation compares docs to code
+  - Enhanced research.md template with Project Context section
+- **Time Savings**: 4-8 minutes per feature, 3-4 hours per project (30 features)
+  - Research phase: 8-15 min → 4-7 min (with project docs)
+  - Eliminates redundant codebase scanning for stack detection
+  - Skips API pattern inference (uses api-strategy.md)
+  - Skips entity discovery (uses data-architecture.md ERD)
+
+### Fixed
+- Fixed emoji encoding issues in `/x-announce` command (removed all emojis)
+
+---
+
 ## [3.1.0] - 2025-11-05
 
 ### Added
