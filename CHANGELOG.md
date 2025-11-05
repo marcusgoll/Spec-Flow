@@ -1,3 +1,17 @@
+## [3.3.1] - 2025-11-05
+
+### Fixed
+- **Critical: GitHub Issues Lookup Bypass**: `/feature <slug>` now correctly searches roadmap before creating new specs
+  - Implemented lookup-first approach: ALL arguments default to GitHub Issues search
+  - Enhanced search: matches by slug OR title (fuzzy match fallback)
+  - Added detailed description prompt when creating new features
+  - Fixed slug extraction from GitHub Issue YAML frontmatter
+  - Added confirmation gates to prevent accidental duplicate work
+
+**Impact**: Prevents race conditions, duplicate work, and missing roadmap context
+
+---
+
 ## [3.3.0] - 2025-11-05
 
 ### Added
