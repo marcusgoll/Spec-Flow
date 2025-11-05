@@ -143,7 +143,10 @@ Model-specific workflow:
 
 **All subsequent commands reference project docs**:
 
-**`/roadmap`**: Validates new features against project vision and scope (from `overview.md`)
+**`/roadmap`**:
+- Reads `overview.md` → validates new features against project vision and scope
+- Reads `tech-stack.md` → suggests only technically-feasible features (brainstorm)
+- Reads `capacity-planning.md` → adjusts effort estimates by scale tier (brainstorm)
 
 **`/spec`**:
 - Reads `tech-stack.md` → avoids suggesting wrong technologies
@@ -192,10 +195,21 @@ Model-specific workflow:
 
 ### Next Steps After `/init-project`
 
+**For Greenfield Projects** (new codebase):
 1. **Review** `docs/project/` files
 2. **Fill** any `[NEEDS CLARIFICATION]` sections
-3. **Commit** project documentation
-4. **Start building** with `/roadmap` or `/feature`
+3. **Foundation issue auto-created** → GitHub Issue `#1 project-foundation` (HIGH priority)
+4. **Build foundation first**: `/feature "project-foundation"`
+   - Scaffolds project with documented tech stack (Next.js, Tailwind, PostgreSQL, etc.)
+   - Sets up dev environment, linting, deployment config
+   - CRITICAL: All other features depend on this
+5. **Then add features**: `/roadmap` or `/feature "your-feature"`
+
+**For Brownfield Projects** (existing codebase):
+1. **Review** `docs/project/` files
+2. **Fill** any `[NEEDS CLARIFICATION]` sections
+3. **No foundation needed** → Existing code detected
+4. **Start building features**: `/roadmap` or `/feature "your-feature"`
 
 All features will now align with your documented architecture.
 
@@ -748,13 +762,260 @@ None - all changes are backward compatible. The implement-phase-agent reads the 
 
 ---
 
+## New Features (v2.4.0) - Roadmap & Foundation Improvements
+
+### Roadmap Technical Validation
+
+**What Changed**: `/roadmap brainstorm` now reads project documentation to ensure technically-grounded feature suggestions.
+
+**Before** (v2.3.0):
+```bash
+/roadmap brainstorm
+# Only reads: constitution.md
+# May suggest: GraphQL features (but project uses REST)
+# May suggest: Real-time features (but project is micro-tier)
+# Effort estimates: Generic (doesn't account for scale)
+```
+
+**After** (v2.4.0):
+```bash
+/roadmap brainstorm
+# Reads: constitution.md + tech-stack.md + capacity-planning.md
+# Only suggests: Features compatible with REST API
+# Flags new tech: [NEW TECH: GraphQL] if suggested
+# Effort estimates: Adjusted by scale tier (micro=1-2, large=5-8)
+```
+
+**Project Docs Read**:
+- `tech-stack.md` → Available technologies, deployment platform, auth provider
+- `capacity-planning.md` → Scale tier (micro/small/medium/large), cost constraints
+
+**Benefits**:
+- Prevents suggesting infeasible features (GraphQL when using REST)
+- Prevents over-scoping (real-time for micro-tier projects)
+- More accurate effort estimates (accounts for scale complexity)
+- Reduces wasted roadmap planning (features rejected later by `/spec`)
+
+**Applies to**: Both quick and deep brainstorm tiers
+
+---
+
+### Greenfield Foundation Auto-Creation
+
+**What Changed**: `/init-project` now automatically creates a "Project Foundation Setup" GitHub Issue for greenfield projects.
+
+**Before** (v2.3.0):
+```bash
+/init-project
+# Generates 8 docs
+# Commits to git
+# Stops → User must manually run /feature "Foundation"
+```
+
+**After** (v2.4.0):
+```bash
+/init-project
+# Generates 8 docs
+# Commits to git
+# Auto-creates GitHub Issue: #1 project-foundation
+#   - Priority: HIGH (Score: 1.5)
+#   - Pre-populated with tech stack requirements
+#   - Includes acceptance criteria (dev server runs, build succeeds)
+# Next steps: /feature "project-foundation"
+```
+
+**Issue Details**:
+- **Title**: "Project Foundation Setup"
+- **Slug**: `project-foundation`
+- **ICE Score**: Impact=5, Effort=3, Confidence=0.9 → Score=1.5 (HIGH priority)
+- **Labels**: `type:feature`, `area:infra`, `role:all`, `status:backlog`, `size:medium`
+- **Body Includes**:
+  - Frontend setup (Next.js, Tailwind, TypeScript, etc.)
+  - Backend setup (FastAPI, PostgreSQL, etc.)
+  - Infrastructure (deployment, auth, CI/CD)
+  - Dev environment (.env, Docker, git hooks)
+  - Acceptance criteria (8 checkboxes)
+  - References to all 4 relevant project docs
+
+**Brownfield Projects**: Skips foundation issue creation (existing code detected)
+
+**Graceful Fallback**: If GitHub auth fails, prints instructions to create manually
+
+**Benefits**:
+- Eliminates manual step (no need to remember foundation feature)
+- Pre-populated spec (all tech stack details from `/init-project`)
+- Clear priority (HIGH - blocks all other features)
+- Discoverable (`gh issue view project-foundation`)
+
+---
+
+### Updated Documentation
+
+**Workflow Integration** section now reflects `/roadmap` reads 3 docs:
+1. `overview.md` → Vision alignment
+2. `tech-stack.md` → Technical feasibility (NEW)
+3. `capacity-planning.md` → Effort estimation by scale tier (NEW)
+
+**Next Steps After `/init-project`** section now distinguishes:
+- **Greenfield**: Foundation issue created → Build foundation first → Add features
+- **Brownfield**: No foundation needed → Start building features immediately
+
+---
+
+### Migration from v2.3.0
+
+**Automatic** - No user action required:
+- Existing `/roadmap brainstorm` will read tech docs automatically (if they exist)
+- New `/init-project` runs will create foundation issues automatically
+- Old projects unaffected (no retroactive foundation issues)
+
+**Breaking Changes**: None - all changes are backward compatible
+
+---
+
+## New Features (v2.5.0) - Constitution Cleanup & Structure Simplification
+
+### Constitution Split into 3 Files
+
+**What Changed**: Monolithic `constitution.md` (609 lines) split into 3 focused files for clarity.
+
+**Before** (v2.4.0):
+```
+.spec-flow/memory/
+├── constitution.md  (609 lines - BLOATED)
+│   ├── Engineering principles
+│   ├── Project configuration
+│   ├── Roadmap lifecycle
+│   ├── Version management
+│   └── Quality gates (all mixed together)
+```
+
+**After** (v2.5.0):
+```
+docs/project/                              (User's project files)
+├── engineering-principles.md  (189 lines - 8 core principles)
+└── project-configuration.md   (62 lines - deployment model, scale tier)
+
+.spec-flow/memory/                         (Workflow system files)
+└── workflow-mechanics.md      (356 lines - roadmap, versioning, gates)
+```
+
+**Why Split**:
+- **Clarity**: User files vs workflow files clearly separated
+- **Maintainability**: Each file <400 lines (was 609 lines)
+- **Ownership**: Users edit `docs/project/`, workflow team edits `.spec-flow/`
+- **Modularity**: Commands read only what they need
+
+---
+
+### Updated Commands
+
+**1. `/setup-constitution` → `/update-project-config`**
+- **Renamed** for clarity (was confusing)
+- **Simplified** from 862 lines → 207 lines (76% reduction!)
+- **Fixed** broken reference (was targeting non-existent file)
+- **Now updates**: `docs/project/project-configuration.md` (deployment model, scale tier)
+
+**2. `/constitution`**
+- **Rewritten** to update engineering principles
+- **Now updates**: `docs/project/engineering-principles.md` (8 core standards)
+- **Simplified** to 165 lines (was duplicate of /setup-constitution)
+
+**3. `/init-project`**
+- **Now generates 10 docs** instead of 8:
+  - Added: `engineering-principles.md`
+  - Added: `project-configuration.md`
+- **Templates created**: `.spec-flow/templates/engineering-principles.md`, `.spec-flow/templates/project-configuration.md`
+
+---
+
+### Removed Stale Roadmap References
+
+**Problem**: `/spec` and `/ship-prod` still referenced deleted `roadmap.md` (migrated to GitHub Issues on 2025-10-20)
+
+**Fixed**:
+- **`/spec`**: Now uses `gh issue list` instead of searching `roadmap.md`
+- **`/ship-prod`**: Now uses `mark_issue_shipped()` function from `github-roadmap-manager.sh`
+- **Path constants**: Updated to reference new files (`engineering-principles.md`, `workflow-mechanics.md`)
+
+---
+
+### New 10-Document Structure
+
+**After `/init-project`, users get:**
+
+```
+docs/project/
+├── overview.md                    (Vision, users, scope)
+├── system-architecture.md         (C4 diagrams, components)
+├── tech-stack.md                  (Technology choices)
+├── data-architecture.md           (ERD, schemas)
+├── api-strategy.md                (REST/GraphQL patterns)
+├── capacity-planning.md           (Scaling tiers)
+├── deployment-strategy.md         (CI/CD pipeline)
+├── development-workflow.md        (Git flow, PR process)
+├── engineering-principles.md      (NEW - 8 core principles)
+└── project-configuration.md       (NEW - deployment model, scale)
+```
+
+**Workflow system files** (users don't edit):
+
+```
+.spec-flow/memory/
+├── workflow-mechanics.md          (NEW - roadmap, versioning, gates)
+├── design-principles.md           (S-tier design guide)
+├── design-inspirations.md         (Reference template)
+└── archive/
+    ├── constitution-legacy-2025-11-04.md
+    └── roadmap-archived-2025-10-20.md
+```
+
+---
+
+### Benefits
+
+**Clarity**:
+- ✅ User files (`docs/project/`) vs workflow files (`.spec-flow/memory/`) clearly separated
+- ✅ No more confusion about which file to edit
+
+**Correctness**:
+- ✅ Fixed `/setup-constitution` targeting non-existent file
+- ✅ Fixed stale `roadmap.md` references in `/spec` and `/ship-prod`
+
+**Simplicity**:
+- ✅ Smaller, focused files (<400 lines each vs 609 lines)
+- ✅ Commands simplified (862 → 207 lines for `/update-project-config`)
+- ✅ Clear ownership (users vs workflow team)
+
+**Consistency**:
+- ✅ Aligns with existing `/init-project` pattern (`docs/project/`)
+- ✅ Engineering principles guide quality gates (`/optimize`, `/validate`)
+
+---
+
+### Migration from v2.4.0
+
+**Automatic** - No user action required:
+- Old `constitution.md` archived to `.spec-flow/memory/archive/`
+- Commands automatically use new file paths
+- Existing projects continue to work
+
+**For New Projects**:
+- `/init-project` generates 10 docs (was 8)
+- Use `/constitution` to update engineering principles
+- Use `/update-project-config` to change deployment model
+
+**Breaking Changes**: None - all changes are backward compatible
+
+---
+
 ## Architecture
 
 **Directory structure:**
 
 - `.claude/agents/` — Persona briefs for specialists (backend, frontend, QA, release)
 - `.claude/commands/` — Command specifications with inputs, outputs, and auto-progression
-- `.spec-flow/memory/` — Long-term references (roadmap, constitution, design inspirations)
+- `.spec-flow/memory/` — Workflow mechanics, design principles, inspirations (workflow system files)
 - `.spec-flow/templates/` — Markdown scaffolds for specs, plans, tasks, reports
 - `.spec-flow/scripts/powershell/` — Windows/cross-platform automation
 - `.spec-flow/scripts/bash/` — macOS/Linux automation

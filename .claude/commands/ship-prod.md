@@ -98,7 +98,6 @@ fi
 SPEC_FILE="$FEATURE_DIR/spec.md"
 SHIP_REPORT="$FEATURE_DIR/ship-report.md"
 NOTES_FILE="$FEATURE_DIR/NOTES.md"
-ROADMAP_FILE="\spec-flow/memory/roadmap.md"
 
 # Initialize production URLs
 GITHUB_REPO="cfipros/monorepo"
@@ -1139,81 +1138,37 @@ rm -f /tmp/release-notes-$SLUG.md
 
 ```bash
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Updating Roadmap"
+echo "Updating Roadmap (GitHub Issues)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-if [ ! -f "$ROADMAP_FILE" ]; then
-  echo "⚠️  Roadmap not found: $ROADMAP_FILE"
+# Check if GitHub CLI is available
+if ! command -v gh &> /dev/null; then
+  echo "⚠️  GitHub CLI not installed"
   echo "   Skipping roadmap update"
+  echo "   Install: https://cli.github.com/"
 else
-  # Find feature in "In Progress" section
-  FEATURE_SECTION=$(sed -n "/## In Progress/,/## /p" "$ROADMAP_FILE" | \
-                    grep -A 20 "### $SLUG" || echo "")
+  # Source GitHub roadmap manager
+  if [ -f ".spec-flow/scripts/bash/github-roadmap-manager.sh" ]; then
+    source .spec-flow/scripts/bash/github-roadmap-manager.sh
 
-  if [ -z "$FEATURE_SECTION" ]; then
-    echo "⚠️  Feature '$SLUG' not found in roadmap"
-    echo "   Manual update may be needed"
+    # Mark feature as shipped in GitHub Issues
+    mark_issue_shipped "$SLUG" "$NEXT_VERSION" "$(date +%Y-%m-%d)" "$PROD_URL"
+
+    if [ $? -eq 0 ]; then
+      echo "✅ Roadmap updated (GitHub Issue marked as shipped)"
+      echo "   Feature: $SLUG"
+      echo "   Version: $NEXT_VERSION"
+      echo ""
+    else
+      echo "⚠️  Failed to update roadmap"
+      echo "   Manually mark issue as shipped:"
+      echo "   gh issue close $SLUG --reason completed"
+      echo ""
+    fi
   else
-    echo "Found feature in roadmap: $SLUG"
-    echo ""
-
-    # Extract feature metadata
-    TITLE=$(echo "$FEATURE_SECTION" | grep "Title:" | sed 's/.*Title: //' | head -1)
-    AREA=$(echo "$FEATURE_SECTION" | grep "Area:" | sed 's/.*Area: //' | head -1)
-    ROLE=$(echo "$FEATURE_SECTION" | grep "Role:" | sed 's/.*Role: //' | head -1)
-    REQUIREMENTS=$(echo "$FEATURE_SECTION" | sed -n '/Requirements:/,/^$/p' | grep "^  -")
-
-    # Create shipped entry
-    SHIPPED_ENTRY="### $SLUG
-- **Title**: $TITLE
-- **Area**: $AREA
-- **Role**: $ROLE
-- **Date**: $(date +%Y-%m-%d)
-- **Release**: $NEXT_VERSION - $(echo "$TITLE" | tr '[:upper:]' '[:lower:]')
-- **Requirements**:
-$REQUIREMENTS"
-
-    # Create temp file with updated roadmap
-    awk -v slug="$SLUG" -v entry="$SHIPPED_ENTRY" '
-      # Remove from In Progress section
-      /^### / {
-        if ($0 ~ slug && in_progress) {
-          skip = 1
-          next
-        }
-      }
-      /^## In Progress/ { in_progress = 1 }
-      /^## / && !/^## In Progress/ { in_progress = 0; skip = 0 }
-
-      # Add to Shipped section
-      /^## Shipped/ {
-        print
-        print ""
-        print entry
-        next
-      }
-
-      # Print all non-skipped lines
-      !skip { print }
-    ' "$ROADMAP_FILE" > /tmp/roadmap-updated.md
-
-    mv /tmp/roadmap-updated.md "$ROADMAP_FILE"
-
-    echo "✅ Roadmap updated"
-    echo "   Moved $SLUG to Shipped section"
-    echo ""
-
-    # Commit roadmap update
-    git add "$ROADMAP_FILE"
-    git commit -m "docs: mark $SLUG as shipped ($NEXT_VERSION)
-
-🤖 Generated with Claude Code
-Co-Authored-By: Claude <noreply@anthropic.com>"
-
-    git push origin main
-
-    echo "✅ Roadmap changes committed and pushed"
+    echo "⚠️  GitHub roadmap manager not found"
+    echo "   Skipping roadmap update"
     echo ""
   fi
 fi

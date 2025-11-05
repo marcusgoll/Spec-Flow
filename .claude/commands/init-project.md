@@ -383,9 +383,9 @@ mkdir -p docs/project
 # 3. If brownfield: Scan codebase to fill tech stack, architecture
 # 4. Generate realistic examples
 # 5. Mark [NEEDS CLARIFICATION] where info missing
-# 6. Write 8 files to docs/project/
+# 6. Write 10 files to docs/project/
 
-echo "Generating 8 project documentation files..."
+echo "Generating 10 project documentation files..."
 echo "  1. overview.md"
 echo "  2. system-architecture.md"
 echo "  3. tech-stack.md"
@@ -394,6 +394,8 @@ echo "  5. api-strategy.md"
 echo "  6. capacity-planning.md"
 echo "  7. deployment-strategy.md"
 echo "  8. development-workflow.md"
+echo "  9. engineering-principles.md"
+echo "  10. project-configuration.md"
 echo ""
 
 # Agent context:
@@ -404,7 +406,7 @@ echo ""
 
 # Claude Code: Launch project-architect agent
 # Provide all questionnaire answers and context
-# Agent generates 8 files
+# Agent generates 10 files
 ```
 
 **Agent Task**: Generate docs/project/*.md
@@ -433,7 +435,7 @@ You are the project-architect agent. Generate 8 comprehensive project documentat
 
 **Templates**: `.spec-flow/templates/project/*.md`
 
-**Output**: 8 files in `docs/project/`
+**Output**: 10 files in `docs/project/`
 
 **Instructions**:
 1. Read each template
@@ -482,6 +484,8 @@ Comprehensive project-level design documentation:
 - `capacity-planning.md` - Micro → scale tiers
 - `deployment-strategy.md` - CI/CD, environments, rollback
 - `development-workflow.md` - Git flow, PR process, DoD
+- `engineering-principles.md` - 8 core engineering standards
+- `project-configuration.md` - Deployment model, scale tier, quick changes
 
 **Created**: [DATE] via `/init-project`
 
@@ -490,13 +494,16 @@ Comprehensive project-level design documentation:
 - Changing tech stack (tech-stack.md)
 - Scaling to next tier (capacity-planning.md)
 - Adjusting deployment strategy (deployment-strategy.md)
+- Engineering standards evolve (engineering-principles.md)
+- Deployment model changes (project-configuration.md)
 
 **Workflow Integration**:
 All features MUST align with project architecture:
-- `/roadmap` - Checks overview.md for vision alignment
+- `/roadmap` - Checks overview.md for vision alignment, tech-stack.md for feasibility
 - `/spec` - References project docs during research
-- `/plan` - Heavily integrates with all 8 docs
+- `/plan` - Heavily integrates with all 10 docs
 - `/tasks` - Follows patterns from tech-stack.md, api-strategy.md
+- `/optimize` - Enforces engineering-principles.md quality standards
 EOF
 
     echo "✓ Constitution updated with project docs reference"
@@ -531,7 +538,7 @@ Deployment: $DEPLOY_PLATFORM ($DEPLOY_MODEL)
 Team: $TEAM_SIZE
 Scale: $SCALE ($MAX_USERS users initially)
 
-Generated 8 comprehensive docs:
+Generated 10 comprehensive docs:
 - overview.md (vision, users, scope)
 - system-architecture.md (components, Mermaid diagrams)
 - tech-stack.md (technology choices)
@@ -540,6 +547,8 @@ Generated 8 comprehensive docs:
 - capacity-planning.md (micro → scale path)
 - deployment-strategy.md (CI/CD, environments)
 - development-workflow.md (git flow, PR process)
+- engineering-principles.md (8 core standards)
+- project-configuration.md (deployment model, scale tier)
 
 Updated: constitution.md (references project docs)
 
@@ -552,6 +561,127 @@ COMMIT_HASH=$(git rev-parse --short HEAD)
 echo ""
 echo "✅ Project documentation committed: $COMMIT_HASH"
 echo ""
+```
+
+## CREATE FOUNDATION ISSUE (Greenfield Only)
+
+**For greenfield projects, auto-create a GitHub Issue for project foundation setup:**
+
+```bash
+if [ "$PROJECT_TYPE" = "greenfield" ]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📋 CREATING FOUNDATION ROADMAP ISSUE"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  # Check GitHub authentication
+  if command -v gh &> /dev/null && gh auth status &> /dev/null; then
+    # Source GitHub roadmap manager
+    source .spec-flow/scripts/bash/github-roadmap-manager.sh
+
+    # Generate foundation feature body from tech-stack variables
+    FOUNDATION_BODY=$(cat <<EOF
+## Problem
+
+New greenfield project needs initial project scaffolding based on documented tech stack.
+
+## Proposed Solution
+
+Create foundational project structure with:
+
+### Frontend ($FRONTEND)
+- Initialize $FRONTEND project with TypeScript
+- Install core dependencies and UI libraries
+- Setup linting (ESLint), formatting (Prettier), type checking
+- Create base directory structure (components, pages, utils)
+- Configure build and dev scripts
+
+### Backend & Database
+- Initialize backend framework
+- Setup $DATABASE database connection
+- Configure migrations and schema management
+- Install dependencies and dev tools
+- Create base API structure
+
+### Infrastructure
+- Setup deployment platform: $DEPLOY_PLATFORM
+- Configure authentication: $AUTH_PROVIDER
+- Initialize CI/CD pipeline configuration
+- Setup environment variables template
+
+### Development Environment
+- Create .env.example with all required variables
+- Setup development scripts (dev, build, test, lint)
+- Configure Docker (if applicable)
+- Initialize git hooks (pre-commit, commit-msg)
+- Write comprehensive README with setup instructions
+
+## Acceptance Criteria
+
+- [ ] Frontend dev server runs successfully
+- [ ] Backend API server runs successfully (if applicable)
+- [ ] Database connection verified (if applicable)
+- [ ] All linters and formatters configured and passing
+- [ ] README with clear setup instructions created
+- [ ] .env.example with all required variables documented
+- [ ] First successful build completes without errors
+- [ ] Initial deployment configuration validated
+
+## References
+
+- Tech Stack: docs/project/tech-stack.md
+- Architecture: docs/project/system-architecture.md
+- Deployment: docs/project/deployment-strategy.md
+- Data: docs/project/data-architecture.md
+
+## Technical Notes
+
+- Follow tech stack exactly as documented
+- Use documented API style: $API_STYLE
+- Scale tier: $SCALE (affects infrastructure choices)
+- Authentication provider: $AUTH_PROVIDER
+EOF
+)
+
+    # Create issue with high priority (foundation is critical)
+    # Impact: 5 (blocks all other features)
+    # Effort: 3 (moderate complexity, well-defined)
+    # Confidence: 0.9 (high certainty, clear requirements)
+    # Score: (5 × 0.9) / 3 = 1.5 (high priority)
+    create_roadmap_issue \
+      "Project Foundation Setup" \
+      "$FOUNDATION_BODY" \
+      5 \
+      3 \
+      0.9 \
+      "infra" \
+      "all" \
+      "project-foundation"
+
+    if [ $? -eq 0 ]; then
+      echo ""
+      echo "✅ Created roadmap issue: project-foundation"
+      echo "   Priority: HIGH (Score: 1.5)"
+      echo "   View: gh issue view project-foundation"
+      echo "   When ready: /feature \"project-foundation\""
+      echo ""
+    else
+      echo ""
+      echo "⚠️  Failed to create foundation issue"
+      echo "   You can create it manually with: /roadmap add \"Project foundation\""
+      echo ""
+    fi
+  else
+    echo "ℹ️  GitHub authentication not detected"
+    echo "   To auto-create foundation issue, authenticate with: gh auth login"
+    echo "   Or manually create later with: /roadmap add \"Project foundation\""
+    echo ""
+  fi
+else
+  echo "ℹ️  Brownfield project detected - skipping foundation issue"
+  echo "   Existing codebase structure preserved"
+  echo ""
+fi
 ```
 
 ## RETURN
@@ -577,28 +707,57 @@ echo "   docs/project/api-strategy.md"
 echo "   docs/project/capacity-planning.md"
 echo "   docs/project/deployment-strategy.md"
 echo "   docs/project/development-workflow.md"
+echo "   docs/project/engineering-principles.md"
+echo "   docs/project/project-configuration.md"
 echo ""
-echo "📜 Updated: .spec-flow/memory/constitution.md"
-echo ""
+
+# Show foundation issue if created
+if [ "$PROJECT_TYPE" = "greenfield" ] && command -v gh &> /dev/null && gh auth status &> /dev/null; then
+  echo "🎯 Created Roadmap Issue:"
+  echo "   #1 project-foundation (HIGH priority)"
+  echo "   View: gh issue view project-foundation"
+  echo ""
+fi
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "📋 NEXT STEPS"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "1. Review generated docs:"
-echo "   open docs/project/"
-echo ""
-echo "2. Fill [NEEDS CLARIFICATION] sections (if any):"
-echo "   grep -r 'NEEDS CLARIFICATION' docs/project/"
-echo ""
-echo "3. Customize for your project:"
-echo "   - Add specific technologies"
-echo "   - Update Mermaid diagrams"
-echo "   - Refine capacity estimates"
-echo ""
-echo "4. Start building features:"
-echo "   /roadmap"
-echo "   /feature \"your-first-feature\""
-echo ""
+
+if [ "$PROJECT_TYPE" = "greenfield" ]; then
+  echo "🚀 Greenfield Project - Start with foundation:"
+  echo ""
+  echo "1. Review generated docs:"
+  echo "   open docs/project/"
+  echo ""
+  echo "2. Build project foundation (CRITICAL FIRST STEP):"
+  echo "   /feature \"project-foundation\""
+  echo "   This will scaffold your $FRONTEND + $DATABASE project"
+  echo ""
+  echo "3. After foundation is built, add features:"
+  echo "   /roadmap"
+  echo "   /feature \"your-feature\""
+  echo ""
+else
+  echo "📦 Brownfield Project - Existing codebase detected:"
+  echo ""
+  echo "1. Review generated docs:"
+  echo "   open docs/project/"
+  echo ""
+  echo "2. Fill [NEEDS CLARIFICATION] sections (if any):"
+  echo "   grep -r 'NEEDS CLARIFICATION' docs/project/"
+  echo ""
+  echo "3. Customize for your project:"
+  echo "   - Add specific technologies"
+  echo "   - Update Mermaid diagrams"
+  echo "   - Refine capacity estimates"
+  echo ""
+  echo "4. Start building features:"
+  echo "   /roadmap"
+  echo "   /feature \"your-first-feature\""
+  echo ""
+fi
+
 echo "💡 Tip: Update project docs as your project evolves."
 echo "    They're living documents, not one-time artifacts."
 echo ""

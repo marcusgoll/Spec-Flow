@@ -49,8 +49,8 @@ Create specification for: $ARGUMENTS
    - Never make up database schemas, API endpoints, or component hierarchies
 
 4. **Verify roadmap entries before referencing**
-   - Before saying "This builds on feature X", search roadmap.md for X
-   - Use exact roadmap slugs and titles, don't paraphrase
+   - Before saying "This builds on feature X", search GitHub Issues for X using `gh issue list`
+   - Use exact issue slugs and titles, don't paraphrase
    - If feature not in roadmap, say: "This is a new feature, not extending existing work"
 
 5. **Quote user requirements exactly**
@@ -68,7 +68,7 @@ For complex specification decisions, show your step-by-step reasoning:
 Let me analyze this requirement:
 1. What is the user actually asking for? [Quote $ARGUMENTS]
 2. What are the implied constraints? [Technical, UX, performance]
-3. What existing features does this build on? [Check roadmap.md]
+3. What existing features does this build on? [Check GitHub Issues via gh issue list]
 4. What ambiguities need clarification? [List unclear points]
 5. Conclusion: [Specification approach with justification]
 </thinking>
@@ -92,8 +92,8 @@ Let me analyze this requirement:
 
 **Path constants:**
 ```bash
-ROADMAP_FILE=".spec-flow/memory/roadmap.md"
-CONSTITUTION_FILE=".spec-flow/memory/constitution.md"
+ENGINEERING_PRINCIPLES="docs/project/engineering-principles.md"
+WORKFLOW_MECHANICS=".spec-flow/memory/workflow-mechanics.md"
 INSPIRATIONS_FILE=".spec-flow/memory/design-inspirations.md"
 UI_INVENTORY_FILE="design/systems/ui-inventory.md"
 BUDGETS_FILE="design/systems/budgets.md"
