@@ -212,70 +212,179 @@ else
 fi
 echo ""
 
-# PROJECT DOCUMENTATION INTEGRATION (Optional)
+# PROJECT DOCUMENTATION INTEGRATION (Mandatory if exists)
 PROJECT_DOCS_DIR="docs/project"
 HAS_PROJECT_DOCS=false
 
+# Check if project documentation exists
 if [ -d "$PROJECT_DOCS_DIR" ]; then
   HAS_PROJECT_DOCS=true
   echo "✅ Project documentation found - loading architecture context"
   echo ""
 
-  # Read ALL 8 project docs to inform planning
+  # Verify required documentation files exist
+  REQUIRED_DOCS=("tech-stack.md" "data-architecture.md" "api-strategy.md")
+  MISSING_DOCS=()
+
+  for doc in "${REQUIRED_DOCS[@]}"; do
+    if [ ! -f "$PROJECT_DOCS_DIR/$doc" ]; then
+      MISSING_DOCS+=("$doc")
+    fi
+  done
+
+  if [ ${#MISSING_DOCS[@]} -gt 0 ]; then
+    echo "⚠️  WARNING: Missing required project documentation:"
+    for doc in "${MISSING_DOCS[@]}"; do
+      echo "   - $PROJECT_DOCS_DIR/$doc"
+    done
+    echo ""
+    echo "These files are critical for accurate planning."
+    echo "Recommendation: Run /init-project to generate project documentation"
+    echo ""
+    read -p "Continue without complete project docs? (y/N): " continue_choice
+    if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
+      echo "Exiting - please run /init-project first"
+      exit 0
+    fi
+    echo ""
+  fi
+
+  # Read and parse project documentation
   echo "📚 Reading project documentation..."
 
-  # 1. Overview - Vision, users, scope, success metrics
-  # Read: docs/project/overview.md
-  # Extract: Vision statement, target users, core value prop, success metrics, scope boundaries
-  # Purpose: Ensure feature aligns with project vision and serves target users
+  # PRIORITY 1: Parse tech-stack.md (prevents hallucination)
+  if [ -f "$PROJECT_DOCS_DIR/tech-stack.md" ]; then
+    echo "  → tech-stack.md"
+    # Extract tech stack from markdown table
+    # Format: | Frontend | Next.js 14.2 | ... |
+    FRONTEND_STACK=$(grep "| Frontend |" "$PROJECT_DOCS_DIR/tech-stack.md" 2>/dev/null | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}' || echo "Not specified")
+    BACKEND_STACK=$(grep "| Backend |" "$PROJECT_DOCS_DIR/tech-stack.md" 2>/dev/null | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}' || echo "Not specified")
+    DATABASE_STACK=$(grep "| Database |" "$PROJECT_DOCS_DIR/tech-stack.md" 2>/dev/null | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}' || echo "Not specified")
+    STYLING_STACK=$(grep "| Styling |" "$PROJECT_DOCS_DIR/tech-stack.md" 2>/dev/null | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}' || echo "Not specified")
+    STATE_MGMT=$(grep "| State Management |" "$PROJECT_DOCS_DIR/tech-stack.md" 2>/dev/null | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}' || echo "Not specified")
 
-  # 2. System Architecture - Components, diagrams, data flows
-  # Read: docs/project/system-architecture.md
-  # Extract: Existing components, services, integration points, architectural constraints
-  # Purpose: Identify where this feature fits in the system, what it integrates with
+    RESEARCH_DECISIONS+=("Frontend: $FRONTEND_STACK (from tech-stack.md)")
+    RESEARCH_DECISIONS+=("Backend: $BACKEND_STACK (from tech-stack.md)")
+    RESEARCH_DECISIONS+=("Database: $DATABASE_STACK (from tech-stack.md)")
+    RESEARCH_DECISIONS+=("Styling: $STYLING_STACK (from tech-stack.md)")
+    RESEARCH_DECISIONS+=("State: $STATE_MGMT (from tech-stack.md)")
+  fi
 
-  # 3. Tech Stack - Languages, frameworks, tools
-  # Read: docs/project/tech-stack.md
-  # Extract: Frontend framework, backend framework, database, deployment platform, versions
-  # Purpose: Use correct tech stack, avoid suggesting wrong technologies
+  # PRIORITY 2: Parse data-architecture.md (prevents duplicate entities)
+  if [ -f "$PROJECT_DOCS_DIR/data-architecture.md" ]; then
+    echo "  → data-architecture.md"
+    # Extract existing entities from ERD
+    # Format: Entities are typically listed in ERD section or entity schemas
+    EXISTING_ENTITIES=$(grep -E "^### |^## " "$PROJECT_DOCS_DIR/data-architecture.md" 2>/dev/null | grep -v "ERD\|Entity\|Architecture\|Overview" | sed 's/^#* //' | tr '\n' ', ' | sed 's/, $//' || echo "Not documented")
 
-  # 4. Data Architecture - ERD, schemas, migrations
-  # Read: docs/project/data-architecture.md
-  # Extract: Existing entities, relationships, naming conventions, migration strategy
-  # Purpose: Reuse existing schemas, follow naming conventions, plan migrations correctly
+    # Extract naming convention
+    NAMING_CONVENTION=$(grep -i "naming convention" "$PROJECT_DOCS_DIR/data-architecture.md" -A 2 2>/dev/null | tail -1 | sed 's/^[*-] //' || echo "Not specified")
 
-  # 5. API Strategy - REST patterns, auth, versioning
-  # Read: docs/project/api-strategy.md
-  # Extract: API style (REST/GraphQL/tRPC), auth provider, versioning scheme, error format, rate limiting
-  # Purpose: Follow established API patterns, use correct auth, maintain consistency
+    RESEARCH_DECISIONS+=("Existing Entities: $EXISTING_ENTITIES (from data-architecture.md)")
+    RESEARCH_DECISIONS+=("Naming Convention: $NAMING_CONVENTION (from data-architecture.md)")
+  fi
 
-  # 6. Capacity Planning - Scale tiers, performance targets
-  # Read: docs/project/capacity-planning.md
-  # Extract: Current scale tier, resource limits, performance targets, cost constraints
-  # Purpose: Design for current scale tier, meet performance targets
+  # PRIORITY 3: Parse api-strategy.md (ensures API consistency)
+  if [ -f "$PROJECT_DOCS_DIR/api-strategy.md" ]; then
+    echo "  → api-strategy.md"
+    # Extract API patterns
+    API_STYLE=$(grep -E "REST|GraphQL|tRPC|gRPC" "$PROJECT_DOCS_DIR/api-strategy.md" 2>/dev/null | head -1 | sed 's/^[*-] //' | sed 's/:.*//' || echo "Not specified")
+    AUTH_PROVIDER=$(grep -i "auth.*provider\|authentication.*provider" "$PROJECT_DOCS_DIR/api-strategy.md" -A 1 2>/dev/null | tail -1 | sed 's/^[*-] //' || echo "Not specified")
+    API_VERSIONING=$(grep -i "versioning" "$PROJECT_DOCS_DIR/api-strategy.md" -A 2 2>/dev/null | grep -E "/v[0-9]|version" | head -1 || echo "Not specified")
+    ERROR_FORMAT=$(grep -i "error.*format\|RFC 7807" "$PROJECT_DOCS_DIR/api-strategy.md" -A 1 2>/dev/null | tail -1 | sed 's/^[*-] //' || echo "Not specified")
 
-  # 7. Deployment Strategy - CI/CD, environments, rollback
-  # Read: docs/project/deployment-strategy.md
-  # Extract: Deployment model (staging-prod/direct-prod/local-only), platforms, CI/CD pipeline
-  # Purpose: Align with deployment process, plan migrations/config correctly
+    RESEARCH_DECISIONS+=("API Style: $API_STYLE (from api-strategy.md)")
+    RESEARCH_DECISIONS+=("Auth Provider: $AUTH_PROVIDER (from api-strategy.md)")
+    RESEARCH_DECISIONS+=("API Versioning: $API_VERSIONING (from api-strategy.md)")
+    RESEARCH_DECISIONS+=("Error Format: $ERROR_FORMAT (from api-strategy.md)")
+  fi
 
-  # 8. Development Workflow - Git flow, PR process, testing
-  # Read: docs/project/development-workflow-template.md
-  # Extract: Git workflow, branch naming, testing strategy, code style, Definition of Done
-  # Purpose: Follow team conventions, plan testing correctly
+  # PRIORITY 4: Parse capacity-planning.md (performance targets)
+  if [ -f "$PROJECT_DOCS_DIR/capacity-planning.md" ]; then
+    echo "  → capacity-planning.md"
+    # Extract scale tier and performance targets
+    SCALE_TIER=$(grep -i "scale tier\|tier:" "$PROJECT_DOCS_DIR/capacity-planning.md" 2>/dev/null | head -1 | grep -oE "micro|small|medium|large" || echo "Not specified")
+    API_RESPONSE_TARGET=$(grep -i "API response\|p95\|response time" "$PROJECT_DOCS_DIR/capacity-planning.md" 2>/dev/null | grep -oE "[0-9]+ms" | head -1 || echo "Not specified")
 
-  # Document all findings in research.md (will be written later)
-  RESEARCH_DECISIONS+=("Project Architecture: Loaded from docs/project/ (8 docs)")
+    RESEARCH_DECISIONS+=("Scale Tier: $SCALE_TIER (from capacity-planning.md)")
+    RESEARCH_DECISIONS+=("API Response Target: $API_RESPONSE_TARGET (from capacity-planning.md)")
+  fi
 
-  # Add specific decisions from each doc
-  # (Claude Code will read and extract during research phase)
+  # OPTIONAL: Parse system-architecture.md (integration points)
+  if [ -f "$PROJECT_DOCS_DIR/system-architecture.md" ]; then
+    echo "  → system-architecture.md"
+    ARCHITECTURE_STYLE=$(grep -i "monolith\|microservices\|serverless" "$PROJECT_DOCS_DIR/system-architecture.md" 2>/dev/null | head -1 | grep -oE "monolith|microservices|serverless" || echo "Not specified")
+    RESEARCH_DECISIONS+=("Architecture: $ARCHITECTURE_STYLE (from system-architecture.md)")
+  fi
 
-  echo "✅ Project documentation loaded - plan will align with architecture"
+  # OPTIONAL: Parse deployment-strategy.md (deployment model)
+  if [ -f "$PROJECT_DOCS_DIR/deployment-strategy.md" ]; then
+    echo "  → deployment-strategy.md"
+    DEPLOYMENT_MODEL=$(grep -i "staging-prod\|direct-prod\|local-only" "$PROJECT_DOCS_DIR/deployment-strategy.md" 2>/dev/null | head -1 | grep -oE "staging-prod|direct-prod|local-only" || echo "Not specified")
+    DEPLOYMENT_PLATFORM=$(grep -i "platform:" "$PROJECT_DOCS_DIR/deployment-strategy.md" 2>/dev/null | head -1 | sed 's/.*: //' || echo "Not specified")
+    RESEARCH_DECISIONS+=("Deployment: $DEPLOYMENT_MODEL on $DEPLOYMENT_PLATFORM (from deployment-strategy.md)")
+  fi
+
+  # OPTIONAL: Parse overview.md (project vision)
+  if [ -f "$PROJECT_DOCS_DIR/overview.md" ]; then
+    echo "  → overview.md"
+    PROJECT_VISION=$(grep -A 3 "Vision\|vision:" "$PROJECT_DOCS_DIR/overview.md" 2>/dev/null | tail -1 | sed 's/^[*-] //' || echo "Not specified")
+    RESEARCH_DECISIONS+=("Project Vision: $PROJECT_VISION (from overview.md)")
+  fi
+
+  # OPTIONAL: Parse development-workflow.md (testing strategy)
+  if [ -f "$PROJECT_DOCS_DIR/development-workflow.md" ]; then
+    echo "  → development-workflow.md"
+    TESTING_STRATEGY=$(grep -i "testing strategy\|test coverage" "$PROJECT_DOCS_DIR/development-workflow.md" -A 2 2>/dev/null | tail -1 | sed 's/^[*-] //' || echo "Not specified")
+    RESEARCH_DECISIONS+=("Testing: $TESTING_STRATEGY (from development-workflow.md)")
+  fi
+
+  echo "✅ Project documentation loaded successfully"
   echo ""
+
+  # Freshness validation (compare docs to code)
+  echo "🔍 Validating documentation freshness..."
+
+  # Check if package.json exists and compare frontend framework
+  if [ -f "package.json" ] && [ "$FRONTEND_STACK" != "Not specified" ]; then
+    # Extract framework from package.json dependencies
+    if grep -q "next" package.json 2>/dev/null; then
+      CODE_FRAMEWORK="Next.js"
+      DOCS_FRAMEWORK=$(echo "$FRONTEND_STACK" | grep -oE "Next\.js|React|Vue|Angular|Svelte" || echo "Unknown")
+
+      if [ "$DOCS_FRAMEWORK" != "$CODE_FRAMEWORK" ] && [ "$DOCS_FRAMEWORK" != "Unknown" ]; then
+        echo "⚠️  WARNING: Tech stack mismatch detected"
+        echo "   Docs say: $DOCS_FRAMEWORK"
+        echo "   Code uses: $CODE_FRAMEWORK"
+        echo "   Consider updating tech-stack.md"
+        echo ""
+      fi
+    fi
+  fi
+
+  echo "✅ Validation complete"
+  echo ""
+
 else
-  echo "ℹ️  No project documentation found"
-  echo "   Consider running /init-project for project-level design docs"
-  echo "   (Optional - planning works without it)"
+  echo "ℹ️  No project documentation found at $PROJECT_DOCS_DIR"
+  echo ""
+  echo "Project documentation provides:"
+  echo "  • Tech stack (prevents hallucination)"
+  echo "  • Existing entities (prevents duplication)"
+  echo "  • API patterns (ensures consistency)"
+  echo "  • Performance targets (better design)"
+  echo ""
+  echo "Recommendation: Run /init-project (one-time setup, ~10 minutes)"
+  echo ""
+  read -p "Continue without project docs? (y/N): " continue_choice
+  if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
+    echo "Exiting - please run /init-project first"
+    echo "This will generate 8 comprehensive project docs and prevent planning errors"
+    exit 0
+  fi
+  echo ""
+  echo "⚠️  Proceeding without project documentation"
+  echo "   Planning may make assumptions about tech stack and architecture"
   echo ""
 fi
 ```
@@ -285,17 +394,23 @@ fi
 2. **Grep keywords**: Quick scan for similar patterns to reuse
 3. **Glob modules** (optional): If integration needed with existing code
 
-**Full research** (5-15 tools for complex features):
+**Full research** (5-15 tools for complex features, **2-5 tools if project docs exist**):
 1-3. Minimal research (above)
 4. **Glob modules**: `api/src/modules/*`, `api/src/services/*`, `apps/*/components/**`, `apps/*/lib/**`
 5-6. **Read similar modules**: Study patterns, categorize as reusable or inspiration
    - If reusable: `REUSABLE_COMPONENTS+=("api/src/services/auth: JWT validation")`
    - If new needed: `NEW_COMPONENTS+=("api/src/services/csv-parser: New capability")`
-7. **WebSearch best practices**: If novel pattern (not in codebase)
+7. **WebSearch best practices**: If novel pattern (not in codebase) — **SKIP if project docs exist** (rationale in tech-stack.md)
 8. **Read design-inspirations.md**: If UI-heavy feature
-9-10. **Read integration points**: Auth, billing, storage services (if complex integration)
+9-10. **Read integration points**: Auth, billing, storage services (if complex integration) — **SKIP if api-strategy.md exists**
 11-15. **Deep dive - Read related modules**: If complex integration across multiple systems
 16. **Read visuals/README.md**: UX patterns (if exists)
+
+**Optimization with project docs**:
+- If `docs/project/` exists: Tech stack, API patterns, data models, and performance targets are already documented
+- Skip: Codebase scanning for stack detection, API pattern inference, entity discovery
+- Focus: Component reuse scanning (not in project docs) and feature-specific research
+- **Time savings**: 50-60% faster (8-15 min → 4-7 min for complex features)
 
 **Document decisions:**
 ```bash
@@ -321,70 +436,57 @@ $(if [ "$HAS_PROJECT_DOCS" = true ]; then
   echo ""
   echo "**Source**: \`docs/project/\` (8 project-level documents)"
   echo ""
-  echo "### Overview (from overview.md)"
-  echo "- **Vision**: [Vision statement from overview.md]"
-  echo "- **Target Users**: [Primary personas from overview.md]"
-  echo "- **Success Metrics**: [KPIs from overview.md]"
-  echo "- **Scope Boundaries**: [What's in/out of scope from overview.md]"
-  echo ""
-  echo "### System Architecture (from system-architecture.md)"
-  echo "- **Components**: [Relevant components from C4 diagrams]"
-  echo "- **Integration Points**: [Services/APIs this feature integrates with]"
-  echo "- **Data Flows**: [How data flows through the system]"
-  echo "- **Constraints**: [Architectural constraints from docs]"
+  echo "This feature must align with the project's established architecture, tech stack, and patterns documented below."
   echo ""
   echo "### Tech Stack (from tech-stack.md)"
-  echo "- **Frontend**: [Framework + version]"
-  echo "- **Backend**: [Framework + version]"
-  echo "- **Database**: [Type + version]"
-  echo "- **Deployment**: [Platform + model]"
+  echo "- **Frontend**: ${FRONTEND_STACK:-Not specified}"
+  echo "- **Backend**: ${BACKEND_STACK:-Not specified}"
+  echo "- **Database**: ${DATABASE_STACK:-Not specified}"
+  echo "- **Styling**: ${STYLING_STACK:-Not specified}"
+  echo "- **State Management**: ${STATE_MGMT:-Not specified}"
   echo ""
   echo "### Data Architecture (from data-architecture.md)"
-  echo "- **Existing Entities**: [Entities from ERD relevant to this feature]"
-  echo "- **Relationships**: [Foreign keys, joins]"
-  echo "- **Naming Conventions**: [snake_case/camelCase/etc.]"
-  echo "- **Migration Strategy**: [How to handle schema changes]"
+  echo "- **Existing Entities**: ${EXISTING_ENTITIES:-Not documented}"
+  echo "- **Naming Convention**: ${NAMING_CONVENTION:-Not specified}"
   echo ""
   echo "### API Strategy (from api-strategy.md)"
-  echo "- **API Style**: [REST/GraphQL/tRPC]"
-  echo "- **Auth**: [Provider/method - e.g., Clerk, JWT]"
-  echo "- **Versioning**: [Scheme - e.g., /api/v1/]"
-  echo "- **Error Format**: [RFC 7807 or custom]"
-  echo "- **Rate Limiting**: [Strategy and limits]"
+  echo "- **API Style**: ${API_STYLE:-Not specified}"
+  echo "- **Auth Provider**: ${AUTH_PROVIDER:-Not specified}"
+  echo "- **Versioning**: ${API_VERSIONING:-Not specified}"
+  echo "- **Error Format**: ${ERROR_FORMAT:-Not specified}"
   echo ""
-  echo "### Capacity Planning (from capacity-planning.md)"
-  echo "- **Current Scale**: [micro/small/medium/large]"
-  echo "- **Performance Targets**: [Response time, throughput]"
-  echo "- **Resource Limits**: [DB connections, memory, CPU]"
-  echo "- **Cost Constraints**: [Budget per tier]"
+  echo "### Performance & Scale (from capacity-planning.md)"
+  echo "- **Scale Tier**: ${SCALE_TIER:-Not specified}"
+  echo "- **API Response Target**: ${API_RESPONSE_TARGET:-Not specified}"
   echo ""
-  echo "### Deployment Strategy (from deployment-strategy.md)"
-  echo "- **Deployment Model**: [staging-prod/direct-prod/local-only]"
-  echo "- **Platform**: [Vercel/Railway/AWS/etc.]"
-  echo "- **CI/CD Pipeline**: [GitHub Actions/etc.]"
-  echo "- **Environments**: [dev, staging, prod]"
+  echo "### Architecture & Deployment"
+  echo "- **Architecture Style**: ${ARCHITECTURE_STYLE:-Not specified} (from system-architecture.md)"
+  echo "- **Deployment Model**: ${DEPLOYMENT_MODEL:-Not specified} (from deployment-strategy.md)"
+  echo "- **Platform**: ${DEPLOYMENT_PLATFORM:-Not specified} (from deployment-strategy.md)"
   echo ""
-  echo "### Development Workflow (from development-workflow.md)"
-  echo "- **Git Workflow**: [GitHub Flow/Git Flow/Trunk-Based]"
-  echo "- **Testing Strategy**: [Unit/Integration/E2E coverage targets]"
-  echo "- **Code Style**: [ESLint/Prettier/Ruff configs]"
-  echo "- **Definition of Done**: [Checklist from docs]"
-  echo ""
+  if [ -n "$PROJECT_VISION" ] && [ "$PROJECT_VISION" != "Not specified" ]; then
+    echo "### Project Vision (from overview.md)"
+    echo "${PROJECT_VISION}"
+    echo ""
+  fi
+  if [ -n "$TESTING_STRATEGY" ] && [ "$TESTING_STRATEGY" != "Not specified" ]; then
+    echo "### Testing Strategy (from development-workflow.md)"
+    echo "${TESTING_STRATEGY}"
+    echo ""
+  fi
   echo "---"
   echo ""
 fi)
 
 ## Research Decisions
 
-$(for decision in "${RESEARCH_DECISIONS[@]}"; do
-  echo "### Decision: $decision"
-  echo ""
-  echo "- **Decision**: [what chosen]"
-  echo "- **Rationale**: [why this over alternatives]"
-  echo "- **Alternatives**: [what rejected and why]"
-  echo "- **Source**: [link/file/research]"
-  echo ""
-done)
+$(if [ ${#RESEARCH_DECISIONS[@]} -gt 0 ]; then
+  for decision in "${RESEARCH_DECISIONS[@]}"; do
+    echo "- $decision"
+  done
+else
+  echo "No research decisions documented yet."
+fi)
 
 ---
 
