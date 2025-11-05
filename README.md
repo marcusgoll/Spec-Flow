@@ -44,6 +44,26 @@
 
 ## 🆕 Recent Updates
 
+### v3.1.0 (November 2025)
+**OKLCH Color Space Upgrade** - Perceptually uniform design tokens
+
+- **OKLCH Color Space**: Upgraded `/init-brand-tokens` to generate OKLCH colors
+  - 92% browser support with automatic sRGB fallback
+  - Perceptually uniform lightness across all hues
+  - Wide gamut support (P3 color space, 50% more colors than sRGB)
+- **Semantic Token Structure**: Replaced DEFAULT/light/dark with explicit bg/fg/border/icon tokens
+  - Eliminates "ink vs paint" confusion
+  - Automated WCAG AAA (7:1) contrast validation using colorjs.io
+- **New Token Categories**: Focus (WCAG 2.2), Motion (reduced-motion), Data viz (Okabe-Ito colorblind-safe), Typography features, Dark mode shadows (3-6x opacity)
+- **Design Principles**: Comprehensive OKLCH documentation and best practices
+- **Added dependency**: colorjs.io ^0.5.0 for OKLCH conversion and WCAG validation
+
+**Problem Solved**: v1.0.0 used RGB colors with false WCAG claims (e.g., claimed 7.8:1 but actually 5.70:1). No semantic token structure caused "ink vs paint" confusion. Missing critical tokens for focus, motion, and accessibility.
+
+**Impact**: Perceptually uniform colors with accurate WCAG validation. Clear semantic meaning for every token. WCAG 2.2 compliant focus indicators. Colorblind-safe data visualization. Proper dark mode depth perception.
+
+---
+
 ### v3.0.1 (November 2025)
 **Package Fix** - Added missing design commands to npm
 

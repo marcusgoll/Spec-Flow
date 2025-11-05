@@ -1,3 +1,38 @@
+## [3.1.0] - 2025-11-05
+
+### Added
+- **OKLCH Color Space**: Upgraded `/init-brand-tokens` to generate perceptually uniform OKLCH colors
+  - 92% browser support with automatic sRGB fallback for legacy browsers
+  - Wide gamut support (P3 color space, 50% more colors than sRGB)
+  - Perceptually uniform lightness across all hues
+- **Semantic Token Structure**: Replaced DEFAULT/light/dark with explicit bg/fg/border/icon tokens
+  - Eliminates "ink vs paint" confusion with clear semantic meaning
+  - Automated WCAG AAA (7:1) contrast validation using colorjs.io
+- **New Token Categories**:
+  - Focus tokens: WCAG 2.2 Focus Appearance compliance (2px ring, 3:1 contrast)
+  - Motion tokens: Durations, easings, and reduced-motion support
+  - Data visualization: Okabe-Ito 8-color colorblind-safe palette
+  - Typography features: Tabular nums, slashed zero, OpenType variants
+  - Dark mode shadows: 3-6x opacity increase for proper depth perception
+- **Design Principles Documentation**: Comprehensive guide to OKLCH token system
+  - OKLCH color space explanation and CSS usage examples
+  - Semantic token naming conventions
+  - WCAG contrast requirements and validation
+  - Focus, motion, and accessibility best practices
+
+### Changed
+- Brownfield token scanner now converts detected colors to OKLCH format
+- All template tokens updated from RGB hex to OKLCH with fallbacks
+
+### Fixed
+- Fixed false WCAG claims from v1.0.0 (e.g., Secondary claimed 7.8:1 but was actually 5.70:1)
+- Automated contrast validation ensures all semantic tokens meet AAA standards
+
+### Dependencies
+- Added `colorjs.io ^0.5.0` for OKLCH conversion and WCAG contrast calculation
+
+---
+
 ## [3.0.1] - 2025-11-05
 
 ### Fixed
