@@ -44,6 +44,22 @@
 
 ## 🆕 Recent Updates
 
+### v3.0.1 (November 2025)
+**Package Fix** - Added missing design commands to npm
+
+- **Fixed npm package**: Added missing design workflow commands
+  - `/init-brand-tokens` - Smart brand token initialization
+  - `/design` - Unified design orchestrator (Variations → Functional → Polish)
+  - `/research-design` - Multi-source design inspiration gathering
+  - `/update-project-config` - Project configuration updates (was missing after rename)
+- **Removed deprecated**: Removed old `setup-constitution` reference
+
+**Problem Solved**: v2.12.0 introduced comprehensive design workflow commands, but they were accidentally excluded from the npm package files list. Users who installed via npm couldn't access these commands.
+
+**Impact**: Design workflow is now fully available in npm package. Users can initialize brand tokens, run design workflows, and configure projects without cloning the repo.
+
+---
+
 ### v3.0.0 (November 2025)
 **Constitution Cleanup** - Simplified project structure and documentation
 

@@ -1,3 +1,12 @@
+## [3.0.1] - 2025-11-05
+
+### Fixed
+- Added missing design commands to npm package (init-brand-tokens, design, research-design)
+- Added update-project-config command to npm package (renamed from setup-constitution)
+- Removed deprecated setup-constitution from npm package
+
+---
+
 ## [3.0.0] - 2025-11-04
 
 ### BREAKING CHANGES
