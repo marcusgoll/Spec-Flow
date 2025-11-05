@@ -1,3 +1,15 @@
+## [3.3.0] - 2025-11-05
+
+### Added
+- **GitHub Issues Lookup**: `/feature <slug>` now searches and claims roadmap items by slug
+  - Support for `/feature landing-page-waitlist` syntax
+  - Display issue details (title, priority, ICE score, requirements)
+  - Confirmation prompt before claiming and starting feature
+  - Not found handler: offer to create new or add to roadmap
+  - Maintains backward compatibility with `/feature next` and `/feature continue`
+
+---
+
 ## [3.2.0] - 2025-11-05
 
 ### Added
