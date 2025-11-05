@@ -134,14 +134,13 @@ Let me analyze this workflow decision:
 
 If `$ARGUMENTS` is empty, show usage:
 ```
-Usage: /feature [feature description]
-   or: /feature <slug>
+Usage: /feature [feature description or slug]
    or: /feature continue
    or: /feature next
 
 Examples:
-  /feature "Student progress tracking dashboard"
   /feature landing-page-waitlist
+  /feature "Student progress tracking"
   /feature continue
   /feature next
 ```
@@ -157,19 +156,12 @@ Else if `$ARGUMENTS` is "next":
 - Extract slug and feature description
 - Initialize new workflow with auto-fetched feature
 
-Else if `$ARGUMENTS` matches slug pattern (lowercase, hyphens, no spaces: `^[a-z0-9-]+$`):
+Else (all other arguments):
 - Set `LOOKUP_MODE = true`
-- Set `LOOKUP_SLUG = $ARGUMENTS`
-- Search GitHub Issues for roadmap item with matching slug
+- Set `SEARCH_TERM = $ARGUMENTS`
+- Search GitHub Issues for roadmap item matching slug or title
 - If found: Display details, confirm, claim issue, continue workflow
-- If not found: Ask user to create new feature or add to roadmap first
-
-Else:
-- Set `CONTINUE_MODE = false`
-- Set `NEXT_MODE = false`
-- Set `LOOKUP_MODE = false`
-- Set `FEATURE_DESCRIPTION = $ARGUMENTS`
-- Initialize new workflow
+- If not found: Ask user to create new feature with detailed description
 
 ## FETCH NEXT FEATURE
 
@@ -325,9 +317,9 @@ SLUG="$EXTRACTED_SLUG"
 
 **Important**: After fetching, continue to GENERATE FEATURE SLUG section (which will use the extracted SLUG), then proceed normally through the workflow.
 
-## LOOKUP FEATURE BY SLUG
+## LOOKUP FEATURE IN ROADMAP
 
-**Only execute if `LOOKUP_MODE = true`:**
+**Execute for all non-continue/non-next modes (LOOKUP_MODE = true):**
 
 ```bash
 # Check GitHub authentication
@@ -351,45 +343,82 @@ if [ -z "$REPO" ]; then
   exit 1
 fi
 
-echo "🔍 Searching for roadmap item: $LOOKUP_SLUG..."
+echo "🔍 Searching roadmap for: \"$SEARCH_TERM\"..."
 echo ""
 
-# Query GitHub Issues for item with matching slug
-# Search in issue body YAML frontmatter: slug: "exact-slug"
+# Query GitHub Issues for item with matching slug or title
+# First try exact slug match in YAML frontmatter: slug: "exact-slug"
+# Then try fuzzy title match as fallback
 LOOKUP_ISSUE=$(gh issue list \
   --repo "$REPO" \
   --label "type:feature" \
   --json number,title,body,labels \
-  --limit 100 | jq -r --arg slug "$LOOKUP_SLUG" '
-    map(select(.body | test("slug:\\s*\"" + $slug + "\""))) |
+  --limit 100 | jq -r --arg term "$SEARCH_TERM" '
+    map(select(
+      (.body | test("slug:\\s*\"" + $term + "\"")) or
+      (.title | ascii_downcase | contains($term | ascii_downcase))
+    )) |
     first // empty')
 
 # If not found, ask user what to do
 if [ -z "$LOOKUP_ISSUE" ]; then
-  echo "❌ No roadmap item found for: $LOOKUP_SLUG"
+  echo "❌ No roadmap item found for: \"$SEARCH_TERM\""
   echo ""
   echo "Options:"
   echo "  A) Create new feature (not on roadmap)"
-  echo "  B) Add to roadmap first"
-  echo "  C) Cancel"
+  echo "  B) Cancel and add to roadmap first"
   echo ""
-  read -p "Choice (A/B/C): " choice
+  read -p "Choice (A/B): " choice
 
   case $choice in
     A|a)
       echo ""
       echo "Creating new feature (not on roadmap)..."
       echo ""
-      # Continue with new feature workflow using slug
-      SLUG="$LOOKUP_SLUG"
-      FEATURE_DESCRIPTION="$LOOKUP_SLUG"
+      echo "📝 Describe the feature in detail (2-3 sentences):"
+      echo "   (Press Enter twice when done)"
+      echo ""
+
+      # Read multi-line input
+      FEATURE_DESCRIPTION=""
+      while IFS= read -r line; do
+        if [ -z "$line" ]; then
+          break
+        fi
+        if [ -z "$FEATURE_DESCRIPTION" ]; then
+          FEATURE_DESCRIPTION="$line"
+        else
+          FEATURE_DESCRIPTION="$FEATURE_DESCRIPTION $line"
+        fi
+      done
+
+      # Validate description was provided
+      if [ -z "$FEATURE_DESCRIPTION" ]; then
+        echo "❌ No description provided. Cancelled."
+        exit 1
+      fi
+
+      echo ""
+      echo "Description: $FEATURE_DESCRIPTION"
+      echo ""
+      read -p "Proceed with this feature? (yes/no): " confirm
+
+      if [[ ! "$confirm" =~ ^[Yy] ]]; then
+        echo "Cancelled"
+        exit 0
+      fi
+
+      echo ""
+      echo "✅ Creating new feature..."
+      echo ""
+      # SLUG will be generated in GENERATE FEATURE SLUG section
       ;;
     B|b)
       echo ""
       echo "Add this feature to your roadmap first:"
-      echo "  /roadmap add \"Feature description\""
+      echo "  /roadmap"
       echo ""
-      echo "Then run: /feature $LOOKUP_SLUG"
+      echo "Then run: /feature <slug>"
       exit 0
       ;;
     *)
@@ -463,8 +492,14 @@ else
     }
   echo ""
 
-  # Extract slug and feature description
-  SLUG="$LOOKUP_SLUG"
+  # Extract slug from issue body YAML frontmatter
+  SLUG=$(echo "$ISSUE_BODY" | grep -oP '^slug:\s*"\K[^"]+' | head -1)
+
+  # Fallback: if no slug in frontmatter, generate from title
+  if [ -z "$SLUG" ]; then
+    SLUG=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//' | cut -c1-30)
+  fi
+
   FEATURE_DESCRIPTION="$ISSUE_TITLE"
 
   echo "✅ Claimed issue #$ISSUE_NUMBER"
@@ -480,10 +515,10 @@ fi
 
 **Generate slug from feature description before any file/branch operations:**
 
-**Skip if already set by NEXT_MODE:**
+**Skip if already set by NEXT_MODE or LOOKUP_MODE:**
 
 ```bash
-# If SLUG already set (from /feature next), skip generation
+# If SLUG already set (from /feature next or GitHub Issues lookup), skip generation
 if [ -z "$SLUG" ]; then
   # Generate concise short-name from feature description (2-4 words, action-noun format)
   # This must happen BEFORE branch creation since branch name includes slug
