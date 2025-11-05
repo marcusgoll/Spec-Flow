@@ -217,55 +217,270 @@ Use `AskUserQuestion` tool for guided setup:
 }
 ```
 
-#### Step 2.2: Generate Palette
+#### Step 2.2: Generate OKLCH Palette
 
-Based on user answers, generate full token structure:
+Based on user answers, generate full token structure using OKLCH color space:
 
-**If primary=#3b82f6, style=Minimal**:
+**OKLCH Format**: `oklch(L% C H)` where:
+- L = Lightness (0-100%)
+- C = Chroma (0-0.4+, typically 0.0-0.25)
+- H = Hue (0-360°)
+
+**If primary=#3b82f6 (blue), style=Minimal**:
 
 ```json
 {
+  "meta": {
+    "colorSpace": "oklch",
+    "fallbackSpace": "srgb",
+    "version": "2.0.0",
+    "browserSupport": {
+      "oklch": "92% (Chrome 111+, Safari 15.4+, Firefox 113+)",
+      "fallback": "8% (legacy browsers)"
+    }
+  },
   "colors": {
     "brand": {
-      "primary": "#3b82f6",
-      "secondary": "#6366f1",  // Derived: primary + 10° hue shift
-      "accent": "#10b981"      // Complementary green
+      "primary": {
+        "oklch": "oklch(59.69% 0.156 261.45)",
+        "fallback": "#3b82f6",
+        "description": "Primary brand color"
+      },
+      "secondary": {
+        "oklch": "oklch(58.23% 0.167 271.45)",
+        "fallback": "#6366f1",
+        "description": "Derived: primary + 10° hue shift"
+      },
+      "accent": {
+        "oklch": "oklch(67.89% 0.152 164.57)",
+        "fallback": "#10b981",
+        "description": "Complementary green"
+      }
     },
     "semantic": {
-      "success": "#10b981",
-      "error": "#ef4444",
-      "warning": "#f59e0b",
-      "info": "#3b82f6"
+      "success": {
+        "bg": {
+          "oklch": "oklch(95% 0.02 145)",
+          "fallback": "#D1FAE5"
+        },
+        "fg": {
+          "oklch": "oklch(25% 0.12 145)",
+          "fallback": "#047857"
+        },
+        "border": {
+          "oklch": "oklch(85% 0.05 145)",
+          "fallback": "#A7F3D0"
+        },
+        "icon": {
+          "oklch": "oklch(35% 0.13 145)",
+          "fallback": "#059669"
+        }
+      },
+      "error": {
+        "bg": {
+          "oklch": "oklch(95% 0.02 27)",
+          "fallback": "#FEE2E2"
+        },
+        "fg": {
+          "oklch": "oklch(30% 0.18 27)",
+          "fallback": "#991B1B"
+        },
+        "border": {
+          "oklch": "oklch(85% 0.08 27)",
+          "fallback": "#FECACA"
+        },
+        "icon": {
+          "oklch": "oklch(40% 0.20 27)",
+          "fallback": "#DC2626"
+        }
+      },
+      "warning": {
+        "bg": {
+          "oklch": "oklch(95% 0.02 85)",
+          "fallback": "#FEF3C7"
+        },
+        "fg": {
+          "oklch": "oklch(30% 0.12 85)",
+          "fallback": "#92400E"
+        },
+        "border": {
+          "oklch": "oklch(85% 0.08 85)",
+          "fallback": "#FDE68A"
+        },
+        "icon": {
+          "oklch": "oklch(45% 0.14 85)",
+          "fallback": "#F59E0B"
+        }
+      },
+      "info": {
+        "bg": {
+          "oklch": "oklch(95% 0.02 261)",
+          "fallback": "#DBEAFE"
+        },
+        "fg": {
+          "oklch": "oklch(30% 0.12 261)",
+          "fallback": "#1E3A8A"
+        },
+        "border": {
+          "oklch": "oklch(85% 0.05 261)",
+          "fallback": "#BFDBFE"
+        },
+        "icon": {
+          "oklch": "oklch(59.69% 0.156 261.45)",
+          "fallback": "#3b82f6"
+        }
+      }
     },
     "neutral": {
-      "50": "#fafafa",
-      "100": "#f5f5f5",
-      "200": "#e5e5e5",
-      "400": "#a3a3a3",
-      "600": "#525252",
-      "800": "#262626",
-      "950": "#0a0a0a"
+      "50": {
+        "oklch": "oklch(98% 0 0)",
+        "fallback": "#fafafa"
+      },
+      "100": {
+        "oklch": "oklch(96% 0 0)",
+        "fallback": "#f5f5f5"
+      },
+      "200": {
+        "oklch": "oklch(90% 0 0)",
+        "fallback": "#e5e5e5"
+      },
+      "400": {
+        "oklch": "oklch(64% 0 0)",
+        "fallback": "#a3a3a3"
+      },
+      "600": {
+        "oklch": "oklch(42% 0 0)",
+        "fallback": "#525252"
+      },
+      "800": {
+        "oklch": "oklch(23% 0 0)",
+        "fallback": "#262626"
+      },
+      "950": {
+        "oklch": "oklch(11% 0 0)",
+        "fallback": "#0a0a0a"
+      }
+    }
+  },
+  "focus": {
+    "ring": {
+      "width": "2px",
+      "color": {
+        "oklch": "oklch(59.69% 0.156 261.45)",
+        "fallback": "#3b82f6"
+      },
+      "offset": "2px",
+      "wcag": "WCAG 2.2 Focus Appearance 2.4.13 (3:1 minimum)"
+    }
+  },
+  "motion": {
+    "duration": {
+      "instant": "0ms",
+      "fast": "150ms",
+      "base": "200ms",
+      "slow": "300ms",
+      "slower": "500ms"
+    },
+    "easing": {
+      "standard": "cubic-bezier(0.4, 0.0, 0.2, 1)",
+      "decelerate": "cubic-bezier(0.0, 0.0, 0.2, 1)",
+      "accelerate": "cubic-bezier(0.4, 0.0, 1, 1)",
+      "sharp": "cubic-bezier(0.4, 0.0, 0.6, 1)"
+    },
+    "reducedMotion": {
+      "duration": "0ms",
+      "easing": "linear",
+      "mediaQuery": "@media (prefers-reduced-motion: reduce)"
+    }
+  },
+  "dataViz": {
+    "categorical": {
+      "okabe-ito": {
+        "orange": {
+          "oklch": "oklch(68.29% 0.151 58.43)",
+          "fallback": "#E69F00",
+          "description": "Colorblind-safe orange"
+        },
+        "skyBlue": {
+          "oklch": "oklch(70.17% 0.099 232.66)",
+          "fallback": "#56B4E9",
+          "description": "Colorblind-safe sky blue"
+        },
+        "bluishGreen": {
+          "oklch": "oklch(59.78% 0.108 164.04)",
+          "fallback": "#009E73",
+          "description": "Colorblind-safe bluish green"
+        },
+        "yellow": {
+          "oklch": "oklch(94.47% 0.152 102.85)",
+          "fallback": "#F0E442",
+          "description": "Colorblind-safe yellow"
+        },
+        "blue": {
+          "oklch": "oklch(32.30% 0.115 264.05)",
+          "fallback": "#0072B2",
+          "description": "Colorblind-safe blue"
+        },
+        "vermillion": {
+          "oklch": "oklch(54.72% 0.199 29.23)",
+          "fallback": "#D55E00",
+          "description": "Colorblind-safe vermillion"
+        },
+        "reddishPurple": {
+          "oklch": "oklch(42.14% 0.152 327.11)",
+          "fallback": "#CC79A7",
+          "description": "Colorblind-safe reddish purple"
+        },
+        "black": {
+          "oklch": "oklch(0% 0 0)",
+          "fallback": "#000000",
+          "description": "Colorblind-safe black"
+        }
+      }
     }
   }
 }
 ```
 
-**Accessibility validation**:
+**Automated WCAG Contrast Calculation** (using colorjs.io):
 
-For each color pair (text on background):
-- Calculate WCAG contrast ratio
-- Require 7:1 for AAA (body text)
-- Require 4.5:1 for AA minimum
-- Suggest adjustments if fails
+```javascript
+import Color from 'colorjs.io';
+
+function calculateContrast(color1, color2) {
+  const c1 = new Color(color1);
+  const c2 = new Color(color2);
+  const ratio = Math.abs(c1.contrast(c2, 'WCAG21'));
+
+  return {
+    ratio: ratio.toFixed(2),
+    passAA: ratio >= 4.5,
+    passAAA: ratio >= 7.0,
+    level: ratio >= 7.0 ? 'AAA' : ratio >= 4.5 ? 'AA' : 'FAIL'
+  };
+}
+```
+
+**Validation Output**:
 
 ```
-✅ primary (#3b82f6) on white: 4.8:1 (AA for large text)
-⚠️ primary on neutral-200: 2.1:1 (FAIL - lighten to primary-700)
+✅ success.fg on success.bg: 10.23:1 (AAA) ✓
+✅ error.fg on error.bg: 9.87:1 (AAA) ✓
+✅ warning.fg on warning.bg: 8.45:1 (AAA) ✓
+✅ info.fg on info.bg: 10.12:1 (AAA) ✓
+✅ primary on white: 4.83:1 (AA for large text)
+⚠️ primary on neutral-200: Adjusted to ensure 4.5:1 minimum
 ```
+
+**Semantic Token Structure**:
+- `.bg` = Background (paint, large areas)
+- `.fg` = Foreground/Text (ink, readable text)
+- `.border` = Border/Outline (edges, dividers)
+- `.icon` = Icon/Glyph fill (visual indicators)
 
 #### Step 2.3: Typography Scale
 
-Generate type scale based on font choice:
+Generate type scale based on font choice, including OpenType features:
 
 ```json
 {
@@ -303,6 +518,38 @@ Generate type scale based on font choice:
       "normal": "0",
       "wide": "0.025em",
       "wider": "0.05em"
+    },
+    "features": {
+      "tabular": {
+        "property": "font-variant-numeric",
+        "value": "tabular-nums",
+        "description": "Monospaced numbers for tables/dashboards",
+        "useCase": "Financial data, metrics, comparison tables"
+      },
+      "slashedZero": {
+        "property": "font-variant-numeric",
+        "value": "slashed-zero",
+        "description": "Slashed zero for O/0 clarity",
+        "useCase": "API keys, serial numbers, technical documentation"
+      },
+      "oldstyle": {
+        "property": "font-variant-numeric",
+        "value": "oldstyle-nums",
+        "description": "Lowercase numbers for body text",
+        "useCase": "Editorial content, long-form text"
+      },
+      "lining": {
+        "property": "font-variant-numeric",
+        "value": "lining-nums",
+        "description": "All-caps numbers for headings",
+        "useCase": "Headlines, UI labels, buttons"
+      },
+      "proportional": {
+        "property": "font-variant-numeric",
+        "value": "proportional-nums",
+        "description": "Variable-width numbers for body text",
+        "useCase": "Paragraphs, narrative content"
+      }
     }
   }
 }
@@ -312,17 +559,62 @@ Generate type scale based on font choice:
 
 ### Phase 3: Elevation & Effects
 
-**Add elevation scale** (from design-principles.md):
+**Add elevation scale with light/dark mode shadows** (from design-principles.md):
 
 ```json
 {
   "shadows": {
-    "none": "none",
-    "sm": "0 1px 2px rgba(0, 0, 0, 0.05)",
-    "md": "0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06)",
-    "lg": "0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.08)",
-    "xl": "0 20px 25px rgba(0, 0, 0, 0.12), 0 10px 10px rgba(0, 0, 0, 0.08)",
-    "2xl": "0 25px 50px rgba(0, 0, 0, 0.15), 0 12px 20px rgba(0, 0, 0, 0.12)"
+    "light": {
+      "none": "none",
+      "sm": {
+        "value": "0 1px 2px oklch(0% 0 0 / 0.05)",
+        "fallback": "0 1px 2px rgba(0, 0, 0, 0.05)"
+      },
+      "md": {
+        "value": "0 4px 6px oklch(0% 0 0 / 0.07), 0 2px 4px oklch(0% 0 0 / 0.06)",
+        "fallback": "0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06)"
+      },
+      "lg": {
+        "value": "0 10px 15px oklch(0% 0 0 / 0.1), 0 4px 6px oklch(0% 0 0 / 0.08)",
+        "fallback": "0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.08)"
+      },
+      "xl": {
+        "value": "0 20px 25px oklch(0% 0 0 / 0.12), 0 10px 10px oklch(0% 0 0 / 0.08)",
+        "fallback": "0 20px 25px rgba(0, 0, 0, 0.12), 0 10px 10px rgba(0, 0, 0, 0.08)"
+      },
+      "2xl": {
+        "value": "0 25px 50px oklch(0% 0 0 / 0.15), 0 12px 20px oklch(0% 0 0 / 0.12)",
+        "fallback": "0 25px 50px rgba(0, 0, 0, 0.15), 0 12px 20px rgba(0, 0, 0, 0.12)"
+      }
+    },
+    "dark": {
+      "none": "none",
+      "sm": {
+        "value": "0 1px 2px oklch(0% 0 0 / 0.30)",
+        "fallback": "0 1px 2px rgba(0, 0, 0, 0.30)",
+        "rationale": "6x opacity increase (0.05 → 0.30) for depth in dark backgrounds"
+      },
+      "md": {
+        "value": "0 4px 6px oklch(0% 0 0 / 0.35), 0 2px 4px oklch(0% 0 0 / 0.30)",
+        "fallback": "0 4px 6px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.30)",
+        "rationale": "5x opacity increase (0.07 → 0.35, 0.06 → 0.30)"
+      },
+      "lg": {
+        "value": "0 10px 15px oklch(0% 0 0 / 0.40), 0 4px 6px oklch(0% 0 0 / 0.32)",
+        "fallback": "0 10px 15px rgba(0, 0, 0, 0.40), 0 4px 6px rgba(0, 0, 0, 0.32)",
+        "rationale": "4x opacity increase (0.1 → 0.40, 0.08 → 0.32)"
+      },
+      "xl": {
+        "value": "0 20px 25px oklch(0% 0 0 / 0.48), 0 10px 10px oklch(0% 0 0 / 0.32)",
+        "fallback": "0 20px 25px rgba(0, 0, 0, 0.48), 0 10px 10px rgba(0, 0, 0, 0.32)",
+        "rationale": "4x opacity increase (0.12 → 0.48, 0.08 → 0.32)"
+      },
+      "2xl": {
+        "value": "0 25px 50px oklch(0% 0 0 / 0.60), 0 12px 20px oklch(0% 0 0 / 0.48)",
+        "fallback": "0 25px 50px rgba(0, 0, 0, 0.60), 0 12px 20px rgba(0, 0, 0, 0.48)",
+        "rationale": "4x opacity increase (0.15 → 0.60, 0.12 → 0.48)"
+      }
+    }
   },
   "elevations": {
     "z-0": "Base layer (page background)",
@@ -405,42 +697,124 @@ module.exports = {
 Run /fix-tailwind-config to auto-correct
 ```
 
-#### Step 4.2: Generate CSS Variables
+#### Step 4.2: Generate CSS Variables with OKLCH
 
 Create `design/systems/tokens.css`:
 
 ```css
 :root {
-  /* Brand colors */
-  --color-primary: #3b82f6;
-  --color-secondary: #6366f1;
-  --color-accent: #10b981;
+  /* Brand colors (OKLCH with sRGB fallback) */
+  --color-primary: oklch(59.69% 0.156 261.45);
+  --color-primary-fallback: #3b82f6;
+  --color-secondary: oklch(58.23% 0.167 271.45);
+  --color-secondary-fallback: #6366f1;
+  --color-accent: oklch(67.89% 0.152 164.57);
+  --color-accent-fallback: #10b981;
 
-  /* Semantic colors */
-  --color-success: #10b981;
-  --color-error: #ef4444;
-  --color-warning: #f59e0b;
-  --color-info: #3b82f6;
+  /* Semantic colors (bg/fg/border/icon structure) */
+  --color-success-bg: oklch(95% 0.02 145);
+  --color-success-fg: oklch(25% 0.12 145);
+  --color-success-border: oklch(85% 0.05 145);
+  --color-success-icon: oklch(35% 0.13 145);
+
+  --color-error-bg: oklch(95% 0.02 27);
+  --color-error-fg: oklch(30% 0.18 27);
+  --color-error-border: oklch(85% 0.08 27);
+  --color-error-icon: oklch(40% 0.20 27);
+
+  --color-warning-bg: oklch(95% 0.02 85);
+  --color-warning-fg: oklch(30% 0.12 85);
+  --color-warning-border: oklch(85% 0.08 85);
+  --color-warning-icon: oklch(45% 0.14 85);
+
+  --color-info-bg: oklch(95% 0.02 261);
+  --color-info-fg: oklch(30% 0.12 261);
+  --color-info-border: oklch(85% 0.05 261);
+  --color-info-icon: oklch(59.69% 0.156 261.45);
 
   /* Neutral palette */
-  --color-neutral-50: #fafafa;
-  --color-neutral-100: #f5f5f5;
-  /* ... */
-  --color-neutral-950: #0a0a0a;
+  --color-neutral-50: oklch(98% 0 0);
+  --color-neutral-100: oklch(96% 0 0);
+  --color-neutral-200: oklch(90% 0 0);
+  --color-neutral-400: oklch(64% 0 0);
+  --color-neutral-600: oklch(42% 0 0);
+  --color-neutral-800: oklch(23% 0 0);
+  --color-neutral-950: oklch(11% 0 0);
+
+  /* Focus tokens (WCAG 2.2) */
+  --focus-ring-width: 2px;
+  --focus-ring-color: oklch(59.69% 0.156 261.45);
+  --focus-ring-offset: 2px;
+
+  /* Motion tokens */
+  --motion-duration-instant: 0ms;
+  --motion-duration-fast: 150ms;
+  --motion-duration-base: 200ms;
+  --motion-duration-slow: 300ms;
+  --motion-duration-slower: 500ms;
+
+  --motion-easing-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --motion-easing-decelerate: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --motion-easing-accelerate: cubic-bezier(0.4, 0.0, 1, 1);
+  --motion-easing-sharp: cubic-bezier(0.4, 0.0, 0.6, 1);
 
   /* Typography */
   --font-sans: Inter, system-ui, -apple-system, sans-serif;
   --font-mono: Fira Code, Consolas, monospace;
+
+  /* Typography features */
+  --font-feature-tabular: "tnum" on;
+  --font-feature-slashed-zero: "zero" on;
+  --font-feature-oldstyle: "onum" on;
+  --font-feature-lining: "lnum" on;
 
   /* Spacing (8px grid) */
   --spacing-1: 0.25rem;  /* 4px */
   --spacing-2: 0.5rem;   /* 8px */
   /* ... */
 
-  /* Shadows (elevation) */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
-  /* ... */
+  /* Shadows - Light mode (elevation) */
+  --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.05);
+  --shadow-md: 0 4px 6px oklch(0% 0 0 / 0.07), 0 2px 4px oklch(0% 0 0 / 0.06);
+  --shadow-lg: 0 10px 15px oklch(0% 0 0 / 0.1), 0 4px 6px oklch(0% 0 0 / 0.08);
+  --shadow-xl: 0 20px 25px oklch(0% 0 0 / 0.12), 0 10px 10px oklch(0% 0 0 / 0.08);
+  --shadow-2xl: 0 25px 50px oklch(0% 0 0 / 0.15), 0 12px 20px oklch(0% 0 0 / 0.12);
+}
+
+/* Dark mode shadows (3-6x opacity increase) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.30);
+    --shadow-md: 0 4px 6px oklch(0% 0 0 / 0.35), 0 2px 4px oklch(0% 0 0 / 0.30);
+    --shadow-lg: 0 10px 15px oklch(0% 0 0 / 0.40), 0 4px 6px oklch(0% 0 0 / 0.32);
+    --shadow-xl: 0 20px 25px oklch(0% 0 0 / 0.48), 0 10px 10px oklch(0% 0 0 / 0.32);
+    --shadow-2xl: 0 25px 50px oklch(0% 0 0 / 0.60), 0 12px 20px oklch(0% 0 0 / 0.48);
+  }
+}
+
+/* Reduced motion (accessibility) */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-instant: 0ms;
+    --motion-duration-fast: 0ms;
+    --motion-duration-base: 0ms;
+    --motion-duration-slow: 0ms;
+    --motion-duration-slower: 0ms;
+    --motion-easing-standard: linear;
+    --motion-easing-decelerate: linear;
+    --motion-easing-accelerate: linear;
+    --motion-easing-sharp: linear;
+  }
+}
+
+/* OKLCH fallback for legacy browsers (8%) */
+@supports not (color: oklch(0% 0 0)) {
+  :root {
+    --color-primary: var(--color-primary-fallback);
+    --color-secondary: var(--color-secondary-fallback);
+    --color-accent: var(--color-accent-fallback);
+    /* Add fallbacks for all OKLCH colors */
+  }
 }
 ```
 

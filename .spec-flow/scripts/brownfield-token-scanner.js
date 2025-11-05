@@ -16,6 +16,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const Color = require('colorjs.io').default;
 
 // Configuration
 const CONFIG = {
@@ -43,6 +44,157 @@ const PATTERNS = {
   spacing: /(?:padding|margin|gap|space)-(?:x-|y-|t-|b-|l-|r-)?(\d+(?:px|rem|em)?)/g,
   tailwindSpacing: /(?:p|m|gap|space)-(?:x-|y-|t-|b-|l-|r-)?(\d+(?:\.\d+)?)/g,
 };
+
+// OKLCH Conversion Functions
+
+/**
+ * Convert hex color to OKLCH with sRGB fallback
+ * @param {string} hex - Hex color code (e.g., "#3b82f6")
+ * @returns {Object|null} { oklch, fallback, l, c, h }
+ */
+function hexToOklch(hex) {
+  try {
+    const color = new Color(hex);
+    const oklch = color.to('oklch');
+
+    // Handle out-of-gamut colors by clamping chroma
+    const { l, c, h } = clampToSrgb(oklch.l, oklch.c, oklch.h);
+
+    return {
+      oklch: `oklch(${l.toFixed(2)}% ${c.toFixed(3)} ${h.toFixed(2)})`,
+      fallback: hex.toUpperCase(),
+      l: parseFloat(l.toFixed(2)),
+      c: parseFloat(c.toFixed(3)),
+      h: parseFloat(h.toFixed(2))
+    };
+  } catch (error) {
+    console.error(`Error converting ${hex} to OKLCH:`, error.message);
+    return null;
+  }
+}
+
+/**
+ * Convert RGB color to OKLCH with sRGB fallback
+ * @param {number} r - Red (0-255)
+ * @param {number} g - Green (0-255)
+ * @param {number} b - Blue (0-255)
+ * @param {number} a - Alpha (0-1, optional)
+ * @returns {Object|null} { oklch, fallback, l, c, h, alpha }
+ */
+function rgbToOklch(r, g, b, a = 1) {
+  try {
+    const hex = rgbToHex(r, g, b);
+    const result = hexToOklch(hex);
+
+    if (!result) return null;
+
+    return {
+      ...result,
+      alpha: a,
+      oklch: a < 1
+        ? `oklch(${result.l.toFixed(2)}% ${result.c.toFixed(3)} ${result.h.toFixed(2)} / ${a})`
+        : result.oklch
+    };
+  } catch (error) {
+    console.error(`Error converting rgb(${r}, ${g}, ${b}) to OKLCH:`, error.message);
+    return null;
+  }
+}
+
+/**
+ * Convert RGB values to hex
+ * @param {number} r - Red (0-255)
+ * @param {number} g - Green (0-255)
+ * @param {number} b - Blue (0-255)
+ * @returns {string} Hex color code
+ */
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map(x => {
+    const hex = x.toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  }).join('');
+}
+
+/**
+ * Calculate WCAG contrast ratio between two colors
+ * @param {string} color1 - First color (hex, rgb, or oklch)
+ * @param {string} color2 - Second color (hex, rgb, or oklch)
+ * @returns {Object|null} { ratio, passAA, passAAA, level }
+ */
+function calculateContrast(color1, color2) {
+  try {
+    const c1 = new Color(color1);
+    const c2 = new Color(color2);
+    const ratio = Math.abs(c1.contrast(c2, 'WCAG21'));
+
+    return {
+      ratio: parseFloat(ratio.toFixed(2)),
+      passAA: ratio >= 4.5,
+      passAAA: ratio >= 7.0,
+      level: ratio >= 7.0 ? 'AAA' : ratio >= 4.5 ? 'AA' : 'FAIL'
+    };
+  } catch (error) {
+    console.error(`Error calculating contrast between ${color1} and ${color2}:`, error.message);
+    return null;
+  }
+}
+
+/**
+ * Check if OKLCH color is within sRGB gamut
+ * @param {Object} oklch - OKLCH color object from colorjs.io
+ * @returns {boolean} True if in sRGB gamut
+ */
+function isInSrgbGamut(oklch) {
+  try {
+    const color = new Color('oklch', [oklch.l, oklch.c, oklch.h]);
+    return color.inGamut('srgb');
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Clamp OKLCH color to sRGB gamut by reducing chroma
+ * @param {number} l - Lightness (0-100)
+ * @param {number} c - Chroma (0-0.4+)
+ * @param {number} h - Hue (0-360)
+ * @returns {Object} { l, c, h } - Clamped values
+ */
+function clampToSrgb(l, c, h) {
+  let color = new Color('oklch', [l, c, h]);
+
+  // If already in gamut, return as-is
+  if (color.inGamut('srgb')) {
+    return { l, c, h };
+  }
+
+  // Reduce chroma until in gamut (max 100 iterations)
+  let iterations = 0;
+  while (!color.inGamut('srgb') && c > 0 && iterations < 100) {
+    c -= 0.001;
+    color = new Color('oklch', [l, c, h]);
+    iterations++;
+  }
+
+  return { l, c: Math.max(0, c), h };
+}
+
+/**
+ * Normalize hex color (handle 3-digit shorthand)
+ * @param {string} hex - Hex color code
+ * @returns {string} Normalized 6-digit hex code
+ */
+function normalizeHex(hex) {
+  // Remove # if present
+  hex = hex.replace('#', '');
+
+  // Expand 3-digit hex to 6-digit
+  if (hex.length === 3) {
+    hex = hex.split('').map(char => char + char).join('');
+  }
+
+  return '#' + hex.toUpperCase();
+}
 
 // Scan results
 const results = {
@@ -239,18 +391,37 @@ function analyzeResults() {
 }
 
 /**
- * Analyze color patterns
+ * Analyze color patterns and convert to OKLCH
  */
 function analyzeColors() {
   const sortedColors = Object.entries(results.colors)
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, 30); // Top 30 colors
 
-  return sortedColors.map(([color, data]) => ({
-    value: color,
-    count: data.count,
-    files: data.files,
-  }));
+  return sortedColors.map(([color, data]) => {
+    // Normalize hex colors
+    const normalizedColor = color.startsWith('#') ? normalizeHex(color) : color;
+
+    // Convert to OKLCH
+    let oklchData = null;
+    if (normalizedColor.startsWith('#')) {
+      oklchData = hexToOklch(normalizedColor);
+    }
+
+    return {
+      value: color,
+      normalized: normalizedColor,
+      count: data.count,
+      files: data.files,
+      ...(oklchData && {
+        oklch: oklchData.oklch,
+        fallback: oklchData.fallback,
+        l: oklchData.l,
+        c: oklchData.c,
+        h: oklchData.h
+      })
+    };
+  });
 }
 
 /**
@@ -436,33 +607,67 @@ function generateMarkdownReport(analysis) {
 }
 
 /**
- * Generate proposed token structure
+ * Generate proposed token structure with OKLCH colors
  */
 function generateProposedTokens(analysis) {
   // Extract most common colors and suggest semantic mapping
   const topColors = analysis.colors.slice(0, 12);
 
+  // Helper function to create OKLCH token
+  const createColorToken = (hex, description) => {
+    const oklchData = hexToOklch(hex);
+    return oklchData ? {
+      oklch: oklchData.oklch,
+      fallback: oklchData.fallback,
+      description
+    } : {
+      oklch: `oklch(59.69% 0.156 261.45)`, // Default blue
+      fallback: hex,
+      description
+    };
+  };
+
   return {
+    meta: {
+      name: "Detected Tokens",
+      version: "2.0.0",
+      description: "Auto-detected tokens from codebase scan - OKLCH format",
+      generated: new Date().toISOString(),
+      colorSpace: "oklch",
+      fallbackSpace: "srgb"
+    },
     colors: {
       brand: {
-        primary: topColors[0]?.value || '#3b82f6',
-        secondary: topColors[1]?.value || '#8b5cf6',
-        accent: topColors[2]?.value || '#10b981',
+        primary: topColors[0]?.oklch ? {
+          oklch: topColors[0].oklch,
+          fallback: topColors[0].fallback,
+          description: "Most common color in codebase"
+        } : createColorToken('#3b82f6', 'Default primary'),
+        secondary: topColors[1]?.oklch ? {
+          oklch: topColors[1].oklch,
+          fallback: topColors[1].fallback,
+          description: "Second most common color"
+        } : createColorToken('#8b5cf6', 'Default secondary'),
+        accent: topColors[2]?.oklch ? {
+          oklch: topColors[2].oklch,
+          fallback: topColors[2].fallback,
+          description: "Third most common color"
+        } : createColorToken('#10b981', 'Default accent'),
       },
       semantic: {
-        success: '#10b981',
-        error: '#ef4444',
-        warning: '#f59e0b',
-        info: '#3b82f6',
+        success: createColorToken('#10b981', 'Success state'),
+        error: createColorToken('#ef4444', 'Error state'),
+        warning: createColorToken('#f59e0b', 'Warning state'),
+        info: createColorToken('#3b82f6', 'Info state'),
       },
       neutral: {
-        50: '#fafafa',
-        100: '#f5f5f5',
-        200: '#e5e5e5',
-        400: '#a3a3a3',
-        600: '#525252',
-        800: '#262626',
-        950: '#0a0a0a',
+        50: createColorToken('#fafafa', 'Lightest neutral'),
+        100: createColorToken('#f5f5f5', 'Light neutral'),
+        200: createColorToken('#e5e5e5', 'Light neutral'),
+        400: createColorToken('#a3a3a3', 'Medium neutral'),
+        600: createColorToken('#525252', 'Dark neutral'),
+        800: createColorToken('#262626', 'Darker neutral'),
+        950: createColorToken('#0a0a0a', 'Darkest neutral'),
       },
     },
     typography: {
