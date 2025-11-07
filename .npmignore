@@ -5,6 +5,10 @@
 .claude/commands/release.md
 .claude/skills/x-announcement.md
 
+# Archived files (deprecated/legacy)
+.claude/commands/archive/
+.spec-flow/memory/archive/
+
 # Local settings and overrides
 .claude/settings.local.json
 
