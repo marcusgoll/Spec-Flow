@@ -1,4 +1,37 @@
-# /design - Unified Design Orchestrator
+# ⚠️ DEPRECATED (2025-11-07)
+
+**This command has been replaced by the comprehensive style guide approach.**
+
+## Why Deprecated
+
+The 3-phase design workflow (variations → functional → polish) has been replaced with a style-guided rapid prototyping approach that's:
+- **85-95% faster** (2-4 hours → <30 min per feature)
+- **82-88% fewer tokens** (85K → 10-15K per screen)
+- **More consistent** (single SST vs manual variant critique)
+- **Automated validation** (design lint vs human gates)
+
+## Migration Path
+
+**Old workflow:**
+```bash
+/design "Feature Name"  # 3-phase workflow
+```
+
+**New workflow:**
+```bash
+/quick "Add [UI feature]"  # Reads docs/project/style-guide.md
+```
+
+The new approach uses:
+- `docs/project/style-guide.md` - Comprehensive UI/UX design system with core 9 rules
+- Automated validation (no manual critique gates)
+- Direct implementation (no variant generation)
+
+**See:** `docs/STYLE_GUIDE_MIGRATION.md` for detailed migration guide
+
+---
+
+# /design - Unified Design Orchestrator (ARCHIVED)
 
 **Purpose**: Orchestrate the complete three-phase design workflow (Variations → Functional → Polish) with automated validation and human approval gates.
 

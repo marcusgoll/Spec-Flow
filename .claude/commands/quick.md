@@ -57,6 +57,59 @@ Guidelines:
 
 Otherwise, set `DESCRIPTION = $ARGUMENTS`
 
+## CHECK IF UI CHANGE (Load Style Guide)
+
+**Detect UI/design-related changes and load style guide:**
+
+```bash
+# Check if description mentions UI-related terms
+if [[ "$DESCRIPTION" =~ (UI|component|button|form|card|layout|design|style|CSS|Tailwind|color|spacing|font|typography) ]]; then
+  STYLE_GUIDE_MODE=true
+
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🎨 UI CHANGE DETECTED"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "Loading style guide for consistency enforcement..."
+  echo ""
+
+  # Required files
+  STYLE_GUIDE="docs/project/style-guide.md"
+  TOKENS="design/systems/tokens.json"
+  UI_INVENTORY="design/systems/ui-inventory.md"
+
+  # Validate style guide exists
+  if [ ! -f "$STYLE_GUIDE" ]; then
+    echo "❌ Style guide not found: $STYLE_GUIDE"
+    echo ""
+    echo "Run /init-project first to generate project documentation."
+    echo "Or create style-guide.md manually."
+    echo ""
+    exit 1
+  fi
+
+  # Validate tokens exist (non-blocking)
+  if [ ! -f "$TOKENS" ]; then
+    echo "⚠️  Design tokens not found: $TOKENS"
+    echo "   Using style guide rules without token values."
+    echo ""
+  fi
+
+  # UI inventory is optional
+  if [ ! -f "$UI_INVENTORY" ]; then
+    echo "ℹ️  UI inventory not found (optional): $UI_INVENTORY"
+    echo ""
+  fi
+
+  echo "✅ Style guide loaded"
+  echo ""
+else
+  STYLE_GUIDE_MODE=false
+  echo "ℹ️  Non-UI change detected - skipping style guide"
+  echo ""
+fi
+```
+
 ## CREATE LIGHTWEIGHT BRANCH
 
 **Generate simple branch name:**
@@ -97,6 +150,48 @@ You are implementing a quick change (no spec required).
 ## Description
 {DESCRIPTION}
 
+{IF STYLE_GUIDE_MODE=true, INCLUDE:}
+
+## Style Guide Context (UI CHANGE)
+
+Read and follow ALL rules from: docs/project/style-guide.md
+
+**Core 9 Rules** (always enforce):
+1. Text line length: 50-75 chars (600-700px max-width)
+2. Use bullet points with icons when listing
+3. 8pt grid spacing (all values divisible by 4/8)
+4. Layout rules: baseline value, double spacing between groups
+5. Letter-spacing: Display -1px, Body 0px, CTAs +1px
+6. Font superfamilies (matching character sizes)
+7. OKLCH colors (never hex)
+8. Subtle design elements (gradients <20% opacity, soft shadows)
+9. Squint test hierarchy (CTAs/headlines must stand out)
+
+**Context-Aware Token Mapping:**
+- CTAs/interactive → bg-brand-primary
+- Headings/structure → text-neutral-900
+- Body text → text-neutral-700
+- Feedback → semantic-success/error/warning/info
+- Backgrounds → neutral-50/100
+
+**Component Strategy:**
+1. Check ui-inventory.md first (if exists)
+2. Use shadcn/ui components (don't create custom)
+3. Compose primitives (don't build from scratch)
+4. Follow lightweight guidelines in style guide Section 6
+
+**Validation Checklist:**
+- [ ] All colors from tokens.json (no hex/rgb/hsl)
+- [ ] All spacing on 8pt grid (no arbitrary [Npx])
+- [ ] Components from ui-inventory.md (no custom primitives)
+- [ ] Shadows for depth (borders only for dividers)
+- [ ] Typography hierarchy (2:1 ratio, correct letter-spacing)
+- [ ] Text line length 50-75 chars (max-w-[700px])
+- [ ] Keyboard navigation (focus:ring-2)
+- [ ] WCAG AA contrast (4.5:1 minimum)
+
+{END IF}
+
 ## Implementation Rules
 1. **KISS Principle**: Make minimal changes to achieve the goal
 2. **Follow Existing Patterns**: Match surrounding code style and architecture
@@ -116,11 +211,13 @@ After implementation, provide:
 - **Files changed**: List of modified files
 - **Summary**: 2-3 sentences describing what was done
 - **Tests**: Status of test runs (pass/fail)
+{IF STYLE_GUIDE_MODE: - **Style guide adherence**: Which rules followed, any violations}
 
 ## Constraints
 - No new dependencies unless absolutely necessary
 - No architectural changes
 - Keep diff small and focused
+{IF STYLE_GUIDE_MODE: - Follow style guide rules (non-negotiable)}
 ```
 
 Execute agent delegation via `/route-agent` with appropriate agent selection.
@@ -160,6 +257,71 @@ if [ $TEST_FAILED -eq 1 ]; then
 fi
 
 echo ""
+```
+
+## VALIDATE STYLE GUIDE (UI Changes Only)
+
+**Run style guide validation if UI change:**
+
+```bash
+if [ "$STYLE_GUIDE_MODE" = true ]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "Validating style guide compliance..."
+  echo ""
+
+  # Basic validation checks (automated)
+  VALIDATION_WARNINGS=0
+
+  # Check for hardcoded colors (hex, rgb, hsl)
+  echo "Checking for hardcoded colors..."
+  HARDCODED_COLORS=$(grep -rE "#[0-9a-fA-F]{3,6}|rgb\(|hsl\(" apps/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" 2>/dev/null | grep -v "node_modules\|.next\|oklch" | wc -l)
+
+  if [ "$HARDCODED_COLORS" -gt 0 ]; then
+    echo "⚠️  Found $HARDCODED_COLORS hardcoded color(s)"
+    echo "   Replace with design tokens from tokens.json"
+    VALIDATION_WARNINGS=$((VALIDATION_WARNINGS + 1))
+  else
+    echo "✅ No hardcoded colors detected"
+  fi
+
+  # Check for arbitrary spacing (not on 8pt grid)
+  echo "Checking spacing (8pt grid)..."
+  ARBITRARY_SPACING=$(grep -rE "\[[0-9]+px\]" apps/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" 2>/dev/null | grep -v "node_modules\|.next\|max-w-\[700px\]\|max-w-\[600px\]" | wc -l)
+
+  if [ "$ARBITRARY_SPACING" -gt 0 ]; then
+    echo "⚠️  Found $ARBITRARY_SPACING arbitrary spacing value(s)"
+    echo "   Use 8pt grid system (space-1, space-2, space-4, etc.)"
+    VALIDATION_WARNINGS=$((VALIDATION_WARNINGS + 1))
+  else
+    echo "✅ Spacing on 8pt grid"
+  fi
+
+  # Check for focus states on interactive elements
+  echo "Checking focus states..."
+  MISSING_FOCUS=$(grep -rE "onClick|onPress|button|Button" apps/ --include="*.tsx" --include="*.jsx" 2>/dev/null | grep -v "focus:" | grep -v "node_modules" | wc -l)
+
+  if [ "$MISSING_FOCUS" -gt 5 ]; then
+    echo "⚠️  Some interactive elements may be missing focus states"
+    echo "   Add focus:ring-2 focus:ring-brand-primary to buttons"
+    VALIDATION_WARNINGS=$((VALIDATION_WARNINGS + 1))
+  else
+    echo "✅ Focus states present"
+  fi
+
+  echo ""
+
+  if [ $VALIDATION_WARNINGS -gt 0 ]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "⚠️  $VALIDATION_WARNINGS style guide warning(s)"
+    echo ""
+    echo "Warnings are non-blocking but should be addressed."
+    echo "Review style guide: docs/project/style-guide.md"
+    echo ""
+  else
+    echo "✅ All style guide checks passed"
+    echo ""
+  fi
+fi
 ```
 
 ## COMMIT CHANGES

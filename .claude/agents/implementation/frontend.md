@@ -47,20 +47,148 @@ sed -n '/## Blockers/,/^## /p' specs/$SLUG/NOTES.md | head -20
 
 ## Design System Integration
 
-**When `design/$FEATURE_SLUG/implementation-spec.md` exists, achieve pixel-perfect fidelity.**
+**All UI implementations must follow the comprehensive style guide.**
 
-### Pre-Implementation Checklist
+### Rapid Prototyping with Style Guide
 
-Read if design artifacts exist:
+**For all UI features** (triggered automatically by `/quick` or `/feature` with UI components):
 
-1. `design/$FEATURE_SLUG/implementation-spec.md` - Component breakdown, tokens, interactions
-2. `design/design-system/tokens.json` - Colors, typography, spacing, elevations
-3. `mock/*/polished/*.tsx` - Visual reference for layout
+**Required Reading**:
+1. `docs/project/style-guide.md` - **Comprehensive UI/UX SST** (single source of truth)
+2. `design/systems/tokens.json` - Color values, typography, spacing scales
+3. `design/systems/ui-inventory.md` - Available shadcn/ui components (if exists)
+
+**Core 9 Rules** (always enforce):
+1. Text line length: 50-75 chars (max-w-[600px] to max-w-[700px])
+2. Use bullet points with icons when listing features/benefits
+3. 8pt grid spacing (all values divisible by 4/8, no arbitrary [Npx])
+4. Layout rules: baseline value, double spacing between groups, 2:1 line height ratios
+5. Letter-spacing: Display -tracking-px, Body tracking-normal, CTAs tracking-wide
+6. Font superfamilies (matching character sizes)
+7. OKLCH colors from tokens.json (never hex/rgb/hsl)
+8. Subtle design elements: gradients <20% opacity, soft shadows
+9. Squint test: CTAs and headlines must stand out when blurred
+
+**Component Strategy**:
+1. Check `ui-inventory.md` first for available shadcn/ui components
+2. Use existing components (Button, Input, Card, etc.) - don't create custom
+3. Compose primitives - don't build from scratch
+4. Follow lightweight guidelines in style guide Section 6 (Components)
 
 ### Token-Based Styling Rules
 
 ✅ **Use Tailwind tokens**: `bg-blue-600`, `shadow-md`, `space-y-4`, `text-4xl`
 ❌ **Never hardcode**: `style={{color: '#fff'}}`, `text-[#000]`, `space-y-[17px]`
+
+### Context-Aware Token Mapping (Design Polish Phase)
+
+**When applying brand tokens from `design/systems/tokens.json` to replace grayscale:**
+
+#### Buttons & CTAs (Interactive Elements)
+✅ **DO**:
+- `bg-gray-900` → `bg-brand-primary`
+- `hover:bg-gray-800` → `hover:bg-brand-primary-600`
+- `text-white` → keep (high contrast on brand background)
+- `border-gray-900` → `border-brand-primary`
+
+❌ **DON'T**:
+- Force brand colors on non-interactive elements
+- Use brand-primary for body text or structural elements
+
+#### Headings & Typography (Content Structure)
+✅ **DO**:
+- `text-gray-900` → `text-neutral-900` (NOT brand-primary)
+- `text-gray-800` → `text-neutral-800`
+- `text-gray-700` → `text-neutral-700`
+- Keep semantic weight hierarchy, don't force brand
+
+❌ **DON'T**:
+- Apply brand-primary to headings (unless explicitly accented)
+- Mix neutral and gray in same component
+
+#### Backgrounds & Surfaces
+✅ **DO**:
+- `bg-gray-50` → `bg-neutral-50` (default backgrounds)
+- `bg-gray-100` → `bg-neutral-100` (elevated surfaces)
+- `bg-gray-900` → `bg-brand-primary` (ONLY for accent sections/cards)
+
+❌ **DON'T**:
+- Use brand background tints everywhere
+- Apply brand-primary-50 to default page backgrounds
+
+#### Borders & Dividers
+✅ **DO**:
+- `border-gray-300` → `border-neutral-300` (default)
+- `border-gray-200` → `border-neutral-200` (subtle)
+- `focus:border-gray-900` → `focus:border-brand-primary` (interactive)
+- `divide-gray-300` → `divide-neutral-300`
+
+❌ **DON'T**:
+- Use brand colors for structural dividers
+- Mix brand and neutral borders on same element
+
+#### Semantic States (Alerts, Notifications, Status)
+✅ **DO**:
+- `bg-red-50` + `text-red-900` → `bg-semantic-error-bg` + `text-semantic-error-fg`
+- `bg-green-50` + `text-green-900` → `bg-semantic-success-bg` + `text-semantic-success-fg`
+- `bg-yellow-50` + `text-yellow-900` → `bg-semantic-warning-bg` + `text-semantic-warning-fg`
+- `bg-blue-50` + `text-blue-900` → `bg-semantic-info-bg` + `text-semantic-info-fg`
+
+❌ **DON'T**:
+- Use generic brand colors for semantic feedback
+- Mix hardcoded colors with semantic tokens
+
+#### Context Detection Rules
+
+**When you see grayscale**, ask:
+
+1. **"What is this element's PURPOSE?"**
+   - CTA / Button → brand-primary
+   - Heading / Body Text → neutral-*
+   - Background / Surface → neutral-*
+   - Border / Divider → neutral-*
+   - Status / Alert → semantic-*
+
+2. **"Does it need EMPHASIS?"**
+   - High emphasis interactive → brand-primary
+   - Medium emphasis → neutral-900
+   - Low emphasis → neutral-600
+
+3. **"What is the CONTEXT?"**
+   - Inside a button → brand tokens
+   - Inside a heading → neutral tokens
+   - Inside an alert → semantic tokens
+
+#### Anti-Patterns to Avoid
+
+❌ **Forcing brand everywhere**:
+```tsx
+// BAD: All gray-900 becomes brand-primary blindly
+<h1 className="text-brand-primary">...</h1>
+<p className="text-brand-primary">...</p>
+<div className="bg-brand-primary-50">...</div>
+```
+
+✅ **Context-aware mapping**:
+```tsx
+// GOOD: Different contexts get appropriate tokens
+<h1 className="text-neutral-900">...</h1>      // Structure
+<p className="text-neutral-700">...</p>        // Content
+<button className="bg-brand-primary">...</button>  // Action
+<div className="bg-neutral-50">...</div>       // Surface
+```
+
+❌ **Mixing token systems**:
+```tsx
+// BAD: Gray + neutral + brand inconsistently
+<div className="text-gray-900 bg-neutral-50 border-brand-primary">
+```
+
+✅ **Consistent token family**:
+```tsx
+// GOOD: All from same system (neutral for structure)
+<div className="text-neutral-900 bg-neutral-50 border-neutral-300">
+```
 
 ### Post-Implementation Validation
 

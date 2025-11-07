@@ -1,3 +1,28 @@
+# ⚠️ DEPRECATED (2025-11-07)
+
+**This command (Phase 1 of 3-phase design workflow) has been replaced by the comprehensive style guide approach.**
+
+## Why Deprecated
+
+Generating 3-5 variants for manual critique is:
+- **Too slow** (~25 min per screen)
+- **High token cost** (~50K tokens for 5 variants)
+- **Low ROI** (80% of variants never used)
+- **Manual bottleneck** (requires human critique gate)
+
+## Migration Path
+
+**New workflow**: Use `/quick` with style guide instead of generating variants
+- Reads `docs/project/style-guide.md` for design rules
+- Generates single polished component (~10 min, 15K tokens)
+- Automated validation replaces manual critique
+
+**See:** `docs/STYLE_GUIDE_MIGRATION.md`
+
+---
+
+# /design-variations (ARCHIVED)
+
 ---
 description: Phase 1 - Generate 3-5 grayscale UI variants per screen (diverge fast)
 ---

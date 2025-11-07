@@ -1,3 +1,11 @@
+# ⚠️ DEPRECATED (2025-11-07)
+
+**This command has been replaced by the style guide approach.**
+**Use `/quick` with `docs/project/style-guide.md` instead.**
+**See:** `docs/STYLE_GUIDE_MIGRATION.md`
+
+---
+
 # /research-design
 
 **Purpose**: Gather S-tier design inspiration from multiple sources before creating UI variants. "Original ideas are overrated: steal like an artist."

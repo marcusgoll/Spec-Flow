@@ -1,3 +1,11 @@
+# ⚠️ DEPRECATED (2025-11-07)
+
+**This command has been replaced by the style guide approach.**
+**Use `/quick` with `docs/project/style-guide.md` instead.**
+**See:** `docs/STYLE_GUIDE_MIGRATION.md`
+
+---
+
 ---
 description: Phase 3 - Apply brand tokens + performance optimization (systemize)
 ---
@@ -433,7 +441,8 @@ COMPONENT_IMPORTS=$(grep -r "from '@/components/" "$MOCK_DIR/*/functional" | \
 
 # Load allowed components from ui-inventory
 if [ -f "$UI_INVENTORY" ]; then
-  ALLOWED_COMPONENTS=$(grep "^## " "$UI_INVENTORY" | sed 's/## //' | tr '\n' '|' | sed 's/|$//')
+  ALLOWED_COMPONENTS=$(grep "^## " "$UI_INVENTORY" | sed 's/## //' | tr '
+' '|' | sed 's/|$//')
 
   # Check for custom components (not in inventory)
   CUSTOM_COMPONENTS=()
@@ -706,42 +715,85 @@ for functional_path in $FUNCTIONAL_ROUTES; do
 
   echo "  → Applying token replacements..."
 
-  # SYSTEMATIC TOKEN REPLACEMENT
-  # Claude performs intelligent replacement based on context
-  # This is conceptual - actual implementation is via Claude's understanding
+  # CONTEXT-AWARE TOKEN APPLICATION
+  # Delegate to frontend-shipper agent with explicit token mapping rules
+  #
+  # The agent will apply tokens based on element context:
+  # - Buttons/CTAs → brand-primary
+  # - Headings/Text → neutral-*
+  # - Backgrounds → neutral-* (brand only for accents)
+  # - Borders → neutral-*
+  # - Semantic states → semantic-*
+  #
+  # See: .claude/agents/implementation/frontend.md (lines 65-173)
+  # "Context-Aware Token Mapping (Design Polish Phase)"
 
-  # Replace grayscale → brand/neutral tokens
-  # gray-50 → neutral-50
-  # gray-100 → neutral-100
-  # gray-900 (primary actions) → brand-primary
-  # gray-800 (hover states) → brand-primary-600
+  # Read functional prototype content
+  FUNCTIONAL_CONTENT=$(cat "$FUNCTIONAL_FILE")
 
-  # Replace semantic colors
-  # red/destructive → semantic-error
-  # green/success → semantic-success
-  # yellow/warning → semantic-warning
-  # blue/info → semantic-info
+  # Invoke frontend-shipper agent with token context
+  # Agent reads:
+  # 1. design/systems/tokens.json (loaded tokens above)
+  # 2. Context-aware mapping rules (agent brief)
+  # 3. Functional prototype (starting point)
+  #
+  # Agent applies:
+  # - Context-aware grayscale → brand/neutral replacement
+  # - Semantic color → semantic-* token replacement
+  # - Micro-interactions (transitions, hover states)
+  # - Performance optimizations (Image components, lazy loading)
 
-  # Add micro-interactions
-  # Add: transition-colors duration-200
-  # Add: hover:bg-brand-primary-600
-  # Add: active:scale-95 transition-transform
+  # Task: Apply brand tokens to functional prototype using context-aware rules
+  # Input: $FUNCTIONAL_FILE (grayscale prototype)
+  # Output: $POLISHED_FILE (brand-applied version)
+  # Tokens: $TOKENS_FILE (design/systems/tokens.json)
+  # Rules: Context-aware mapping from agent brief
 
-  # Apply typography tokens
-  # Ensure: font-sans on text elements
-  # Ensure: font-mono on code elements
+  cat > /tmp/polish-context.txt << POLISH_EOF
+Apply brand tokens from design/systems/tokens.json to the functional prototype.
+
+Source file: $FUNCTIONAL_FILE
+Target file: $POLISHED_FILE
+Tokens: $TOKENS_FILE
+
+Use CONTEXT-AWARE mapping rules from your brief (lines 65-173):
+
+BUTTONS/CTAs:
+- bg-gray-900 → bg-brand-primary
+- hover:bg-gray-800 → hover:bg-brand-primary-600
+
+HEADINGS/TEXT:
+- text-gray-900 → text-neutral-900 (NOT brand-primary)
+- text-gray-800 → text-neutral-800
+
+BACKGROUNDS:
+- bg-gray-50 → bg-neutral-50
+- bg-gray-100 → bg-neutral-100
+- bg-gray-900 → bg-brand-primary (ONLY for accent sections)
+
+BORDERS:
+- border-gray-300 → border-neutral-300
+- focus:border-gray-900 → focus:border-brand-primary
+
+SEMANTIC STATES:
+- bg-red-50 + text-red-900 → bg-semantic-error-bg + text-semantic-error-fg
+- bg-green-50 + text-green-900 → bg-semantic-success-bg + text-semantic-success-fg
+- bg-yellow-50 + text-yellow-900 → bg-semantic-warning-bg + text-semantic-warning-fg
+- bg-blue-50 + text-blue-900 → bg-semantic-info-bg + text-semantic-info-fg
+
+ALSO ADD:
+- Micro-interactions: transition-colors duration-200, hover states, active:scale-95
+- Performance: Convert img → Image, add lazy loading
+- Typography: font-sans on text, font-mono on code
+
+Apply these transformations and write the polished version to $POLISHED_FILE
+POLISH_EOF
+
+  # The frontend-shipper agent will read the context and apply tokens intelligently
+  # based on element purpose (button vs heading vs background)
 
   echo "  → Adding micro-interactions..."
-
-  # Hover states (200ms transitions)
-  # Focus states (brand-colored rings)
-  # Active states (scale transforms)
-
   echo "  → Optimizing performance..."
-
-  # Replace img → Next.js Image component
-  # Add lazy loading to below-fold content
-  # Add dynamic imports for heavy components
 
   echo "  ✅ $SCREEN polished"
   echo ""
@@ -839,6 +891,62 @@ import { Suspense } from 'react';
 <Suspense fallback={<Skeleton className="h-48 w-full" />}>
   <RecentUploads />
 </Suspense>
+```
+
+---
+
+## MANUAL TOKEN REVIEW GATE
+
+**Review token application before validation:**
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "👁️  MANUAL TOKEN REVIEW REQUIRED"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Token application complete. Please review changes before validation:"
+echo ""
+echo "📂 Polished screens location:"
+for polished_path in $POLISHED_ROUTES; do
+  echo "   $polished_path"
+done
+echo ""
+echo "🎨 Design system tokens:"
+echo "   $TOKENS_FILE"
+echo "   design/systems/brand tokens.css"
+echo ""
+echo "✅ CHECK: Token usage makes semantic sense"
+echo "   - brand-primary used ONLY for CTAs and accent sections"
+echo "   - neutral-* used for text, backgrounds, and structure"
+echo "   - semantic-* used for alerts, states, and feedback"
+echo ""
+echo "❌ WATCH FOR: Common anti-patterns"
+echo "   - Brand colors forced on headings or body text"
+echo "   - Brand background tints on default page surfaces"
+echo "   - Inconsistent mixing of gray/neutral/brand"
+echo ""
+echo "🔧 IF NEEDED: Edit polished files manually"
+echo "   - Open: $MOCK_DIR/*/polished/page.tsx"
+echo "   - Fix: Replace incorrect tokens with correct ones"
+echo "   - Reference: design/systems/tokens.json for token names"
+echo ""
+read -p "Approve token application? (y/n): " TOKEN_APPROVAL
+
+if [[ ! "$TOKEN_APPROVAL" =~ ^[Yy] ]]; then
+  echo ""
+  echo "❌ Polish aborted by user"
+  echo ""
+  echo "To fix token mappings:"
+  echo "1. Edit polished screens: $MOCK_DIR/*/polished/page.tsx"
+  echo "2. Review context-aware rules: .claude/agents/implementation/frontend.md (lines 65-173)"
+  echo "3. Re-run: /design-polish"
+  echo ""
+  exit 1
+fi
+
+echo ""
+echo "✅ Token application approved"
+echo ""
 ```
 
 ---
@@ -1659,4 +1767,3 @@ Or iterate:
 6. Clear error messages with fix examples
 
 **Result**: No polished screen reaches production without 100% design system compliance.
-

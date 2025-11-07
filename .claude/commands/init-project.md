@@ -383,9 +383,9 @@ mkdir -p docs/project
 # 3. If brownfield: Scan codebase to fill tech stack, architecture
 # 4. Generate realistic examples
 # 5. Mark [NEEDS CLARIFICATION] where info missing
-# 6. Write 10 files to docs/project/
+# 6. Write 11 files to docs/project/
 
-echo "Generating 10 project documentation files..."
+echo "Generating 11 project documentation files..."
 echo "  1. overview.md"
 echo "  2. system-architecture.md"
 echo "  3. tech-stack.md"
@@ -396,6 +396,7 @@ echo "  7. deployment-strategy.md"
 echo "  8. development-workflow.md"
 echo "  9. engineering-principles.md"
 echo "  10. project-configuration.md"
+echo "  11. style-guide.md"
 echo ""
 
 # Agent context:
@@ -406,13 +407,13 @@ echo ""
 
 # Claude Code: Launch project-architect agent
 # Provide all questionnaire answers and context
-# Agent generates 10 files
+# Agent generates 11 files
 ```
 
 **Agent Task**: Generate docs/project/*.md
 
 **Agent Prompt**:
-You are the project-architect agent. Generate 8 comprehensive project documentation files.
+You are the project-architect agent. Generate 11 comprehensive project documentation files.
 
 **Input**:
 - Project type: $PROJECT_TYPE
@@ -433,9 +434,9 @@ You are the project-architect agent. Generate 8 comprehensive project documentat
   - Deploy model: $DEPLOY_MODEL
   - Frontend: $FRONTEND
 
-**Templates**: `.spec-flow/templates/project/*.md`
+**Templates**: `.spec-flow/templates/project/*.md` and `.spec-flow/templates/style-guide.md`
 
-**Output**: 10 files in `docs/project/`
+**Output**: 11 files in `docs/project/`
 
 **Instructions**:
 1. Read each template
@@ -486,6 +487,7 @@ Comprehensive project-level design documentation:
 - `development-workflow.md` - Git flow, PR process, DoD
 - `engineering-principles.md` - 8 core engineering standards
 - `project-configuration.md` - Deployment model, scale tier, quick changes
+- `style-guide.md` - Comprehensive UI/UX design system SST with core 9 rules
 
 **Created**: [DATE] via `/init-project`
 
@@ -496,13 +498,15 @@ Comprehensive project-level design documentation:
 - Adjusting deployment strategy (deployment-strategy.md)
 - Engineering standards evolve (engineering-principles.md)
 - Deployment model changes (project-configuration.md)
+- Design system changes (style-guide.md - colors, spacing, components)
 
 **Workflow Integration**:
 All features MUST align with project architecture:
 - `/roadmap` - Checks overview.md for vision alignment, tech-stack.md for feasibility
 - `/spec` - References project docs during research
-- `/plan` - Heavily integrates with all 10 docs
+- `/plan` - Heavily integrates with all 11 docs
 - `/tasks` - Follows patterns from tech-stack.md, api-strategy.md
+- `/quick` - Loads style-guide.md for all UI changes (enforces core 9 rules)
 - `/optimize` - Enforces engineering-principles.md quality standards
 EOF
 
@@ -538,7 +542,7 @@ Deployment: $DEPLOY_PLATFORM ($DEPLOY_MODEL)
 Team: $TEAM_SIZE
 Scale: $SCALE ($MAX_USERS users initially)
 
-Generated 10 comprehensive docs:
+Generated 11 comprehensive docs:
 - overview.md (vision, users, scope)
 - system-architecture.md (components, Mermaid diagrams)
 - tech-stack.md (technology choices)
@@ -549,6 +553,7 @@ Generated 10 comprehensive docs:
 - development-workflow.md (git flow, PR process)
 - engineering-principles.md (8 core standards)
 - project-configuration.md (deployment model, scale tier)
+- style-guide.md (comprehensive UI/UX SST with core 9 rules)
 
 Updated: constitution.md (references project docs)
 
@@ -709,6 +714,7 @@ echo "   docs/project/deployment-strategy.md"
 echo "   docs/project/development-workflow.md"
 echo "   docs/project/engineering-principles.md"
 echo "   docs/project/project-configuration.md"
+echo "   docs/project/style-guide.md"
 echo ""
 
 # Show foundation issue if created

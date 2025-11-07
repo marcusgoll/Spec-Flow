@@ -1,3 +1,13 @@
+# ⚠️ DEPRECATED (2025-11-07)
+
+**Phase 2 of 3-phase design workflow replaced by style guide approach.**
+**Use `/quick` with `docs/project/style-guide.md` instead.**
+**See:** `docs/STYLE_GUIDE_MIGRATION.md`
+
+---
+
+# /design-functional (ARCHIVED)
+
 ---
 description: Phase 2 - Merge selected variants → functional prototype with a11y + tests
 ---
