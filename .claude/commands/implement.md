@@ -815,6 +815,141 @@ echo "⚠️  TXXX: Auto-rolled back (test failure)" >> error-log.md
 
 **Note**: [PHASE] auto-extracted from tasks.md ([RED], [GREEN], [REFACTOR], [US1], [P1], [P]).
 
+## LIVING DOCUMENTATION UPDATES (RECOMMENDED)
+
+**Agents SHOULD update living documentation when discovering deviations, patterns, or fulfilling requirements:**
+
+### Update spec.md Implementation Status
+
+**When to update:**
+- ✅ **Requirement fulfilled**: After completing tasks that implement a spec requirement
+- ⚠️ **Deviation from spec**: When implementation differs from original spec
+- 📊 **Performance actual**: After measuring performance (FCP, API response time, etc.)
+
+**How to update:**
+
+```bash
+# Mark requirement fulfilled
+pwsh -File .spec-flow/scripts/powershell/update-spec-status.ps1 \
+  -FeatureDir "$FEATURE_DIR" \
+  -Type requirement \
+  -Data @{
+    id="FR-001"
+    status="fulfilled"
+    tasks="T001-T003"
+    description="JWT authentication"
+  }
+
+# Document deviation
+pwsh -File .spec-flow/scripts/powershell/update-spec-status.ps1 \
+  -FeatureDir "$FEATURE_DIR" \
+  -Type deviation \
+  -Data @{
+    id="FR-004"
+    name="Email verification"
+    original="Postmark API"
+    actual="SendGrid API"
+    reason="Cost reduction (Postmark 3x price increase)"
+    impact="Minor"
+  }
+
+# Record performance actual
+pwsh -File .spec-flow/scripts/powershell/update-spec-status.ps1 \
+  -FeatureDir "$FEATURE_DIR" \
+  -Type performance \
+  -Data @{
+    metric="FCP"
+    target="<1.5s"
+    actual="1.2s"
+    status="pass"
+    notes="Exceeded target by 20%"
+  }
+```
+
+### Update plan.md Discovered Patterns
+
+**When to update:**
+- ✅ **Reuse discovered**: When finding reusable code not in Phase 0 research
+- 🏗️ **Architecture adjustment**: When actual architecture differs from Phase 1 design
+- 🔗 **Integration discovery**: When discovering unexpected dependencies
+
+**How to update:**
+
+```bash
+# Add discovered reuse pattern
+pwsh -File .spec-flow/scripts/powershell/update-plan-patterns.ps1 \
+  -FeatureDir "$FEATURE_DIR" \
+  -Type reuse \
+  -Data @{
+    name="UserService.create_user()"
+    path="api/src/services/user.py:42-58"
+    task="T013"
+    purpose="User creation with password hashing and validation"
+    reusable="Any endpoint creating users (admin panel, invite flow)"
+    why="New code created in T010, not scanned in Phase 0"
+  }
+
+# Document architecture adjustment
+pwsh -File .spec-flow/scripts/powershell/update-plan-patterns.ps1 \
+  -FeatureDir "$FEATURE_DIR" \
+  -Type architecture \
+  -Data @{
+    change="Added last_login column to users table"
+    original="Users table with id, email, password_hash, created_at"
+    actual="Added last_login timestamp column"
+    reason="Session timeout logic requires last login tracking"
+    migration="api/alembic/versions/005_add_last_login.py"
+    impact="Minor"
+  }
+
+# Document integration discovery
+pwsh -File .spec-flow/scripts/powershell/update-plan-patterns.ps1 \
+  -FeatureDir "$FEATURE_DIR" \
+  -Type integration \
+  -Data @{
+    name="Clerk email verification webhook"
+    component="User registration (T013)"
+    dependency="Clerk webhook for email_verified event"
+    reason="Clerk handles email verification, not our API"
+    resolution="Added webhook handler in api/src/webhooks/clerk.py (T014)"
+  }
+```
+
+**When NOT to update:**
+- Minor implementation details (variable names, code style)
+- Normal code reuse already identified in Phase 0
+- Expected behavior from spec (no deviation)
+
+**Why update living docs?**
+- Future features benefit from discovered patterns
+- Deviations prevent confusion ("why doesn't this match spec?")
+- Performance actuals inform next feature estimates
+- Architecture adjustments guide future planning
+
+### Refresh Feature CLAUDE.md
+
+**When to refresh:**
+- After each batch completes (to update progress percentage)
+- After all implementation completes (final refresh)
+
+**How to refresh:**
+
+```bash
+# Refresh feature context (progress, recent tasks, relevant agents)
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+  pwsh -NoProfile -File .spec-flow/scripts/powershell/generate-feature-claude-md.ps1 \
+    -FeatureDir "$FEATURE_DIR"
+else
+  .spec-flow/scripts/bash/generate-feature-claude-md.sh "$FEATURE_DIR"
+fi
+```
+
+This automatically updates:
+- Current phase and progress percentage
+- Last 3 completed tasks with timestamps
+- Next task to work on
+- Relevant specialist agents for current phase
+
 ## CONSTRAINTS
 
 - **Parallel execution**: 3-5 tasks per batch (independent domains)
