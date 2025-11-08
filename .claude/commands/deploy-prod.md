@@ -679,6 +679,14 @@ if [ -n "$PROD_URL" ]; then
   mv "$STATE_TEMP" "$STATE_FILE"
 fi
 
+# Regenerate project-level CLAUDE.md to reflect deployed feature
+echo "Regenerating project CLAUDE.md..."
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+  pwsh -NoProfile -File .spec-flow/scripts/powershell/generate-project-claude-md.ps1 2>/dev/null || echo "⚠️  Could not regenerate project CLAUDE.md (non-blocking)"
+else
+  .spec-flow/scripts/bash/generate-project-claude-md.sh 2>/dev/null || echo "⚠️  Could not regenerate project CLAUDE.md (non-blocking)"
+fi
+
 echo "✅ Production deployment complete!"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

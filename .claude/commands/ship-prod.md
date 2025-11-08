@@ -1176,6 +1176,36 @@ fi
 
 ---
 
+### Phase 2.13.5: UPDATE PROJECT CLAUDE.MD
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Phase 2.13.5: Regenerating project CLAUDE.md"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Regenerate project-level CLAUDE.md to reflect shipped feature
+echo "Regenerating project CLAUDE.md..."
+
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+  pwsh -NoProfile -File .spec-flow/scripts/powershell/generate-project-claude-md.ps1
+else
+  .spec-flow/scripts/bash/generate-project-claude-md.sh
+fi
+
+if [ $? -eq 0 ]; then
+  echo "✅ Project CLAUDE.md regenerated"
+  echo "   Active features list updated (feature marked completed)"
+  echo ""
+else
+  echo "⚠️  Failed to regenerate project CLAUDE.md"
+  echo "   This is non-blocking. Continue with deployment."
+  echo ""
+fi
+```
+
+---
+
 ### Phase 2.14: UPDATE NOTES.MD
 
 ```bash

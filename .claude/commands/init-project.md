@@ -520,6 +520,33 @@ fi
 echo ""
 ```
 
+## GENERATE PROJECT CLAUDE.MD
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📝 GENERATING PROJECT CLAUDE.MD"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Generate project-level CLAUDE.md for context navigation
+echo "Generating project CLAUDE.md for AI context navigation..."
+
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+  pwsh -NoProfile -File .spec-flow/scripts/powershell/generate-project-claude-md.ps1
+else
+  .spec-flow/scripts/bash/generate-project-claude-md.sh
+fi
+
+echo ""
+echo "✓ Project CLAUDE.md generated"
+echo ""
+echo "Benefits:"
+echo "  - Token cost: ~2,000 tokens (vs 12,000 for reading all project docs)"
+echo "  - Quick navigation to active features and detailed docs"
+echo "  - Auto-updated as features progress"
+echo ""
+```
+
 ## GIT COMMIT
 
 ```bash
@@ -531,6 +558,7 @@ echo ""
 # Commit all generated docs
 git add docs/project/
 git add .spec-flow/memory/constitution.md
+git add CLAUDE.md
 
 git commit -m "docs: initialize project design documentation
 
@@ -555,7 +583,9 @@ Generated 11 comprehensive docs:
 - project-configuration.md (deployment model, scale tier)
 - style-guide.md (comprehensive UI/UX SST with core 9 rules)
 
-Updated: constitution.md (references project docs)
+Updated:
+- constitution.md (references project docs)
+- CLAUDE.md (project-level AI context navigation - 2k tokens vs 12k)
 
 Next: Review docs/project/*.md, fill [NEEDS CLARIFICATION] sections
 
