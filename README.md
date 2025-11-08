@@ -44,7 +44,7 @@
 
 ## 🆕 Recent Updates
 
-### v4.0.0 (November 2025)
+### v4.1.0 (November 2025)
 **Living Documentation** - Hierarchical CLAUDE.md files with automatic updates
 
 - **Hierarchical Context Navigation**: 3-level CLAUDE.md hierarchy (root → project → feature)
