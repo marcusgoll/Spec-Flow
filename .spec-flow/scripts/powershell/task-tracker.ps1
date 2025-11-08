@@ -510,6 +510,17 @@ function Update-TaskCompletionAtomic {
         $notesEntry | Add-Content $notesFile -Encoding UTF8
     }
 
+    # Update Progress Summary in tasks.md with latest velocity metrics
+    $updateSummaryScript = Join-Path $PSScriptRoot "update-tasks-summary.ps1"
+    if (Test-Path $updateSummaryScript) {
+        try {
+            & $updateSummaryScript -FeatureDir $featureDir -ErrorAction SilentlyContinue | Out-Null
+        } catch {
+            # Non-fatal: Continue even if summary update fails
+            Write-Warning "Could not update Progress Summary: $_"
+        }
+    }
+
     return @{
         Success = $true
         TaskId = $TaskId
