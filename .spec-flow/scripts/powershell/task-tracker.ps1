@@ -16,6 +16,9 @@
 .PARAMETER Notes
     Implementation notes to add when marking task complete
 
+.PARAMETER Duration
+    Task duration in minutes (e.g., "20min"). Defaults to "est" if not provided
+
 .PARAMETER Json
     Return results in JSON format for AI parsing
 
@@ -24,8 +27,8 @@
     Get current task status in JSON format
 
 .EXAMPLE
-    .\task-tracker.ps1 mark-done -TaskId T001 -Notes "Created FastAPI structure, added auth middleware"
-    Mark T001 as completed with implementation notes
+    .\task-tracker.ps1 mark-done-with-notes -TaskId T001 -Notes "Created FastAPI structure, added auth middleware" -Duration "15min"
+    Mark T001 as completed with implementation notes and duration
 
 .EXAMPLE
     .\task-tracker.ps1 next
@@ -42,6 +45,7 @@ param(
     [string]$Evidence = "",
     [string]$Coverage = "",
     [string]$CommitHash = "",
+    [string]$Duration = "est",
     [string]$ErrorMessage = "",
     [switch]$Json,
     [string]$FeatureDir = ""
@@ -429,9 +433,12 @@ function Update-TaskCompletionAtomic {
     .PARAMETER CommitHash
         Git commit hash for traceability
 
+    .PARAMETER Duration
+        Task duration in minutes (e.g., "20min"). If not provided, defaults to "est"
+
     .EXAMPLE
         Update-TaskCompletionAtomic -TaskId "T001" -Notes "Created Message model" `
-            -Evidence "pytest: 25/25 passing" -Coverage "92% (+8%)" -CommitHash "abc123"
+            -Evidence "pytest: 25/25 passing" -Coverage "92% (+8%)" -CommitHash "abc123" -Duration "15min"
     #>
     param(
         [Parameter(Mandatory)]
@@ -440,7 +447,8 @@ function Update-TaskCompletionAtomic {
         [string]$Notes = "",
         [string]$Evidence = "",
         [string]$Coverage = "",
-        [string]$CommitHash = ""
+        [string]$CommitHash = "",
+        [string]$Duration = "est"
     )
 
     $tasksFile = Get-TasksFile
@@ -479,10 +487,16 @@ function Update-TaskCompletionAtomic {
     Set-Content $tasksFile $taskContent -Encoding UTF8
 
     # 2. Append to NOTES.md with structured format
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm"
     $notesEntry = @()
-    $notesEntry += "✅ $TaskId"
-    if ($phaseMarker) { $notesEntry[-1] += " $phaseMarker" }
-    if ($Notes) { $notesEntry[-1] += ": $Notes" }
+
+    # Format: ✅ T001: Description - duration (timestamp)
+    $completionLine = "✅ $TaskId"
+    if ($phaseMarker) { $completionLine += " $phaseMarker" }
+    if ($Notes) { $completionLine += ": $Notes" }
+    $completionLine += " - $Duration ($timestamp)"
+
+    $notesEntry += $completionLine
 
     if ($Evidence) { $notesEntry += "  - Evidence: $Evidence" }
     if ($Coverage) { $notesEntry += "  - Coverage: $Coverage" }
@@ -680,7 +694,8 @@ try {
                 -Notes $Notes `
                 -Evidence $Evidence `
                 -Coverage $Coverage `
-                -CommitHash $CommitHash
+                -CommitHash $CommitHash `
+                -Duration $Duration
         }
         "mark-in-progress" {
             if (-not $TaskId) { throw "TaskId required for mark-in-progress action" }

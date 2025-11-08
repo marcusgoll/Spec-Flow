@@ -195,3 +195,70 @@ Existing code to reuse: [from codebase scan]
 - [ ] Stack alignment confirmed
 - [ ] Context engineering plan documented
 
+---
+
+## Discovered Patterns
+
+> **Purpose**: Track reusable code found during implementation that wasn't identified in Phase 0 research
+> **Updated by**: `/implement` command when task agents discover patterns
+> **Last Updated**: [Auto-updated timestamp]
+
+### Reuse Additions
+
+**Format**: Document patterns discovered during implementation that should be reused by future features
+
+- ✅ **[ServiceName/FunctionName]** (`[path]:[line-range]`)
+  - **Discovered in**: Task [ID] - [Brief task description]
+  - **Purpose**: [What this code does]
+  - **Reusable for**: [What types of tasks can reuse this]
+  - **Why not in Phase 0**: [Why this wasn't found during initial scan - new code, buried in unrelated file, etc.]
+
+**Example**:
+- ✅ **UserService.create_user()** (`api/src/services/user.py:42-58`)
+  - **Discovered in**: T013 - Create user registration endpoint
+  - **Purpose**: Handles user creation with password hashing, email validation, and role assignment
+  - **Reusable for**: Any endpoint that creates users (admin panel, invite flow, etc.)
+  - **Why not in Phase 0**: New code created in T010, wasn't scanned yet
+
+- ✅ **ErrorHandler middleware** (`api/src/middleware/errors.py`)
+  - **Discovered in**: T020 - Add error handling to auth endpoints
+  - **Purpose**: Standardized RFC 7807 error responses with logging
+  - **Reusable for**: All API endpoints requiring consistent error formatting
+  - **Why not in Phase 0**: Generic middleware, not keyword-specific (auth, user, session)
+
+### Architecture Adjustments
+
+**Format**: Document when actual architecture differs from Phase 1 design
+
+- **[Component/Schema Change]**: [What changed]
+  - **Original design**: [What Phase 1 specified]
+  - **Actual implementation**: [What was built instead]
+  - **Reason**: [Why the change was needed - discovered need, technical constraint, integration requirement]
+  - **Migration**: [Path to migration file if database change]
+  - **Impact**: [None | Requires plan.md update]
+
+**Example**:
+- **Database schema change**: Added `last_login` column to `users` table
+  - **Original design**: Users table with id, email, password_hash, created_at
+  - **Actual implementation**: Added last_login timestamp column
+  - **Reason**: Session timeout logic (T015) requires tracking last login time for 30-day expiry
+  - **Migration**: `api/alembic/versions/005_add_last_login.py`
+  - **Impact**: Minor - additive change, no breaking impact
+
+### Integration Discoveries
+
+**Format**: Document unexpected integrations or dependencies found during implementation
+
+- **[Integration Point]**: [What was discovered]
+  - **Component**: [What code needs to integrate]
+  - **Dependency**: [What it depends on]
+  - **Reason**: [Why this dependency exists]
+  - **Resolution**: [How it was handled]
+
+**Example**:
+- **Email verification**: Requires Clerk webhook subscription
+  - **Component**: User registration flow (T013)
+  - **Dependency**: Clerk webhook for email_verified event
+  - **Reason**: Clerk handles email verification, not our API
+  - **Resolution**: Added webhook handler in `api/src/webhooks/clerk.py` (T014)
+

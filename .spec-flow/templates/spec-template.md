@@ -285,3 +285,62 @@ See `.spec-flow/templates/experiment-design-template.md` for full plan.
 - [ ] Breaking changes identified (API, schema, migrations)
 - [ ] Environment variables documented (staging + production values)
 - [ ] Rollback plan specified
+
+---
+
+## Implementation Status
+
+> **Purpose**: Track how implementation fulfills requirements, document deviations, and record actual performance.
+> **Updated by**: `/implement` command during task execution
+> **Last Updated**: [Auto-updated timestamp]
+
+### Requirements Fulfilled
+
+- ✅ **FR-001**: [Brief description] - Implemented in tasks T001-T003
+- ✅ **FR-002**: [Brief description] - Implemented in task T004
+- ⚠️ **FR-003**: [Brief description] - Deferred to P2 (see Deviations below)
+- ❌ **FR-004**: [Brief description] - Not implemented (descoped, see Deviations)
+
+### Deviations from Spec
+
+**Format**: Document when implementation differs from original spec
+
+- **Requirement [ID] ([Name])**: [What changed]
+  - **Original approach**: [What spec specified]
+  - **Actual implementation**: [What was built instead]
+  - **Reason**: [Technical constraint, vendor change, user feedback, etc.]
+  - **Impact**: [None | Minor | Requires spec update]
+  - **Reference**: See `plan.md` [section] or `NOTES.md` [task]
+
+**Example**:
+- **Requirement FR-004 (Email verification)**: Vendor changed from Postmark to SendGrid
+  - **Original approach**: Postmark API with custom templates
+  - **Actual implementation**: SendGrid with dynamic templates
+  - **Reason**: Postmark pricing increased 3x; SendGrid already used for transactional emails
+  - **Impact**: Minor - same user experience, different provider
+  - **Reference**: See `plan.md` Phase 0 research, decision logged in T015 notes
+
+### Performance Actuals vs Targets
+
+**Format**: Record actual performance compared to NFR targets
+
+| Metric | Target | Actual | Status | Notes |
+|--------|--------|--------|--------|-------|
+| FCP | <1.5s | 1.2s | ✅ Pass | Exceeded target by 20% |
+| TTI | <3.5s | 4.1s | ⚠️ Warning | +17% over target, acceptable for MVP |
+| API P95 | <500ms | 450ms | ✅ Pass | - |
+| Test Coverage | >80% | 92% | ✅ Pass | - |
+
+### Lessons Learned
+
+> **Populated by**: `/finalize` command at end of feature lifecycle
+> **Purpose**: Capture insights for future features
+
+- **What went well**: [Positive outcomes, efficient approaches]
+- **What could improve**: [Bottlenecks, missteps, surprises]
+- **Would do differently**: [Specific changes for next feature]
+
+**Example**:
+- **What went well**: TDD approach for auth flow reduced debugging time by ~40%
+- **What could improve**: Initial schema design missed last_login column (discovered in T015), required migration
+- **Would do differently**: Review schema with database-architect agent before starting tasks

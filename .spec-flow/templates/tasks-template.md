@@ -1,5 +1,53 @@
 # Tasks: [FEATURE NAME]
 
+## Progress Summary
+
+> **Purpose**: Track task completion velocity, ETA, and identify bottlenecks
+> **Updated by**: Task tracker after each task completion
+> **Last Updated**: [Auto-updated timestamp]
+
+### Overall Progress
+
+- **Total Tasks**: [N]
+- **Completed**: [X] ([percentage]%)
+- **In Progress**: [Y]
+- **Blocked**: [Z]
+- **Remaining**: [N - X - Y - Z]
+
+### Velocity Metrics
+
+- **Average Time per Task**: [N] minutes
+- **Completion Rate**: [N] tasks/day (last 2 days)
+- **Estimated Remaining Time**: [N] hours
+- **ETA**: [Date and time based on current velocity]
+
+### Recent Completions
+
+- ✅ [TaskID]: [Description] - [duration] ([timestamp])
+- ✅ [TaskID]: [Description] - [duration] ([timestamp])
+- ✅ [TaskID]: [Description] - [duration] ([timestamp])
+
+### Bottlenecks
+
+**Tasks Taking Longer Than Estimated**:
+
+- **[TaskID] ([Name])**: Took [actual] vs estimated [estimate]
+  - **Reason**: [Why it took longer - complexity, blockers, learning curve]
+  - **Impact**: +[N] hours overall delay
+
+**Example**:
+- **T006-T009 (Migration tasks)**: Took 90min vs estimated 30min
+  - **Reason**: RLS policy complexity - required research on Postgres row-level security
+  - **Impact**: +1 hour overall delay
+
+### Current Sprint Status
+
+**Today's Goal**: Complete [task range, e.g., T015-T020]
+**Progress**: [X]/[Y] tasks completed today
+**On Track**: [Yes/No - based on ETA vs deadline]
+
+---
+
 ## [CODEBASE REUSE ANALYSIS]
 
 **From plan.md [EXISTING/NEW] sections:**

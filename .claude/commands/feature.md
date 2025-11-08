@@ -714,6 +714,19 @@ fi
 echo "✅ Workflow state initialized: $FEATURE_DIR/workflow-state.yaml"
 echo ""
 
+# Generate feature-level CLAUDE.md for context navigation
+echo "📝 Generating feature CLAUDE.md..."
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+  pwsh -NoProfile -File .spec-flow/scripts/powershell/generate-feature-claude-md.ps1 -FeatureDir "$FEATURE_DIR" 2>/dev/null || {
+    echo "⚠️  Could not generate feature CLAUDE.md (script may not be available)"
+  }
+else
+  .spec-flow/scripts/bash/generate-feature-claude-md.sh "$FEATURE_DIR" 2>/dev/null || {
+    echo "⚠️  Could not generate feature CLAUDE.md (script may not be available)"
+  }
+fi
+echo ""
+
 # Source roadmap management functions
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
   source .spec-flow/scripts/bash/github-roadmap-manager.sh 2>/dev/null || {
@@ -758,6 +771,14 @@ fi
 # Get current phase and status
 CURRENT_PHASE=$(yq eval '.workflow.phase' "$STATE_FILE")
 WORKFLOW_STATUS=$(yq eval '.workflow.status' "$STATE_FILE")
+
+# Refresh feature-level CLAUDE.md with latest progress
+echo "🔄 Refreshing feature CLAUDE.md..."
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+  pwsh -NoProfile -File .spec-flow/scripts/powershell/generate-feature-claude-md.ps1 -FeatureDir "$FEATURE_DIR" 2>/dev/null || true
+else
+  .spec-flow/scripts/bash/generate-feature-claude-md.sh "$FEATURE_DIR" 2>/dev/null || true
+fi
 
 echo "Resuming from: $CURRENT_PHASE (status: $WORKFLOW_STATUS)"
 echo ""
