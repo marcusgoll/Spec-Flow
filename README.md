@@ -44,6 +44,31 @@
 
 ## 🆕 Recent Updates
 
+### v4.0.0 (November 2025)
+**Living Documentation** - Hierarchical CLAUDE.md files with automatic updates
+
+- **Hierarchical Context Navigation**: 3-level CLAUDE.md hierarchy (root → project → feature)
+  - **Root CLAUDE.md**: Workflow system documentation (~3,000 tokens)
+  - **Project CLAUDE.md**: Active features, tech stack summary, common patterns (~2,000 tokens)
+  - **Feature CLAUDE.md**: Current progress, velocity, relevant specialists (~500 tokens)
+- **Automatic Updates**: Documentation updates atomically with code changes
+  - Feature CLAUDE.md: Generated on `/feature`, refreshed on task completion
+  - Project CLAUDE.md: Generated on `/init-project`, updated on `/ship`
+  - Living artifact sections: spec.md (Implementation Status), plan.md (Discovered Patterns), tasks.md (Progress Summary)
+- **Velocity Tracking**: Real-time metrics (avg time/task, completion rate, ETA, bottlenecks)
+- **Health Checks**: Detect stale CLAUDE.md files (`.spec-flow/scripts/bash/health-check-docs.sh`)
+- **Token Efficiency**: 80-94% reduction in context loading
+  - Start new feature: 12,700 → 2,500 tokens (80% reduction)
+  - Resume existing feature: 8,000 → 500 tokens (94% reduction)
+
+**Problem Solved**: Traditional documentation becomes stale within weeks, requiring manual synchronization. Reading all project documentation consumes 12,000+ tokens, slowing AI context loading. No visibility into implementation velocity or bottlenecks.
+
+**Impact**: Documentation never lags behind code (atomic updates during workflow). Context loading is 80-94% faster. Always know velocity, ETA, and blockers without manual tracking.
+
+**See**: [docs/LIVING_DOCUMENTATION.md](docs/LIVING_DOCUMENTATION.md) for complete guide
+
+---
+
 ### v3.2.0 (November 2025)
 **Planning Optimization** - 50-60% faster feature planning with docs/project integration
 

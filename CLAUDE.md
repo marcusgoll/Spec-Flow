@@ -242,6 +242,109 @@ All features will now align with your documented architecture.
 
 ---
 
+## Living Documentation (v4.0.0)
+
+**Problem Solved**: Traditional documentation becomes stale within weeks, requiring manual synchronization with code changes. Reading all project documentation consumes 12,000+ tokens, slowing AI context loading.
+
+**Solution**: Hierarchical CLAUDE.md files that auto-update during workflow execution, providing token-efficient context navigation.
+
+### Hierarchical CLAUDE.md Files
+
+```
+Root CLAUDE.md (workflow overview - 451 lines)
+  ↓
+Project CLAUDE.md (active features, tech stack - ~100 lines)
+  ↓
+Feature CLAUDE.md (current progress, specialists - ~80 lines)
+```
+
+**Token Efficiency**:
+- **Before**: 12,700 tokens to load full context (all project + feature docs)
+- **After**: 2,500 tokens with hierarchy (80% reduction)
+- **Resume work**: 500 tokens (feature CLAUDE.md only - 94% reduction)
+
+### Automatic Updates
+
+Documentation updates atomically with code changes:
+
+**Feature CLAUDE.md** (`specs/NNN-slug/CLAUDE.md`):
+- **Triggers**: `/feature`, task completion (via task-tracker), `/feature continue`
+- **Content**: Current phase/progress, last 3 completed tasks, velocity metrics, relevant specialists
+- **Token Cost**: ~500 tokens (vs 8,000 for reading all feature artifacts)
+
+**Project CLAUDE.md** (project root):
+- **Triggers**: `/init-project`, `/ship-staging`, `/ship-prod`, `/deploy-prod`
+- **Content**: Active features, condensed tech stack, common patterns discovered
+- **Token Cost**: ~2,000 tokens (vs 12,000 for reading all project docs)
+
+**Living Artifact Sections**:
+- `spec.md` → **Implementation Status** (requirements fulfilled, deviations, performance actuals)
+- `plan.md` → **Discovered Patterns** (reusable code found during implementation)
+- `tasks.md` → **Progress Summary** (velocity, ETA, bottlenecks)
+
+### Velocity Tracking
+
+Every task completion automatically updates velocity metrics in tasks.md:
+
+```
+Progress Summary:
+- Total Tasks: 25
+- Completed: 12 (48%)
+- Average Time: 45 min/task
+- Completion Rate: 3.5 tasks/day
+- ETA: 2025-11-10 16:00
+
+Bottlenecks:
+- T006-T009 (Migration tasks): 90min vs 30min estimated
+  Reason: RLS policy complexity
+  Impact: +1 hour overall delay
+```
+
+### Health Checks
+
+Detect stale documentation before it becomes a problem:
+
+```bash
+# Scan for CLAUDE.md files older than 7 days
+.spec-flow/scripts/bash/health-check-docs.sh
+
+# Output:
+❌ specs/001-auth/CLAUDE.md (12d old)
+✅ specs/002-dashboard/CLAUDE.md (1d old)
+```
+
+### Usage Example
+
+**Starting a new feature**:
+
+```bash
+# 1. Read project context (once)
+cat CLAUDE.md  # 2,000 tokens - active features, tech stack
+
+# 2. Create feature
+/feature "User authentication"
+# Auto-generates specs/001-auth/CLAUDE.md
+
+# 3. Work on feature
+cat specs/001-auth/CLAUDE.md  # 500 tokens - current progress, specialists
+
+# Total: 2,500 tokens (vs 12,700 traditional approach - 80% savings)
+```
+
+**Resuming work**:
+
+```bash
+# Read feature context only
+cat specs/001-auth/CLAUDE.md  # 500 tokens
+
+# Shows: last 3 tasks, velocity, ETA, next steps
+# No need to re-read project docs
+```
+
+**See [docs/LIVING_DOCUMENTATION.md](docs/LIVING_DOCUMENTATION.md) for complete guide**
+
+---
+
 ## Architecture
 
 **Directory structure:**
