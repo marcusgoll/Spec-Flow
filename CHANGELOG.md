@@ -111,11 +111,91 @@ ACTION: Use Skill tool BEFORE responding
 - **On-demand resources**: Load only what you need (300-400 tokens per resource)
 - **Better maintainability**: Focused, topic-specific files
 
-### 🔮 Future Phases (Roadmap)
+### ✨ Phase 3: Dev Docs Pattern (COMPLETE)
 
-- **Phase 3**: Dev docs pattern (task-scoped persistence) - 80-90% faster resume
-- **Phase 4**: Post-tool-use tracking (file modification cache) - better validation
-- **Phase 5**: Copy missing agents (refactor-planner, auto-error-resolver, web-research-specialist)
+**Task-scoped persistence for pause/resume workflows**
+
+- **New `/dev-docs` command**
+  - Creates three-file structure in `dev/active/[task-name]/`
+  - Generates: plan.md (strategy), context.md (decisions), tasks.md (progress)
+  - Auto-populated with feature name, dates, task metadata
+
+- **Cross-platform scripts**
+  - `.spec-flow/scripts/bash/generate-dev-docs.sh` (macOS/Linux)
+  - `.spec-flow/scripts/powershell/generate-dev-docs.ps1` (Windows)
+
+- **Templates**
+  - `.spec-flow/templates/dev-docs/plan-template.md` - Strategic overview (WHAT & WHY)
+  - `.spec-flow/templates/dev-docs/context-template.md` - Key context (WHERE & HOW)
+  - `.spec-flow/templates/dev-docs/tasks-template.md` - Progress tracking (WHEN)
+
+- **Command definition**
+  - `.claude/commands/dev-docs.md` - Usage guide and integration docs
+
+**When to Use**:
+- Long-running tasks (>1 day)
+- Need to pause and resume work frequently
+- Complex tasks requiring context preservation
+- Collaborating with team (handoff documentation)
+
+**Complements Living Docs**:
+- Feature CLAUDE.md: Feature-scoped, permanent (survives shipping)
+- Dev docs: Task-scoped, temporary (deleted after task completion)
+
+### ✨ Phase 4: Post-Tool-Use Tracking (COMPLETE)
+
+**Automatic file modification tracking for context management**
+
+- **New PostToolUse hook**
+  - `.claude/hooks/post-tool-use-tracker.sh` - Tracks Edit/Write/MultiEdit operations
+  - Registered in `.vscode/settings.json` (local, not tracked in git)
+  - Monitors all file modifications during implementation
+
+- **Functionality**
+  - Session-scoped cache in `.claude/tsc-cache/[session_id]/`
+  - Logs: edited-files.log, affected-repos.txt, commands.txt
+  - Auto-detects project structure (frontend, backend, database, monorepo)
+  - Identifies build commands (npm/pnpm/yarn, Prisma)
+
+- **Integration**
+  - Works alongside existing task-tracker.ps1
+  - Enables context management for living documentation
+  - Supports future auto-update of CLAUDE.md based on modified files
+
+**Project Structure Detection**:
+- Frontend: frontend, client, web, app, ui
+- Backend: backend, server, api, src, services
+- Database: database, prisma, migrations
+- Monorepo: packages/*, examples/*
+
+**Build Command Detection**:
+- Auto-detects package.json build scripts
+- Identifies package manager (pnpm, npm, yarn)
+- Prisma schema generation for database repos
+
+### ✨ Phase 5: Quality Agents (COMPLETE)
+
+**Three new specialist agents added to `.claude/agents/quality/`**
+
+1. **refactor-planner.md** - Senior architect for refactoring analysis
+   - Analyzes current codebase structure
+   - Identifies refactoring opportunities (code smells, SOLID violations)
+   - Creates detailed step-by-step refactor plans
+   - Documents dependencies, risks, and rollback strategies
+
+2. **auto-error-resolver.md** - TypeScript error resolution specialist
+   - Fixes TypeScript compilation errors automatically
+   - Integrates with error-checking hooks and PM2 logs
+   - Groups errors by type and prioritizes fixes
+   - Uses MultiEdit for similar issues across files
+
+3. **web-research-specialist.md** - Internet research expert
+   - Searches GitHub, Reddit, Stack Overflow, forums, blogs
+   - Creative search strategies (5-10 query variations)
+   - Compiles findings from diverse sources
+   - Excellent for debugging and solution research
+
+**Source**: Integrated from [claude-code-infrastructure-showcase](https://github.com/diet103/claude-code-infrastructure-showcase)
 
 ## [4.1.0] - 2025-11-08
 
