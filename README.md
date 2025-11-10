@@ -44,6 +44,15 @@
 
 ## 🆕 Recent Updates
 
+### v4.2.0 (November 2025)
+**Integrated Showcase Features** - Production-tested patterns from 6 months of real-world use
+
+- **Auto-Activation System**: Hook-based skill suggestions (30-40% faster workflow navigation)
+- **Progressive Disclosure**: 89% token reduction on skill loading (3,373 → 382 lines)
+- **Dev Docs Pattern**: Task-scoped persistence for pause/resume workflows
+- **Post-Tool-Use Tracking**: Automatic file modification tracking for living documentation
+- **Quality Agents**: Three new specialists (refactor-planner, auto-error-resolver, web-research-specialist)
+
 ### v4.1.0 (November 2025)
 **Living Documentation** - Hierarchical CLAUDE.md files with automatic updates
 
