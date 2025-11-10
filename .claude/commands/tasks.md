@@ -1,40 +1,30 @@
 ---
-description: Generate concrete TDD tasks from design artifacts (no generic placeholders)
+description: Generate concrete, testable TDD tasks from design artifacts with hard verification
 ---
 
 Create tasks from: specs/$SLUG/plan.md
+Output: specs/$SLUG/tasks.json (canonical), specs/$SLUG/tasks.md (rendered)
 
 <constraints>
-## ANTI-HALLUCINATION RULES
+## GUARANTEES
 
-**CRITICAL**: Follow these rules to prevent creating impossible tasks.
+1. **Deterministic**: same inputs → identical outputs (IDs, order, hashes)
+2. **Verifiable**: every file path and section reference exists before emit
+3. **Traceable**: each task cites exact plan/spec sections (line ranges)
+4. **Machine-readable**: JSON is the source of truth; MD is derived
+5. **Acyclic**: dependency graph must be a DAG or generation fails
+6. **No placeholders**: zero "[Entity]" or "[file]" strings permitted
 
-1. **Never create tasks for code you haven't verified exists**
-   - ❌ BAD: "T001: Update the UserService.create_user method"
-   - ✅ GOOD: First search for UserService, then create task based on what exists
-   - Use Glob to find files before creating file modification tasks
+## ANTI-HALLUCINATION RULES (ENFORCED)
 
-2. **Cite plan.md when deriving tasks**
-   - Each task should trace to plan.md section
-   - Example: "T001 implements data model from plan.md:45-60"
-   - Don't create tasks not mentioned in the plan
+**Refuse to create a task unless**:
+   a) The referenced file exists (checked via `git ls-files`) OR is marked [NEW], and
+   b) The referenced section exists (verified in plan/spec), and
+   c) Acceptance criteria are quoted verbatim from spec.md when present
 
-3. **Verify test file locations before creating test tasks**
-   - Before task "Add test_user_service.py", check if tests/ directory exists
-   - Use Glob to find test patterns: `**/test_*.py` or `**/*_test.py`
-   - Don't assume test structure matches your expectations
-
-4. **Quote acceptance criteria from spec.md exactly**
-   - Copy user story acceptance criteria verbatim to task AC
-   - Don't paraphrase or add unstated criteria
-   - If criteria missing, flag: "[NEEDS: Acceptance criteria for...]"
-
-5. **Verify dependencies between tasks**
-   - Before marking T002 depends on T001, confirm T001 creates what T002 needs
-   - Don't create circular dependencies
-   - Check plan.md for intended sequence
-
-**Why this matters**: Hallucinated tasks create impossible work. Tasks referencing non-existent code waste implementation time. Clear, verified tasks reduce implementation errors by 50-60%.
+**If an item is missing**, stop with a precise error report listing:
+   - Missing paths, missing sections, missing AC
+   - Provide exact line numbers where issues occur
 
 ## REASONING APPROACH
 
@@ -65,7 +55,7 @@ Let me analyze this task structure:
 </constraints>
 
 <instructions>
-## LOAD FEATURE
+## PHASE 0: LOAD FEATURE
 
 **Get feature from argument or current branch:**
 
@@ -79,9 +69,13 @@ fi
 FEATURE_DIR="specs/$SLUG"
 PLAN_FILE="$FEATURE_DIR/plan.md"
 SPEC_FILE="$FEATURE_DIR/spec.md"
+DATA_MODEL="$FEATURE_DIR/data-model.md"
+CONTRACTS_DIR="$FEATURE_DIR/contracts"
+RESEARCH="$FEATURE_DIR/research.md"
 ```
 
 **Validate feature exists:**
+
 ```bash
 if [ ! -d "$FEATURE_DIR" ]; then
   echo "❌ Feature not found: $FEATURE_DIR"
@@ -90,6 +84,7 @@ fi
 ```
 
 **Validate required files:**
+
 ```bash
 if [ ! -f "$PLAN_FILE" ]; then
   echo "❌ Missing: $PLAN_FILE"
@@ -104,213 +99,487 @@ if [ ! -f "$SPEC_FILE" ]; then
 fi
 ```
 
-## MENTAL MODEL
+## PHASE 1: PARSE & VERIFY INPUTS (fail-fast)
 
-**Workflow**: spec-flow → clarify → plan → tasks → analyze → implement → optimize → debug → preview → phase-1-ship → validate-staging → phase-2-ship
+**Resolve absolute paths:**
 
-**State machine:**
-- Load design artifacts → Extract user stories → Map to tasks → Generate by story priority
-
-**Auto-suggest:**
-- When complete → `/analyze`
-
-## LOAD DESIGN ARTIFACTS
-
-**Required files:**
 ```bash
-PLAN_FILE="$FEATURE_DIR/plan.md"
-SPEC_FILE="$FEATURE_DIR/spec.md"
+PLAN_ABS=$(realpath "$PLAN_FILE")
+SPEC_ABS=$(realpath "$SPEC_FILE")
 ```
 
-**Optional files:**
+**Normalize file existence by VCS truth:**
+
 ```bash
-DATA_MODEL="$FEATURE_DIR/data-model.md"
-CONTRACTS_DIR="$FEATURE_DIR/contracts"
-RESEARCH="$FEATURE_DIR/research.md"
-VISUALS="$FEATURE_DIR/visuals/README.md"
-ERROR_LOG="$FEATURE_DIR/error-log.md"
+# Function to check if file exists in git repository
+exists_in_repo() {
+  git ls-files --error-unmatch "$1" >/dev/null 2>&1
+  return $?
+}
+
+# Function to check if path is marked for creation
+is_new_file() {
+  [[ "$1" == *"[NEW]"* ]] && return 0
+  return 1
+}
 ```
 
-**Extract from plan.md:**
-```bash
-ARCHITECTURE=$(sed -n '/## \[ARCHITECTURE DECISIONS\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-EXISTING_REUSE=$(sed -n '/## \[EXISTING INFRASTRUCTURE - REUSE\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-NEW_CREATE=$(sed -n '/## \[NEW INFRASTRUCTURE - CREATE\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-SCHEMA=$(sed -n '/## \[SCHEMA\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-CI_CD_IMPACT=$(sed -n '/## \[CI\/CD IMPACT\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-DEPLOYMENT=$(sed -n '/## \[DEPLOYMENT ACCEPTANCE\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-```
+**Extract and verify required sections from plan.md:**
 
-**Extract user stories from spec.md:**
 ```bash
-# Parse user stories with priorities (P1, P2, P3...)
-# Example: "As a user, I want to... [P1]"
-USER_STORIES=$(grep -E "^(As a|As an)" "$SPEC_FILE" | sed 's/\[P\([0-9]\)\]/@PRIORITY:\1/')
-```
+# Required headings that must exist
+required_sections=(
+  "## \\[ARCHITECTURE DECISIONS\\]"
+  "## \\[EXISTING INFRASTRUCTURE - REUSE\\]"
+  "## \\[NEW INFRASTRUCTURE - CREATE\\]"
+  "## \\[SCHEMA\\]"
+  "## \\[CI\\/CD IMPACT\\]"
+  "## \\[DEPLOYMENT ACCEPTANCE\\]"
+)
 
-**Check for polished UI designs:**
-```bash
-POLISHED_SCREENS=$(find apps/web/mock/$SLUG -path "*/polished/page.tsx" 2>/dev/null)
-if [ -n "$POLISHED_SCREENS" ]; then
-  HAS_UI_DESIGN=true
-  UI_SCREEN_COUNT=$(echo "$POLISHED_SCREENS" | wc -l)
-else
-  HAS_UI_DESIGN=false
+MISSING_SECTIONS=()
+for heading in "${required_sections[@]}"; do
+  if ! grep -qE "$heading" "$PLAN_ABS"; then
+    MISSING_SECTIONS+=("$heading")
+  fi
+done
+
+if [ ${#MISSING_SECTIONS[@]} -gt 0 ]; then
+  echo "❌ plan.md missing required headings:"
+  printf '  - %s\n' "${MISSING_SECTIONS[@]}"
+  exit 1
 fi
 ```
 
-## SCAN CODEBASE FOR REUSE
-
-**Find existing patterns to follow:**
+**Extract user stories with priorities from spec.md:**
 
 ```bash
-# Scan for models
-EXISTING_MODELS=$(find . -path "*/models/*.py" -o -path "*/models/*.ts" 2>/dev/null | head -20)
+# Parse user stories: "As a user... [P1]"
+# Format: line_number:content
+mapfile -t USER_STORIES < <(grep -nE "^(As a|As an).*\\[P[1-9]\\]" "$SPEC_ABS" || true)
 
-# Scan for services
-EXISTING_SERVICES=$(find . -path "*/services/*.py" -o -path "*/services/*.ts" 2>/dev/null | head -20)
+if [ ${#USER_STORIES[@]} -eq 0 ]; then
+  echo "❌ No prioritized user stories found in spec.md"
+  echo "User stories must follow format: 'As a [role], I want [goal] [P1]'"
+  exit 1
+fi
 
-# Scan for endpoints
-EXISTING_ENDPOINTS=$(find . -path "*/routes/*.py" -o -path "*/api/*.ts" 2>/dev/null | head -20)
+echo "✅ Found ${#USER_STORIES[@]} user stories"
+```
 
-# Scan for UI components
-EXISTING_COMPONENTS=$(find . -path "*/components/*.tsx" -o -path "*/components/*.jsx" 2>/dev/null | head -20)
+**Ensure research unknowns resolved:**
 
-# Document REUSE opportunities
+```bash
+if [ -f "$RESEARCH" ]; then
+  UNRESOLVED=$(grep -c "⚠️" "$RESEARCH" 2>/dev/null || echo 0)
+  if [ "$UNRESOLVED" -gt 0 ]; then
+    echo "❌ Unresolved questions in research.md: $UNRESOLVED"
+    echo "Run /clarify to resolve unknowns before generating tasks"
+    exit 1
+  fi
+fi
+```
+
+**Extract acceptance criteria from spec.md:**
+
+```bash
+# Find all acceptance criteria blocks
+# Format: - [ ] Given... When... Then...
+mapfile -t AC_LINES < <(grep -nE "^- \\[ \\] (Given|When|Then)" "$SPEC_ABS" || true)
+
+echo "✅ Found ${#AC_LINES[@]} acceptance criteria"
+```
+
+## PHASE 2: CODEBASE DISCOVERY (bounded, repo-truth)
+
+**Discover test roots by language:**
+
+```bash
+# Python test patterns
+PY_TEST_FILES=$(git ls-files | grep -E '^tests/.*\.py$|.*/tests/.*\.py$' | head -20 || true)
+PY_TEST_ROOT=$(echo "$PY_TEST_FILES" | head -1 | sed 's|/[^/]*$||' || echo "")
+
+# TypeScript/JavaScript test patterns
+TS_TEST_FILES=$(git ls-files | grep -E '\.spec\.ts$|\.test\.ts$|\.spec\.tsx$' | head -20 || true)
+TS_TEST_ROOT=$(echo "$TS_TEST_FILES" | head -1 | sed 's|/[^/]*$||' || echo "")
+
+# E2E test patterns
+E2E_TEST_FILES=$(git ls-files | grep -E 'e2e/.*\.spec\.' | head -10 || true)
+E2E_TEST_ROOT=$(echo "$E2E_TEST_FILES" | head -1 | sed 's|/[^/]*$||' || echo "")
+```
+
+**Discover existing patterns to reuse:**
+
+```bash
+# Models
+EXISTING_MODELS=$(git ls-files | grep -E '(models?|entities)/.*\.(py|ts|tsx)$' | head -20 || true)
+
+# Services
+EXISTING_SERVICES=$(git ls-files | grep -E 'services?/.*\.(py|ts|tsx)$' | head -20 || true)
+
+# API endpoints
+EXISTING_ENDPOINTS=$(git ls-files | grep -E '(routes?|api|endpoints?)/.*\.(py|ts|tsx)$' | head -20 || true)
+
+# UI components
+EXISTING_COMPONENTS=$(git ls-files | grep -E 'components?/.*\.(tsx|jsx)$' | head -20 || true)
+
+# Middleware
+EXISTING_MIDDLEWARE=$(git ls-files | grep -E 'middleware/.*\.(py|ts)$' | head -10 || true)
+```
+
+**Document reuse opportunities:**
+
+```bash
 echo "[CODEBASE REUSE ANALYSIS]"
-echo "Scanned: $(pwd)"
+echo "Repository root: $(git rev-parse --show-toplevel)"
 echo ""
-echo "[EXISTING - REUSE]"
-# List existing infrastructure from plan.md [EXISTING INFRASTRUCTURE - REUSE]
+echo "[DISCOVERED PATTERNS]"
+echo "Models: $(echo "$EXISTING_MODELS" | wc -l) files"
+echo "Services: $(echo "$EXISTING_SERVICES" | wc -l) files"
+echo "Endpoints: $(echo "$EXISTING_ENDPOINTS" | wc -l) files"
+echo "Components: $(echo "$EXISTING_COMPONENTS" | wc -l) files"
 echo ""
-echo "[NEW - CREATE]"
-# List new infrastructure from plan.md [NEW INFRASTRUCTURE - CREATE]
 ```
 
-## TASK ORGANIZATION RULES
+## PHASE 3: GENERATE CANONICAL TASKS.JSON
 
-**Format (GitHub-compatible checkboxes):**
+**Mental model**: Build tasks as structured data first, validate, then render to Markdown.
+
+**Task ID stability strategy**:
+1. Sort tasks by: phase (setup → foundational → story → polish), then priority, then appearance
+2. Generate content hash: `sha1(description + files + from.section)`
+3. Assign sequential IDs (T001, T002...) in sort order
+4. Store hash in JSON for cross-run stability verification
+
+**Build task list:**
+
+For each user story:
+1. **Extract from spec.md**:
+   - Story text, priority (P1-P9)
+   - Acceptance criteria (quoted verbatim)
+   - Line numbers for traceability
+
+2. **Extract from plan.md**:
+   - Implementation steps (with line ranges)
+   - Required infrastructure (REUSE vs CREATE)
+   - Schemas, endpoints, components
+
+3. **Generate tasks**:
+   - Setup tasks (project structure, dependencies)
+   - Foundational tasks (blocking infrastructure)
+   - Story tasks (per user story, priority order)
+   - Polish tasks (error handling, deployment prep)
+
+4. **For each task, verify**:
+   - File paths exist via `git ls-files` OR marked [NEW]
+   - Sections exist in source documents
+   - Acceptance criteria quoted if present
+   - Dependencies reference valid task IDs
+
+**Example task object structure:**
+
+```json
+{
+  "id": "T012",
+  "hash": "a3f5c89e",
+  "story": "US1",
+  "priority": 1,
+  "description": "Create User model in api/src/models/user.py",
+  "phase": "story",
+  "phase_label": "Phase 3: User Story 1 [P1]",
+  "files": ["api/src/models/user.py"],
+  "from": {
+    "doc": "data-model.md",
+    "section": "User Entity",
+    "start_line": 42,
+    "end_line": 78
+  },
+  "reuse": [
+    {
+      "name": "BaseModel",
+      "path": "api/src/models/base.py"
+    }
+  ],
+  "pattern": ["api/src/models/notification.py"],
+  "depends_on": ["T005"],
+  "parallelizable": true,
+  "acceptance_criteria": [
+    {
+      "text": "Given a valid email, When user submits registration, Then account is created in database",
+      "from_spec": true,
+      "spec_line": 85
+    }
+  ],
+  "test_required": true
+}
 ```
-- [ ] [TID] [P?] [Story?] Description with file path
-  - REUSE: ExistingService (path/to/service.py)
-  - Pattern: path/to/similar/file.py
-  - From: design-doc.md section
+
+**Verification loop**:
+
+```bash
+# For each task candidate:
+for task in "${TASK_CANDIDATES[@]}"; do
+  # 1. Verify file paths
+  for file in "${task.files[@]}"; do
+    if ! is_new_file "$file" && ! exists_in_repo "$file"; then
+      echo "❌ Task $task.id references non-existent file: $file"
+      ERRORS+=("$task.id: missing file $file")
+    fi
+  done
+
+  # 2. Verify source sections
+  if ! grep -qF "$task.from.section" "$task.from.doc"; then
+    echo "❌ Task $task.id references missing section: $task.from.section"
+    ERRORS+=("$task.id: missing section $task.from.section in $task.from.doc")
+  fi
+
+  # 3. Verify reuse paths
+  for reuse_path in "${task.reuse[@]}"; do
+    if ! exists_in_repo "$reuse_path"; then
+      echo "❌ Task $task.id REUSE path not found: $reuse_path"
+      ERRORS+=("$task.id: REUSE path missing $reuse_path")
+    fi
+  done
+
+  # 4. Verify pattern paths
+  for pattern_path in "${task.pattern[@]}"; do
+    if ! exists_in_repo "$pattern_path"; then
+      echo "❌ Task $task.id pattern not found: $pattern_path"
+      ERRORS+=("$task.id: pattern missing $pattern_path")
+    fi
+  done
+
+  # 5. Verify AC quoted from spec
+  if [ "$task.story" != "" ] && [ ${#task.acceptance_criteria[@]} -eq 0 ]; then
+    echo "⚠️  Task $task.id (story task) has no acceptance criteria"
+    WARNINGS+=("$task.id: missing acceptance criteria")
+  fi
+done
+
+# Fail if any errors
+if [ ${#ERRORS[@]} -gt 0 ]; then
+  echo ""
+  echo "❌ Task generation failed with ${#ERRORS[@]} errors:"
+  printf '  - %s\n' "${ERRORS[@]}"
+  exit 1
+fi
 ```
 
-**Components:**
-1. **Checkbox**: `- [ ]` (GitHub-trackable)
-2. **Task ID**: Sequential (T001, T002, T003...)
-3. **[P] marker**: Parallelizable (different files, no blocking deps)
-4. **[Story] label**: [US1], [US2], [US3] for user story tasks
-5. **Description**: Concrete action + exact file path
-6. **REUSE**: What existing code to use
-7. **Pattern**: Similar file to follow
-8. **From**: Which design doc section
+## PHASE 4: BUILD DEPENDENCY GRAPH & VALIDATE DAG
 
-**Examples:**
-- ✅ `- [ ] T001 Create project structure per implementation plan`
-- ✅ `- [ ] T005 [P] Implement authentication middleware in src/middleware/auth.py`
-  - REUSE: JWTService (src/services/jwt_service.py)
-  - Pattern: src/middleware/rate_limit.py
-- ✅ `- [ ] T012 [P] [US1] Create User model in api/src/models/user.py`
-  - Fields: id (UUID), email (unique), password_hash, created_at
-  - REUSE: BaseModel (api/src/models/base.py)
-  - Pattern: api/src/models/notification.py
-  - From: data-model.md User entity
+**Extract dependencies:**
 
-**NO generic placeholders:**
-- ❌ `Create [Entity] model in src/models/[entity].py`
-- ✅ `Create Message model in api/src/modules/chat/models/message.py`
+```bash
+# Build adjacency list: task_id → [dependent_task_ids]
+# Example: T001 → [T005, T006] means T005 and T006 depend on T001
+```
 
-## TASK GENERATION WORKFLOW
+**Detect cycles using DFS:**
 
-### 1. Analyze User Stories (from spec.md)
+```bash
+# Pseudocode for cycle detection:
+function detect_cycles(graph):
+  visited = {}
+  rec_stack = {}
+  cycles = []
 
-**Primary organization**: One phase per user story
-- Extract user stories with priorities (P1, P2, P3...)
-- Map entities, endpoints, UI components → stories they serve
-- Identify story dependencies (most should be independent)
-- Generate independent test criteria per story
+  for node in graph:
+    if not visited[node]:
+      if dfs(node, visited, rec_stack, [], cycles):
+        # Cycle detected
+        return false
 
-### 2. Map Components to Stories
+  return cycles.length == 0
 
-**From data-model.md** (if exists):
-- Map each entity → user story that needs it
-- If entity serves multiple stories → earliest story or Setup phase
-- Relationships → service layer tasks in appropriate story phase
+function dfs(node, visited, rec_stack, path, cycles):
+  visited[node] = true
+  rec_stack[node] = true
+  path.append(node)
 
-**From contracts/** (if exists):
-- Map each endpoint → user story it serves
-- Contract tests [P] before implementation in story phase
+  for neighbor in graph[node]:
+    if not visited[neighbor]:
+      if dfs(neighbor, visited, rec_stack, path, cycles):
+        return true
+    elif rec_stack[neighbor]:
+      # Cycle found
+      cycle_start = path.index(neighbor)
+      cycles.append(path[cycle_start:])
+      return true
 
-**From plan.md**:
-- Shared infrastructure → Setup phase (Phase 1)
-- Blocking prerequisites → Foundational phase (Phase 2)
-- Story-specific code → within story phase
+  rec_stack[node] = false
+  path.pop()
+  return false
+```
 
-### 3. Generate Dependency Graph
+**Fail if cycles detected:**
 
-**Story completion order:**
+```bash
+if [ ${#CYCLES[@]} -gt 0 ]; then
+  echo "❌ Dependency graph contains cycles:"
+  for cycle in "${CYCLES[@]}"; do
+    echo "  - Cycle: $cycle"
+  done
+  exit 1
+fi
+
+echo "✅ Dependency graph is acyclic (DAG validated)"
+```
+
+**Identify parallel opportunities:**
+
+```bash
+# Tasks are parallelizable if:
+# 1. They have parallelizable: true flag
+# 2. They operate on different files
+# 3. They have no dependency relationship (direct or transitive)
+
+PARALLEL_GROUPS=()
+for phase in setup foundational story polish; do
+  parallel_tasks=$(jq -r ".tasks[] | select(.phase == \"$phase\" and .parallelizable == true) | .id" tasks.json)
+  if [ -n "$parallel_tasks" ]; then
+    PARALLEL_GROUPS+=("$phase: $parallel_tasks")
+  fi
+done
+```
+
+**Generate story completion order:**
+
+```bash
+# Topological sort of stories based on dependencies
+# Output: [Phase 2: Foundational, Phase 3: US1, Phase 4: US2, ...]
+```
+
+## PHASE 5: WRITE TASKS.JSON
+
+**Generate complete JSON structure:**
+
+```json
+{
+  "version": "1.0",
+  "feature": {
+    "slug": "$SLUG",
+    "name": "Feature Name from spec.md",
+    "feature_dir": "specs/$SLUG"
+  },
+  "metadata": {
+    "generated_at": "2025-11-10T14:30:00Z",
+    "plan_file": "specs/$SLUG/plan.md",
+    "spec_file": "specs/$SLUG/spec.md",
+    "data_model_file": "specs/$SLUG/data-model.md",
+    "contracts_dir": "specs/$SLUG/contracts"
+  },
+  "tasks": [...],
+  "dependency_graph": {
+    "is_acyclic": true,
+    "cycles": [],
+    "story_order": [...],
+    "parallel_opportunities": [...]
+  },
+  "implementation_strategy": {
+    "mvp_scope": "Phase 3 (US1) only",
+    "incremental_delivery": ["US1 → staging", "US2 → staging", "US3 → production"],
+    "testing_approach": "TDD required"
+  },
+  "statistics": {
+    "total_tasks": 25,
+    "setup_tasks": 2,
+    "foundational_tasks": 5,
+    "story_tasks": 15,
+    "polish_tasks": 3,
+    "parallel_tasks": 12,
+    "test_tasks": 8,
+    "reuse_count": 6
+  }
+}
+```
+
+**Write to file:**
+
+```bash
+TASKS_JSON="$FEATURE_DIR/tasks.json"
+echo "$JSON_OUTPUT" > "$TASKS_JSON"
+echo "✅ Generated: $TASKS_JSON"
+```
+
+## PHASE 6: VALIDATE AGAINST SCHEMA
+
+**Use JSON schema validator:**
+
+```bash
+# Node.js (ajv-cli)
+npx ajv validate \
+  -s .spec-flow/templates/tasks.schema.json \
+  -d "$TASKS_JSON"
+
+# Python (jsonschema)
+python3 -c "
+import json
+import jsonschema
+
+with open('.spec-flow/templates/tasks.schema.json') as f:
+  schema = json.load(f)
+
+with open('$TASKS_JSON') as f:
+  data = json.load(f)
+
+try:
+  jsonschema.validate(data, schema)
+  print('✅ tasks.json validates against schema')
+except jsonschema.ValidationError as e:
+  print(f'❌ Schema validation failed: {e.message}')
+  exit(1)
+"
+```
+
+**Fail if validation fails:**
+
+```bash
+if [ $? -ne 0 ]; then
+  echo "❌ tasks.json does not conform to schema"
+  exit 1
+fi
+```
+
+## PHASE 7: RENDER TASKS.MD FROM TASKS.JSON
+
+**Read canonical JSON:**
+
+```bash
+TASKS_DATA=$(cat "$TASKS_JSON")
+```
+
+**Generate Markdown header:**
+
 ```markdown
-## [DEPENDENCY GRAPH]
-Story completion order:
-1. Phase 2: Foundational (blocks all stories)
-2. Phase 3: US1 [P1] (independent)
-3. Phase 4: US2 [P2] (depends on US1 models)
-4. Phase 5: US3 [P3] (independent)
-```
+# Tasks: ${FEATURE_NAME}
 
-### 4. Identify Parallel Opportunities
-
-**Per-story parallelization:**
-```markdown
-## [PARALLEL EXECUTION OPPORTUNITIES]
-- US1: T010, T011, T012 (different files, no deps)
-- US2: T020, T021 (after US1 complete)
-```
-
-### 5. Define MVP Strategy
-
-```markdown
-## [IMPLEMENTATION STRATEGY]
-**MVP Scope**: Phase 3 (US1) only
-**Incremental delivery**: US1 → staging validation → US2 → US3
-```
-
-## OUTPUT STRUCTURE (tasks.md)
-
-### Header Sections
-
-```markdown
-# Tasks: [Feature Name]
+> **Source of truth**: `tasks.json` (canonical)
+> **This file**: Generated from tasks.json on ${TIMESTAMP}
+> **Do not edit manually** — changes will be overwritten
 
 ## [CODEBASE REUSE ANALYSIS]
-Scanned: api/src/**/*.py, apps/**/*.tsx
+Scanned: ${REPO_ROOT}
 
 [EXISTING - REUSE]
-- ✅ DatabaseService (api/src/services/database_service.py)
-- ✅ BaseModel (api/src/models/base.py)
+${REUSE_LIST}
 
 [NEW - CREATE]
-- 🆕 MessageService (no existing pattern)
+${CREATE_LIST}
 
 ## [DEPENDENCY GRAPH]
 Story completion order:
-1. Phase 2: Foundational (blocks all stories)
-2. Phase 3: US1 [P1] - User registration (independent)
-3. Phase 4: US2 [P2] - User login (depends on US1 User model)
+${STORY_ORDER}
 
 ## [PARALLEL EXECUTION OPPORTUNITIES]
-- US1: T010, T011, T012 (different files, no dependencies)
-- US2: T020, T021 (after US1 models created)
+${PARALLEL_GROUPS}
 
 ## [IMPLEMENTATION STRATEGY]
-**MVP Scope**: Phase 3 (US1) only
-**Incremental delivery**: US1 → staging validation → US2 → US3
-**Testing approach**: [TDD required|Optional - integration only|E2E only]
+**MVP Scope**: ${MVP_SCOPE}
+**Incremental delivery**: ${DELIVERY_SEQUENCE}
+**Testing approach**: ${TESTING_APPROACH}
 ```
 
-### Phase 1: Setup
+**Render tasks by phase:**
 
 ```markdown
 ## Phase 1: Setup
@@ -318,17 +587,13 @@ Story completion order:
 - [ ] T001 Create project structure per plan.md tech stack
   - Files: src/, tests/, config/
   - Pattern: existing-feature/ structure
-  - From: plan.md [PROJECT STRUCTURE]
+  - From: plan.md L45-L67 [PROJECT STRUCTURE]
 
 - [ ] T002 [P] Install dependencies from plan.md
   - Files: package.json, requirements.txt
   - Libraries: [list from plan.md]
-  - From: plan.md [ARCHITECTURE DECISIONS]
-```
+  - From: plan.md L102-L125 [ARCHITECTURE DECISIONS]
 
-### Phase 2: Foundational
-
-```markdown
 ## Phase 2: Foundational (blocking prerequisites)
 
 **Goal**: Infrastructure that blocks all user stories
@@ -336,218 +601,125 @@ Story completion order:
 - [ ] T005 [P] Implement authentication middleware in src/middleware/auth.py
   - REUSE: JWTService (src/services/jwt_service.py)
   - Pattern: src/middleware/rate_limit.py
-  - From: plan.md [EXISTING INFRASTRUCTURE - REUSE]
+  - From: plan.md L200-L215 [EXISTING INFRASTRUCTURE - REUSE]
 
-- [ ] T006 [P] Create database connection pool in src/db/connection.py
-  - REUSE: DatabaseService (src/services/database_service.py)
-  - Pattern: src/db/postgres_pool.py
-  - From: plan.md [SCHEMA]
-```
-
-### Phase 3+: User Stories (one per story)
-
-```markdown
 ## Phase 3: User Story 1 [P1] - User can register account
 
 **Story Goal**: New users create accounts with email/password
 
 **Independent Test Criteria**:
-- [ ] User submits valid registration → account created in DB
-- [ ] User submits duplicate email → 400 error with message
-- [ ] Registration confirmed via email link → account activated
-
-### Setup (if story-specific infrastructure needed)
-
-- [ ] T010 [P] [US1] Create User table migration in api/alembic/versions/xxx_create_user.py
-  - Fields: id (UUID PK), email (unique), password_hash, created_at
-  - Indexes: email (unique), created_at
-  - Pattern: api/alembic/versions/existing_migration.py
-  - From: plan.md [SCHEMA]
-
-### Tests (if explicitly requested in spec.md)
-
-- [ ] T011 [P] [US1] Write test: User model validates email format
-  - File: tests/unit/models/test_user.py
-  - Given-When-Then structure
-  - Pattern: tests/unit/models/test_notification.py
-  - Coverage: ≥80% (new code must be 100%)
-
-- [ ] T012 [P] [US1] Write test: UserService creates account with valid data
-  - File: tests/integration/services/test_user_service.py
-  - Real database (test DB)
-  - Pattern: tests/integration/services/test_notification_service.py
+- [ ] Given a valid email, When user submits registration, Then account created in DB
+- [ ] Given duplicate email, When user registers, Then 400 error with message
+- [ ] Given registration confirmed, When email link clicked, Then account activated
 
 ### Implementation
 
-- [ ] T015 [US1] Create User model in api/src/models/user.py
+- [ ] T012 [P] [US1] Create User model in api/src/models/user.py
   - Fields: id, email, password_hash, created_at
   - Methods: validate_email(), set_password()
   - REUSE: BaseModel (api/src/models/base.py)
   - Pattern: api/src/models/notification.py
-  - From: data-model.md User entity
-
-- [ ] T016 [US1] Create UserService in api/src/services/user_service.py
-  - Methods: create_user(), validate_email(), hash_password()
-  - REUSE: DatabaseService (api/src/services/database_service.py)
-  - Pattern: api/src/services/notification_service.py
-  - From: plan.md [NEW INFRASTRUCTURE - CREATE]
-
-- [ ] T017 [US1] Create POST /api/users endpoint in api/src/routes/users.py
-  - Request: { email, password }
-  - Response: { user_id, email, created_at }
-  - Validation: Email format, password strength
-  - REUSE: AuthMiddleware (src/middleware/auth.py)
-  - Pattern: api/src/routes/notifications.py
-  - From: contracts/user-registration.yaml
-
-### Integration
-
-- [ ] T020 [US1] Write E2E test for registration flow
-  - File: tests/e2e/test_user_registration.spec.ts
-  - Test: Complete user journey (form → API → DB → email)
-  - Real data: Actual API, real database
-  - Pattern: tests/e2e/test_notification_flow.spec.ts
-  - Coverage: ≥90% critical path
+  - From: data-model.md L42-L78 [User Entity]
+  - AC:
+    - "Given a valid email, When user submits registration, Then account is created in database" (spec.md L85)
 ```
 
-### Phase N: Polish & Cross-Cutting Concerns
-
-```markdown
-## Phase N: Polish & Cross-Cutting Concerns
-
-### Error Handling & Resilience
-
-- [ ] T080 Add global error handler in src/middleware/error_handler.py
-  - Returns 500 with error_id for tracking
-  - Logs to Sentry + error-log.md
-  - REUSE: ErrorTracker (src/services/error_tracker.py)
-  - Pattern: src/middleware/request_logger.py
-
-- [ ] T081 [P] Add retry logic with exponential backoff
-  - Decorator: @retry(max_attempts=3, backoff_factor=2)
-  - Pattern: src/utils/retry_decorator.py
-  - From: plan.md [DEPLOYMENT ACCEPTANCE]
-
-### Deployment Preparation
-
-- [ ] T085 Document rollback procedure in NOTES.md
-  - Command: Standard 3-command rollback (see docs/ROLLBACK_RUNBOOK.md)
-  - Feature flag: Kill switch (NEXT_PUBLIC_FEATURE_ENABLED=0)
-  - Database: Reversible migration (downgrade script)
-  - From: plan.md [DEPLOYMENT ACCEPTANCE]
-
-- [ ] T086 [P] Add health check endpoint in src/routes/health.py
-  - Endpoint: /api/health/[feature]
-  - Check: Database connection, service available
-  - Return: { status: "ok", dependencies: {...} }
-  - Pattern: src/routes/health_checks.py
-  - From: plan.md [CI/CD IMPACT]
-
-- [ ] T087 [P] Add smoke tests to CI pipeline
-  - File: tests/smoke/test_[feature].py
-  - Tests: Critical path only (<90s total)
-  - Pattern: tests/smoke/test_existing_feature.py
-  - From: plan.md [CI/CD IMPACT]
-
-### UI Promotion (if HAS_UI_DESIGN = true)
-
-- [ ] T090 [US1] Promote polished mockup to production in apps/app/[slug]/page.tsx
-  - **Reference mockup**: apps/web/mock/[slug]/polished/page.tsx
-  - **Design**: Copy layout, components, tokens, a11y from mockup
-  - **Backend**: Wire to API endpoints (see contracts/*.yaml)
-  - **State**: Add loading, success, error states (React Query)
-  - **Analytics**: Track events from design/analytics.md
-  - **Validation**: Client-side + server-side error handling
-  - Pattern: apps/app/existing-feature/page.tsx
-  - From: spec.md User Scenarios
-
-- [ ] T091 [US1] Add analytics instrumentation
-  - **Events**: From design/analytics.md (page_view, action, completed, error)
-  - **PostHog**: posthog.capture(event, properties)
-  - **Logs**: logger.info({ event, ...properties, timestamp })
-  - **DB**: POST /api/metrics ({ feature, variant, outcome, value })
-  - Pattern: Triple instrumentation for HEART metrics
-
-- [ ] T092 [US1] Add feature flag wrapper
-  - **Flag**: NEXT_PUBLIC_${SLUG^^}_ENABLED
-  - **Component**: apps/app/[slug]/layout.tsx
-  - **Logic**: Hash-based rollout (0% → 5% → 25% → 50% → 100%)
-  - **Override**: Team always enabled (TEAM_USER_IDS)
-  - From: plan.md [CI/CD IMPACT]
-```
-
-## TEST GUARDRAILS (if tests requested)
-
-**Only include this section if spec.md requests tests or TDD approach**
-
-```markdown
-## [TEST GUARDRAILS]
-
-**Speed Requirements:**
-- Unit tests: <2s each
-- Integration tests: <10s each
-- E2E tests: <30s each
-- Full suite: <6 min total
-
-**Coverage Requirements:**
-- New code: 100% coverage (no untested lines in new features)
-- Unit tests: ≥80% line coverage
-- Integration tests: ≥60% line coverage
-- E2E tests: ≥90% critical path coverage
-- Modified code: Coverage cannot decrease
-
-**Measurement:**
-- Python: `pytest --cov=api --cov-report=term-missing`
-- TypeScript: `jest --coverage`
-- E2E: Playwright trace for failed scenarios
-
-**Quality Gates:**
-- All tests must pass before merge
-- Coverage thresholds enforced in CI
-- No skipped tests without JIRA ticket
-
-**Clarity Requirements:**
-- One behavior per test
-- Descriptive names: `test_anonymous_user_cannot_save_message_without_auth()`
-- Given-When-Then structure in test body
-
-**Anti-Patterns:**
-- ❌ NO UI snapshots (brittle, break on CSS changes)
-- ❌ NO "prop-mirror" tests (test behavior, not implementation)
-- ✅ USE role/text queries (accessible, resilient)
-- ✅ USE data-testid for dynamic content only
-
-**Examples:**
-```typescript
-// ❌ Bad: Prop-mirror test (tests implementation)
-expect(component.props.isOpen).toBe(true)
-
-// ✅ Good: Behavior test (tests user outcome)
-expect(screen.getByRole('dialog')).toBeVisible()
-
-// ❌ Bad: Snapshot (fragile)
-expect(wrapper).toMatchSnapshot()
-
-// ✅ Good: Semantic assertion (resilient)
-expect(screen.getByText('Message sent')).toBeInTheDocument()
-```
-
-**Reference**: `.spec-flow/templates/test-patterns.md` for copy-paste templates
-```
-
-## GIT COMMIT
+**Write rendered Markdown:**
 
 ```bash
-git add specs/${SLUG}/tasks.md
-git commit -m "design:tasks: generate N concrete tasks organized by user story
+TASKS_MD="$FEATURE_DIR/tasks.md"
+echo "$MARKDOWN_OUTPUT" > "$TASKS_MD"
+echo "✅ Rendered: $TASKS_MD"
+```
 
-- N tasks (setup, foundational, US1-USN, polish)
-- REUSE markers for existing modules
-- Dependency graph + parallel opportunities
-- MVP strategy (US1 only for first release)
+## PHASE 8: DIFF CHECK
+
+**Compare with previous version:**
+
+```bash
+if [ -f "$TASKS_JSON.old" ]; then
+  if diff -q "$TASKS_JSON" "$TASKS_JSON.old" >/dev/null; then
+    echo "ℹ️  No changes to tasks.json"
+    exit 0
+  else
+    echo "📝 Tasks updated"
+    diff "$TASKS_JSON.old" "$TASKS_JSON" | head -20
+  fi
+fi
+
+# Backup current version
+cp "$TASKS_JSON" "$TASKS_JSON.old"
+```
+
+## PHASE 9: UPDATE NOTES.MD
+
+**Count tasks:**
+
+```bash
+TOTAL_TASKS=$(jq '.statistics.total_tasks' "$TASKS_JSON")
+SETUP_TASKS=$(jq '.statistics.setup_tasks' "$TASKS_JSON")
+STORY_TASKS=$(jq '.statistics.story_tasks' "$TASKS_JSON")
+PARALLEL_TASKS=$(jq '.statistics.parallel_tasks' "$TASKS_JSON")
+REUSE_COUNT=$(jq '.statistics.reuse_count' "$TASKS_JSON")
+```
+
+**Add Phase 2 checkpoint:**
+
+```bash
+cat >> "$FEATURE_DIR/NOTES.md" <<EOF
+
+## Phase 2: Tasks ($(date '+%Y-%m-%d %H:%M'))
+
+**Summary**:
+- Total tasks: $TOTAL_TASKS
+- User story tasks: $STORY_TASKS
+- Parallel opportunities: $PARALLEL_TASKS
+- Setup tasks: $SETUP_TASKS
+- Reuse count: $REUSE_COUNT
+- Task files: tasks.json (canonical), tasks.md (rendered)
+
+**Verification**:
+- ✅ All file paths verified via git ls-files
+- ✅ All sections traced to plan/spec with line numbers
+- ✅ Dependency graph validated (acyclic DAG)
+- ✅ JSON schema validation passed
+- ✅ Acceptance criteria quoted from spec.md
+
+**Checkpoint**:
+- ✅ Tasks generated: $TOTAL_TASKS
+- ✅ User story organization: Complete
+- ✅ Dependency graph: Created (no cycles)
+- ✅ MVP strategy: Defined
+- 📋 Ready for: /validate
+
+EOF
+```
+
+## PHASE 10: GIT COMMIT
+
+**Commit with Conventional Commits:**
+
+```bash
+git add "$TASKS_JSON" "$TASKS_MD" "$FEATURE_DIR/NOTES.md"
+
+git commit -m "$(cat <<EOF
+design:tasks: generate $TOTAL_TASKS concrete tasks for $SLUG
+
+- $TOTAL_TASKS tasks (setup, foundational, story, polish)
+- $REUSE_COUNT REUSE markers for existing modules
+- Dependency graph validated (acyclic DAG)
+- MVP strategy: ${MVP_SCOPE}
+- All paths verified via git ls-files
+- All sections traced with line numbers
+
+Artifacts:
+- tasks.json (canonical source of truth)
+- tasks.md (rendered from JSON)
 
 🤖 Generated with Claude Code
-Co-Authored-By: Claude <noreply@anthropic.com>"
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
 
 # Verify commit succeeded
 COMMIT_HASH=$(git rev-parse --short HEAD)
@@ -558,64 +730,42 @@ git log -1 --oneline
 echo ""
 ```
 
-## UPDATE NOTES.md
-
-```bash
-# Count tasks
-TOTAL_TASKS=$(grep -c "^- \[ \] T[0-9]" "$FEATURE_DIR/tasks.md")
-SETUP_TASKS=$(grep -c "^- \[ \] T[0-9].*Phase 1" "$FEATURE_DIR/tasks.md")
-STORY_TASKS=$(grep -c "\[US[0-9]\]" "$FEATURE_DIR/tasks.md")
-PARALLEL_TASKS=$(grep -c "\[P\]" "$FEATURE_DIR/tasks.md")
-
-# Add Phase 2 checkpoint
-cat >> "$FEATURE_DIR/NOTES.md" <<EOF
-
-## Phase 2: Tasks ($(date '+%Y-%m-%d %H:%M'))
-
-**Summary**:
-- Total tasks: $TOTAL_TASKS
-- User story tasks: $STORY_TASKS
-- Parallel opportunities: $PARALLEL_TASKS
-- Setup tasks: $SETUP_TASKS
-- Task file: specs/$SLUG/tasks.md
-
-**Checkpoint**:
-- ✅ Tasks generated: $TOTAL_TASKS
-- ✅ User story organization: Complete
-- ✅ Dependency graph: Created
-- ✅ MVP strategy: Defined (US1 only)
-- 📋 Ready for: /analyze
-
-EOF
-```
-
-## RETURN
+## PHASE 11: RETURN SUMMARY
 
 ```
-✅ Tasks generated: specs/$SLUG/tasks.md (N tasks)
+✅ Tasks generated: specs/$SLUG/tasks.json + tasks.md
 
 📊 Summary:
-- Total: N tasks
-- User story tasks: M (organized by priority P1, P2, P3...)
-- Parallel opportunities: K tasks marked [P]
-- REUSE: L existing modules identified
-- UI promotion: O tasks (if polished designs exist)
-- MVP scope: Phase 3 (US1) only
+- Total: $TOTAL_TASKS tasks
+- User story tasks: $STORY_TASKS (organized by priority P1, P2, P3...)
+- Parallel opportunities: $PARALLEL_TASKS tasks marked [P]
+- REUSE: $REUSE_COUNT existing modules identified
+- MVP scope: ${MVP_SCOPE}
 
 📋 Task breakdown:
-- Phase 1 (Setup): X tasks
-- Phase 2 (Foundational): Y tasks
-- Phase 3+ (User Stories): Z tasks
-- Phase N (Polish): W tasks
+- Phase 1 (Setup): $SETUP_TASKS tasks
+- Phase 2 (Foundational): $FOUNDATIONAL_TASKS tasks
+- Phase 3+ (User Stories): $STORY_TASKS tasks
+- Phase N (Polish): $POLISH_TASKS tasks
 
-NOTES.md: Phase 2 checkpoint added
+🔍 Verification:
+- ✅ All file paths verified (git ls-files or [NEW])
+- ✅ All sections traced to source docs (line numbers)
+- ✅ Dependency graph validated (acyclic DAG)
+- ✅ JSON schema validation passed
+- ✅ Acceptance criteria quoted from spec.md
+
+📁 Artifacts:
+- tasks.json: Canonical source of truth (machine-readable)
+- tasks.md: Human-readable rendering
+- NOTES.md: Phase 2 checkpoint added
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 NEXT: /analyze
+📋 NEXT: /validate
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-/analyze will:
-1. Read tasks.md (task breakdown)
+/validate will:
+1. Read tasks.json (task breakdown)
 2. Scan codebase for patterns (anti-duplication check)
 3. Validate architecture decisions (no conflicts)
 4. Identify risks (complexity, dependencies)
@@ -627,3 +777,18 @@ Output: specs/$SLUG/artifacts/analysis-report.md
 Duration: ~5 minutes
 ```
 </instructions>
+
+## MENTAL MODEL
+
+**Workflow**: spec → clarify → plan → tasks → validate → implement → optimize → debug → preview → ship
+
+**State machine**: Load design artifacts → Verify all paths → Extract user stories → Map to tasks → Generate JSON (canonical) → Validate schema → Render MD → Commit with provenance
+
+**Philosophy**:
+- **JSON first**: tasks.json is the source of truth, tasks.md is a view
+- **Fail fast**: Stop on first verification failure with precise error
+- **Traceable**: Every task links to exact source lines in plan/spec
+- **Deterministic**: Same inputs always produce same outputs
+- **Verifiable**: All paths checked via git, all sections checked via grep
+
+**Auto-suggest**: When complete → `/validate`
