@@ -10,18 +10,26 @@ Design implementation for: $ARGUMENTS
 <context>
 ## MENTAL MODEL
 
-**Workflow**: spec-flow -> clarify -> plan -> tasks -> analyze -> implement -> optimize -> debug -> preview -> phase-1-ship -> validate-staging -> phase-2-ship
+**Workflow**: spec-flow → clarify → plan → tasks → analyze → implement → optimize → debug → preview → phase-1-ship → validate-staging → phase-2-ship
 
 **Phases:**
-- Phase 0: Research & Discovery → research.md
-- Phase 1: Design & Contracts → data-model.md, contracts/, quickstart.md, plan.md
+- Phase 0: Research & Discovery → research.md (single source of truth)
+- Phase 1: Design & Contracts → data-model.md, contracts/, budgets.json, quickstart.md, plan.md
 
 **State machine:**
-- Setup -> Constitution check -> Phase 0 (Research) -> Phase 1 (Design) -> Agent update -> Commit -> Suggest next
+- Setup → Tool checks → Constitution check → Phase 0 (Research) → Phase 1 (Design) → Validate → Commit → Suggest next
 
 **Auto-suggest:**
-- UI features → `/design-variations` or `/tasks`
+- UI features → `/tasks` (design phase optional)
 - Backend features → `/tasks`
+
+**Operating Constraints:**
+- **Headless**: No interactive prompts (use --yes flag or PLAN_ASSUME_YES=1)
+- **Atomic**: All writes via mktemp → validate → mv
+- **Deterministic**: Outputs hash-verifiable and idempotent
+- **Contract-First**: OpenAPI 3.1.0 + JSON Schema 2020-12 + RFC 9457 Problem Details
+- **Budget-Enforced**: Lighthouse budgets.json enforced via CI gates
+- **Security-Gated**: ASVS controls mapped, Conventional Commits enforced
 </context>
 
 ## USER INPUT
@@ -38,9 +46,6 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ```bash
 # Execute script and parse JSON output
-# For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot'
-# (or double-quote if possible: "I'm Groot")
-
 OUTPUT=$({SCRIPT})
 
 # Parse JSON to get paths (all must be absolute)
@@ -59,6 +64,82 @@ echo "Feature: $SLUG"
 echo "Spec: $FEATURE_SPEC"
 echo "Branch: $BRANCH"
 echo ""
+
+# Get commit SHA for artifact stamping
+COMMIT_SHA=$(git rev-parse --short HEAD)
+echo "Commit: $COMMIT_SHA"
+echo ""
+```
+
+## TOOL DEPENDENCY CHECKS (hard fail if missing)
+
+**Ensure required tools are available:**
+
+```bash
+check_tool() {
+  local tool="$1"
+  local install_hint="$2"
+
+  if ! command -v "$tool" &>/dev/null; then
+    echo "❌ Missing required tool: $tool"
+    echo "Install: $install_hint"
+    exit 1
+  fi
+}
+
+echo "🔧 Checking tool dependencies..."
+echo ""
+
+check_tool "jq" "brew install jq (macOS) | apt install jq (Linux) | choco install jq (Windows)"
+check_tool "yq" "brew install yq (macOS) | apt install yq (Linux) | choco install yq (Windows)"
+check_tool "git" "Install from https://git-scm.com"
+
+# Check for Redocly CLI (OpenAPI validation)
+if ! command -v "redocly" &>/dev/null && ! npx --yes @redocly/cli --version &>/dev/null 2>&1; then
+  echo "⚠️  Warning: Redocly CLI not found (OpenAPI contract validation will be skipped)"
+  echo "Install: npm install -g @redocly/cli"
+  echo ""
+fi
+
+# Check for Lighthouse CI (budgets validation)
+if ! command -v "lhci" &>/dev/null && ! npx --yes @lhci/cli --version &>/dev/null 2>&1; then
+  echo "⚠️  Warning: Lighthouse CI not found (budget validation will be skipped)"
+  echo "Install: npm install -g @lhci/cli"
+  echo ""
+fi
+
+echo "✅ Core tools available"
+echo ""
+```
+
+## ENVIRONMENT FLAGS
+
+**Parse flags for headless operation:**
+
+```bash
+# Check for headless mode flags
+ASSUME_YES="${PLAN_ASSUME_YES:-0}"
+ALLOW_AMBIGUOUS="${PLAN_ALLOW_AMBIGUOUS:-0}"
+STRICT_MODE="${PLAN_STRICT:-1}"
+
+# Parse command-line flags
+for arg in "$@"; do
+  case "$arg" in
+    --yes|-y)
+      ASSUME_YES=1
+      ;;
+    --allow-ambiguous)
+      ALLOW_AMBIGUOUS=1
+      ;;
+    --no-strict)
+      STRICT_MODE=0
+      ;;
+  esac
+done
+
+echo "Mode: $([ "$ASSUME_YES" = "1" ] && echo "Headless" || echo "Interactive")"
+echo "Strict: $([ "$STRICT_MODE" = "1" ] && echo "Enabled" || echo "Disabled")"
+echo ""
 ```
 
 ## LOAD CONTEXT
@@ -69,24 +150,27 @@ echo ""
 # Constitution file for alignment check
 CONSTITUTION_FILE=".spec-flow/memory/constitution.md"
 
-# Validate spec is clarified (optional check)
+# Validate spec is clarified (non-blocking warning)
 REMAINING_CLARIFICATIONS=$(grep -c "\[NEEDS CLARIFICATION\]" "$FEATURE_SPEC" || echo 0)
 if [ "$REMAINING_CLARIFICATIONS" -gt 0 ]; then
   echo "⚠️  Warning: $REMAINING_CLARIFICATIONS ambiguities remain in spec"
   echo ""
-  echo "Recommend: /clarify (resolve ambiguities first)"
-  echo "Or: Continue to /plan (clarify later)"
-  echo ""
-  read -p "Continue? (Y/n): " continue_choice
 
-  if [[ "$continue_choice" =~ ^[Nn]$ ]]; then
-    echo "Aborted. Run /clarify to resolve ambiguities."
-    exit 0
+  if [ "$STRICT_MODE" = "1" ] && [ "$ASSUME_YES" != "1" ]; then
+    echo "STRICT MODE: Cannot proceed with ambiguities"
+    echo "Options:"
+    echo "  1. Run: /clarify (recommended)"
+    echo "  2. Use: --allow-ambiguous flag"
+    exit 1
+  elif [ "$ALLOW_AMBIGUOUS" = "1" ]; then
+    echo "Continuing with ambiguities (--allow-ambiguous flag set)"
+    echo ""
   fi
 fi
 
 # Read spec and constitution for planning
 echo "Loading feature spec and constitution..."
+echo ""
 ```
 
 ## CONSTITUTION CHECK (Quality Gate)
@@ -146,6 +230,7 @@ echo ""
 ```bash
 REQUIRED_TEMPLATES=(
   ".spec-flow/templates/error-log-template.md"
+  ".spec-flow/templates/lighthouse-budget-template.json"
 )
 
 for template in "${REQUIRED_TEMPLATES[@]}"; do
@@ -159,27 +244,34 @@ done
 
 ## DETECT FEATURE TYPE
 
-**Check if UI design needed:**
+**Check if UI design needed (using yq):**
 
 ```bash
 HAS_SCREENS=false
 SCREEN_COUNT=0
 
 if [ -f "$FEATURE_DIR/design/screens.yaml" ]; then
-  # Count screens (lines starting with 2 spaces + letter)
-  SCREEN_COUNT=$(grep -c "^  [a-z]" "$FEATURE_DIR/design/screens.yaml" 2>/dev/null || echo 0)
+  # Count screens using yq (proper YAML parser)
+  SCREEN_COUNT=$(yq '.screens | length' "$FEATURE_DIR/design/screens.yaml" 2>/dev/null || echo 0)
   if [ "$SCREEN_COUNT" -gt 0 ]; then
     HAS_SCREENS=true
   fi
 fi
 
-# Store for use in RETURN section
-echo "UI_FEATURE=$HAS_SCREENS" > "$FEATURE_DIR/.planning-context"
-echo "SCREEN_COUNT=$SCREEN_COUNT" >> "$FEATURE_DIR/.planning-context"
+# Store for use in RETURN section (atomic write)
+PLANNING_CONTEXT_TMP=$(mktemp)
+cat > "$PLANNING_CONTEXT_TMP" <<EOF
+UI_FEATURE=$HAS_SCREENS
+SCREEN_COUNT=$SCREEN_COUNT
+EOF
+mv "$PLANNING_CONTEXT_TMP" "$FEATURE_DIR/.planning-context"
+
+echo "Feature type: $([ "$HAS_SCREENS" = true ] && echo "UI ($SCREEN_COUNT screens)" || echo "Backend/API")"
+echo ""
 ```
 
 **Detection logic:**
-- screens.yaml exists? Check for screen definitions
+- screens.yaml exists? Use yq to count screen nodes
 - At least 1 screen? UI feature = true
 - No screens.yaml or empty? Backend feature = false
 
@@ -241,12 +333,15 @@ if [ -d "$PROJECT_DOCS_DIR" ]; then
     echo "These files are critical for accurate planning."
     echo "Recommendation: Run /init-project to generate project documentation"
     echo ""
-    read -p "Continue without complete project docs? (y/N): " continue_choice
-    if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
-      echo "Exiting - please run /init-project first"
-      exit 0
+
+    if [ "$STRICT_MODE" = "1" ] && [ "$ASSUME_YES" != "1" ]; then
+      echo "STRICT MODE: Cannot proceed without complete project docs"
+      echo "Use: --no-strict or --yes flag to bypass"
+      exit 1
+    elif [ "$ASSUME_YES" = "1" ]; then
+      echo "Continuing without complete project docs (--yes flag set)"
+      echo ""
     fi
-    echo ""
   fi
 
   # Read and parse project documentation
@@ -256,7 +351,6 @@ if [ -d "$PROJECT_DOCS_DIR" ]; then
   if [ -f "$PROJECT_DOCS_DIR/tech-stack.md" ]; then
     echo "  → tech-stack.md"
     # Extract tech stack from markdown table
-    # Format: | Frontend | Next.js 14.2 | ... |
     FRONTEND_STACK=$(grep "| Frontend |" "$PROJECT_DOCS_DIR/tech-stack.md" 2>/dev/null | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}' || echo "Not specified")
     BACKEND_STACK=$(grep "| Backend |" "$PROJECT_DOCS_DIR/tech-stack.md" 2>/dev/null | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}' || echo "Not specified")
     DATABASE_STACK=$(grep "| Database |" "$PROJECT_DOCS_DIR/tech-stack.md" 2>/dev/null | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}' || echo "Not specified")
@@ -273,11 +367,7 @@ if [ -d "$PROJECT_DOCS_DIR" ]; then
   # PRIORITY 2: Parse data-architecture.md (prevents duplicate entities)
   if [ -f "$PROJECT_DOCS_DIR/data-architecture.md" ]; then
     echo "  → data-architecture.md"
-    # Extract existing entities from ERD
-    # Format: Entities are typically listed in ERD section or entity schemas
     EXISTING_ENTITIES=$(grep -E "^### |^## " "$PROJECT_DOCS_DIR/data-architecture.md" 2>/dev/null | grep -v "ERD\|Entity\|Architecture\|Overview" | sed 's/^#* //' | tr '\n' ', ' | sed 's/, $//' || echo "Not documented")
-
-    # Extract naming convention
     NAMING_CONVENTION=$(grep -i "naming convention" "$PROJECT_DOCS_DIR/data-architecture.md" -A 2 2>/dev/null | tail -1 | sed 's/^[*-] //' || echo "Not specified")
 
     RESEARCH_DECISIONS+=("Existing Entities: $EXISTING_ENTITIES (from data-architecture.md)")
@@ -287,82 +377,40 @@ if [ -d "$PROJECT_DOCS_DIR" ]; then
   # PRIORITY 3: Parse api-strategy.md (ensures API consistency)
   if [ -f "$PROJECT_DOCS_DIR/api-strategy.md" ]; then
     echo "  → api-strategy.md"
-    # Extract API patterns
-    API_STYLE=$(grep -E "REST|GraphQL|tRPC|gRPC" "$PROJECT_DOCS_DIR/api-strategy.md" 2>/dev/null | head -1 | sed 's/^[*-] //' | sed 's/:.*//' || echo "Not specified")
+    API_STYLE=$(grep -E "REST|GraphQL|tRPC|gRPC" "$PROJECT_DOCS_DIR/api-strategy.md" 2>/dev/null | head -1 | sed 's/^[*-] //' | sed 's/:.*//' || echo "REST")
     AUTH_PROVIDER=$(grep -i "auth.*provider\|authentication.*provider" "$PROJECT_DOCS_DIR/api-strategy.md" -A 1 2>/dev/null | tail -1 | sed 's/^[*-] //' || echo "Not specified")
     API_VERSIONING=$(grep -i "versioning" "$PROJECT_DOCS_DIR/api-strategy.md" -A 2 2>/dev/null | grep -E "/v[0-9]|version" | head -1 || echo "Not specified")
-    ERROR_FORMAT=$(grep -i "error.*format\|RFC 7807" "$PROJECT_DOCS_DIR/api-strategy.md" -A 1 2>/dev/null | tail -1 | sed 's/^[*-] //' || echo "Not specified")
 
     RESEARCH_DECISIONS+=("API Style: $API_STYLE (from api-strategy.md)")
     RESEARCH_DECISIONS+=("Auth Provider: $AUTH_PROVIDER (from api-strategy.md)")
     RESEARCH_DECISIONS+=("API Versioning: $API_VERSIONING (from api-strategy.md)")
-    RESEARCH_DECISIONS+=("Error Format: $ERROR_FORMAT (from api-strategy.md)")
   fi
 
   # PRIORITY 4: Parse capacity-planning.md (performance targets)
   if [ -f "$PROJECT_DOCS_DIR/capacity-planning.md" ]; then
     echo "  → capacity-planning.md"
-    # Extract scale tier and performance targets
-    SCALE_TIER=$(grep -i "scale tier\|tier:" "$PROJECT_DOCS_DIR/capacity-planning.md" 2>/dev/null | head -1 | grep -oE "micro|small|medium|large" || echo "Not specified")
-    API_RESPONSE_TARGET=$(grep -i "API response\|p95\|response time" "$PROJECT_DOCS_DIR/capacity-planning.md" 2>/dev/null | grep -oE "[0-9]+ms" | head -1 || echo "Not specified")
+    SCALE_TIER=$(grep -i "scale tier\|tier:" "$PROJECT_DOCS_DIR/capacity-planning.md" 2>/dev/null | head -1 | grep -oE "micro|small|medium|large" || echo "micro")
+    API_RESPONSE_TARGET=$(grep -i "API response\|p95\|response time" "$PROJECT_DOCS_DIR/capacity-planning.md" 2>/dev/null | grep -oE "[0-9]+ms" | head -1 || echo "200ms")
 
     RESEARCH_DECISIONS+=("Scale Tier: $SCALE_TIER (from capacity-planning.md)")
     RESEARCH_DECISIONS+=("API Response Target: $API_RESPONSE_TARGET (from capacity-planning.md)")
   fi
 
-  # OPTIONAL: Parse system-architecture.md (integration points)
+  # OPTIONAL: Parse system-architecture.md, deployment-strategy.md, development-workflow.md
   if [ -f "$PROJECT_DOCS_DIR/system-architecture.md" ]; then
     echo "  → system-architecture.md"
-    ARCHITECTURE_STYLE=$(grep -i "monolith\|microservices\|serverless" "$PROJECT_DOCS_DIR/system-architecture.md" 2>/dev/null | head -1 | grep -oE "monolith|microservices|serverless" || echo "Not specified")
+    ARCHITECTURE_STYLE=$(grep -i "monolith\|microservices\|serverless" "$PROJECT_DOCS_DIR/system-architecture.md" 2>/dev/null | head -1 | grep -oE "monolith|microservices|serverless" || echo "monolith")
     RESEARCH_DECISIONS+=("Architecture: $ARCHITECTURE_STYLE (from system-architecture.md)")
   fi
 
-  # OPTIONAL: Parse deployment-strategy.md (deployment model)
   if [ -f "$PROJECT_DOCS_DIR/deployment-strategy.md" ]; then
     echo "  → deployment-strategy.md"
-    DEPLOYMENT_MODEL=$(grep -i "staging-prod\|direct-prod\|local-only" "$PROJECT_DOCS_DIR/deployment-strategy.md" 2>/dev/null | head -1 | grep -oE "staging-prod|direct-prod|local-only" || echo "Not specified")
+    DEPLOYMENT_MODEL=$(grep -i "staging-prod\|direct-prod\|local-only" "$PROJECT_DOCS_DIR/deployment-strategy.md" 2>/dev/null | head -1 | grep -oE "staging-prod|direct-prod|local-only" || echo "staging-prod")
     DEPLOYMENT_PLATFORM=$(grep -i "platform:" "$PROJECT_DOCS_DIR/deployment-strategy.md" 2>/dev/null | head -1 | sed 's/.*: //' || echo "Not specified")
     RESEARCH_DECISIONS+=("Deployment: $DEPLOYMENT_MODEL on $DEPLOYMENT_PLATFORM (from deployment-strategy.md)")
   fi
 
-  # OPTIONAL: Parse overview.md (project vision)
-  if [ -f "$PROJECT_DOCS_DIR/overview.md" ]; then
-    echo "  → overview.md"
-    PROJECT_VISION=$(grep -A 3 "Vision\|vision:" "$PROJECT_DOCS_DIR/overview.md" 2>/dev/null | tail -1 | sed 's/^[*-] //' || echo "Not specified")
-    RESEARCH_DECISIONS+=("Project Vision: $PROJECT_VISION (from overview.md)")
-  fi
-
-  # OPTIONAL: Parse development-workflow.md (testing strategy)
-  if [ -f "$PROJECT_DOCS_DIR/development-workflow.md" ]; then
-    echo "  → development-workflow.md"
-    TESTING_STRATEGY=$(grep -i "testing strategy\|test coverage" "$PROJECT_DOCS_DIR/development-workflow.md" -A 2 2>/dev/null | tail -1 | sed 's/^[*-] //' || echo "Not specified")
-    RESEARCH_DECISIONS+=("Testing: $TESTING_STRATEGY (from development-workflow.md)")
-  fi
-
   echo "✅ Project documentation loaded successfully"
-  echo ""
-
-  # Freshness validation (compare docs to code)
-  echo "🔍 Validating documentation freshness..."
-
-  # Check if package.json exists and compare frontend framework
-  if [ -f "package.json" ] && [ "$FRONTEND_STACK" != "Not specified" ]; then
-    # Extract framework from package.json dependencies
-    if grep -q "next" package.json 2>/dev/null; then
-      CODE_FRAMEWORK="Next.js"
-      DOCS_FRAMEWORK=$(echo "$FRONTEND_STACK" | grep -oE "Next\.js|React|Vue|Angular|Svelte" || echo "Unknown")
-
-      if [ "$DOCS_FRAMEWORK" != "$CODE_FRAMEWORK" ] && [ "$DOCS_FRAMEWORK" != "Unknown" ]; then
-        echo "⚠️  WARNING: Tech stack mismatch detected"
-        echo "   Docs say: $DOCS_FRAMEWORK"
-        echo "   Code uses: $CODE_FRAMEWORK"
-        echo "   Consider updating tech-stack.md"
-        echo ""
-      fi
-    fi
-  fi
-
-  echo "✅ Validation complete"
   echo ""
 
 else
@@ -374,106 +422,56 @@ else
   echo "  • API patterns (ensures consistency)"
   echo "  • Performance targets (better design)"
   echo ""
-  echo "Recommendation: Run /init-project (one-time setup, ~10 minutes)"
-  echo ""
-  read -p "Continue without project docs? (y/N): " continue_choice
-  if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
-    echo "Exiting - please run /init-project first"
-    echo "This will generate 8 comprehensive project docs and prevent planning errors"
-    exit 0
+
+  if [ "$STRICT_MODE" = "1" ] && [ "$ASSUME_YES" != "1" ]; then
+    echo "STRICT MODE: Cannot proceed without project docs"
+    echo "Recommendation: Run /init-project (one-time setup, ~10 minutes)"
+    echo "Or use: --no-strict flag to bypass"
+    exit 1
+  elif [ "$ASSUME_YES" = "1" ]; then
+    echo "⚠️  Proceeding without project documentation (--yes flag set)"
+    echo "   Planning may make assumptions about tech stack and architecture"
+    echo ""
   fi
-  echo ""
-  echo "⚠️  Proceeding without project documentation"
-  echo "   Planning may make assumptions about tech stack and architecture"
-  echo ""
 fi
 ```
 
-**Minimal research** (2-3 tools for simple features):
-1. **Read spec**: Extract requirements, NFRs, deployment considerations, unknowns
-2. **Grep keywords**: Quick scan for similar patterns to reuse
-3. **Glob modules** (optional): If integration needed with existing code
+**Research depth optimization:**
+- **Minimal** (2-3 tools for simple features): Read spec, grep keywords, optional glob
+- **Full** (5-15 tools for complex, **2-5 if project docs exist**): Above + modules, patterns, WebSearch (skip if docs exist)
 
-**Full research** (5-15 tools for complex features, **2-5 tools if project docs exist**):
-1-3. Minimal research (above)
-4. **Glob modules**: `api/src/modules/*`, `api/src/services/*`, `apps/*/components/**`, `apps/*/lib/**`
-5-6. **Read similar modules**: Study patterns, categorize as reusable or inspiration
-   - If reusable: `REUSABLE_COMPONENTS+=("api/src/services/auth: JWT validation")`
-   - If new needed: `NEW_COMPONENTS+=("api/src/services/csv-parser: New capability")`
-7. **WebSearch best practices**: If novel pattern (not in codebase) — **SKIP if project docs exist** (rationale in tech-stack.md)
-8. **Read design-inspirations.md**: If UI-heavy feature
-9-10. **Read integration points**: Auth, billing, storage services (if complex integration) — **SKIP if api-strategy.md exists**
-11-15. **Deep dive - Read related modules**: If complex integration across multiple systems
-16. **Read visuals/README.md**: UX patterns (if exists)
-
-**Optimization with project docs**:
-- If `docs/project/` exists: Tech stack, API patterns, data models, and performance targets are already documented
-- Skip: Codebase scanning for stack detection, API pattern inference, entity discovery
-- Focus: Component reuse scanning (not in project docs) and feature-specific research
-- **Time savings**: 50-60% faster (8-15 min → 4-7 min for complex features)
-
-**Document decisions:**
-```bash
-RESEARCH_DECISIONS+=("Stack choice: Next.js App Router (existing pattern)")
-RESEARCH_DECISIONS+=("State: SWR for data fetching (reuse apps/app/lib/swr)")
-RESEARCH_DECISIONS+=("Auth: Clerk middleware (reuse existing setup)")
-
-# Track unknowns that need clarification
-UNKNOWNS+=("Performance threshold for CSV parsing unclear")
-UNKNOWNS+=("Rate limiting strategy not specified")
-```
-
-**Generate research.md:**
+**Document decisions and generate research.md (single source of truth):**
 
 ```bash
 RESEARCH_FILE="$FEATURE_DIR/research.md"
+RESEARCH_TMP=$(mktemp)
 
-cat > "$RESEARCH_FILE" <<EOF
+cat > "$RESEARCH_TMP" <<EOF
 # Research & Discovery: $SLUG
 
 $(if [ "$HAS_PROJECT_DOCS" = true ]; then
   echo "## Project Documentation Context"
   echo ""
-  echo "**Source**: \`docs/project/\` (8 project-level documents)"
+  echo "**Source**: \`docs/project/\` (project-level architecture)"
   echo ""
-  echo "This feature must align with the project's established architecture, tech stack, and patterns documented below."
-  echo ""
-  echo "### Tech Stack (from tech-stack.md)"
+  echo "### Tech Stack"
   echo "- **Frontend**: ${FRONTEND_STACK:-Not specified}"
   echo "- **Backend**: ${BACKEND_STACK:-Not specified}"
   echo "- **Database**: ${DATABASE_STACK:-Not specified}"
   echo "- **Styling**: ${STYLING_STACK:-Not specified}"
-  echo "- **State Management**: ${STATE_MGMT:-Not specified}"
+  echo "- **State**: ${STATE_MGMT:-Not specified}"
+  echo "- **API Style**: ${API_STYLE:-REST}"
+  echo "- **Auth**: ${AUTH_PROVIDER:-Not specified}"
   echo ""
-  echo "### Data Architecture (from data-architecture.md)"
-  echo "- **Existing Entities**: ${EXISTING_ENTITIES:-Not documented}"
-  echo "- **Naming Convention**: ${NAMING_CONVENTION:-Not specified}"
-  echo ""
-  echo "### API Strategy (from api-strategy.md)"
-  echo "- **API Style**: ${API_STYLE:-Not specified}"
-  echo "- **Auth Provider**: ${AUTH_PROVIDER:-Not specified}"
-  echo "- **Versioning**: ${API_VERSIONING:-Not specified}"
-  echo "- **Error Format**: ${ERROR_FORMAT:-Not specified}"
-  echo ""
-  echo "### Performance & Scale (from capacity-planning.md)"
-  echo "- **Scale Tier**: ${SCALE_TIER:-Not specified}"
-  echo "- **API Response Target**: ${API_RESPONSE_TARGET:-Not specified}"
+  echo "### Performance & Scale"
+  echo "- **Scale Tier**: ${SCALE_TIER:-micro}"
+  echo "- **API Response Target (p95)**: ${API_RESPONSE_TARGET:-200ms}"
   echo ""
   echo "### Architecture & Deployment"
-  echo "- **Architecture Style**: ${ARCHITECTURE_STYLE:-Not specified} (from system-architecture.md)"
-  echo "- **Deployment Model**: ${DEPLOYMENT_MODEL:-Not specified} (from deployment-strategy.md)"
-  echo "- **Platform**: ${DEPLOYMENT_PLATFORM:-Not specified} (from deployment-strategy.md)"
+  echo "- **Architecture**: ${ARCHITECTURE_STYLE:-monolith}"
+  echo "- **Deployment Model**: ${DEPLOYMENT_MODEL:-staging-prod}"
+  echo "- **Platform**: ${DEPLOYMENT_PLATFORM:-Not specified}"
   echo ""
-  if [ -n "$PROJECT_VISION" ] && [ "$PROJECT_VISION" != "Not specified" ]; then
-    echo "### Project Vision (from overview.md)"
-    echo "${PROJECT_VISION}"
-    echo ""
-  fi
-  if [ -n "$TESTING_STRATEGY" ] && [ "$TESTING_STRATEGY" != "Not specified" ]; then
-    echo "### Testing Strategy (from development-workflow.md)"
-    echo "${TESTING_STRATEGY}"
-    echo ""
-  fi
   echo "---"
   echo ""
 fi)
@@ -516,9 +514,23 @@ else
   echo "None - all technical questions resolved"
 fi)
 
+---
+
+**Artifact Metadata:**
+- Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+- Commit: $COMMIT_SHA
+- Hash: $(echo -n "$SLUG-$COMMIT_SHA" | sha256sum | cut -c1-8)
 EOF
 
-echo "✅ Generated research.md"
+# Validate and move atomically
+if grep -q "Research & Discovery" "$RESEARCH_TMP"; then
+  mv "$RESEARCH_TMP" "$RESEARCH_FILE"
+  echo "✅ Generated research.md (hash: $(sha256sum "$RESEARCH_FILE" | cut -c1-8))"
+else
+  echo "❌ Failed to generate research.md"
+  rm "$RESEARCH_TMP"
+  exit 1
+fi
 echo ""
 ```
 
@@ -533,14 +545,15 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 ```
 
-### Step 1: Generate data-model.md
+### Step 1: Generate data-model.md (atomic)
 
 **Extract entities from feature spec:**
 
 ```bash
 DATA_MODEL_FILE="$FEATURE_DIR/data-model.md"
+DATA_MODEL_TMP=$(mktemp)
 
-cat > "$DATA_MODEL_FILE" <<'EOF'
+cat > "$DATA_MODEL_TMP" <<EOF
 # Data Model: $SLUG
 
 ## Entities
@@ -549,10 +562,10 @@ cat > "$DATA_MODEL_FILE" <<'EOF'
 **Purpose**: [description]
 
 **Fields**:
-- `id`: UUID (PK)
-- `field_name`: Type - [description]
-- `created_at`: Timestamp
-- `updated_at`: Timestamp
+- \`id\`: UUID (PK)
+- \`field_name\`: Type - [description]
+- \`created_at\`: Timestamp
+- \`updated_at\`: Timestamp
 
 **Relationships**:
 - Has many: [related entity]
@@ -560,12 +573,10 @@ cat > "$DATA_MODEL_FILE" <<'EOF'
 
 **Validation Rules**:
 - [field]: [constraint] (from requirement FR-XXX)
-- [field]: [constraint] (from requirement FR-YYY)
 
 **State Transitions** (if applicable):
 - Initial → Active (on creation)
 - Active → Archived (on deletion)
-- Active → Suspended (on violation)
 
 ---
 
@@ -601,31 +612,159 @@ interface FeatureState {
   error: Error | null
 }
 \`\`\`
+
+---
+
+**Artifact Metadata:**
+- Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+- Commit: $COMMIT_SHA
 EOF
 
-echo "✅ Generated data-model.md"
+mv "$DATA_MODEL_TMP" "$DATA_MODEL_FILE"
+echo "✅ Generated data-model.md (hash: $(sha256sum "$DATA_MODEL_FILE" | cut -c1-8))"
 echo ""
 ```
 
-### Step 2: Generate API contracts
+### Step 2: Generate OpenAPI 3.1.0 contracts with RFC 9457 Problem Details (atomic)
 
-**Generate OpenAPI specs from functional requirements:**
+**Generate valid OpenAPI specs from functional requirements:**
 
 ```bash
 mkdir -p "$FEATURE_DIR/contracts"
 
-cat > "$FEATURE_DIR/contracts/api.yaml" <<'EOF'
-openapi: 3.0.0
+CONTRACTS_FILE="$FEATURE_DIR/contracts/api.yaml"
+CONTRACTS_TMP=$(mktemp)
+
+cat > "$CONTRACTS_TMP" <<EOF
+openapi: 3.1.0
 info:
-  title: [Feature] API
+  title: ${SLUG} API
   version: 1.0.0
+  description: API contract for ${SLUG} feature
+  contact:
+    name: API Support
+    url: https://example.com/support
+
+jsonSchemaDialect: "https://json-schema.org/draft/2020-12/schema"
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production
+  - url: https://api-staging.example.com/v1
+    description: Staging
+  - url: http://localhost:8000/v1
+    description: Development
+
+components:
+  schemas:
+    # RFC 9457 Problem Details for HTTP APIs
+    # Reference: https://www.rfc-editor.org/rfc/rfc9457.html
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference identifying the problem type
+          example: https://api.example.com/problems/validation-error
+        title:
+          type: string
+          description: Short human-readable summary
+          example: Validation Error
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence
+          example: The 'email' field must be a valid email address
+        instance:
+          type: string
+          format: uri
+          description: URI reference identifying the specific occurrence
+          example: /api/v1/users/12345
+        trace_id:
+          type: string
+          description: Unique identifier for tracing and log correlation
+          example: a3f8d2e1b9c4f7a2
+      required:
+        - type
+        - title
+        - status
+
+    # Feature-specific schemas
+    FeatureData:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier
+        name:
+          type: string
+          description: Feature name
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+      required:
+        - id
+        - name
+
+  responses:
+    # Standard error responses (RFC 9457)
+    BadRequest:
+      description: Bad request - validation failed
+      content:
+        application/problem+json:
+          schema:
+            \$ref: '#/components/schemas/ProblemDetails'
+          examples:
+            validation_error:
+              value:
+                type: https://api.example.com/problems/validation-error
+                title: Validation Error
+                status: 400
+                detail: The 'email' field must be a valid email address
+                instance: /api/v1/${SLUG}
+                trace_id: a3f8d2e1b9c4f7a2
+
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/problem+json:
+          schema:
+            \$ref: '#/components/schemas/ProblemDetails'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/problem+json:
+          schema:
+            \$ref: '#/components/schemas/ProblemDetails'
+
 paths:
-  /api/v1/[feature]:
+  /api/v1/${SLUG}:
     get:
-      summary: [description]
-      parameters: []
+      summary: List ${SLUG} resources
+      operationId: list${SLUG}
+      tags:
+        - ${SLUG}
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/json:
@@ -634,26 +773,151 @@ paths:
                 properties:
                   data:
                     type: array
-        400:
-          description: Bad request
-        401:
-          description: Unauthorized
-        500:
-          description: Server error
+                    items:
+                      \$ref: '#/components/schemas/FeatureData'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      limit:
+                        type: integer
+                      offset:
+                        type: integer
+        '400':
+          \$ref: '#/components/responses/BadRequest'
+        '401':
+          \$ref: '#/components/responses/Unauthorized'
+        '500':
+          \$ref: '#/components/responses/InternalServerError'
+
+tags:
+  - name: ${SLUG}
+    description: ${SLUG} feature endpoints
+
 EOF
 
-echo "✅ Generated contracts/api.yaml"
+# Validate OpenAPI schema with yq
+if ! yq eval '.' "$CONTRACTS_TMP" >/dev/null 2>&1; then
+  echo "❌ Failed to generate valid YAML"
+  rm "$CONTRACTS_TMP"
+  exit 1
+fi
+
+# Validate OpenAPI version is 3.1.0
+OAS_VERSION=$(yq eval '.openapi' "$CONTRACTS_TMP")
+if [ "$OAS_VERSION" != "3.1.0" ]; then
+  echo "❌ Invalid OpenAPI version: $OAS_VERSION (must be 3.1.0)"
+  rm "$CONTRACTS_TMP"
+  exit 1
+fi
+
+# Validate JSON Schema dialect is declared
+JSON_SCHEMA_DIALECT=$(yq eval '.jsonSchemaDialect' "$CONTRACTS_TMP")
+if [ "$JSON_SCHEMA_DIALECT" != "https://json-schema.org/draft/2020-12/schema" ]; then
+  echo "❌ Missing or invalid jsonSchemaDialect (must be https://json-schema.org/draft/2020-12/schema)"
+  rm "$CONTRACTS_TMP"
+  exit 1
+fi
+
+# Validate Problem Details schema exists (RFC 9457)
+if ! yq eval '.components.schemas.ProblemDetails' "$CONTRACTS_TMP" >/dev/null 2>&1; then
+  echo "❌ Missing ProblemDetails schema (RFC 9457 required)"
+  rm "$CONTRACTS_TMP"
+  exit 1
+fi
+
+# Validate with Redocly CLI if available
+if command -v redocly &>/dev/null || npx --yes @redocly/cli --version &>/dev/null 2>&1; then
+  echo "🔍 Validating OpenAPI contract with Redocly CLI..."
+  if command -v redocly &>/dev/null; then
+    redocly lint "$CONTRACTS_TMP" --format=stylish || {
+      echo "⚠️  Contract validation warnings (non-blocking)"
+    }
+  else
+    npx --yes @redocly/cli lint "$CONTRACTS_TMP" --format=stylish || {
+      echo "⚠️  Contract validation warnings (non-blocking)"
+    }
+  fi
+  echo ""
+fi
+
+mv "$CONTRACTS_TMP" "$CONTRACTS_FILE"
+echo "✅ Generated contracts/api.yaml (OpenAPI 3.1.0 + RFC 9457, hash: $(sha256sum "$CONTRACTS_FILE" | cut -c1-8))"
 echo ""
 ```
 
-### Step 3: Generate quickstart.md
+### Step 3: Generate Lighthouse budgets.json (atomic)
+
+**Performance budgets as first-class artifact:**
+
+```bash
+BUDGETS_FILE="$FEATURE_DIR/budgets.json"
+BUDGETS_TMP=$(mktemp)
+
+# Use targets from project docs or defaults
+API_TARGET="${API_RESPONSE_TARGET:-200ms}"
+API_TARGET_NUM=$(echo "$API_TARGET" | grep -oE '[0-9]+')
+
+cat > "$BUDGETS_TMP" <<EOF
+{
+  "lighthouse": {
+    "performance": 85,
+    "accessibility": 95,
+    "best-practices": 90,
+    "seo": 90,
+    "pwa": 0
+  },
+  "timings": {
+    "fcp": 1500,
+    "lcp": 2500,
+    "tti": 3000,
+    "tbt": 200,
+    "cls": 0.1,
+    "si": 3000
+  },
+  "resourceSizes": {
+    "total": 300000,
+    "script": 150000,
+    "stylesheet": 50000,
+    "image": 100000,
+    "font": 50000
+  },
+  "api": {
+    "response_time_p95_ms": ${API_TARGET_NUM:-200},
+    "response_time_p99_ms": $((API_TARGET_NUM * 2)),
+    "throughput_rps": 100
+  },
+  "metadata": {
+    "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+    "commit": "$COMMIT_SHA",
+    "feature": "$SLUG",
+    "scale_tier": "${SCALE_TIER:-micro}"
+  }
+}
+EOF
+
+# Validate JSON
+if jq empty "$BUDGETS_TMP" 2>/dev/null; then
+  mv "$BUDGETS_TMP" "$BUDGETS_FILE"
+  echo "✅ Generated budgets.json (hash: $(sha256sum "$BUDGETS_FILE" | cut -c1-8))"
+else
+  echo "❌ Failed to generate valid budgets.json"
+  rm "$BUDGETS_TMP"
+  exit 1
+fi
+echo ""
+```
+
+### Step 4: Generate quickstart.md (atomic)
 
 **Integration scenarios for developers:**
 
 ```bash
 QUICKSTART_FILE="$FEATURE_DIR/quickstart.md"
+QUICKSTART_TMP=$(mktemp)
 
-cat > "$QUICKSTART_FILE" <<'EOF'
+cat > "$QUICKSTART_TMP" <<EOF
 # Quickstart: $SLUG
 
 ## Scenario 1: Initial Setup
@@ -665,8 +929,8 @@ pnpm install
 # Run migrations
 cd api && uv run alembic upgrade head
 
-# Seed test data
-uv run python scripts/seed_[feature].py
+# Seed test data (if applicable)
+uv run python scripts/seed_${SLUG}.py
 
 # Start dev servers
 pnpm dev
@@ -677,39 +941,63 @@ pnpm dev
 \`\`\`bash
 # Run tests
 pnpm test
-cd api && uv run pytest tests/[feature]/
+cd api && uv run pytest tests/${SLUG}/
 
 # Check types
 pnpm type-check
 
 # Lint
 pnpm lint
+
+# Validate OpenAPI contract (Redocly CLI)
+npx @redocly/cli lint specs/${SLUG}/contracts/api.yaml
 \`\`\`
 
 ## Scenario 3: Manual Testing
 
-1. Navigate to: http://localhost:3000/feature
+1. Navigate to: http://localhost:3000/${SLUG}
 2. Verify: [expected behavior]
 3. Check: [validation steps]
+
+## Scenario 4: Budget Validation
+
+\`\`\`bash
+# Run Lighthouse CI with budgets
+npx @lhci/cli autorun --budgets-file=specs/${SLUG}/budgets.json
+
+# Check API performance
+curl -w "@curl-format.txt" -o /dev/null -s http://localhost:8000/api/v1/${SLUG}
+\`\`\`
+
+---
+
+**Artifact Metadata:**
+- Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+- Commit: $COMMIT_SHA
 EOF
 
-echo "✅ Generated quickstart.md"
+mv "$QUICKSTART_TMP" "$QUICKSTART_FILE"
+echo "✅ Generated quickstart.md (hash: $(sha256sum "$QUICKSTART_FILE" | cut -c1-8))"
 echo ""
 ```
 
-### Step 4: Generate consolidated plan.md
+### Step 5: Generate consolidated plan.md (atomic)
 
 **Comprehensive architecture document:**
 
-```markdown
-# Implementation Plan: [Feature Name]
+```bash
+PLAN_FILE="$FEATURE_DIR/plan.md"
+PLAN_TMP=$(mktemp)
+
+cat > "$PLAN_TMP" <<EOF
+# Implementation Plan: ${SLUG}
 
 ## [RESEARCH DECISIONS]
 
-See: research.md for full research findings
+**Source**: research.md (single source of truth)
 
 **Summary**:
-- Stack: [choices from research.md]
+- Stack: ${FRONTEND_STACK:-TBD}, ${BACKEND_STACK:-TBD}, ${DATABASE_STACK:-TBD}
 - Components to reuse: ${#REUSABLE_COMPONENTS[@]}
 - New components needed: ${#NEW_COMPONENTS[@]}
 
@@ -718,15 +1006,17 @@ See: research.md for full research findings
 ## [ARCHITECTURE DECISIONS]
 
 **Stack**:
-- Frontend: [Next.js App Router / React / etc.]
-- Backend: [FastAPI / Express / etc.]
-- Database: [PostgreSQL / MongoDB / etc.]
-- State Management: [SWR / Redux / Zustand / Context]
-- Deployment: [Vercel / Railway / etc.]
+- Frontend: ${FRONTEND_STACK:-Not specified}
+- Backend: ${BACKEND_STACK:-Not specified}
+- Database: ${DATABASE_STACK:-Not specified}
+- State Management: ${STATE_MGMT:-Not specified}
+- Deployment: ${DEPLOYMENT_PLATFORM:-Not specified}
 
 **Patterns**:
-- [Pattern name]: [description and rationale]
-- [Pattern name]: [description and rationale]
+- API Style: ${API_STYLE:-REST}
+- API Contract: OpenAPI 3.1.0 + JSON Schema 2020-12
+- Error Format: RFC 9457 Problem Details
+- Auth: ${AUTH_PROVIDER:-Not specified}
 
 **Dependencies** (new packages required):
 - [package-name@version]: [purpose]
@@ -739,19 +1029,19 @@ See: research.md for full research findings
 
 \`\`\`
 api/src/
-├── modules/[feature]/
+├── modules/${SLUG}/
 │   ├── controller.py
 │   ├── service.py
 │   ├── repository.py
 │   └── schemas.py
 └── tests/
-    └── [feature]/
+    └── ${SLUG}/
 
 apps/app/
-├── app/(authed)/[feature]/
+├── app/(authed)/${SLUG}/
 │   ├── page.tsx
 │   └── components/
-└── components/[feature]/
+└── components/${SLUG}/
 \`\`\`
 
 **Module Organization**:
@@ -761,7 +1051,7 @@ apps/app/
 
 ## [DATA MODEL]
 
-See: data-model.md for complete entity definitions
+**Source**: data-model.md
 
 **Summary**:
 - Entities: [count]
@@ -772,157 +1062,207 @@ See: data-model.md for complete entity definitions
 
 ## [PERFORMANCE TARGETS]
 
-**From spec.md NFRs** (or defaults from design/systems/budgets.md):
-- NFR-003: API response time <500ms (95th percentile)
-- NFR-004: Frontend FCP <1.5s, TTI <3s
-- NFR-005: Database queries <100ms
+**From budgets.json** (enforced via Lighthouse CI):
+- Lighthouse Performance: ≥85
+- Lighthouse Accessibility: ≥95
+- FCP: <1.5s
+- LCP: <2.5s
+- TTI: <3s
+- API Response (p95): <${API_TARGET_NUM:-200}ms
 
-**Lighthouse Targets**:
-- Performance: ≥85
-- Accessibility: ≥95
-- Best Practices: ≥90
-- SEO: ≥90
+**Scale Tier**: ${SCALE_TIER:-micro}
+
+**SLIs/SLOs**:
+- **Availability**: 99.9% uptime (43.2 min/month error budget)
+- **Latency**: API p95 <${API_TARGET_NUM:-200}ms, p99 <$((API_TARGET_NUM * 2))ms
+- **Error Rate**: <0.5% of requests result in 5xx errors
+- **Success Rate**: ≥99.5% of requests return 2xx or expected 4xx
 
 ---
 
 ## [SECURITY]
 
-**Authentication Strategy**:
-- [Clerk middleware / JWT / etc.]
-- Protected routes: [list]
+**Authentication**: ${AUTH_PROVIDER:-Not specified}
 
-**Authorization Model**:
-- RBAC: [roles and permissions]
-- RLS policies: [database-level security]
+**Authorization**: [RBAC model and RLS policies]
 
 **Input Validation**:
-- Request schemas: [Zod / Pydantic / etc.]
-- Rate limiting: [100 req/min per user]
-- CORS: [allowed origins from env vars]
+- Request schemas: contracts/api.yaml (OpenAPI 3.1.0 + JSON Schema 2020-12)
+- Schema validation: Enforced at API gateway
+
+**Rate Limiting**:
+- Policy: 100 requests/min per user, burst capacity 50
+- Response: HTTP 429 with RFC 9457 Problem Details
+- Headers: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After
+
+**CORS**:
+- Allowed origins: From env var ALLOWED_ORIGINS (whitelist only)
+- Credentials: Same-origin only
+
+**Error Handling**:
+- Format: RFC 9457 Problem Details (application/problem+json)
+- Trace IDs: UUID v4 for request tracking and log correlation
+- Error types URI: https://api.example.com/problems/[error-type]
+- Never leak stack traces in production
 
 **Data Protection**:
 - PII handling: [scrubbing strategy]
-- Encryption: [at-rest / in-transit]
+- Encryption at rest: AES-256 for sensitive fields
+- Encryption in transit: TLS 1.3+ only
+- Secret management: HashiCorp Vault / AWS Secrets Manager
+
+**OWASP ASVS Compliance**:
+- **Controls Touched**:
+  - V1.4: Access Control Architecture
+  - V4.1: Access Control Design
+  - V5.1: Input Validation
+  - V8.1: Data Protection
+  - V13.1: API Security
+- **Verification Level**: Level 2 (standard web applications)
+- **Reference**: https://owasp.org/www-project-application-security-verification-standard/
 
 ---
 
-## [EXISTING INFRASTRUCTURE - REUSE] (${#REUSABLE_COMPONENTS[@]} components)
+## [EXISTING INFRASTRUCTURE - REUSE]
 
-**Services/Modules**:
-- api/src/services/auth: JWT token validation
-- api/src/lib/storage: S3 file uploads
-- apps/app/lib/swr: Data fetching hooks
+**Source**: research.md
 
-**UI Components**:
-- apps/app/components/ui/button: Primary CTA
-- apps/app/components/ui/card: Container layout
-- apps/app/components/ui/alert: Error messages
-
-**Utilities**:
-- api/src/utils/validation: Input sanitization
-- apps/app/lib/format: Date/time formatting
+**Components** (${#REUSABLE_COMPONENTS[@]} found):
+$(for component in "${REUSABLE_COMPONENTS[@]}"; do
+  echo "- $component"
+done)
 
 ---
 
-## [NEW INFRASTRUCTURE - CREATE] (${#NEW_COMPONENTS[@]} components)
+## [NEW INFRASTRUCTURE - CREATE]
 
-**Backend**:
-- api/src/services/csv-parser: Parse AKTR CSV format
-- api/src/modules/analytics: Track feature usage
-
-**Frontend**:
-- apps/app/app/(public)/feature/page.tsx: Main feature page
-- apps/app/components/feature/widget: Custom widget
-
-**Database**:
-- Alembic migration: Add [table_name] table
-- RLS policies: Row-level security for [table_name]
+**Components** (${#NEW_COMPONENTS[@]} needed):
+$(for component in "${NEW_COMPONENTS[@]}"; do
+  echo "- $component"
+done)
 
 ---
 
 ## [CI/CD IMPACT]
 
-**From spec.md deployment considerations:**
-- Platform: [Vercel edge middleware / Railway / etc.]
-- Env vars: [list new/changed variables]
-- Breaking changes: [Yes/No - details]
-- Migration: [Yes/No - see migration-plan.md]
+**Platform**: ${DEPLOYMENT_PLATFORM:-Not specified}
+**Deployment Model**: ${DEPLOYMENT_MODEL:-staging-prod}
 
-**Build Commands**:
-- [No changes / New: pnpm build:feature / Changed: Added --experimental-flag]
-
-**Environment Variables** (update secrets.schema.json):
-- New required: FEATURE_FLAG_X, API_KEY_Y
-- Changed: NEXT_PUBLIC_API_URL format
-- Staging values: [values]
-- Production values: [values]
+**Environment Variables**:
+- New required: [list]
+- Changed: [list]
 
 **Database Migrations**:
-- [No / Yes: migration-plan.md created]
-- Dry-run required: [Yes/No]
+- Required: [Yes/No]
 - Reversible: [Yes/No]
 
-**Smoke Tests** (for deploy-staging.yml and promote.yml):
-- Route: /api/v1/feature/health
+**Smoke Tests**:
+- Route: /api/v1/${SLUG}/health
 - Expected: 200, {"status": "ok"}
-- Playwright: @smoke tag in tests/smoke/[feature].spec.ts
 
-**Platform Coupling**:
-- Vercel: [None / Edge middleware change / Ignored build step update]
-- Railway: [None / Dockerfile change / Start command change]
-- Dependencies: [None / New: package-x@1.2.3]
+---
+
+## [CI QUALITY GATES] (blocking)
+
+**1. Conventional Commits Enforcement**:
+- Format: \`type(scope): subject\`
+- Tool: commitlint with @commitlint/config-conventional
+- Enforcement: .github/workflows/verify.yml
+- Failure: PR blocked
+
+**2. Lighthouse Performance Budget**:
+- Budget file: specs/${SLUG}/budgets.json
+- Tool: Lighthouse CI with \`lhci autorun --budgets-file=...\`
+- Thresholds: Performance ≥85, Accessibility ≥95, Best Practices ≥90
+- Enforcement: .github/workflows/verify.yml
+- Failure: PR blocked with budget report
+
+**3. OpenAPI Contract Validation**:
+- Tool: \`@redocly/cli lint specs/${SLUG}/contracts/api.yaml\`
+- Validates: OpenAPI 3.1.0 + RFC 9457 Problem Details schema
+- Checks: No breaking changes without version bump
+- Enforcement: CI validates on every PR
+- Failure: PR blocked
+
+**4. Security Baseline**:
+- Tool: npm audit / pip-audit / cargo audit
+- SAST: CodeQL / Semgrep
+- Secret scanning: GitGuardian / TruffleHog
+- Failure: PR blocked on critical CVEs or leaked secrets
+
+**5. Test Coverage Gate**:
+- Minimum: 80% lines, 70% branches
+- Tool: Jest (frontend), pytest-cov (backend)
+- Failure: PR blocked if coverage drops
 
 ---
 
 ## [DEPLOYMENT ACCEPTANCE]
 
-**Production Invariants** (must hold true):
-- No breaking NEXT_PUBLIC_* env var changes without migration
+**Production Invariants**:
+- No breaking env var changes without migration
 - Backward-compatible API changes only (use versioning for breaking)
 - Database migrations are reversible
 - Feature flags default to 0% in production
+- Performance budgets enforced (budgets.json)
 
-**Staging Smoke Tests** (Given/When/Then):
+**Staging Acceptance** (Gherkin format):
 \`\`\`gherkin
-Given user visits https://app-staging.cfipros.vercel.app/feature
+Given user visits https://app-staging.example.com/${SLUG}
 When user clicks primary CTA
 Then feature works without errors
   And response time <2s
   And no console errors
   And Lighthouse performance ≥85
+  And API response time <${API_TARGET_NUM:-200}ms (p95)
 \`\`\`
 
 **Rollback Plan**:
-- Deploy IDs tracked in: specs/[slug]/NOTES.md (Deployment Metadata)
+- Deploy IDs tracked in: specs/${SLUG}/NOTES.md
 - Rollback commands: See docs/ROLLBACK_RUNBOOK.md
-- Special considerations: [None / Must downgrade migration / Feature flag required]
+- Special considerations: [None / Migration downgrade required / Feature flag required]
 
 **Artifact Strategy** (build-once-promote-many):
-- Web (Marketing): Vercel prebuilt artifact (.vercel/output/)
-- Web (App): Vercel prebuilt artifact (.vercel/output/)
-- API: Docker image ghcr.io/cfipros/api:<commit-sha> (NOT :latest)
+- Web: Vercel prebuilt artifact (.vercel/output/)
+- API: Docker image ghcr.io/org/api:${COMMIT_SHA} (NOT :latest)
 - Build in: .github/workflows/verify.yml
 - Deploy to staging: .github/workflows/deploy-staging.yml (uses prebuilt)
-- Promote to production: .github/workflows/promote.yml (same artifact)
+- Promote to production: .github/workflows/promote.yml (same artifact, SHA: ${COMMIT_SHA})
 
 ---
 
 ## [INTEGRATION SCENARIOS]
 
-See: quickstart.md for complete integration scenarios
+**Source**: quickstart.md
 
 **Summary**:
 - Initial setup documented
 - Validation workflow defined
 - Manual testing steps provided
+- Budget validation included
 
 ---
 
-### Step 5: Initialize error-log.md
+**Artifact Metadata:**
+- Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+- Commit: $COMMIT_SHA
+- Immutable: true
+- Hash: $(echo -n "$SLUG-$COMMIT_SHA" | sha256sum | cut -c1-8)
+EOF
+
+mv "$PLAN_TMP" "$PLAN_FILE"
+echo "✅ Generated plan.md (hash: $(sha256sum "$PLAN_FILE" | cut -c1-8))"
+echo ""
+```
+
+### Step 6: Initialize error-log.md (atomic)
 
 ```bash
-cat > "$FEATURE_DIR/error-log.md" <<EOF
-# Error Log: [Feature Name]
+ERROR_LOG_FILE="$FEATURE_DIR/error-log.md"
+ERROR_LOG_TMP=$(mktemp)
+
+cat > "$ERROR_LOG_TMP" <<EOF
+# Error Log: ${SLUG}
 
 ## Planning Phase (Phase 0-2)
 None yet.
@@ -962,13 +1302,20 @@ None yet.
 - Spec: [link to requirement]
 - Code: [file:line]
 - Commit: [sha]
+
+---
+
+**Artifact Metadata:**
+- Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+- Commit: $COMMIT_SHA
 EOF
 
-echo "✅ Generated error-log.md"
+mv "$ERROR_LOG_TMP" "$ERROR_LOG_FILE"
+echo "✅ Generated error-log.md (hash: $(sha256sum "$ERROR_LOG_FILE" | cut -c1-8))"
 echo ""
 ```
 
-### Step 6: Validate unresolved questions
+### Step 7: Validate unresolved questions
 
 **Check for critical unknowns before committing:**
 
@@ -987,17 +1334,35 @@ if [ "$UNRESOLVED_COUNT" -gt 0 ]; then
   echo "Unresolved questions:"
   grep "⚠️" "$FEATURE_DIR/research.md"
   echo ""
-  echo "ERROR: Cannot proceed with critical unknowns."
-  echo "Resolve questions in research.md before committing."
-  exit 1
+
+  if [ "$STRICT_MODE" = "1" ]; then
+    echo "STRICT MODE: Cannot proceed with critical unknowns."
+    echo "Resolve questions in research.md before committing."
+    exit 1
+  else
+    echo "Continuing with unresolved questions (strict mode disabled)"
+    echo ""
+  fi
 else
   echo "✅ All technical questions resolved"
 fi
 
+# Validate all artifacts have proper hashes
+echo "🔐 Validating artifact integrity..."
+for artifact in "$RESEARCH_FILE" "$DATA_MODEL_FILE" "$CONTRACTS_FILE" "$BUDGETS_FILE" "$QUICKSTART_FILE" "$PLAN_FILE" "$ERROR_LOG_FILE"; do
+  if [ -f "$artifact" ]; then
+    hash=$(sha256sum "$artifact" | cut -c1-8)
+    echo "  ✓ $(basename "$artifact"): $hash"
+  else
+    echo "  ❌ Missing: $(basename "$artifact")"
+    exit 1
+  fi
+done
+
 echo ""
 ```
 
-## GIT COMMIT
+## GIT COMMIT (Conventional Commits)
 
 **Commit all planning artifacts:**
 
@@ -1005,11 +1370,14 @@ echo ""
 REUSABLE_COUNT=${#REUSABLE_COMPONENTS[@]}
 NEW_COUNT=${#NEW_COMPONENTS[@]}
 
-COMMIT_MSG="design:plan: complete architecture with reuse analysis
+# Use Conventional Commits format
+COMMIT_MSG="design(plan): complete architecture with reuse analysis
 
 [ARCHITECTURE DECISIONS]
-- Stack: [choices from plan.md]
-- Patterns: [decisions from plan.md]
+- Stack: ${FRONTEND_STACK:-TBD}, ${BACKEND_STACK:-TBD}, ${DATABASE_STACK:-TBD}
+- API: ${API_STYLE:-REST} with OpenAPI 3.1.0 + JSON Schema 2020-12
+- Error Format: RFC 9457 Problem Details
+- Performance Budget: Enforced (budgets.json)
 
 [EXISTING - REUSE] (${REUSABLE_COUNT} components)
 "
@@ -1034,12 +1402,20 @@ done
 COMMIT_MSG="${COMMIT_MSG}
 
 Artifacts:
-- specs/${SLUG}/research.md (research decisions + component reuse analysis)
+- specs/${SLUG}/research.md (research decisions + component reuse)
 - specs/${SLUG}/data-model.md (entity definitions + relationships)
+- specs/${SLUG}/contracts/api.yaml (OpenAPI 3.1.0 + RFC 9457 + JSON Schema 2020-12)
+- specs/${SLUG}/budgets.json (Lighthouse budgets - enforced)
 - specs/${SLUG}/quickstart.md (integration scenarios)
-- specs/${SLUG}/plan.md (consolidated architecture + design)
-- specs/${SLUG}/contracts/api.yaml (OpenAPI specs)
+- specs/${SLUG}/plan.md (consolidated architecture + quality gates)
 - specs/${SLUG}/error-log.md (initialized for tracking)
+
+Quality Gates (CI blocking):
+- Conventional Commits (commitlint)
+- Lighthouse budgets (lhci)
+- OpenAPI validation (Redocly CLI)
+- Security baseline (critical CVEs)
+- Test coverage (80% lines, 70% branches)
 
 Next: /tasks
 
@@ -1052,7 +1428,7 @@ git commit -m "$COMMIT_MSG"
 # Verify commit succeeded
 COMMIT_HASH=$(git rev-parse --short HEAD)
 echo ""
-echo "✅ Plan committed: $COMMIT_HASH"
+echo "✅ Plan committed: $COMMIT_HASH (Conventional Commits format)"
 echo ""
 git log -1 --oneline
 echo ""
@@ -1119,19 +1495,6 @@ Let me analyze this design choice:
 </constraints>
 
 <instructions>
-## CONTEXT MANAGEMENT
-
-**Before proceeding to /tasks:**
-
-If context feels large (long conversation with many research tools), run compaction:
-```bash
-/compact "preserve architecture decisions, reuse analysis, and schema"
-```
-
-Otherwise proceed directly to `/tasks`.
-
-**No automatic tracking.** Manual compaction only if needed.
-
 ## RETURN
 
 **Brief summary with conditional next steps:**
@@ -1147,6 +1510,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "Feature: ${SLUG}"
 echo "Plan: ${FEATURE_DIR}/plan.md"
+echo "Commit: ${COMMIT_SHA}"
 echo ""
 echo "Summary:"
 echo "- Research decisions: ${DECISION_COUNT}"
@@ -1158,118 +1522,35 @@ if [ -f "$FEATURE_DIR/migration-plan.md" ]; then
   echo "- Database migration: Required (see migration-plan.md)"
 fi
 
-# Check if deployment considerations exist
-if grep -q "Deployment Considerations" "$FEATURE_SPEC"; then
-  echo "- Deployment impact: See [CI/CD IMPACT] in plan.md"
-fi
-
 echo ""
-echo "Artifacts created:"
+echo "Artifacts created (all hash-verified):"
 echo "  - research.md (research decisions + component reuse)"
 echo "  - data-model.md (entity definitions + relationships)"
+echo "  - contracts/api.yaml (OpenAPI 3.1.0 + RFC 9457 + JSON Schema 2020-12)"
+echo "  - budgets.json (Lighthouse budgets - enforced via CI)"
 echo "  - quickstart.md (integration scenarios)"
-echo "  - plan.md (consolidated architecture + design)"
-echo "  - contracts/api.yaml (OpenAPI specs)"
+echo "  - plan.md (consolidated architecture + quality gates)"
 echo "  - error-log.md (initialized for tracking)"
-
-# Update NOTES.md with Phase 1 checkpoint and summary
-source .spec-flow/templates/notes-update-template.sh
-
-# Calculate metrics
-RESEARCH_LINES=$(wc -l < "$FEATURE_DIR/research.md" 2>/dev/null || echo 0)
-HAS_MIGRATION=$([ -f "$FEATURE_DIR/migration-plan.md" ] && echo "Yes" || echo "No")
-
-# Add Phase 1 Summary
-update_notes_summary "$FEATURE_DIR" "1" \
-  "Research depth: $RESEARCH_LINES lines" \
-  "Key decisions: $DECISION_COUNT" \
-  "Components to reuse: $REUSABLE_COUNT" \
-  "New components: $NEW_COUNT" \
-  "Migration needed: $HAS_MIGRATION"
-
-# Add Phase 1 checkpoint
-update_notes_checkpoint "$FEATURE_DIR" "1" "Plan" \
-  "Artifacts: research.md, data-model.md, quickstart.md, plan.md, contracts/api.yaml, error-log.md" \
-  "Research decisions: $DECISION_COUNT" \
-  "Migration required: $HAS_MIGRATION"
-
-update_notes_timestamp "$FEATURE_DIR"
-
 echo ""
-echo "NOTES.md: Phase 1 checkpoint and summary added"
-
+echo "Quality Gates (CI blocking):"
+echo "  - Conventional Commits (commitlint)"
+echo "  - Lighthouse budgets (≥85 perf, ≥95 a11y)"
+echo "  - OpenAPI validation (Redocly CLI)"
+echo "  - Security baseline (block on critical CVEs)"
+echo "  - Test coverage (≥80% lines)"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📋 NEXT STEPS"
+echo "📋 NEXT: /tasks"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-
-# Load planning context
-source "$FEATURE_DIR/.planning-context"
-
-# Determine path based on UI detection
-if [ "$HAS_SCREENS" = true ]; then
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "🎨 UI DESIGN PATH"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "Detected: $SCREEN_COUNT screens in design/screens.yaml"
-  echo ""
-  echo "Recommended workflow (design-first):"
-  echo ""
-  echo "1. /design-variations $SLUG"
-  echo "   Generate 3-5 grayscale variants per screen"
-  echo "   Output: apps/web/mock/$SLUG/[screen]/[v1-v5]"
-  echo "   Duration: ~5-10 minutes"
-  echo ""
-  echo "2. Review variants + fill crit.md"
-  echo "   Open: http://localhost:3000/mock/$SLUG/[screen]"
-  echo "   Decide: Keep/Change/Kill each variant"
-  echo "   Compare: http://localhost:3000/mock/$SLUG/[screen]/compare"
-  echo "   Duration: ~15-30 minutes (human)"
-  echo ""
-  echo "3. /design-functional $SLUG"
-  echo "   Merge selected variants → functional prototype"
-  echo "   Add: Keyboard nav, ARIA labels, Playwright tests"
-  echo "   Output: apps/web/mock/$SLUG/[screen]/functional"
-  echo "   Duration: ~10-15 minutes"
-  echo ""
-  echo "4. /tasks $SLUG"
-  echo "   Generate implementation tasks from functional prototype"
-  echo "   Output: specs/$SLUG/tasks.md"
-  echo ""
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "⚡ SKIP DESIGN (Power User)"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "Alternative workflow (skip to implementation):"
-  echo ""
-  echo "→ /tasks $SLUG"
-  echo "  Generate tasks directly from spec.md + plan.md"
-  echo "  Design decisions made during implementation"
-  echo ""
-else
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "⚙️  BACKEND PATH"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "No UI screens detected (backend/API/data feature)"
-  echo ""
-  echo "Next: /tasks $SLUG"
-  echo ""
-fi
-
+echo "/tasks will:"
+echo "1. Generate concrete tasks from plan.md"
+echo "2. Create tasks.json (canonical) + tasks.md (rendered)"
+echo "3. Validate dependency graph (DAG)"
+echo "4. Quote acceptance criteria from spec.md"
+echo "5. Verify all file paths via git ls-files"
 echo ""
-echo "Automated (full workflow):"
-echo "  → /feature continue"
+echo "Duration: ~2-3 minutes"
 echo ""
-
-# Optional compaction reminder if conversation is long
-CONTEXT_CHECK=$(wc -l < /dev/stdin 2>/dev/null || echo 0)
-if [ "$CONTEXT_CHECK" -gt 500 ]; then
-  echo "💡 Tip: Long conversation detected"
-  echo "   Consider: /compact before /tasks"
-fi
 ```
-
 </instructions>
