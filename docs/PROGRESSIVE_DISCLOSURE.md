@@ -1,8 +1,8 @@
 # Progressive Disclosure (Phase 2)
 
 **Version**: 4.2.0
-**Status**: 🚧 In Progress (1 of 4 skills refactored)
-**Impact**: 50-60% token reduction per skill
+**Status**: ✅ Complete (4 of 4 skills refactored)
+**Impact**: 89% average token reduction across all skills
 
 ## Overview
 
@@ -55,41 +55,64 @@ Progressive Disclosure breaks large skills (>300 lines) into a concise main file
 
 ---
 
-## Planned Refactorings
+### ✅ planning-phase (COMPLETED)
 
-### 📋 planning-phase (Pending)
+**Before**: 846 lines (monolithic)
+**After**: 87 lines main + 8 resources
+**Reduction**: 90% (759 lines moved to resources)
 
-**Current**: 846 lines
-**Target**: ~100 lines main + resources
-**Estimated Reduction**: 88%
+**Resources Created**:
+1. `resources/project-docs-integration.md` - Load 8 project docs for constraints
+2. `resources/code-reuse-analysis.md` - Anti-duplication search patterns
+3. `resources/architecture-planning.md` - Component design, layers, patterns
+4. `resources/data-model-planning.md` - Entity design, ERD, migrations
+5. `resources/api-contracts.md` - OpenAPI specs, endpoint design
+6. `resources/testing-strategy.md` - Coverage plan, test types
+7. `resources/complexity-estimation.md` - Task count prediction
+8. `resources/common-mistakes.md` - Anti-patterns to avoid
 
-**Planned Resources**:
-- `resources/code-reuse-analysis.md` - Anti-duplication search
-- `resources/architecture-planning.md` - Component design
-- `resources/research-depth.md` - Codebase exploration
+**Token Savings**:
+- **Before**: ~3,400 tokens (full SKILL.md)
+- **After**: ~350 tokens (main SKILL.md only)
 
-### 📋 optimization-phase (Pending)
+---
 
-**Current**: 697 lines
-**Target**: ~100 lines main + resources
-**Estimated Reduction**: 86%
+### ✅ optimization-phase (COMPLETED)
 
-**Planned Resources**:
-- `resources/performance-benchmarking.md` - API/page load targets
-- `resources/accessibility-audit.md` - WCAG 2.1 AA compliance
-- `resources/security-scan.md` - npm audit, dependency checks
-- `resources/code-review-checklist.md` - Pre-deployment validation
+**Before**: 697 lines (monolithic)
+**After**: 98 lines main + 7 resources
+**Reduction**: 86% (599 lines moved to resources)
 
-### 📋 preview-phase (Pending)
+**Resources Created**:
+1. `resources/performance-benchmarking.md` - API p50/p95, page load targets
+2. `resources/accessibility-audit.md` - WCAG 2.1 AA, Lighthouse CI
+3. `resources/security-review.md` - npm audit, dependency scanning
+4. `resources/code-quality-review.md` - DRY, test coverage
+5. `resources/code-review-checklist.md` - Pre-commit validation
+6. `resources/report-generation.md` - optimization-report.md format
+7. `resources/common-mistakes.md` - Anti-patterns to avoid
 
-**Current**: 720 lines
-**Target**: ~100 lines main + resources
-**Estimated Reduction**: 86%
+**Token Savings**:
+- **Before**: ~2,800 tokens (full SKILL.md)
+- **After**: ~400 tokens (main SKILL.md only)
 
-**Planned Resources**:
-- `resources/manual-ui-testing.md` - Local dev server testing
-- `resources/device-testing.md` - Mobile/tablet/desktop
-- `resources/browser-testing.md` - Cross-browser compatibility
+---
+
+### ✅ preview-phase (COMPLETED)
+
+**Before**: 720 lines (monolithic)
+**After**: 98 lines main + 4 resources
+**Reduction**: 86% (622 lines moved to resources)
+
+**Resources Created**:
+1. `resources/happy-path-testing.md` - Primary user flows
+2. `resources/error-scenario-testing.md` - Edge cases, failures
+3. `resources/responsive-testing.md` - Mobile, tablet, desktop
+4. `resources/release-notes.md` - User-facing documentation
+
+**Token Savings**:
+- **Before**: ~2,900 tokens (full SKILL.md)
+- **After**: ~400 tokens (main SKILL.md only)
 
 ---
 
