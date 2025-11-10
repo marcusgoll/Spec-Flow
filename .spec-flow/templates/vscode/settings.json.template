@@ -1,0 +1,20 @@
+{
+  "claude.hooks": [
+    {
+      "type": "command",
+      "command": ".claude/hooks/skill-activation-prompt.sh",
+      "matcher": "UserPromptSubmit",
+      "description": "Auto-suggest phase skills and cross-cutting skills based on user prompts"
+    }
+  ],
+  "files.exclude": {
+    "**/.git": true,
+    "**/node_modules": true,
+    "**/.spec-flow/cache": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.spec-flow/cache": true,
+    "**/package-lock.json": true
+  }
+}

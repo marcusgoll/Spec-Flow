@@ -246,8 +246,59 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# --- Step 4: Initialize Base Files -------------------------------------------
-Write-Header "Step 4: Initializing Memory Files"
+# --- Step 4: Configure VSCode Hooks (Auto-Activation) -----------------------
+Write-Header "Step 4: Configuring Auto-Activation Hooks"
+
+$vscodeDir = Join-Path -Path $targetAbsolute -ChildPath '.vscode'
+$vscodeSettingsPath = Join-Path -Path $vscodeDir -ChildPath 'settings.json'
+$vscodeTemplatePath = Join-Path -Path $PSScriptRoot -ChildPath '..' | Join-Path -ChildPath '..' | Join-Path -ChildPath 'templates' | Join-Path -ChildPath 'vscode' | Join-Path -ChildPath 'settings.json.template'
+
+if (-not (Test-Path -LiteralPath $vscodeDir)) {
+    New-Item -ItemType Directory -Path $vscodeDir -Force | Out-Null
+}
+
+if (-not (Test-Path -LiteralPath $vscodeSettingsPath)) {
+    # Copy template
+    Copy-Item -LiteralPath $vscodeTemplatePath -Destination $vscodeSettingsPath -Force
+    Write-Host "  [OK] Created .vscode/settings.json with hook configuration" -ForegroundColor Green
+} else {
+    Write-Host "  [SKIP] .vscode/settings.json already exists (manual merge required)" -ForegroundColor Yellow
+    Write-Host "        Add the following to your settings.json:" -ForegroundColor DarkGray
+    Write-Host '        "claude.hooks": [{"type": "command", "command": ".claude/hooks/skill-activation-prompt.sh", "matcher": "UserPromptSubmit"}]' -ForegroundColor DarkGray
+}
+
+# Check if npm is available for hook dependencies
+$npmAvailable = $null -ne (Get-Command npm -ErrorAction SilentlyContinue)
+if ($npmAvailable) {
+    $hooksDir = Join-Path -Path $targetAbsolute -ChildPath '.claude' | Join-Path -ChildPath 'hooks'
+    if (Test-Path -LiteralPath $hooksDir) {
+        Write-Host "  [INFO] Installing hook dependencies (tsx for TypeScript execution)..." -ForegroundColor White
+        Push-Location $hooksDir
+        try {
+            npm install --silent 2>&1 | Out-Null
+            Write-Host "  [OK] Hook dependencies installed" -ForegroundColor Green
+        }
+        catch {
+            Write-Warning "Failed to install hook dependencies. Run 'npm install' in .claude/hooks/ manually."
+        }
+        finally {
+            Pop-Location
+        }
+    }
+} else {
+    Write-Warning "npm not found. Hook auto-activation requires TypeScript dependencies."
+    Write-Host "        Install Node.js/npm, then run: cd .claude/hooks && npm install" -ForegroundColor DarkGray
+}
+
+Write-Host ""
+Write-Host "  Auto-Activation Features:" -ForegroundColor Cyan
+Write-Host "  * Phase skills auto-suggest based on keywords (e.g., 'implement' → implementation-phase)" -ForegroundColor White
+Write-Host "  * Cross-cutting skills warn about common pitfalls (e.g., code duplication)" -ForegroundColor White
+Write-Host "  * Configured via .claude/skills/skill-rules.json (20 skills mapped)" -ForegroundColor White
+Write-Host ""
+
+# --- Step 5: Initialize Base Files -------------------------------------------
+Write-Header "Step 5: Initializing Memory Files"
 
 $constitutionPath = Join-Path -Path $targetAbsolute -ChildPath '.spec-flow' | Join-Path -ChildPath 'memory' | Join-Path -ChildPath 'constitution.md'
 $roadmapPath = Join-Path -Path $targetAbsolute -ChildPath '.spec-flow' | Join-Path -ChildPath 'memory' | Join-Path -ChildPath 'roadmap.md'
@@ -267,14 +318,20 @@ Write-Header "Installation Complete!"
 Write-Host "  What was installed:" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  * Project type detected: $projectType" -ForegroundColor White
-Write-Host "  * .claude/ directory (agents, commands, settings)" -ForegroundColor White
+Write-Host "  * .claude/ directory (agents, commands, hooks, settings)" -ForegroundColor White
 Write-Host "  * .spec-flow/ directory (scripts, templates, memory)" -ForegroundColor White
 Write-Host "  * CLAUDE.md (workflow documentation)" -ForegroundColor White
+Write-Host "  * .vscode/settings.json (auto-activation hooks)" -ForegroundColor White
 Write-Host ""
 Write-Host "  Memory files initialized:" -ForegroundColor Cyan
 Write-Host "  * .spec-flow/memory/constitution.md" -ForegroundColor DarkGray
 Write-Host "  * .spec-flow/memory/roadmap.md" -ForegroundColor DarkGray
 Write-Host "  * .spec-flow/memory/design-inspirations.md" -ForegroundColor DarkGray
+Write-Host ""
+Write-Host "  Auto-Activation configured:" -ForegroundColor Cyan
+Write-Host "  * .claude/hooks/skill-activation-prompt.sh" -ForegroundColor DarkGray
+Write-Host "  * .claude/skills/skill-rules.json (20 skills)" -ForegroundColor DarkGray
+Write-Host "  * Skills now auto-suggest based on your prompts!" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "  Next steps:" -ForegroundColor Cyan
