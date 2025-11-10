@@ -1,0 +1,29 @@
+# WIP Tracker
+# Tracks active epics and enforces WIP limits (one epic per agent)
+
+agents: []
+# Example:
+#   - name: backend-agent
+#     current_epic: epic-auth-api
+#     state: Implementing
+#     started: 2025-11-10T14:30:00Z
+#     tasks_complete: 6
+#     tasks_total: 8
+
+parked_epics: []
+# Example:
+#   - name: epic-payment-integration
+#     reason: "Waiting for Stripe API keys from DevOps"
+#     parked_at: 2025-11-10T10:00:00Z
+#     blocked_by: devops-team
+#     notify_when_resolved: backend-agent
+
+queued_epics: []
+# Example:
+#   - name: epic-search-api
+#     queued_at: 2025-11-10T16:00:00Z
+#     waiting_for_agent: backend-agent
+
+limits:
+  max_epics_per_agent: 1
+  auto_park_after_hours: 4

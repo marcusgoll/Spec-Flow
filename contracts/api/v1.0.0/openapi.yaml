@@ -1,0 +1,325 @@
+openapi: 3.1.0
+
+info:
+  title: Spec-Flow Workflow API
+  version: 1.0.0
+  description: |
+    API contract for the Spec-Flow workflow system.
+
+    **Contract Governance**: This spec is locked during sprint execution.
+    Only additive changes (minor/patch) allowed mid-sprint.
+  contact:
+    name: Platform Agent
+    url: https://github.com/your-repo/issues
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development
+  - url: https://staging.example.com/api
+    description: Staging environment
+  - url: https://api.example.com/api
+    description: Production environment
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+  - name: Features
+    description: Feature management endpoints
+  - name: Contracts
+    description: Contract governance endpoints
+
+paths:
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Authenticate user
+      description: Login with credentials and receive JWT token
+      operationId: login
+      security: []  # Public endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              validLogin:
+                $ref: '#/components/examples/LoginRequestExample'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              examples:
+                success:
+                  $ref: '#/components/examples/LoginResponseExample'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /features:
+    get:
+      tags: [Features]
+      summary: List features
+      description: Get all features in the roadmap
+      operationId: listFeatures
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [backlog, next, in-progress, shipped]
+        - name: epic
+          in: query
+          schema:
+            type: string
+          description: Filter by epic label
+      responses:
+        '200':
+          description: Feature list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [features, total]
+                properties:
+                  features:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Feature'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /features/{slug}:
+    get:
+      tags: [Features]
+      summary: Get feature by slug
+      operationId: getFeature
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          example: user-authentication
+      responses:
+        '200':
+          description: Feature found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feature'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /contracts/verify:
+    post:
+      tags: [Contracts]
+      summary: Verify contracts
+      description: Run CDC tests against current contracts
+      operationId: verifyContracts
+      responses:
+        '200':
+          description: All contracts verified
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, pacts_verified, violations]
+                properties:
+                  status:
+                    type: string
+                    enum: [passed, failed]
+                  pacts_verified:
+                    type: integer
+                  violations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        pact:
+                          type: string
+                        error:
+                          type: string
+        '500':
+          description: Verification failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+
+    LoginResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+          description: JWT access token
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      required: [id, email, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        role:
+          type: string
+          enum: [admin, developer, viewer]
+
+    Feature:
+      type: object
+      required: [slug, title, status, epic]
+      properties:
+        slug:
+          type: string
+          example: user-authentication
+        title:
+          type: string
+          example: User Authentication System
+        status:
+          type: string
+          enum: [backlog, next, in-progress, shipped]
+        epic:
+          type: string
+          nullable: true
+          example: epic:security
+        ice_score:
+          type: number
+          format: float
+          example: 1.8
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: RFC 7807 error type
+          example: https://api.example.com/errors/unauthorized
+        title:
+          type: string
+          example: Unauthorized
+        status:
+          type: integer
+          example: 401
+        detail:
+          type: string
+          example: Invalid or expired JWT token
+        instance:
+          type: string
+          format: uri
+          example: /api/features/user-auth
+
+  examples:
+    LoginRequestExample:
+      value:
+        email: user@example.com
+        password: securepassword123
+
+    LoginResponseExample:
+      value:
+        token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+        user:
+          id: 123e4567-e89b-12d3-a456-426614174000
+          email: user@example.com
+          role: developer
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - Invalid or missing JWT token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            type: https://api.example.com/errors/unauthorized
+            title: Unauthorized
+            status: 401
+            detail: Invalid or expired JWT token
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            type: https://api.example.com/errors/not-found
+            title: Not Found
+            status: 404
+            detail: The requested resource was not found
+
+    RateLimited:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per minute
+          example: 100
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests
+          example: 0
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Timestamp when limit resets (Unix epoch)
+          example: 1699636800
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            type: https://api.example.com/errors/rate-limited
+            title: Rate Limit Exceeded
+            status: 429
+            detail: You have exceeded 100 requests per minute

@@ -1,0 +1,228 @@
+name: Quality Gates
+
+# Run quality gates on PR and push to main
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Manual trigger
+
+concurrency:
+  group: quality-gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci-gate:
+    name: CI Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: hashFiles('package.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Setup Python
+        if: hashFiles('requirements.txt') != '' || hashFiles('pyproject.toml') != ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies (Node.js)
+        if: hashFiles('package.json') != ''
+        run: npm ci
+
+      - name: Install dependencies (Python)
+        if: hashFiles('requirements.txt') != ''
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov black flake8 mypy
+
+      - name: Run CI gate
+        run: |
+          chmod +x .spec-flow/scripts/bash/gate-ci.sh
+          .spec-flow/scripts/bash/gate-ci.sh --verbose
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            coverage/
+            test-results/
+            junit.xml
+
+      - name: Comment on PR (failure)
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## ❌ CI Quality Gate Failed\n\nOne or more CI checks failed:\n\n- Tests\n- Linters\n- Type checks\n- Coverage\n\nPlease review the workflow logs and fix the issues before merging.`
+            });
+
+  security-gate:
+    name: Security Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python (for Semgrep)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Install git-secrets
+        run: |
+          git clone https://github.com/awslabs/git-secrets.git
+          cd git-secrets
+          sudo make install
+
+      - name: Setup Node.js (for npm audit)
+        if: hashFiles('package.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install pip-audit (Python projects)
+        if: hashFiles('requirements.txt') != '' || hashFiles('pyproject.toml') != ''
+        run: pip install pip-audit safety
+
+      - name: Run security gate
+        run: |
+          chmod +x .spec-flow/scripts/bash/gate-sec.sh
+          .spec-flow/scripts/bash/gate-sec.sh --verbose
+
+      - name: Upload SAST results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-results
+          path: |
+            semgrep-results.json
+            security-report.txt
+
+      - name: Comment on PR (failure)
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## ❌ Security Quality Gate Failed\n\nOne or more security checks failed:\n\n- SAST (Static Analysis)\n- Secrets detection\n- Dependency vulnerabilities\n\nPlease review the workflow logs and fix the security issues before merging.\n\n**Critical**: HIGH and CRITICAL severity issues must be resolved.`
+            });
+
+  gate-summary:
+    name: Quality Gates Summary
+    runs-on: ubuntu-latest
+    needs: [ci-gate, security-gate]
+    if: always()
+
+    steps:
+      - name: Check gate results
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const ciResult = '${{ needs.ci-gate.result }}';
+            const secResult = '${{ needs.security-gate.result }}';
+
+            let summary = '## Quality Gates Summary\n\n';
+            summary += `- CI Gate: ${ciResult === 'success' ? '✅ PASSED' : '❌ FAILED'}\n`;
+            summary += `- Security Gate: ${secResult === 'success' ? '✅ PASSED' : '❌ FAILED'}\n\n`;
+
+            if (ciResult === 'success' && secResult === 'success') {
+              summary += '**Status**: All gates passed ✅\n\n';
+              summary += 'Epic can transition: Review → Integrated\n';
+            } else {
+              summary += '**Status**: One or more gates failed ❌\n\n';
+              summary += 'Epic remains in Review state until all gates pass.\n';
+            }
+
+            // Post summary as PR comment
+            if (context.eventName === 'pull_request') {
+              github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: summary
+              });
+            }
+
+            // Fail workflow if any gate failed
+            if (ciResult !== 'success' || secResult !== 'success') {
+              core.setFailed('One or more quality gates failed');
+            }
+
+  update-epic-state:
+    name: Update Epic State
+    runs-on: ubuntu-latest
+    needs: [ci-gate, security-gate]
+    if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Transition epic to Integrated
+        run: |
+          if [[ -f .spec-flow/memory/workflow-state.yaml ]]; then
+            # Check if epic mode enabled
+            EPIC_MODE=$(yq eval '.epic_mode' .spec-flow/memory/workflow-state.yaml 2>/dev/null || echo "false")
+
+            if [[ "$EPIC_MODE" == "true" ]]; then
+              # Find epics in Review state
+              EPIC_COUNT=$(yq eval '.epics | length' .spec-flow/memory/workflow-state.yaml 2>/dev/null || echo 0)
+
+              for ((i=0; i<EPIC_COUNT; i++)); do
+                STATE=$(yq eval ".epics[$i].state" .spec-flow/memory/workflow-state.yaml)
+
+                if [[ "$STATE" == "Review" ]]; then
+                  EPIC_NAME=$(yq eval ".epics[$i].name" .spec-flow/memory/workflow-state.yaml)
+
+                  # Transition to Integrated
+                  yq eval "(.epics[$i].state) = \"Integrated\"" -i .spec-flow/memory/workflow-state.yaml
+
+                  echo "✅ Transitioned $EPIC_NAME: Review → Integrated"
+                fi
+              done
+            fi
+          fi
+
+      - name: Commit state changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet .spec-flow/memory/workflow-state.yaml; then
+            echo "No state changes to commit"
+          else
+            git add .spec-flow/memory/workflow-state.yaml
+            git commit -m "chore: transition epics to Integrated after gates passed"
+            git push
+          fi

@@ -1,0 +1,44 @@
+# Feature Flag Registry
+#
+# Purpose: Track active feature flags to enable daily merges with incomplete work
+#
+# Guidelines:
+# - Flags are temporary - clean up when work complete
+# - Expiry date = sprint end date (auto-enforced)
+# - One flag per branch (merge incomplete work daily)
+#
+# Workflow:
+# - Add flag: /flag.add <name> --branch <branch> --reason <text>
+# - List flags: /flag.list
+# - List expired: /flag.list --expired
+# - Remove flag: /flag.cleanup <name>
+
+# Schema:
+# flags:
+#   - name: feature_name_enabled
+#     owner: agent-name (backend-dev, frontend-shipper, etc.)
+#     epic: epic-slug (if part of epic)
+#     branch: feature/branch-name
+#     created: 2025-11-10T14:30:00Z
+#     expires: 2025-11-24T23:59:59Z  # Sprint end date
+#     status: active | retired
+#     reason: "Why this flag exists"
+#     code_locations:
+#       - src/api/routes/features.ts:45
+#       - src/ui/components/FeatureToggle.tsx:23
+
+flags: []
+
+# Example (do not uncomment - for reference only):
+# flags:
+#   - name: acs_sync_enabled
+#     owner: backend-dev
+#     epic: acs-epic-a
+#     branch: feature/acs-document-sync
+#     created: 2025-11-10T14:30:00Z
+#     expires: 2025-11-24T23:59:59Z
+#     status: active
+#     reason: "Large feature - merging daily with flag wrapping incomplete work"
+#     code_locations:
+#       - src/api/sync.ts:12
+#       - src/ui/SyncButton.tsx:34

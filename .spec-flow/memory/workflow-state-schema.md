@@ -1,0 +1,355 @@
+# Workflow State Schema
+
+**Version**: 2.0.0 (Epic Mode Extensions)
+**File**: `.spec-flow/memory/workflow-state.yaml`
+
+## Overview
+
+The workflow state file tracks the current phase, progress, and epic-level coordination for feature development. It serves as the single source of truth for workflow progression.
+
+**Version History**:
+- v1.0.0: Basic feature tracking (phase, status, artifacts)
+- v2.0.0: Epic mode extensions (parallel development, WIP tracking)
+
+## Schema Definition
+
+### Root Fields
+
+```yaml
+# Feature-level tracking (v1.0.0)
+phase: string              # Current workflow phase
+status: string             # Phase status (in_progress, completed, failed)
+current_feature: string    # Feature name or ID
+started: ISO8601           # When feature work started
+last_updated: ISO8601      # Last modification timestamp
+
+# Epic mode extensions (v2.0.0)
+epic_mode: boolean         # True if feature uses epic parallelization
+epics: array               # List of epic objects (see below)
+wip_limits: object         # WIP enforcement configuration
+```
+
+### Epic Object
+
+```yaml
+epics:
+  - name: string                    # Epic identifier (e.g., "epic-auth-api")
+    state: string                   # Epic state (see state machine)
+    agent: string                   # Assigned agent name
+    started: ISO8601                # When implementation started
+    contracts_locked_at: ISO8601    # When contracts were locked
+    parked_at: ISO8601              # When epic was parked (if Parked state)
+    parked_reason: string           # Why epic was parked
+    blocked_by: string              # Who/what is blocking
+    tasks_complete: number          # Tasks completed
+    tasks_total: number             # Total tasks for epic
+    feature_flag: string            # Associated feature flag name
+    waiting_for_wip_slot: boolean   # True if queued for WIP slot
+```
+
+### Epic States
+
+| State             | Description                                       |
+| ----------------- | ------------------------------------------------- |
+| `Planned`         | Epic defined in plan.md, contracts not designed   |
+| `ContractsLocked` | API schemas locked, ready for implementation      |
+| `Implementing`    | Active development with agent assigned            |
+| `Parked`          | Blocked by external dependency                    |
+| `Review`          | Code complete, quality gates running              |
+| `Integrated`      | Merged to main, feature flag enabled              |
+| `Released`        | Feature flag retired, fully deployed              |
+
+### WIP Limits Object
+
+```yaml
+wip_limits:
+  max_per_agent: number        # Max epics per agent (default: 1)
+  current_utilization: string  # Format: "N/M" (N occupied of M total)
+```
+
+## Example: Single Feature (v1.0.0)
+
+```yaml
+phase: implement
+status: in_progress
+current_feature: user-authentication
+started: 2025-11-10T14:00:00Z
+last_updated: 2025-11-10T16:30:00Z
+completed_phases:
+  - clarify
+  - plan
+  - tasks
+  - validate
+artifacts:
+  spec: specs/001-user-auth/spec.md
+  plan: specs/001-user-auth/plan.md
+  tasks: specs/001-user-auth/tasks.md
+```
+
+## Example: Epic Mode (v2.0.0)
+
+```yaml
+phase: implement
+status: in_progress
+current_feature: authentication-system
+started: 2025-11-10T14:00:00Z
+last_updated: 2025-11-10T18:45:00Z
+
+# Epic mode enabled
+epic_mode: true
+
+epics:
+  # Epic 1: Backend API (Implementing)
+  - name: epic-auth-api
+    state: Implementing
+    agent: backend-agent
+    started: 2025-11-10T14:30:00Z
+    contracts_locked_at: 2025-11-10T14:00:00Z
+    tasks_complete: 6
+    tasks_total: 8
+    feature_flag: auth_api_enabled
+
+  # Epic 2: Frontend UI (Implementing)
+  - name: epic-auth-ui
+    state: Implementing
+    agent: frontend-agent
+    started: 2025-11-10T15:00:00Z
+    contracts_locked_at: 2025-11-10T14:00:00Z
+    tasks_complete: 3
+    tasks_total: 6
+    feature_flag: auth_ui_enabled
+
+  # Epic 3: Search API (Queued)
+  - name: epic-search-api
+    state: ContractsLocked
+    contracts_locked_at: 2025-11-10T16:00:00Z
+    waiting_for_wip_slot: true
+
+  # Epic 4: Payment Integration (Parked)
+  - name: epic-payment-integration
+    state: Parked
+    parked_at: 2025-11-10T10:00:00Z
+    parked_reason: "Waiting for Stripe API keys from DevOps"
+    blocked_by: devops-team
+    feature_flag: payment_integration_enabled
+
+wip_limits:
+  max_per_agent: 1
+  current_utilization: "2/2"  # 2 agents, both occupied
+
+completed_phases:
+  - clarify
+  - plan
+  - tasks
+  - validate
+
+artifacts:
+  spec: specs/002-auth-system/spec.md
+  plan: specs/002-auth-system/plan.md
+  tasks: specs/002-auth-system/tasks.md
+  contracts: contracts/api/v1.1.0/openapi.yaml
+```
+
+## Field Validation Rules
+
+### Required Fields (All Features)
+
+```yaml
+phase: <one of: clarify, plan, tasks, validate, implement, optimize, preview, ship-staging, ship-prod, finalize>
+status: <one of: in_progress, completed, failed, paused>
+current_feature: <non-empty string>
+started: <ISO 8601 timestamp>
+```
+
+### Required Fields (Epic Mode)
+
+When `epic_mode: true`:
+
+```yaml
+epics: <non-empty array>
+epics[].name: <non-empty string>
+epics[].state: <one of: Planned, ContractsLocked, Implementing, Parked, Review, Integrated, Released>
+wip_limits.max_per_agent: <positive integer>
+```
+
+### Conditional Fields
+
+**When epic state = Implementing**:
+- `agent` (required)
+- `started` (required)
+- `feature_flag` (required)
+
+**When epic state = Parked**:
+- `parked_at` (required)
+- `parked_reason` (required)
+
+**When epic state = ContractsLocked**:
+- `contracts_locked_at` (required)
+
+## State Transitions
+
+### Epic State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Planned
+    Planned --> ContractsLocked: Contracts designed
+    ContractsLocked --> Implementing: WIP slot acquired
+    Implementing --> Review: Tasks complete
+    Implementing --> Parked: Blocked
+    Parked --> Implementing: Blocker resolved
+    Review --> Integrated: Gates pass
+    Integrated --> Released: Flag retired
+    Released --> [*]
+```
+
+### Feature Phase Progression
+
+```mermaid
+stateDiagram-v2
+    [*] --> clarify
+    clarify --> plan
+    plan --> tasks
+    tasks --> validate
+    validate --> implement
+    implement --> optimize
+    optimize --> preview
+    preview --> ship_staging
+    ship_staging --> ship_prod
+    ship_prod --> finalize
+    finalize --> [*]
+```
+
+## Schema Migrations
+
+### Migrating from v1.0.0 to v2.0.0
+
+**When to migrate**: When enabling epic parallelization for a feature.
+
+**Steps**:
+
+1. Add `epic_mode: true`
+2. Create `epics` array from task breakdown
+3. Initialize `wip_limits`
+4. Lock contracts before assigning epics
+
+**Example**:
+
+```bash
+# Before (v1.0.0)
+yq eval '.phase = "implement"' -i workflow-state.yaml
+
+# After (v2.0.0)
+yq eval '.epic_mode = true' -i workflow-state.yaml
+yq eval '.epics = []' -i workflow-state.yaml
+yq eval '.wip_limits.max_per_agent = 1' -i workflow-state.yaml
+
+# Add first epic
+yq eval '.epics += [{
+  "name": "epic-auth-api",
+  "state": "ContractsLocked",
+  "contracts_locked_at": "2025-11-10T14:00:00Z"
+}]' -i workflow-state.yaml
+```
+
+### Backward Compatibility
+
+**v2.0.0 is backward compatible with v1.0.0**:
+- Non-epic features continue to work (ignore `epics`, `wip_limits`)
+- Epic mode is opt-in via `epic_mode: true`
+
+## Usage in Commands
+
+### `/scheduler.assign`
+
+**Reads**:
+- `epics[].state` - Check if epic in `ContractsLocked`
+- `epics[].name` - Find target epic
+
+**Writes**:
+- `epics[].state` - Update to `Implementing`
+- `epics[].agent` - Assign agent name
+- `epics[].started` - Record start timestamp
+- `wip_limits.current_utilization` - Update slot count
+
+### `/scheduler.park`
+
+**Reads**:
+- `epics[].state` - Check if epic in `Implementing`
+- `epics[].agent` - Find agent to release
+
+**Writes**:
+- `epics[].state` - Update to `Parked`
+- `epics[].parked_at` - Record parking timestamp
+- `epics[].parked_reason` - Store reason
+- `epics[].blocked_by` - Store blocker entity
+- `wip_limits.current_utilization` - Update slot count
+
+### `/scheduler.list`
+
+**Reads**:
+- `epics[]` - All epic objects
+- `epics[].state` - Group by state
+- `epics[].tasks_complete` / `tasks_total` - Calculate progress
+- `wip_limits` - Show slot utilization
+
+### `/implement --parallel`
+
+**Reads**:
+- `epic_mode` - Check if parallel mode enabled
+- `epics[]` - Get all epics to implement
+
+**Writes**:
+- `epics[].state` - Update as implementation progresses
+- `epics[].tasks_complete` - Increment on task completion
+
+## Monitoring & Observability
+
+### Health Checks
+
+```bash
+# Check for stale epics (Implementing >24h)
+yq eval '.epics[] | select(.state == "Implementing") | select(.started < "2025-11-09T00:00:00Z")' workflow-state.yaml
+
+# Check for long-parked epics (>48h)
+yq eval '.epics[] | select(.state == "Parked") | select(.parked_at < "2025-11-08T00:00:00Z")' workflow-state.yaml
+
+# Check WIP slot utilization
+yq eval '.wip_limits.current_utilization' workflow-state.yaml
+```
+
+### Metrics
+
+**Epic-level metrics** (for DORA tracking):
+- Lead time per epic: `started` → `Released`
+- Cycle time per epic: `Implementing` → `Integrated`
+- Parking time: Total time in `Parked` state
+- Review time: Time in `Review` state
+
+**Feature-level metrics**:
+- Total feature lead time: `started` → `finalize`
+- Epic coordination overhead: Sum of parking/queuing times
+
+## Schema Versioning
+
+**Version Format**: `MAJOR.MINOR.PATCH`
+
+**Version Rules**:
+- **MAJOR**: Breaking changes (require migration)
+- **MINOR**: Additive changes (backward compatible)
+- **PATCH**: Bug fixes, clarifications
+
+**Current Version**: 2.0.0
+- **2.0.0** (2025-11-10): Epic mode extensions
+- **1.0.0** (2024-01-01): Initial schema
+
+## References
+
+- Epic State Machine: `.spec-flow/memory/epic-states.md`
+- WIP Tracker Schema: `.spec-flow/memory/wip-tracker.yaml`
+- Workflow Commands: `.claude/commands/`
+
+---
+
+**Maintained by**: Spec-Flow Workflow Kit
+**Last Updated**: 2025-11-10

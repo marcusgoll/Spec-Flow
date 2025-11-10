@@ -1,0 +1,203 @@
+name: Contract Verification
+
+# Trigger on PRs that modify contracts or implementation code
+on:
+  pull_request:
+    paths:
+      - 'contracts/**'
+      - 'src/**'
+      - 'api/**'
+      - '.github/workflows/contract-verification.yml'
+
+# Ensure only one verification runs per PR
+concurrency:
+  group: contract-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-contracts:
+    name: Verify Consumer-Driven Contracts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          # Install Pact CLI if not in package.json
+          if ! command -v pact-provider-verifier &> /dev/null; then
+            echo "Installing Pact standalone..."
+            curl -LO https://github.com/pact-foundation/pact-ruby-standalone/releases/download/v2.0.7/pact-2.0.7-linux-x86_64.tar.gz
+            tar xzf pact-2.0.7-linux-x86_64.tar.gz
+            echo "$PWD/pact/bin" >> $GITHUB_PATH
+          fi
+
+      - name: Install tooling (jq, yq)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Start provider services
+        run: |
+          # Start backend API in test mode
+          if [ -f "package.json" ] && grep -q "test:api" package.json; then
+            npm run test:api &
+            PROVIDER_PID=$!
+            echo "PROVIDER_PID=$PROVIDER_PID" >> $GITHUB_ENV
+
+            # Wait for health check
+            for i in {1..30}; do
+              if curl -f http://localhost:3000/health 2>/dev/null; then
+                echo "✅ Provider is ready"
+                break
+              fi
+              echo "Waiting for provider... ($i/30)"
+              sleep 2
+            done
+          else
+            echo "⚠️ No test:api script found - skipping provider startup"
+          fi
+
+      - name: Run contract verification
+        run: |
+          chmod +x .spec-flow/scripts/bash/contract-verify.sh
+          .spec-flow/scripts/bash/contract-verify.sh
+
+      - name: Stop provider services
+        if: always()
+        run: |
+          if [ -n "${PROVIDER_PID:-}" ]; then
+            kill $PROVIDER_PID 2>/dev/null || true
+          fi
+
+      - name: Upload verification results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-verification-failures
+          path: |
+            contracts/pacts/
+            .spec-flow/logs/
+
+      - name: Comment on PR (if failed)
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ❌ Contract Verification Failed
+
+One or more consumer contracts were violated by this PR.
+
+**What this means:**
+- This PR introduces breaking changes to API contracts
+- Existing consumers expect behavior that this PR no longer provides
+
+**Next Steps:**
+1. Review the [verification logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+2. Either:
+   - Fix the contract violations
+   - Coordinate with consumers to update their pacts
+   - Document this as a breaking change (requires RFC for major version bump)
+
+**References:**
+- [Contract Governance Guide](contracts/README.md)
+- [Breaking Change Policy](docs/contract-governance.md)
+
+Run \`/contract.verify --verbose\` locally to see detailed violations.
+              `
+            })
+
+  check-fixture-freshness:
+    name: Check Fixture Freshness
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Check if fixtures are stale
+        run: |
+          STALE_FIXTURES=""
+
+          for version_dir in contracts/api/v*/; do
+            [ -d "$version_dir" ] || continue
+
+            SCHEMA_FILE="${version_dir}openapi.yaml"
+            EXAMPLES_DIR="${version_dir}examples"
+
+            if [ ! -f "$SCHEMA_FILE" ]; then
+              continue
+            fi
+
+            if [ ! -d "$EXAMPLES_DIR" ]; then
+              echo "⚠️ No examples directory for $(basename $version_dir)"
+              continue
+            fi
+
+            SCHEMA_MTIME=$(stat -c %Y "$SCHEMA_FILE" 2>/dev/null || echo 0)
+
+            for fixture in "$EXAMPLES_DIR"/*.json; do
+              [ -f "$fixture" ] || continue
+
+              FIXTURE_MTIME=$(stat -c %Y "$fixture" 2>/dev/null || echo 0)
+
+              if [ $FIXTURE_MTIME -lt $SCHEMA_MTIME ]; then
+                echo "⚠️ Stale fixture: $(basename $fixture) (schema modified more recently)"
+                STALE_FIXTURES="${STALE_FIXTURES}\n- $(basename $fixture)"
+              fi
+            done
+          done
+
+          if [ -n "$STALE_FIXTURES" ]; then
+            echo "::warning::Stale fixtures detected. Run /fixture.refresh to update."
+            echo "Stale fixtures:${STALE_FIXTURES}"
+          else
+            echo "✅ All fixtures are up to date"
+          fi
+
+  # Optional: Publish pacts to broker (if using Pact Broker)
+  publish-pacts:
+    name: Publish Pacts to Broker
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verify-contracts
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Publish pacts
+        if: env.PACT_BROKER_URL != ''
+        env:
+          PACT_BROKER_URL: ${{ secrets.PACT_BROKER_URL }}
+          PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+        run: |
+          if command -v pact-broker &> /dev/null; then
+            pact-broker publish contracts/pacts/ \
+              --consumer-app-version=$(git rev-parse HEAD) \
+              --branch=${{ github.ref_name }} \
+              --broker-base-url=$PACT_BROKER_URL \
+              --broker-token=$PACT_BROKER_TOKEN
+            echo "✅ Pacts published to broker"
+          else
+            echo "⚠️ pact-broker CLI not available - skipping publish"
+          fi

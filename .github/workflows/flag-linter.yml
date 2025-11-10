@@ -1,0 +1,333 @@
+name: Feature Flag Linter
+
+# Run daily to catch expired flags and flag debt
+on:
+  schedule:
+    - cron: '0 9 * * *'  # Daily at 9am UTC
+  pull_request:
+    paths:
+      - '.spec-flow/memory/feature-flags.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - '.spec-flow/memory/feature-flags.yaml'
+  workflow_dispatch:  # Manual trigger
+
+concurrency:
+  group: flag-linter-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-expired-flags:
+    name: Check for Expired Flags
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Check for expired flags (>7 days)
+        id: check_expired
+        run: |
+          chmod +x .spec-flow/scripts/bash/flag-list.sh
+
+          # List expired flags
+          if .spec-flow/scripts/bash/flag-list.sh --expired; then
+            echo "expired=false" >> $GITHUB_OUTPUT
+          else
+            echo "expired=true" >> $GITHUB_OUTPUT
+
+            # Get count and details
+            EXPIRED_COUNT=$(yq eval '[.flags[] | select(.status == "active")] | length' .spec-flow/memory/feature-flags.yaml 2>/dev/null || echo 0)
+
+            # Check age of expired flags
+            NOW=$(date +%s)
+            CRITICAL=false
+
+            if command -v yq &> /dev/null; then
+              FLAG_COUNT=$(yq eval '.flags | length' .spec-flow/memory/feature-flags.yaml 2>/dev/null || echo 0)
+
+              for ((i=0; i<FLAG_COUNT; i++)); do
+                STATUS=$(yq eval ".flags[$i].status" .spec-flow/memory/feature-flags.yaml)
+                EXPIRES=$(yq eval ".flags[$i].expires" .spec-flow/memory/feature-flags.yaml)
+
+                if [[ "$STATUS" == "active" ]]; then
+                  EXPIRES_TS=$(date -d "$EXPIRES" +%s 2>/dev/null || echo 0)
+                  DAYS_EXPIRED=$(( (NOW - EXPIRES_TS) / 86400 ))
+
+                  if [[ $DAYS_EXPIRED -gt 7 ]]; then
+                    CRITICAL=true
+                    break
+                  fi
+                fi
+              done
+            fi
+
+            echo "critical=$CRITICAL" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create issue for expired flags
+        if: steps.check_expired.outputs.expired == 'true' && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const yaml = require('js-yaml');
+
+            // Read flag registry
+            const flagData = yaml.load(fs.readFileSync('.spec-flow/memory/feature-flags.yaml', 'utf8'));
+            const now = new Date();
+
+            // Find expired flags
+            const expiredFlags = (flagData.flags || [])
+              .filter(flag => {
+                const expires = new Date(flag.expires);
+                return flag.status === 'active' && expires < now;
+              })
+              .map(flag => {
+                const expires = new Date(flag.expires);
+                const daysExpired = Math.floor((now - expires) / (1000 * 60 * 60 * 24));
+                return `- \`${flag.name}\` (expired ${daysExpired}d ago) - ${flag.reason}`;
+              });
+
+            if (expiredFlags.length === 0) return;
+
+            // Check if issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'flag-debt',
+              state: 'open'
+            });
+
+            if (issues.data.length > 0) {
+              // Update existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                body: `## 🚨 Flag Debt Update
+
+${expiredFlags.length} expired flags detected:
+
+${expiredFlags.join('\n')}
+
+**Action Required**: Clean up flags immediately
+\`\`\`bash
+/flag.list --expired
+/flag.cleanup <flag-name>
+\`\`\`
+
+**References**:
+- [Feature Flag Guide](docs/feature-flags.md)
+- [Trunk-Based Development](docs/trunk-based-development.md)
+`
+              });
+            } else {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '🚨 Feature Flag Debt: Expired Flags Detected',
+                labels: ['flag-debt', 'tech-debt'],
+                body: `## Feature Flag Debt Alert
+
+${expiredFlags.length} feature flags have expired and need cleanup:
+
+${expiredFlags.join('\n')}
+
+## Why This Matters
+
+Feature flags are temporary. Expired flags indicate:
+- Work may be complete but flag not removed
+- Flag debt accumulating
+- Code complexity increasing
+
+## Action Required
+
+Clean up each flag:
+
+\`\`\`bash
+# List expired flags
+/flag.list --expired
+
+# Clean up each flag
+/flag.cleanup flag_name --verify
+
+# Commit cleanup
+git commit -m "refactor: remove expired flags"
+\`\`\`
+
+## Prevention
+
+- Remove flags when work completes
+- Set realistic expiry dates
+- Review flags weekly
+
+**References**:
+- [Feature Flag Management](docs/feature-flags.md)
+- [Trunk-Based Development](docs/trunk-based-development.md)
+
+---
+
+🤖 This issue was automatically created by the Flag Linter workflow.
+`
+              });
+            }
+
+      - name: Fail if critical flag debt
+        if: steps.check_expired.outputs.critical == 'true'
+        run: |
+          echo "❌ Critical flag debt detected"
+          echo ""
+          echo "One or more flags expired >7 days ago."
+          echo ""
+          echo "This indicates stale flags that should have been cleaned up."
+          echo ""
+          echo "Clean up immediately:"
+          echo "  /flag.list --expired"
+          echo "  /flag.cleanup <flag-name>"
+          echo ""
+          exit 1
+
+  check-flag-count:
+    name: Check Flag Count
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Count active flags
+        id: count_flags
+        run: |
+          if [[ ! -f .spec-flow/memory/feature-flags.yaml ]]; then
+            echo "count=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          COUNT=$(yq eval '[.flags[] | select(.status == "active")] | length' .spec-flow/memory/feature-flags.yaml 2>/dev/null || echo 0)
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+
+          echo "Active flags: $COUNT"
+
+      - name: Warn if too many flags
+        if: steps.count_flags.outputs.count > 5
+        run: |
+          echo "⚠️ Warning: High flag count (${{ steps.count_flags.outputs.count }} active flags)"
+          echo ""
+          echo "Recommendations:"
+          echo "  - Review if flags are still needed"
+          echo "  - Complete work on flagged features"
+          echo "  - Consider if features too large (should be smaller slices)"
+          echo ""
+          echo "Target: <5 active flags at any time"
+
+  verify-flag-format:
+    name: Verify Flag Registry Format
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Validate YAML format
+        run: |
+          if [[ ! -f .spec-flow/memory/feature-flags.yaml ]]; then
+            exit 0
+          fi
+
+          # Check YAML is valid
+          if ! yq eval '.' .spec-flow/memory/feature-flags.yaml > /dev/null 2>&1; then
+            echo "❌ Invalid YAML format in feature-flags.yaml"
+            exit 1
+          fi
+
+          echo "✅ YAML format valid"
+
+      - name: Validate flag schema
+        run: |
+          if [[ ! -f .spec-flow/memory/feature-flags.yaml ]]; then
+            exit 0
+          fi
+
+          FLAG_COUNT=$(yq eval '.flags | length' .spec-flow/memory/feature-flags.yaml 2>/dev/null || echo 0)
+
+          for ((i=0; i<FLAG_COUNT; i++)); do
+            NAME=$(yq eval ".flags[$i].name" .spec-flow/memory/feature-flags.yaml)
+
+            # Validate name format (snake_case ending with _enabled)
+            if [[ ! "$NAME" =~ ^[a-z0-9_]+_enabled$ ]]; then
+              echo "❌ Invalid flag name: $NAME"
+              echo "Flag names must be snake_case ending with _enabled"
+              exit 1
+            fi
+
+            # Check required fields
+            for field in status created expires reason; do
+              VALUE=$(yq eval ".flags[$i].$field" .spec-flow/memory/feature-flags.yaml)
+              if [[ -z "$VALUE" ]] || [[ "$VALUE" == "null" ]]; then
+                echo "❌ Flag $NAME missing required field: $field"
+                exit 1
+              fi
+            done
+          done
+
+          echo "✅ All flags valid"
+
+  update-flag-locations:
+    name: Scan Code for Flag References
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Scan for flag references
+        run: |
+          if [[ ! -f .spec-flow/memory/feature-flags.yaml ]]; then
+            exit 0
+          fi
+
+          echo "Scanning codebase for flag references..."
+          echo ""
+
+          # This is informational only - doesn't block
+          # Just shows where flags are used
+
+          if command -v yq &> /dev/null; then
+            FLAG_COUNT=$(yq eval '.flags | length' .spec-flow/memory/feature-flags.yaml 2>/dev/null || echo 0)
+
+            for ((i=0; i<FLAG_COUNT; i++)); do
+              NAME=$(yq eval ".flags[$i].name" .spec-flow/memory/feature-flags.yaml)
+              STATUS=$(yq eval ".flags[$i].status" .spec-flow/memory/feature-flags.yaml)
+
+              if [[ "$STATUS" != "active" ]]; then
+                continue
+              fi
+
+              REFS=$(grep -r "$NAME" src/ --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" 2>/dev/null | wc -l || echo 0)
+
+              echo "$NAME: $REFS references in code"
+            done
+          fi

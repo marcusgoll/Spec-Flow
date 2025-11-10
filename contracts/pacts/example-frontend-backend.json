@@ -1,0 +1,94 @@
+{
+  "consumer": {
+    "name": "frontend-epic-ui"
+  },
+  "provider": {
+    "name": "backend-epic-api"
+  },
+  "interactions": [
+    {
+      "description": "get user by ID",
+      "request": {
+        "method": "GET",
+        "path": "/api/users/123",
+        "headers": {
+          "Authorization": "Bearer token"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": "123",
+          "email": "user@example.com",
+          "role": "developer"
+        }
+      }
+    },
+    {
+      "description": "create new user",
+      "request": {
+        "method": "POST",
+        "path": "/api/users",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer token"
+        },
+        "body": {
+          "email": "newuser@example.com",
+          "role": "viewer"
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": "456",
+          "email": "newuser@example.com",
+          "role": "viewer"
+        }
+      }
+    },
+    {
+      "description": "list features in roadmap",
+      "request": {
+        "method": "GET",
+        "path": "/api/features",
+        "query": "status=in-progress&epic=epic:auth",
+        "headers": {
+          "Authorization": "Bearer token"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "features": [
+            {
+              "slug": "user-authentication",
+              "title": "User Authentication System",
+              "status": "in-progress",
+              "epic": "epic:auth",
+              "ice_score": 1.8
+            }
+          ],
+          "total": 1
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "2.0.0"
+    },
+    "created": "2025-11-10T14:30:00Z",
+    "consumer_version": "v1.0.0",
+    "comments": "This is an example pact demonstrating consumer expectations for the backend API"
+  }
+}

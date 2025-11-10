@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+#
+# pre-push - Enforce branch age limits for trunk-based development
+#
+# Installed by: .spec-flow/scripts/bash/install-git-hooks.sh
+#
+# Rules:
+# - Warn at 18h branch age
+# - Block at 24h branch age (unless feature flag added)
+# - Encourage daily merges and small batches
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+# Configuration
+WARN_THRESHOLD_HOURS=18
+BLOCK_THRESHOLD_HOURS=24
+
+#######################################
+# Get branch age in hours
+#######################################
+get_branch_age_hours() {
+  local branch=$1
+
+  # Get first commit timestamp on this branch
+  local first_commit_time
+  first_commit_time=$(git log --reverse --format=%ct "$branch" --not $(git for-each-ref --format='%(refname)' refs/heads/ | grep -v "refs/heads/$branch") 2>/dev/null | head -1)
+
+  if [[ -z "$first_commit_time" ]]; then
+    # Fallback: use first commit time on branch
+    first_commit_time=$(git log --reverse --format=%ct "$branch" 2>/dev/null | head -1)
+  fi
+
+  if [[ -z "$first_commit_time" ]]; then
+    echo "0"
+    return
+  fi
+
+  local now
+  now=$(date +%s)
+
+  local age_seconds=$((now - first_commit_time))
+  local age_hours=$((age_seconds / 3600))
+
+  echo "$age_hours"
+}
+
+#######################################
+# Check if feature flag exists for branch
+#######################################
+has_feature_flag() {
+  local branch=$1
+  local flag_registry=".spec-flow/memory/feature-flags.yaml"
+
+  if [[ ! -f "$flag_registry" ]]; then
+    return 1
+  fi
+
+  # Check if flag exists for this branch
+  if grep -q "branch: $branch" "$flag_registry" 2>/dev/null; then
+    return 0
+  fi
+
+  return 1
+}
+
+#######################################
+# Main
+#######################################
+main() {
+  # Get current branch
+  local current_branch
+  current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+
+  # Skip checks for main/master
+  if [[ "$current_branch" == "main" ]] || [[ "$current_branch" == "master" ]]; then
+    exit 0
+  fi
+
+  # Skip if no branch (detached HEAD)
+  if [[ -z "$current_branch" ]] || [[ "$current_branch" == "HEAD" ]]; then
+    exit 0
+  fi
+
+  # Calculate branch age
+  local age_hours
+  age_hours=$(get_branch_age_hours "$current_branch")
+
+  # Warning threshold (18h)
+  if [[ $age_hours -ge $WARN_THRESHOLD_HOURS ]] && [[ $age_hours -lt $BLOCK_THRESHOLD_HOURS ]]; then
+    echo -e "${YELLOW}⚠️  Warning: Branch is ${age_hours}h old (threshold: ${WARN_THRESHOLD_HOURS}h)${NC}"
+    echo ""
+    echo "Trunk-based development guideline: Merge branches within 24 hours"
+    echo ""
+    echo "Options:"
+    echo "  1. Merge now (recommended)"
+    echo "  2. Add feature flag and merge incomplete: /flag.add <name>"
+    echo "  3. Split into smaller slice"
+    echo ""
+    echo "Continuing push... (will block at ${BLOCK_THRESHOLD_HOURS}h)"
+    echo ""
+  fi
+
+  # Block threshold (24h)
+  if [[ $age_hours -ge $BLOCK_THRESHOLD_HOURS ]]; then
+    # Check for feature flag exception
+    if has_feature_flag "$current_branch"; then
+      echo -e "${GREEN}✅ Feature flag exists - allowing push${NC}"
+      echo ""
+      exit 0
+    fi
+
+    echo -e "${RED}❌ Blocked: Branch exceeds ${BLOCK_THRESHOLD_HOURS}h age limit${NC}"
+    echo ""
+    echo "Branch: $current_branch"
+    echo "Age: ${age_hours}h (limit: ${BLOCK_THRESHOLD_HOURS}h)"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Trunk-based development requires daily merges."
+    echo "Long-lived branches increase integration risk and block flow."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Options:"
+    echo ""
+    echo "  1. Add feature flag and merge incomplete work:"
+    echo "     /flag.add <flag-name> --branch $current_branch --reason \"Work in progress\""
+    echo "     git push"
+    echo ""
+    echo "  2. Split into smaller, shippable slice:"
+    echo "     - Commit what's done"
+    echo "     - Merge to main"
+    echo "     - Create new branch for remaining work"
+    echo ""
+    echo "  3. Emergency override (not recommended):"
+    echo "     git push --no-verify"
+    echo ""
+    echo "References:"
+    echo "  - https://trunkbaseddevelopment.com/"
+    echo "  - docs/trunk-based-development.md"
+    echo ""
+    exit 1
+  fi
+
+  # Green: Branch age < 18h
+  exit 0
+}
+
+main "$@"
