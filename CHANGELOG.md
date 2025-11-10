@@ -1,4 +1,102 @@
 
+## [4.3.0] - 2025-11-10
+
+### ✨ New Features - Epic & Sprint Roadmap System
+
+**Comprehensive parallel epic workflow with trunk-based development, contract-first API design, and DORA metrics tracking**
+
+**Phase 1: Contract Infrastructure** (8 tasks)
+- Contract directory structure (contracts/api/, contracts/pacts/, contracts/fixtures/)
+- `/contract.bump` command with semantic versioning and CDC verification
+- `/contract.verify` command with Pact CDC testing
+- `/fixture.refresh` command for golden fixture generation
+- Platform agent brief for shared infrastructure concerns
+- Contract governance documentation
+- GitHub Actions integration (contract-verification.yml)
+
+**Phase 2: Trunk-Based Development** (6 tasks)
+- Git pre-push hook enforcing 24h branch lifetime (warn 18h, block 24h)
+- `/branch.enforce` command for repository-wide branch age audits
+- Feature flag registry (`.spec-flow/memory/feature-flags.yaml`)
+- `/flag.add`, `/flag.list`, `/flag.cleanup` commands
+- Flag expiry linter (GitHub Actions daily job)
+- PR template with flag retirement checklist
+
+**Phase 3: Epic State Machine + Scheduler** (7 tasks)
+- 7-state epic lifecycle (Planned → ContractsLocked → Implementing → Review → Integrated → Released)
+- Parking logic for blocked epics (Implementing ↔ Parked)
+- `/scheduler.assign`, `/scheduler.park`, `/scheduler.list` commands
+- WIP tracker (`.spec-flow/memory/wip-tracker.yaml`) enforcing 1 epic per agent
+- Dependency graph parser (topological sort, circular dependency detection)
+- workflow-state.yaml schema v2.0.0 (epic tracking, quality gates)
+
+**Phase 4: Quality Gates** (5 tasks)
+- `/gate.ci` command (tests, linters, type checks, coverage ≥80%)
+- `/gate.sec` command (SAST, secrets detection, dependency vulnerabilities)
+- GitHub Actions integration (quality-gates.yml)
+- Epic state transitions gated by CI + Security gates
+- Gate status tracking in workflow-state.yaml
+
+**Phase 5: DORA Metrics** (6 tasks)
+- dora-calculate.sh (4 key metrics from GitHub API + git log)
+- `/metrics.dora` command (text/json/yaml output formats)
+- dora-alerts.sh (threshold monitoring: branch age, CFR, flag debt, parking time)
+- Tier classification (Elite/High/Medium/Low performance)
+- Real telemetry over manual YAML tracking
+
+**Phase 6: Documentation** (2 tasks)
+- Epic breakdown template (`.spec-flow/templates/epic-breakdown-template.md`)
+- Parallel epic workflow guide (`docs/parallel-epic-workflow.md`)
+- System summary (`docs/EPIC_SPRINT_ROADMAP.md`)
+
+### 🛠️ Files Added
+
+**Commands** (17):
+- `/contract.bump`, `/contract.verify`, `/fixture.refresh`
+- `/branch.enforce`, `/flag.add`, `/flag.list`, `/flag.cleanup`
+- `/scheduler.assign`, `/scheduler.park`, `/scheduler.list`
+- `/gate.ci`, `/gate.sec`, `/metrics.dora`
+
+**Scripts** (13):
+- `branch-enforce.sh`, `contract-bump.sh`, `contract-verify.sh`, `dependency-graph-parser.sh`
+- `dora-alerts.sh`, `dora-calculate.sh`, `fixture-refresh.sh`
+- `flag-add.sh`, `flag-cleanup.sh`, `flag-list.sh`
+- `gate-ci.sh`, `gate-sec.sh`, `install-git-hooks.sh`
+- `scheduler-assign.sh`, `scheduler-park.sh`, `scheduler-list.sh`
+
+**Infrastructure**:
+- 3 GitHub Actions workflows (contract-verification, flag-linter, quality-gates)
+- 1 agent brief (platform.md)
+- 3 memory files (epic-states, feature-flags, wip-tracker)
+- 4 documentation files
+
+**Contracts**:
+- `contracts/` directory with OpenAPI, Pact, and fixtures structure
+- Example OpenAPI 3.1 spec (v1.0.0)
+- Example Pact CDC test
+
+### 🎯 Architecture Patterns
+
+- **Contract-First Development**: OpenAPI 3.1 schemas, Pact CDC tests
+- **Trunk-Based Development**: Max 24h branch lifetime, daily merges with feature flags
+- **WIP Limits**: 1 epic per agent, parking logic for blocked work
+- **Team Topologies**: Platform agent for shared infrastructure
+- **DORA Metrics**: Deployment Frequency, Lead Time, CFR, MTTR
+
+### 📚 Documentation
+
+- `docs/parallel-epic-workflow.md` - End-to-end workflow guide (7 phases)
+- `docs/contract-governance.md` - Contract design and versioning
+- `docs/EPIC_SPRINT_ROADMAP.md` - System summary and quick start
+- `.spec-flow/templates/epic-breakdown-template.md` - Epic breakdown format guide
+
+### ⏱️ Timeline
+
+3-4 weeks production-grade implementation (Brooks's Law coordination tax acknowledged)
+
+---
+
+
 ## [4.2.0] - 2025-11-10
 
 ### ✨ New Features - Auto-Activation System (Phase 1)

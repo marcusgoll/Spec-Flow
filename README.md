@@ -44,6 +44,42 @@
 
 ## 🆕 Recent Updates
 
+### v4.3.0 (November 2025)
+**Epic & Sprint Roadmap System** - Comprehensive parallel epic workflow with trunk-based development
+
+- **Contract Infrastructure** (8 tasks)
+  - Contract directory structure (contracts/api/, contracts/pacts/, contracts/fixtures/)
+  - `/contract.bump`, `/contract.verify`, `/fixture.refresh` commands
+  - OpenAPI 3.1 schemas with Pact CDC testing
+  - Platform agent brief for shared infrastructure concerns
+- **Trunk-Based Development** (6 tasks)
+  - Git pre-push hook enforcing 24h branch lifetime (warn 18h, block 24h)
+  - `/branch.enforce` for repository-wide branch age audits
+  - Feature flag registry with `/flag.add`, `/flag.list`, `/flag.cleanup` commands
+  - Flag expiry linter (GitHub Actions daily job)
+- **Epic State Machine + Scheduler** (7 tasks)
+  - 7-state epic lifecycle (Planned → ContractsLocked → Implementing → Review → Integrated → Released)
+  - Parking logic for blocked epics (Implementing ↔ Parked)
+  - `/scheduler.assign`, `/scheduler.park`, `/scheduler.list` commands
+  - WIP tracker enforcing 1 epic per agent (prevents context switching)
+  - Dependency graph parser (topological sort, circular dependency detection)
+- **Quality Gates** (5 tasks)
+  - `/gate.ci` (tests, linters, type checks, coverage ≥80%)
+  - `/gate.sec` (SAST, secrets detection, dependency vulnerabilities)
+  - GitHub Actions integration (quality-gates.yml)
+- **DORA Metrics** (6 tasks)
+  - `/metrics.dora` command (4 key metrics from GitHub API + git log)
+  - Tier classification (Elite/High/Medium/Low)
+  - dora-alerts.sh (threshold monitoring: branch age, CFR, flag debt, parking time)
+
+**Problem Solved**: Large features require parallel development across vertical slices (API, DB, UI), but traditional sequential workflows create bottlenecks. No support for epics, sprints, or team parallelization. No contract governance or trunk-based development enforcement.
+
+**Impact**: Teams can parallelize epic development with contract-first API design. Trunk-based development enforced with 24h branch limits. WIP limits prevent context switching. Real-time DORA metrics track team velocity and quality.
+
+**See**: [docs/EPIC_SPRINT_ROADMAP.md](docs/EPIC_SPRINT_ROADMAP.md), [docs/parallel-epic-workflow.md](docs/parallel-epic-workflow.md)
+
+---
+
 ### v4.2.0 (November 2025)
 **Integrated Showcase Features** - Production-tested patterns from 6 months of real-world use
 
