@@ -97,7 +97,7 @@ if ($Json) {
         Write-Host "[spec-flow][warn] ⚠️  Found $($staleFiles.Count) stale CLAUDE.md file(s):" -ForegroundColor Yellow
         Write-Host ""
         foreach ($item in $staleFiles) {
-            $relPath = $item.file.Replace($repoRoot + "\", "").Replace($repoRoot + "/", "")
+            $relPath = $item.file -replace [regex]::Escape($repoRoot + [IO.Path]::DirectorySeparatorChar), ''
             Write-Host "  ❌ $relPath ($($item.age_days)d old)" -ForegroundColor Red
         }
         Write-Host ""
@@ -111,7 +111,7 @@ if ($Json) {
         Write-Host "[spec-flow][warn] ⚠️  Found $($warnings.Count) warning(s):" -ForegroundColor Yellow
         Write-Host ""
         foreach ($warning in $warnings) {
-            $relPath = $warning.file.Replace($repoRoot + "\", "").Replace($repoRoot + "/", "")
+            $relPath = $warning.file -replace [regex]::Escape($repoRoot + [IO.Path]::DirectorySeparatorChar), ''
             Write-Host "  ⚠️  $relPath: $($warning.message)" -ForegroundColor Yellow
         }
         Write-Host ""
@@ -120,7 +120,7 @@ if ($Json) {
     Write-Host "Fresh files: $($freshFiles.Count)"
     if ($freshFiles.Count -gt 0 -and $freshFiles.Count -le 5) {
         foreach ($item in $freshFiles) {
-            $relPath = $item.file.Replace($repoRoot + "\", "").Replace($repoRoot + "/", "")
+            $relPath = $item.file -replace [regex]::Escape($repoRoot + [IO.Path]::DirectorySeparatorChar), ''
             Write-Host "  ✅ $relPath ($($item.age_days)d old)" -ForegroundColor Green
         }
     }
