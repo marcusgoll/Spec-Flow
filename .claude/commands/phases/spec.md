@@ -55,64 +55,75 @@ Single-pass, non-interactive pipeline:
    - Mark clarifications needed with `[NEEDS CLARIFICATION]` explicitly (max 3 in spec, extras go to clarify.md)
 
 **Why this matters**: Hallucinated technical constraints lead to specs that can't be implemented. Specs based on non-existent code create impossible plans. Accurate specifications save 50-60% of implementation time.
-
-## REASONING APPROACH
-
-For complex specification decisions, show your step-by-step reasoning:
-
-<thinking>
-Let me analyze this requirement:
-1. What is the user actually asking for? [Quote $ARGUMENTS]
-2. What are the implied constraints? [Technical, UX, performance]
-3. What existing features does this build on? [Check GitHub Issues via gh issue list]
-4. What ambiguities need clarification? [List unclear points - max 3 critical, rest go to clarify.md]
-5. Conclusion: [Specification approach with justification]
-</thinking>
-
-<answer>
-[Specification decision based on reasoning]
-</answer>
-
-**When to use structured thinking:**
-- Classifying feature type (enhancement vs new feature vs bugfix)
-- Deciding feature scope (what's in vs out of scope)
-- Identifying technical constraints from vague requirements
-- Choosing between multiple valid interpretations of user intent
-- Determining which roadmap section to place the feature in
-
-**Benefits**: Explicit reasoning reduces scope creep by 30-40% and prevents misaligned specifications.
 </constraints>
 
 <instructions>
-## PATH CONSTANTS
+## BASH SCRIPT
 
 ```bash
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# Error trap to ensure proper cleanup on failure
+on_error() {
+  echo "⚠️  Error in /spec. Rolling back changes."
+
+  # Rollback: return to original branch and clean up
+  ORIGINAL_BRANCH=$(git rev-parse --abbrev-ref HEAD@{-1} 2>/dev/null || echo "main")
+  git checkout "$ORIGINAL_BRANCH" 2>/dev/null || true
+  git branch -D "${SLUG}" 2>/dev/null || true
+  rm -rf "specs/${SLUG}" 2>/dev/null || true
+
+  exit 1
+}
+trap on_error ERR
+
+# Tool preflight checks
+need() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "❌ Missing required tool: $1"
+    case "$1" in
+      git) echo "   Install: https://git-scm.com/downloads" ;;
+      gh) echo "   Install: https://cli.github.com/" ;;
+      jq) echo "   Install: brew install jq (macOS) or apt install jq (Linux)" ;;
+      *) echo "   Check documentation for installation" ;;
+    esac
+    exit 1
+  }
+}
+
+need git
+need jq
+
+# Deterministic repo root
+cd "$(git rev-parse --show-toplevel)"
+
+# Constants
 ENGINEERING_PRINCIPLES="docs/project/engineering-principles.md"
 WORKFLOW_MECHANICS=".spec-flow/memory/workflow-mechanics.md"
-INSPIRATIONS_FILE=".spec-flow/memory/design-inspirations.md"
-UI_INVENTORY_FILE="design/systems/ui-inventory.md"
-BUDGETS_FILE="design/systems/budgets.md"
-
 SPEC_TEMPLATE=".spec-flow/templates/spec-template.md"
 HEART_TEMPLATE=".spec-flow/templates/heart-metrics-template.md"
 SCREENS_TEMPLATE=".spec-flow/templates/screens-yaml-template.yaml"
 VISUALS_TEMPLATE=".spec-flow/templates/visuals-readme-template.md"
 ROADMAP_FILE="docs/roadmap.md"
 
-COMPACT_THRESHOLD=50000  # Planning quality degrades above 50k tokens
-```
+# Validate arguments
+if [ -z "$ARGUMENTS" ]; then
+  echo "❌ Feature description required"
+  echo ""
+  echo "Usage: /spec <feature-description>"
+  echo ""
+  echo "Examples:"
+  echo "  /spec \"Add dark mode toggle to settings\""
+  echo "  /spec \"Improve upload speed by 50%\""
+  echo "  /spec \"Track user engagement with HEART metrics\""
+  exit 1
+fi
 
-## INPUT VALIDATION
-
-```bash
-# Check arguments provided
-[ -z "$ARGUMENTS" ] && echo "Error: Feature description required" && echo "Usage: /spec [feature-description]" && exit 1
-
-# Use provided SLUG or generate from ARGUMENTS
+# Generate slug (deterministic, 2-4 words, action-noun format)
 if [ -n "$SLUG" ]; then
   SHORT_NAME="$SLUG"
 else
-  # Generate concise slug (2-4 words, action-noun format)
   SHORT_NAME=$(echo "$ARGUMENTS" \
     | tr '[:upper:]' '[:lower:]' \
     | sed -E 's/\b(we|i)\s+want\s+to\b//g; s/\b(get|to|with|for|the|a|an)\b//g' \
@@ -120,52 +131,82 @@ else
     | cut -c1-50 \
     | sed 's/-$//')
 
-  [ -z "$SHORT_NAME" ] && echo "Error: Invalid feature name (results in empty slug)" && exit 1
+  if [ -z "$SHORT_NAME" ]; then
+    echo "❌ Invalid feature name (results in empty slug)"
+    echo "   Provide a more descriptive feature name"
+    exit 1
+  fi
 
   # Prevent path traversal
-  [[ "$SHORT_NAME" == *".."* ]] || [[ "$SHORT_NAME" == *"/"* ]] && echo "Error: Invalid characters in feature name" && exit 1
+  if [[ "$SHORT_NAME" == *".."* ]] || [[ "$SHORT_NAME" == *"/"* ]]; then
+    echo "❌ Invalid characters in feature name"
+    echo "   Avoid: .. / (path traversal characters)"
+    exit 1
+  fi
 
   SLUG="$SHORT_NAME"
 fi
 
-echo "✓ Feature slug: $SLUG"
-echo "  From: $ARGUMENTS"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Spec Flow: $SLUG"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-```
+echo "Feature: $ARGUMENTS"
+echo "Slug: $SLUG"
+echo ""
 
-## GIT PRECONDITIONS
+# Git preconditions
+if [ -n "$(git status --porcelain)" ]; then
+  echo "❌ Uncommitted changes in working directory"
+  echo ""
+  git status --short
+  echo ""
+  echo "Fix: git add . && git commit -m 'message'"
+  exit 1
+fi
 
-```bash
-# 1. Check working directory is clean
-[ -n "$(git status --porcelain)" ] && echo "Error: Uncommitted changes in working directory" && git status --short && exit 1
-
-# 2. Get current branch
 CURRENT_BRANCH=$(git branch --show-current)
 
-# 3. Validate not on main branch
-[ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ] && echo "Error: Cannot create spec on main branch" && echo "Run: git checkout -b feature-branch-name" && exit 1
+if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
+  echo "❌ Cannot create spec on main branch"
+  echo ""
+  echo "Fix: git checkout -b feature-branch-name"
+  exit 1
+fi
 
-# 4. Check spec directory doesn't exist
-[ -d "specs/${SLUG}" ] && echo "Error: Spec directory 'specs/${SLUG}/' already exists" && exit 1
+if [ -d "specs/${SLUG}" ]; then
+  echo "❌ Spec directory 'specs/${SLUG}/' already exists"
+  echo ""
+  echo "Options:"
+  echo "  1. Use different feature name"
+  echo "  2. Delete existing: rm -rf specs/${SLUG}"
+  echo "  3. Continue existing feature: cd specs/${SLUG}"
+  exit 1
+fi
 
-# 5. Validate templates exist
-for t in "$SPEC_TEMPLATE" "$HEART_TEMPLATE" "$SCREENS_TEMPLATE" "$VISUALS_TEMPLATE"; do
-  [ ! -f "$t" ] && echo "Error: Missing required template: $t" && exit 1
+# Validate templates exist
+for template in "$SPEC_TEMPLATE" "$HEART_TEMPLATE" "$SCREENS_TEMPLATE" "$VISUALS_TEMPLATE"; do
+  if [ ! -f "$template" ]; then
+    echo "❌ Missing required template: $template"
+    echo ""
+    echo "Fix: Ensure .spec-flow/templates/ directory is complete"
+    echo "     Clone from: https://github.com/anthropics/spec-flow"
+    exit 1
+  fi
 done
-```
 
-## INITIALIZE
-
-```bash
-# Set up paths
+# Initialize feature directory
 FEATURE_DIR="specs/${SLUG}"
 SPEC_FILE="$FEATURE_DIR/spec.md"
 NOTES_FILE="$FEATURE_DIR/NOTES.md"
 CLARIFY_FILE="$FEATURE_DIR/clarify.md"
 
-# Create branch and directory structure
 git checkout -b "${SLUG}"
 mkdir -p "$FEATURE_DIR" "$FEATURE_DIR/design" "$FEATURE_DIR/visuals" "$FEATURE_DIR/checklists"
+
+echo "✅ Branch created: $SLUG"
+echo "✅ Directory created: specs/$SLUG/"
+echo ""
 
 # Create NOTES.md stub
 cat > "$NOTES_FILE" <<EOF
@@ -181,36 +222,33 @@ cat > "$NOTES_FILE" <<EOF
 [UI inventory + reuse analysis]
 
 ## Checkpoints
-- Phase 0 (Spec): $(date -I)
+- Phase 0 (Spec): $(date -I 2>/dev/null || date +%Y-%m-%d)
 
 ## Last Updated
-$(date -Iseconds)
+$(date -Iseconds 2>/dev/null || date +%Y-%m-%dT%H:%M:%S%z)
 EOF
-```
 
-## CLASSIFICATION (Deterministic, No Prompts)
+# Auto-classification (deterministic, keyword-based)
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Feature Classification"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
 
-```bash
-# Lowercase for case-insensitive matching
 ARG_LOWER=$(echo "$ARGUMENTS" | tr '[:upper:]' '[:lower:]')
 
-# Feature type (determines UI artifacts)
 HAS_UI=false
 echo "$ARG_LOWER" | grep -Eq "(screen|page|component|dashboard|form|modal|frontend|interface)" && HAS_UI=true
 
-# Change type (determines hypothesis)
 IS_IMPROVEMENT=false
 echo "$ARG_LOWER" | grep -Eq "(improve|optimi[sz]e|enhance|speed|reduce|increase)" && IS_IMPROVEMENT=true
 
-# Measurable outcomes (determines HEART metrics)
 HAS_METRICS=false
 echo "$ARG_LOWER" | grep -Eq "(track|measure|metric|analytic|engagement|retention|adoption|funnel|cohort|a/b)" && HAS_METRICS=true
 
-# Deployment complexity (determines deployment section)
 HAS_DEPLOYMENT_IMPACT=false
 echo "$ARG_LOWER" | grep -Eq "(migration|schema|env|environment|docker|deploy|breaking|infrastructure)" && HAS_DEPLOYMENT_IMPACT=true
 
-# Count flags to determine research depth
+# Count classification flags
 FLAG_COUNT=0
 $HAS_UI && FLAG_COUNT=$((FLAG_COUNT+1))
 $IS_IMPROVEMENT && FLAG_COUNT=$((FLAG_COUNT+1))
@@ -225,35 +263,18 @@ cat >> "$NOTES_FILE" <<EOF
 - Improvement: ${IS_IMPROVEMENT}
 - Measurable: ${HAS_METRICS}
 - Deployment impact: ${HAS_DEPLOYMENT_IMPACT}
+- Complexity signals: ${FLAG_COUNT}
 EOF
 
-echo "✓ Auto-classified: $FLAG_COUNT signals detected"
-[ "$HAS_UI" = true ] && echo "  → UI feature"
-[ "$IS_IMPROVEMENT" = true ] && echo "  → Improvement feature"
-[ "$HAS_METRICS" = true ] && echo "  → Metrics tracking"
-[ "$HAS_DEPLOYMENT_IMPACT" = true ] && echo "  → Deployment impact"
-[ "$FLAG_COUNT" -eq 0 ] && echo "  → Backend/API feature (no special artifacts)"
+echo "Classification results:"
+[ "$HAS_UI" = true ] && echo "  ✓ UI feature detected"
+[ "$IS_IMPROVEMENT" = true ] && echo "  ✓ Improvement feature detected"
+[ "$HAS_METRICS" = true ] && echo "  ✓ Metrics tracking detected"
+[ "$HAS_DEPLOYMENT_IMPACT" = true ] && echo "  ✓ Deployment impact detected"
+[ "$FLAG_COUNT" -eq 0 ] && echo "  → Backend/API feature (no special signals)"
 echo ""
-```
 
-## ROADMAP DETECTION (Optional)
-
-```bash
-# Check if feature exists in roadmap
-FROM_ROADMAP=false
-if [ -f "$ROADMAP_FILE" ] && grep -qi "^### ${SLUG}\b" "$ROADMAP_FILE"; then
-  FROM_ROADMAP=true
-  echo "✓ Found '${SLUG}' in roadmap - reusing context"
-else
-  echo "✓ Creating fresh spec (not found in roadmap)"
-fi
-echo ""
-```
-
-## RESEARCH MODE
-
-```bash
-# Determine research depth based on feature complexity
+# Research mode selection
 if [ "$FLAG_COUNT" -eq 0 ]; then
   RESEARCH_MODE="minimal"
   echo "Research mode: Minimal (backend/API feature)"
@@ -265,218 +286,132 @@ else
   echo "Research mode: Full (multi-aspect feature)"
 fi
 echo ""
-```
 
-**Minimal research** (1-2 tools):
-1. Read engineering principles (compliance check)
-2. Grep codebase (if integrating with existing code)
+# Roadmap detection
+FROM_ROADMAP=false
+if [ -f "$ROADMAP_FILE" ] && grep -qi "^### ${SLUG}\b" "$ROADMAP_FILE"; then
+  FROM_ROADMAP=true
+  echo "✅ Found in roadmap - reusing context"
+else
+  echo "✅ Creating fresh spec (not in roadmap)"
+fi
+echo ""
 
-**Standard research** (3-5 tools):
-1-2. Minimal research tools
-3. UI inventory (if `$HAS_UI = true`)
-4. Performance budgets (if `$HAS_UI = true`)
-5. Similar features (search specs/ by keyword)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# RESEARCH PHASE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Full research** (5-8 tools):
-1-5. Standard research tools
-6. Design inspirations (if `$HAS_UI = true`)
-7. WebSearch for UX patterns (if UI and no internal pattern)
-8. Chrome DevTools analysis (if reference URL in $ARGUMENTS)
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Research Phase ($RESEARCH_MODE mode)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
 
-**Output**: Document findings in `$NOTES_FILE` with citations.
+# Research steps determined by mode:
+# - minimal: engineering principles + codebase grep (if needed)
+# - standard: minimal + UI inventory + budgets + similar features
+# - full: standard + design inspirations + WebSearch + DevTools
 
-## GENERATE SPEC ARTIFACTS
+# Claude Code: Execute research based on RESEARCH_MODE
+# Document findings in $NOTES_FILE with file citations
+# Use Glob/Read/Grep/WebFetch as needed
 
-### 1. Main Spec (`spec.md`)
+echo "✅ Research complete"
+echo ""
 
-Always create from `$SPEC_TEMPLATE`:
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ARTIFACT GENERATION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Contents**:
-- Problem statement (quote user need from $ARGUMENTS)
-- Goals and Non-Goals
-- User Scenarios (Gherkin Given/When/Then format)
-- Functional Requirements (FR-001, FR-002, ...) and Non-Functional (NFR-001, ...)
-- Success Criteria (HEART-based when applicable, measurable, tech-agnostic)
-- Assumptions
-- Dependencies
-- Risks & Mitigations (feature flag plan)
-- Open Questions (max 3 `[NEEDS CLARIFICATION]`; extras → clarify.md)
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Generating Specification Artifacts"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
 
-**Success Criteria Guidelines**:
-- **Measurable**: Include specific metrics (time, percentage, count, rate)
-- **Technology-agnostic**: No frameworks, languages, databases, or tools
-- **User-focused**: Outcomes from user/business perspective, not system internals
-- **Verifiable**: Testable without knowing implementation details
+# 1. Main spec.md (always generated from SPEC_TEMPLATE)
+echo "Creating spec.md..."
+# Claude Code: Generate from SPEC_TEMPLATE with:
+# - Problem statement (quote $ARGUMENTS)
+# - Goals/Non-Goals
+# - User scenarios (Gherkin Given/When/Then)
+# - Functional Requirements (FR-001, FR-002, ...)
+# - Non-Functional Requirements (NFR-001, ...)
+# - Success Criteria (HEART-based when applicable, measurable, tech-agnostic)
+# - Assumptions
+# - Dependencies
+# - Risks & Mitigations
+# - Open Questions (max 3 [NEEDS CLARIFICATION]; extras → clarify.md)
+echo "  ✓ spec.md created"
 
-**Examples**:
-- ✅ Good: "Users can complete checkout in under 3 minutes"
-- ✅ Good: "System supports 10,000 concurrent users"
-- ✅ Good: "95% of searches return results in under 1 second"
-- ❌ Bad: "API response time is under 200ms" (too technical)
-- ❌ Bad: "React components render efficiently" (framework-specific)
-- ❌ Bad: "Redis cache hit rate above 80%" (technology-specific)
+# 2. HEART metrics (if $HAS_METRICS = true)
+if [ "$HAS_METRICS" = true ]; then
+  echo "Creating HEART metrics..."
+  # Claude Code: Generate from HEART_TEMPLATE with 5 dimensions:
+  # 1. Happiness (error rates, satisfaction)
+  # 2. Engagement (usage frequency)
+  # 3. Adoption (new user activation)
+  # 4. Retention (repeat usage)
+  # 5. Task Success (completion rate)
+  # Include targets and measurement sources (SQL, logs, Lighthouse)
+  echo "  ✓ design/heart-metrics.md created"
+fi
 
-**Clarification Strategy**:
-- Make reasonable defaults based on industry standards
-- Document assumptions in Assumptions section
-- **Only mark [NEEDS CLARIFICATION] for critical decisions** that:
-  - Significantly impact feature scope or user experience
-  - Have multiple reasonable interpretations with different implications
-  - Lack any reasonable default
-- **Limit: Maximum 3 [NEEDS CLARIFICATION] markers in spec.md**
-- **Extra clarifications** go to `clarify.md` for async resolution
-- **Prioritize clarifications**: scope > security/privacy > user experience > technical details
+# 3. UI artifacts (if $HAS_UI = true)
+if [ "$HAS_UI" = true ]; then
+  echo "Creating UI artifacts..."
+  # Claude Code: Generate from SCREENS_TEMPLATE
+  # - screens.yaml: list screens with states, actions, components
+  # - copy.md: real UI text (no Lorem Ipsum)
+  echo "  ✓ design/screens.yaml created"
+  echo "  ✓ design/copy.md created"
 
-### 2. HEART Metrics (if `$HAS_METRICS = true`)
+  # Visual research (if references provided in $ARGUMENTS)
+  # Claude Code: Generate from VISUALS_TEMPLATE if URLs detected
+  if echo "$ARGUMENTS" | grep -Eq "https?://"; then
+    echo "  ✓ visuals/README.md created"
+  fi
+fi
 
-Create `${FEATURE_DIR}/design/heart-metrics.md` from `$HEART_TEMPLATE`:
+# 4. Hypothesis (if $IS_IMPROVEMENT = true)
+if [ "$IS_IMPROVEMENT" = true ]; then
+  echo "Adding hypothesis section to spec.md..."
+  # Claude Code: Add to spec.md:
+  # - Problem (with evidence)
+  # - Solution (mechanism)
+  # - Prediction (measurable outcome)
+  echo "  ✓ Hypothesis documented in spec.md"
+fi
 
-Define 5 HEART dimensions with targets and measurement sources:
+# 5. Deployment section (if $HAS_DEPLOYMENT_IMPACT = true)
+if [ "$HAS_DEPLOYMENT_IMPACT" = true ]; then
+  echo "Adding deployment considerations to spec.md..."
+  # Claude Code: Add to spec.md:
+  # - Platform dependencies
+  # - Environment variables
+  # - Breaking changes
+  # - Migration requirements
+  # - Rollback plan
+  echo "  ✓ Deployment section added to spec.md"
+fi
 
-1. **Happiness**: Error rates, satisfaction scores
-   - Target: `<2% error rate` (down from 5%)
-   - Measure: `grep '"event":"error"' logs/metrics/*.jsonl`
+echo ""
 
-2. **Engagement**: Usage frequency
-   - Target: `2+ uses/user/week` (up from 1.2)
-   - Measure: `SELECT COUNT(*) FROM feature_metrics GROUP BY user_id`
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# VALIDATION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-3. **Adoption**: New user activation
-   - Target: `+20% signups`
-   - Measure: `SELECT COUNT(*) FROM users WHERE created_at >= ...`
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Quality Validation"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
 
-4. **Retention**: Repeat usage
-   - Target: `40% 7-day return rate` (up from 25%)
-   - Measure: `SELECT COUNT(DISTINCT user_id) / total_users FROM user_sessions`
-
-5. **Task Success**: Completion rate
-   - Target: `85% completion` (up from 65%)
-   - Measure: `SELECT COUNT(*) FILTER (WHERE outcome='completed') / COUNT(*)`
-
-**Include measurement sources**: SQL queries, log patterns, Lighthouse thresholds.
-
-### 3. Screens Inventory & Copy (if `$HAS_UI = true`)
-
-Create `${FEATURE_DIR}/design/screens.yaml` from `$SCREENS_TEMPLATE`:
-
-**List screens**:
-- upload: Primary action = "Select File", States = [default, uploading, error]
-- preview: Primary action = "Confirm", States = [loading, ready, invalid]
-- results: Primary action = "Export", States = [processing, complete, empty]
-
-**For each screen**:
-- ID, name, route, purpose
-- Primary action (CTA)
-- States (default, loading, empty, error)
-- Components (from ui-inventory.md)
-- Copy (real text, not Lorem Ipsum)
-
-Create `${FEATURE_DIR}/design/copy.md`:
-```markdown
-# Copy: [Feature Name]
-
-## Screen: upload
-**Heading**: Upload AKTR Report
-**Subheading**: Get ACS-mapped weak areas in seconds
-**CTA Primary**: Extract ACS Codes
-**Help Text**: Accepts PDF or image files up to 50MB
-
-**Error Messages**:
-- FILE_TOO_LARGE: "File exceeds 50MB limit..."
-- INVALID_FORMAT: "Only PDF, JPG, PNG supported..."
-```
-
-### 4. Visual Research (if `$HAS_UI = true`)
-
-Create `${FEATURE_DIR}/visuals/README.md` from `$VISUALS_TEMPLATE`:
-- Document UX patterns from chrome-devtools
-- Extract layout, colors, interactions, measurements
-- Include reference URLs
-
-### 5. Hypothesis (if `$IS_IMPROVEMENT = true`)
-
-Document in spec.md:
-
-**Problem**: Upload → redirect → wait causes 25% abandonment
-- Evidence: Logs show 25% users never reach results
-- Impact: Students miss core value prop
-
-**Solution**: Inline preview (no redirect) with real-time progress
-- Change: Upload → preview → extract on same screen
-- Mechanism: Reduces cognitive load, provides instant feedback
-
-**Prediction**: Time-to-insight <8s will reduce abandonment to <10%
-- Primary metric: Task completion +20% (65% → 85%)
-- Expected improvement: -47% time (15s → 8s)
-- Confidence: High (similar pattern in design-inspirations.md)
-
-### 6. Deployment Considerations (if `$HAS_DEPLOYMENT_IMPACT = true`)
-
-Document in spec.md (Deployment Considerations section):
-
-**Platform Dependencies**:
-- [None / Vercel: edge middleware for X / Railway: new start command]
-
-**Environment Variables**:
-- [None / New: NEXT_PUBLIC_FEATURE_FLAG_X, API_KEY_Y / Changed: NEXT_PUBLIC_API_URL]
-
-**Breaking Changes**:
-- [No / Yes: API endpoint /v1/users → /v2/users / Yes: Clerk auth flow change]
-
-**Migration Required**:
-- [No / Yes: Add user_preferences table / Yes: Backfill existing users]
-
-**Rollback Considerations**:
-- Standard: Feature flag off + `git revert <commit-hash>`
-- If migration: Must downgrade migration via Alembic downgrade
-- Restore working tree: `git restore --staged . && git restore .` (if partial rollback needed)
-
-**Reference**: Git rollback best practices, feature flag lifecycle management
-
-### 7. Clarify File (if > 3 clarifications needed)
-
-Create `${FEATURE_DIR}/clarify.md` if more than 3 `[NEEDS CLARIFICATION]` items found:
-
-```markdown
-# Clarifications Needed: ${SLUG}
-
-**Created**: $(date -I)
-**Feature**: specs/${SLUG}/spec.md
-
-## Critical Clarifications (in spec.md)
-
-These are blocking and must be resolved before `/plan`:
-
-1. [Question from spec marked [NEEDS CLARIFICATION]]
-2. [Question 2]
-3. [Question 3]
-
-## Additional Clarifications (async)
-
-These can be resolved during planning or implementation:
-
-4. [Non-critical question 4]
-5. [Non-critical question 5]
-...
-
-## Resolution Process
-
-Run `/clarify` to interactively resolve critical clarifications (1-3).
-Additional clarifications (4+) can be addressed asynchronously or during planning.
-```
-
-## SPECIFICATION QUALITY CHECKLIST
-
-```bash
-# Create requirements quality checklist
+# Create requirements checklist
 REQUIREMENTS_CHECKLIST="${FEATURE_DIR}/checklists/requirements.md"
 
 cat > "$REQUIREMENTS_CHECKLIST" <<'CHECKLIST_EOF'
 # Specification Quality Checklist
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: $(date -I)
-**Feature**: specs/${SLUG}/spec.md
+**Created**: $(date -I 2>/dev/null || date +%Y-%m-%d)
+**Feature**: ${SLUG}
 
 ## Content Quality
 
@@ -487,13 +422,13 @@ cat > "$REQUIREMENTS_CHECKLIST" <<'CHECKLIST_EOF'
 
 ## Requirement Completeness
 
-- [ ] CHK005 - No [NEEDS CLARIFICATION] markers remain (or max 3 critical)
+- [ ] CHK005 - No more than 3 [NEEDS CLARIFICATION] markers in spec.md
 - [ ] CHK006 - Requirements are testable and unambiguous
 - [ ] CHK007 - Success criteria are measurable
-- [ ] CHK008 - Success criteria are technology-agnostic (no implementation details)
-- [ ] CHK009 - All acceptance scenarios are defined
-- [ ] CHK010 - Edge cases are identified
-- [ ] CHK011 - Scope is clearly bounded
+- [ ] CHK008 - Success criteria are technology-agnostic
+- [ ] CHK009 - All acceptance scenarios defined
+- [ ] CHK010 - Edge cases identified
+- [ ] CHK011 - Scope clearly bounded
 - [ ] CHK012 - Dependencies and assumptions identified
 
 ## Feature Readiness
@@ -505,79 +440,56 @@ cat > "$REQUIREMENTS_CHECKLIST" <<'CHECKLIST_EOF'
 
 ## Notes
 
-- Items marked incomplete require spec updates before `/clarify` or `/plan`
+- Items marked incomplete require spec updates before /clarify or /plan
 - Maximum 3 [NEEDS CLARIFICATION] markers allowed in spec.md (extras in clarify.md)
 CHECKLIST_EOF
 
-echo "✅ Created requirements quality checklist"
-```
+echo "✅ Created requirements checklist"
 
-**Validation Process**:
+# Validate spec against checklist
+# Claude Code: Validate each CHK item, update checklist with [x] or [ ]
+# If failures after 3 iterations, document in notes and warn user
 
-1. **Run validation check** against spec.md (Claude Code validates each CHK item)
+# Count clarification markers
+CLARIFICATIONS=$(grep -c "\[NEEDS CLARIFICATION" "$SPEC_FILE" 2>/dev/null || echo 0)
 
-2. **Handle validation failures**:
-   - List failing items with specific issues
-   - Update spec.md to address each issue
-   - Re-validate (max 3 iterations)
-   - If still failing after 3 iterations: document in checklist notes, warn user
-
-3. **Handle clarification markers**:
-   ```bash
-   # Count [NEEDS CLARIFICATION] markers
-   CLARIFICATIONS=$(grep -c "\[NEEDS CLARIFICATION" "$SPEC_FILE" || echo 0)
-
-   if [ "$CLARIFICATIONS" -gt 3 ]; then
-     echo "⚠️  Found $CLARIFICATIONS clarification markers (limit: 3)"
-     echo "Moving extras to clarify.md"
-     # Claude Code: Reduce to 3 most critical in spec, move rest to clarify.md
-   fi
-   ```
-
-4. **Update checklist** with final pass/fail status
-
-## UPDATE ROADMAP (if from roadmap)
-
-```bash
-if [ "$FROM_ROADMAP" = true ]; then
-  echo "Updating roadmap: ${SLUG} → In Progress"
-
-  # Find feature in roadmap (by slug heading)
-  FEATURE_SECTION=$(grep -n "^### ${SLUG}" "$ROADMAP_FILE" | cut -d: -f1)
-
-  if [ -n "$FEATURE_SECTION" ]; then
-    # Move feature to "In Progress" section with metadata
-    # Add: Branch, Spec, Updated date
-    # (Implementation uses sed/awk for robust markdown manipulation)
-
-    git add "$ROADMAP_FILE"
-    git commit -m "roadmap: move ${SLUG} to In Progress
-
-Branch: ${SLUG}
-Spec: specs/${SLUG}/spec.md
-Updated after /spec completed"
-
-    echo "✅ Roadmap updated: ${SLUG} now in In Progress"
-  fi
+if [ "$CLARIFICATIONS" -gt 3 ]; then
+  echo "⚠️  Found $CLARIFICATIONS clarification markers (limit: 3)"
+  echo "   Moving extras to clarify.md"
+  # Claude Code: Keep 3 most critical in spec.md, move rest to clarify.md
 fi
-```
 
-## GIT COMMIT (Conventional Commits)
+# Check checklist completion
+TOTAL_CHECKS=$(grep -c "^- \[" "$REQUIREMENTS_CHECKLIST" || echo 0)
+COMPLETE_CHECKS=$(grep -c "^- \[x\]" "$REQUIREMENTS_CHECKLIST" || echo 0)
 
-```bash
-# Build commit message dynamically based on artifacts created
+echo "Checklist status: $COMPLETE_CHECKS/$TOTAL_CHECKS complete"
+echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# COMMIT
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Committing Specification"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Build commit message dynamically
 COMMIT_MSG="design(spec): add ${SLUG} specification
 
 Phase 0: Spec-flow
 - User scenarios (Given/When/Then)
 - Requirements documented"
 
-# Add conditional lines based on artifacts
 [ -f "${FEATURE_DIR}/design/heart-metrics.md" ] && COMMIT_MSG="${COMMIT_MSG}
 - HEART metrics defined (5 dimensions with targets)"
 
-[ -f "${FEATURE_DIR}/design/screens.yaml" ] && COMMIT_MSG="${COMMIT_MSG}
-- UI screens inventory ($(grep -c '^  [a-z_]*:' ${FEATURE_DIR}/design/screens.yaml 2>/dev/null || echo 0) screens)"
+if [ -f "${FEATURE_DIR}/design/screens.yaml" ]; then
+  SCREEN_COUNT=$(grep -c '^  [a-z_]*:' "${FEATURE_DIR}/design/screens.yaml" 2>/dev/null || echo 0)
+  COMMIT_MSG="${COMMIT_MSG}
+- UI screens inventory (${SCREEN_COUNT} screens)"
+fi
 
 [ -f "${FEATURE_DIR}/design/copy.md" ] && COMMIT_MSG="${COMMIT_MSG}
 - Copy documented (real text, no Lorem Ipsum)"
@@ -591,10 +503,10 @@ Phase 0: Spec-flow
 [ -f "${FEATURE_DIR}/clarify.md" ] && COMMIT_MSG="${COMMIT_MSG}
 - Clarifications file created (async resolution)"
 
-# Count system components if analyzed
+# Count reusable components
 if grep -q "System Components Analysis" "$NOTES_FILE"; then
-  REUSABLE_COUNT=$(grep -A 10 "Reusable" "$NOTES_FILE" | grep -c "^-" || echo 0)
-  COMMIT_MSG="${COMMIT_MSG}
+  REUSABLE_COUNT=$(grep -A 10 "Reusable" "$NOTES_FILE" | grep -c "^-" 2>/dev/null || echo 0)
+  [ "$REUSABLE_COUNT" -gt 0 ] && COMMIT_MSG="${COMMIT_MSG}
 - System components checked (${REUSABLE_COUNT} reusable)"
 fi
 
@@ -603,14 +515,12 @@ COMMIT_MSG="${COMMIT_MSG}
 
 Artifacts:"
 
-for artifact in spec.md NOTES.md design/*.md design/*.yaml visuals/README.md clarify.md; do
-  [ -f "${FEATURE_DIR}/${artifact}" ] && COMMIT_MSG="${COMMIT_MSG}
+for artifact in spec.md NOTES.md design/*.md design/*.yaml visuals/README.md clarify.md checklists/requirements.md; do
+  [ -e "${FEATURE_DIR}/${artifact}" ] && COMMIT_MSG="${COMMIT_MSG}
 - specs/${SLUG}/${artifact}"
 done
 
-# Count clarifications
-CLARIFICATIONS=$(grep -c "\[NEEDS CLARIFICATION" "$SPEC_FILE" || echo 0)
-
+# Add next step
 if [ "$CLARIFICATIONS" -gt 0 ] || [ -f "${FEATURE_DIR}/clarify.md" ]; then
   COMMIT_MSG="${COMMIT_MSG}
 
@@ -626,83 +536,43 @@ COMMIT_MSG="${COMMIT_MSG}
 🤖 Generated with Claude Code
 Co-Authored-By: Claude <noreply@anthropic.com>"
 
-# Commit specification artifacts
+# Commit all artifacts
 git add "specs/${SLUG}/"
 git commit -m "$COMMIT_MSG"
 
-# Verify commit succeeded
 COMMIT_HASH=$(git rev-parse --short HEAD)
+echo "✅ Committed: $COMMIT_HASH"
 echo ""
-echo "✅ Specification committed: $COMMIT_HASH"
-echo ""
-git log -1 --oneline
-echo ""
-```
 
-## ERROR HANDLING & ROLLBACK
-
-```bash
-# Rollback function
-rollback_spec_flow() {
-  echo "⚠️  Spec generation failed. Rolling back changes..."
-
-  # 1. Return to original branch
-  ORIGINAL_BRANCH=$(git rev-parse --abbrev-ref HEAD@{-1} 2>/dev/null || echo "main")
-  git checkout "$ORIGINAL_BRANCH"
-
-  # 2. Delete feature branch
-  git branch -D "${SLUG}" 2>/dev/null
-
-  # 3. Remove spec directory
-  rm -rf "specs/${SLUG}"
-
-  # 4. Revert roadmap changes (if from roadmap)
-  if [ "$FROM_ROADMAP" = true ]; then
-    git checkout HEAD -- "$ROADMAP_FILE"
-  fi
-
-  echo "✓ Rolled back all changes"
-  echo "Error: $1"
-  exit 1
-}
-
-# Usage: trap rollback_spec_flow on errors
-# Example: [ -f "$SPEC_TEMPLATE" ] || rollback_spec_flow "Missing template"
-```
-
-## AUTO-PROGRESSION
-
-```bash
-# Count clarification markers
-CLARIFICATIONS=$(grep -c "\[NEEDS CLARIFICATION" "$SPEC_FILE" || echo 0)
-
-# Check requirements checklist status
-REQUIREMENTS_CHECKLIST="${FEATURE_DIR}/checklists/requirements.md"
-CHECKLIST_COMPLETE=false
-
-if [ -f "$REQUIREMENTS_CHECKLIST" ]; then
-  TOTAL_CHECKS=$(grep -c "^- \[" "$REQUIREMENTS_CHECKLIST" || echo 0)
-  COMPLETE_CHECKS=$(grep -c "^- \[x\]" "$REQUIREMENTS_CHECKLIST" || echo 0)
-
-  if [ "$TOTAL_CHECKS" -eq "$COMPLETE_CHECKS" ]; then
-    CHECKLIST_COMPLETE=true
-  fi
+# Update roadmap if feature came from there
+if [ "$FROM_ROADMAP" = true ]; then
+  # Claude Code: Update roadmap status to "In Progress"
+  # Add branch and spec metadata
+  git add "$ROADMAP_FILE"
+  git commit -m "roadmap: move ${SLUG} to In Progress"
+  echo "✅ Roadmap updated"
+  echo ""
 fi
 
-# Auto-progression logic
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# AUTO-PROGRESSION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHECKLIST_COMPLETE=false
+[ "$TOTAL_CHECKS" -eq "$COMPLETE_CHECKS" ] && CHECKLIST_COMPLETE=true
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 if [ "$CLARIFICATIONS" -gt 0 ] || [ -f "${FEATURE_DIR}/clarify.md" ]; then
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "⚠️  AUTO-PROGRESSION: Clarifications needed"
+  echo "⚠️  Clarifications Needed"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
   echo "Found $CLARIFICATIONS critical ambiguities in spec.md"
   [ -f "${FEATURE_DIR}/clarify.md" ] && echo "Additional clarifications in clarify.md (async)"
   echo ""
   echo "Recommended: /clarify"
-  echo "Alternative: /plan (proceed with current spec, clarify later)"
+  echo "Alternative: /plan (proceed with current spec)"
 elif [ "$CHECKLIST_COMPLETE" = false ]; then
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "⚠️  AUTO-PROGRESSION: Quality checks incomplete"
+  echo "⚠️  Quality Checks Incomplete"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
   echo "Requirements checklist: $COMPLETE_CHECKS/$TOTAL_CHECKS complete"
@@ -710,8 +580,7 @@ elif [ "$CHECKLIST_COMPLETE" = false ]; then
   echo "Review: ${REQUIREMENTS_CHECKLIST}"
   echo "After fixes: /plan"
 else
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "✅ AUTO-PROGRESSION: Spec is clear and validated"
+  echo "✅ Spec Ready for Planning"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
   echo "No ambiguities - requirements checklist complete"
@@ -719,51 +588,51 @@ else
   echo "Recommended: /plan"
   echo "Alternative: /feature continue (automates plan → tasks → implement → ship)"
 fi
-```
-
-## RETURN
-
-```bash
-# Count artifacts
-ARTIFACT_COUNT=$(find "${FEATURE_DIR}" -type f 2>/dev/null | wc -l || echo 0)
-REQUIREMENT_COUNT=$(grep -c "^- \[FR-\|^- \[NFR-" "$SPEC_FILE" || echo 0)
 
 echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SUMMARY
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ARTIFACT_COUNT=$(find "${FEATURE_DIR}" -type f 2>/dev/null | wc -l || echo 0)
+REQUIREMENT_COUNT=$(grep -c "^- \[FR-\|^- \[NFR-" "$SPEC_FILE" 2>/dev/null || echo 0)
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ SPECIFICATION COMPLETE"
+echo "Specification Complete"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "Feature: ${SLUG}"
 echo "Spec: specs/${SLUG}/spec.md"
 echo "Branch: ${SLUG}"
-[ "$FROM_ROADMAP" = true ] && echo "Roadmap: Updated to In Progress ✅"
+[ "$FROM_ROADMAP" = true ] && echo "Roadmap: In Progress ✅"
 echo ""
 echo "Details:"
 echo "- Requirements: ${REQUIREMENT_COUNT} documented"
 
 [ "$HAS_METRICS" = true ] && echo "- HEART metrics: 5 dimensions with targets"
 [ "$IS_IMPROVEMENT" = true ] && echo "- Hypothesis: Problem → Solution → Prediction"
-[ "$HAS_UI" = true ] && echo "- UI screens: $(grep -c '^  [a-z_]*:' ${FEATURE_DIR}/design/screens.yaml 2>/dev/null || echo 0) defined"
+
+if [ "$HAS_UI" = true ]; then
+  SCREEN_COUNT=$(grep -c '^  [a-z_]*:' "${FEATURE_DIR}/design/screens.yaml" 2>/dev/null || echo 0)
+  echo "- UI screens: ${SCREEN_COUNT} defined"
+fi
 
 if grep -q "System Components Analysis" "$NOTES_FILE"; then
-  REUSABLE_COUNT=$(grep -A 10 "Reusable" "$NOTES_FILE" | grep -c "^-" || echo 0)
-  NEW_COUNT=$(grep -A 10 "New Components" "$NOTES_FILE" | grep -c "^-" || echo 0)
+  REUSABLE_COUNT=$(grep -A 10 "Reusable" "$NOTES_FILE" | grep -c "^-" 2>/dev/null || echo 0)
+  NEW_COUNT=$(grep -A 10 "New Components" "$NOTES_FILE" | grep -c "^-" 2>/dev/null || echo 0)
   echo "- System components: ${REUSABLE_COUNT} reusable, ${NEW_COUNT} new"
 fi
 
 [ -f "${FEATURE_DIR}/visuals/README.md" ] && echo "- Visual research: documented"
-[ -f "${FEATURE_DIR}/clarify.md" ] && echo "- Clarify file: created (async)"
-
+[ -f "${FEATURE_DIR}/clarify.md" ] && echo "- Clarify file: created"
 echo "- Clarifications in spec: ${CLARIFICATIONS}"
 echo "- Artifacts: ${ARTIFACT_COUNT}"
 
-# Show checklist status
-if [ -f "$REQUIREMENTS_CHECKLIST" ]; then
-  if [ "$CHECKLIST_COMPLETE" = true ]; then
-    echo "- Checklist: ✅ Complete ($TOTAL_CHECKS/$TOTAL_CHECKS)"
-  else
-    echo "- Checklist: ⚠️  Incomplete ($COMPLETE_CHECKS/$TOTAL_CHECKS)"
-  fi
+if [ "$CHECKLIST_COMPLETE" = true ]; then
+  echo "- Checklist: ✅ Complete ($TOTAL_CHECKS/$TOTAL_CHECKS)"
+else
+  echo "- Checklist: ⚠️  Incomplete ($COMPLETE_CHECKS/$TOTAL_CHECKS)"
 fi
 
 echo ""

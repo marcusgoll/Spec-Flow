@@ -28,7 +28,7 @@ All commands can be invoked via `/command-name` in Claude Code. Each command is 
 
 | Command | Description | Status | Version | Refactor |
 |---------|-------------|--------|---------|----------|
-| `/spec` | Create feature specification from natural language | ✅ Stable | - | ⏳ Needs v2.0 |
+| `/spec` | Create feature specification from natural language | ✅ Stable | v2.0 | ✅ Done |
 | `/clarify` | Reduce spec ambiguity via targeted questions | ✅ Stable | v2.0 | ✅ Done |
 | `/plan` | Generate design artifacts from feature spec | ✅ Stable | - | ⏳ Needs v2.0 |
 | `/tasks` | Generate concrete TDD tasks from design artifacts | ✅ Stable | - | ⏳ Needs v2.0 |
@@ -176,6 +176,7 @@ Commands marked "Needs v2.0" should be refactored to include:
 - ✅ `/deploy-prod` - Non-interactive, platform-specific rollback (Vercel, Railway, Netlify, Git)
 - ✅ `/optimize` - Parallel checks, binary pass/fail, evidence-backed standards (WCAG, OWASP, Twelve-Factor)
 - ✅ `/fix-ci` - Verified GitHub CLI commands, correct tool flags, generic quota handling
+- ✅ `/spec` - Consolidated bash (15 blocks → 1), error trap with rollback, tool checks
 
 ---
 
@@ -376,5 +377,5 @@ internal: true  # Optional: mark as internal-only
 ---
 
 **Last Updated**: 2025-11-10
-**Commands**: 46 total (7 refactored to v2.0, 39 pending)
-**Next Priority**: Refactor phase commands (`/spec`, `/plan`, `/tasks`, `/implement`)
+**Commands**: 46 total (8 refactored to v2.0, 38 pending)
+**Next Priority**: Refactor phase commands (`/plan`, `/tasks`, `/implement`)
