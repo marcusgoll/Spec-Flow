@@ -2,492 +2,325 @@
 description: Validate environment variables before deployment
 ---
 
-# Check-Env: Environment Variable Validator
+# /check-env — Environment Variable Validator
 
-**Command**: `/check-env [environment]`
+**Command**: `/check-env [staging|production]`
 
-**Purpose**: Validate environment variables before deployment. Prevents "missing env var" deployment failures.
+**Purpose**: Fail fast on missing or misrouted configuration. Validates required secrets in Doppler and optionally verifies platform sync (GitHub, Vercel, Railway) without printing values.
 
-**When to use**:
-- Before `/phase-1-ship` (staging)
-- Before `/phase-2-ship` (production)
-- After updating environment configurations
-- When troubleshooting deployment failures
+**Run before**:
+- `/phase-1-ship` (staging)
+- `/phase-2-ship` (production)
 
-**Arguments**:
-- `staging` - Check staging environment
-- `production` - Check production environment
-- (none) - Interactive selection
+**Valid targets**: `staging`, `production` (no arg → interactive prompt)
+
+**What it checks**
+1. Doppler CLI installed and authenticated (fast "me" probe)
+2. Required Doppler configs for each surface: `*_marketing`, `*_app`, `*_api`
+3. Presence of all required secrets per surface
+4. Env correctness (e.g., `ENVIRONMENT` = target)
+5. URL sanity (domain-only match; never echo full values)
+6. Optional platform sync:
+   - GitHub secrets present for CI
+   - Vercel/Railway integration tokens present (if CLIs authed)
+
+**Output**
+- Human-readable summary
+- Nonzero exit when missing or mismatched
+- JSON report at `specs/<feature>/reports/check-env.json`
+
+**Security**
+- Never prints secret values
+- Domain-only checks for URLs
+- All platform checks are read-only
+
+**Token efficiency**: Fast validation, deterministic output, actionable fixes.
 
 ---
 
 ## MENTAL MODEL
 
-You are an **environment validator** that ensures all required environment variables are configured in Doppler.
+You are an **environment validator** that ensures all required environment variables are configured before deployment.
 
-**Philosophy**: Deployments fail 30% of the time due to missing environment variables. Catch these before deployment by validating Doppler (single source of truth).
+**Philosophy**: Deployments fail 30% of the time due to missing environment variables. Catch these before deployment by validating Doppler (single source of truth) with zero secrets leakage.
 
-**Checks**:
-1. Verify Doppler CLI installed and authenticated
-2. Check Doppler configs exist for target environment
-3. Validate all required secrets present in each config
-4. Optionally verify platform sync (Vercel, Railway, GitHub)
-5. Report missing/misconfigured variables with fix commands
+**Central truth**: `.env.example` defines required keys. Curated lists classify keys by surface (frontend/backend).
 
-**Token efficiency**: Fast validation, clear output, actionable fixes.
-
----
-
-## EXECUTION PHASES
-
-### Phase 1: SELECT ENVIRONMENT
-
-```bash
-#!/bin/bash
-set -e
-
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Environment Variable Check"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-ENVIRONMENT="$ARGUMENTS"
-
-if [ -z "$ENVIRONMENT" ]; then
-  echo "Select environment:"
-  echo "  1. staging"
-  echo "  2. production"
-  echo ""
-  read -p "Choose (1-2): " ENV_CHOICE
-
-  case "$ENV_CHOICE" in
-    1) ENVIRONMENT="staging" ;;
-    2) ENVIRONMENT="production" ;;
-    *)
-      echo "Invalid choice"
-      exit 1
-      ;;
-  esac
-fi
-
-# Validate environment
-if [ "$ENVIRONMENT" != "staging" ] && [ "$ENVIRONMENT" != "production" ]; then
-  echo "❌ Invalid environment: $ENVIRONMENT"
-  echo ""
-  echo "Usage: /check-env [staging|production]"
-  exit 1
-fi
-
-echo "Environment: $ENVIRONMENT"
-echo ""
-```
+**Execution**: Hardened bash script (`.spec-flow/scripts/bash/check-env.sh`) with:
+- `set -Eeuo pipefail` for fail-fast behavior
+- JSON output for programmatic consumption
+- Read-only platform probes
+- Domain-only URL validation
 
 ---
 
-### Phase 2: CHECK DOPPLER CLI
+## EXECUTION FLOW
+
+### Phase 1: Environment Selection
+
+Resolve target from CLI arg or interactive prompt. Validate `staging` or `production` only.
+
+### Phase 2: Doppler CLI Validation
+
+- Check `doppler` command exists
+- Probe authentication via `doppler me`
+- Exit early if not installed or authenticated
+
+### Phase 3: Config Existence
+
+For each surface (`marketing`, `app`, `api`):
+- Query `doppler configs list --project PROJECT --json`
+- Verify `${TARGET}_${SURFACE}` config exists
+- Report missing configs with setup instructions
+
+### Phase 4: Secret Presence
+
+For each required secret:
+- Probe `doppler secrets get KEY --config CONFIG --plain`
+- Record present/missing status (never print values)
+- Aggregate by config
+
+**Secret Lists**:
 
 ```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Phase 2: Doppler CLI Validation"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-# Check if Doppler CLI is installed
-if ! command -v doppler &>/dev/null; then
-  echo "❌ Doppler CLI not installed"
-  echo ""
-  echo "Install via:"
-  echo "  scoop install doppler  (Windows)"
-  echo "  brew install dopplerhq/cli/doppler  (macOS)"
-  echo "  curl -Ls https://cli.doppler.com/install.sh | sh  (Linux)"
-  echo ""
-  echo "Or run setup:"
-  echo "  bash \spec-flow/commands/setup-doppler.sh"
-  exit 1
-fi
-
-echo "✅ Doppler CLI installed"
-
-# Check authentication
-if ! doppler me &>/dev/null; then
-  echo "❌ Not authenticated with Doppler"
-  echo ""
-  echo "Authenticate via:"
-  echo "  doppler login"
-  echo ""
-  exit 1
-fi
-
-echo "✅ Doppler authenticated"
-echo ""
-```
-
----
-
-### Phase 3: VALIDATE DOPPLER CONFIGS
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Phase 3: Doppler Config Validation"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-PROJECT="cfipros"
-CONFIGS=("${ENVIRONMENT}_marketing" "${ENVIRONMENT}_app" "${ENVIRONMENT}_api")
-MISSING_CONFIGS=false
-
-echo "Checking configs for environment: $ENVIRONMENT"
-echo ""
-
-for config in "${CONFIGS[@]}"; do
-  echo "Config: $config"
-
-  # Check if config exists
-  if doppler configs list --project "$PROJECT" --json 2>/dev/null | \
-     jq -e ".[] | select(.name==\"$config\")" >/dev/null 2>&1; then
-    echo "  ✅ Config exists"
-  else
-    echo "  ❌ Config missing"
-    MISSING_CONFIGS=true
-  fi
-
-  echo ""
-done
-
-if [ "$MISSING_CONFIGS" = true ]; then
-  echo "❌ Missing Doppler configs"
-  echo ""
-  echo "Run setup to create configs:"
-  echo "  bash \spec-flow/commands/setup-doppler.sh"
-  echo ""
-  exit 1
-fi
-
-echo "✅ All Doppler configs exist"
-echo ""
-```
-
----
-
-### Phase 4: CHECK REQUIRED SECRETS
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Phase 4: Required Secrets Validation"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-MISSING_VARS=false
-
-# Define required secrets per service
+# Frontend surfaces (marketing, app)
 FRONTEND_SECRETS=(
-  "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
-  "CLERK_SECRET_KEY"
-  "NEXT_PUBLIC_API_URL"
-  "BACKEND_API_URL"
-  "NEXT_PUBLIC_APP_URL"
-  "NEXT_PUBLIC_MARKETING_URL"
-  "UPSTASH_REDIS_REST_URL"
-  "UPSTASH_REDIS_REST_TOKEN"
-  "NEXT_PUBLIC_HCAPTCHA_SITE_KEY"
-  "HCAPTCHA_SECRET_KEY"
-  "JWT_SECRET"
-  "NEXT_PUBLIC_POSTHOG_KEY"
-  "NEXT_PUBLIC_POSTHOG_HOST"
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  CLERK_SECRET_KEY
+  NEXT_PUBLIC_API_URL
+  BACKEND_API_URL
+  NEXT_PUBLIC_APP_URL
+  NEXT_PUBLIC_MARKETING_URL
+  UPSTASH_REDIS_REST_URL
+  UPSTASH_REDIS_REST_TOKEN
+  NEXT_PUBLIC_HCAPTCHA_SITE_KEY
+  HCAPTCHA_SECRET_KEY
+  JWT_SECRET
+  NEXT_PUBLIC_POSTHOG_KEY
+  NEXT_PUBLIC_POSTHOG_HOST
 )
 
+# Backend surface (api)
 BACKEND_SECRETS=(
-  "DATABASE_URL"
-  "DIRECT_URL"
-  "OPENAI_API_KEY"
-  "VISION_MODEL"
-  "SECRET_KEY"
-  "ENVIRONMENT"
-  "ALLOWED_ORIGINS"
-  "REDIS_URL"
+  DATABASE_URL
+  DIRECT_URL
+  OPENAI_API_KEY
+  VISION_MODEL
+  SECRET_KEY
+  ENVIRONMENT
+  ALLOWED_ORIGINS
+  REDIS_URL
 )
-
-# Check marketing secrets
-echo "Marketing (${ENVIRONMENT}_marketing):"
-MARKETING_CONFIG="${ENVIRONMENT}_marketing"
-
-for secret in "${FRONTEND_SECRETS[@]}"; do
-  if doppler secrets get "$secret" \
-     --project "$PROJECT" \
-     --config "$MARKETING_CONFIG" \
-     --plain >/dev/null 2>&1; then
-    echo "  ✅ $secret"
-  else
-    echo "  ❌ $secret (missing)"
-    MISSING_VARS=true
-  fi
-done
-
-echo ""
-
-# Check app secrets
-echo "App (${ENVIRONMENT}_app):"
-APP_CONFIG="${ENVIRONMENT}_app"
-
-for secret in "${FRONTEND_SECRETS[@]}"; do
-  if doppler secrets get "$secret" \
-     --project "$PROJECT" \
-     --config "$APP_CONFIG" \
-     --plain >/dev/null 2>&1; then
-    echo "  ✅ $secret"
-  else
-    echo "  ❌ $secret (missing)"
-    MISSING_VARS=true
-  fi
-done
-
-echo ""
-
-# Check API secrets
-echo "API (${ENVIRONMENT}_api):"
-API_CONFIG="${ENVIRONMENT}_api"
-
-for secret in "${BACKEND_SECRETS[@]}"; do
-  if doppler secrets get "$secret" \
-     --project "$PROJECT" \
-     --config "$API_CONFIG" \
-     --plain >/dev/null 2>&1; then
-    echo "  ✅ $secret"
-  else
-    echo "  ❌ $secret (missing)"
-    MISSING_VARS=true
-  fi
-done
-
-echo ""
 ```
 
----
+**Drift detection**: If `.env.example` exists, compare curated lists against example keys and report extras.
 
-### Phase 5: ENVIRONMENT-SPECIFIC CHECKS
+### Phase 5: Environment-Specific Validation
 
+**ENVIRONMENT variable match**:
 ```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Phase 5: Environment-Specific Validation"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+api_env=$(doppler secrets get ENVIRONMENT --config ${TARGET}_api --plain)
+if [[ "$api_env" != "$TARGET" ]]; then
+  warn "ENVIRONMENT mismatch: expected '$TARGET', got '$api_env'"
+fi
+```
 
-# Check ENVIRONMENT variable matches target
-API_ENV_VAR=$(doppler secrets get ENVIRONMENT \
-  --project "$PROJECT" \
-  --config "$API_CONFIG" \
-  --plain 2>/dev/null || echo "")
+**URL sanity checks** (domain-only, never print full URLs):
+```bash
+api_url=$(doppler secrets get NEXT_PUBLIC_API_URL --config ${TARGET}_app --plain)
+domain=$(echo "$api_url" | sed -E 's|https?://([^/?]+).*|\1|')
 
-if [ "$API_ENV_VAR" != "$ENVIRONMENT" ]; then
-  echo "⚠️  ENVIRONMENT mismatch in API config"
-  echo "   Expected: $ENVIRONMENT"
-  echo "   Actual: $API_ENV_VAR"
-  echo ""
+if [[ "$TARGET" == "staging" ]]; then
+  # Accept staging-like domains
+  [[ "$domain" =~ staging|railway.app ]] && ok || warn
 else
-  echo "✅ ENVIRONMENT variable correct: $ENVIRONMENT"
+  # Require production domain
+  [[ "$domain" == "api.cfipros.com" ]] && ok || warn
 fi
-
-# Check URLs match environment
-# SECURITY: Never print actual URL values to avoid exposing secrets in query params
-if [ "$ENVIRONMENT" = "staging" ]; then
-  echo "Checking staging URLs..."
-
-  API_URL=$(doppler secrets get NEXT_PUBLIC_API_URL \
-    --project "$PROJECT" \
-    --config "$APP_CONFIG" \
-    --plain 2>/dev/null || echo "")
-
-  if [[ "$API_URL" =~ staging ]] || [[ "$API_URL" =~ railway.app ]]; then
-    echo "  ✅ NEXT_PUBLIC_API_URL points to staging"
-  else
-    # Extract domain only (no query params or paths that might contain secrets)
-    URL_DOMAIN=$(echo "$API_URL" | sed -E 's|https?://([^/?]+).*|\1|')
-    echo "  ⚠️  NEXT_PUBLIC_API_URL domain: $URL_DOMAIN (should contain 'staging' or 'railway.app')"
-    echo "  💡 Tip: Check Doppler dashboard for full URL"
-  fi
-
-elif [ "$ENVIRONMENT" = "production" ]; then
-  echo "Checking production URLs..."
-
-  API_URL=$(doppler secrets get NEXT_PUBLIC_API_URL \
-    --project "$PROJECT" \
-    --config "$APP_CONFIG" \
-    --plain 2>/dev/null || echo "")
-
-  if [[ "$API_URL" =~ api.cfipros.com ]]; then
-    echo "  ✅ NEXT_PUBLIC_API_URL points to production"
-  else
-    # Extract domain only (no query params or paths that might contain secrets)
-    URL_DOMAIN=$(echo "$API_URL" | sed -E 's|https?://([^/?]+).*|\1|')
-    echo "  ⚠️  NEXT_PUBLIC_API_URL domain: $URL_DOMAIN (should be api.cfipros.com)"
-    echo "  💡 Tip: Check Doppler dashboard for full URL"
-  fi
-fi
-
-echo ""
 ```
 
----
+### Phase 6: Optional Platform Sync
 
-### Phase 6: OPTIONAL PLATFORM SYNC CHECK
-
+**GitHub** (if `gh` CLI authenticated):
 ```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Phase 6: Platform Sync Verification (Optional)"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-# Check GitHub Secrets (if gh CLI available)
-if command -v gh &>/dev/null && gh auth status &>/dev/null; then
-  echo "GitHub Secrets:"
-
-  GITHUB_SECRETS=(
-    "GITHUB_ACTIONS_${ENVIRONMENT^^}_MARKETING"
-    "GITHUB_ACTIONS_${ENVIRONMENT^^}_APP"
-    "GITHUB_ACTIONS_${ENVIRONMENT^^}_API"
-  )
-
-  for secret in "${GITHUB_SECRETS[@]}"; do
-    if gh secret list | grep -q "^${secret}"; then
-      echo "  ✅ $secret"
-    else
-      echo "  ⚠️  $secret (not configured)"
-    fi
-  done
-
-  echo ""
-fi
-
-# Check Railway DOPPLER_TOKEN (if railway CLI available)
-if command -v railway &>/dev/null && railway whoami &>/dev/null; then
-  echo "Railway Configuration:"
-
-  RAILWAY_TOKEN=$(railway variables get DOPPLER_TOKEN --environment "$ENVIRONMENT" 2>/dev/null || echo "")
-
-  if [ -n "$RAILWAY_TOKEN" ]; then
-    echo "  ✅ DOPPLER_TOKEN configured"
-  else
-    echo "  ⚠️  DOPPLER_TOKEN not set (manual env vars or needs setup)"
-  fi
-
-  echo ""
-fi
-
-echo "✅ Platform sync checks complete"
-echo ""
+gh secret list >/dev/null && ok "gh secret list available"
 ```
 
----
-
-### Phase 7: FINAL REPORT
-
+**Vercel** (if `vercel` CLI installed):
 ```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+vercel --version >/dev/null && ok "Vercel CLI available"
+```
 
-if [ "$MISSING_VARS" = true ]; then
-  echo "❌ MISSING SECRETS IN DOPPLER"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "Fix missing secrets before deploying."
-  echo ""
-  echo "Add secrets to Doppler:"
-  echo ""
-  echo "  # For marketing:"
-  echo "  doppler secrets set VAR_NAME=value \\"
-  echo "    --project cfipros \\"
-  echo "    --config ${ENVIRONMENT}_marketing"
-  echo ""
-  echo "  # For app:"
-  echo "  doppler secrets set VAR_NAME=value \\"
-  echo "    --project cfipros \\"
-  echo "    --config ${ENVIRONMENT}_app"
-  echo ""
-  echo "  # For API:"
-  echo "  doppler secrets set VAR_NAME=value \\"
-  echo "    --project cfipros \\"
-  echo "    --config ${ENVIRONMENT}_api"
-  echo ""
-  echo "Or use Doppler dashboard:"
-  echo "  https://dashboard.doppler.com/workplace/[workplace]/projects/cfipros/configs/${ENVIRONMENT}_[service]"
-  echo ""
-  echo "Secrets will auto-sync to Vercel/Railway/GitHub"
-  echo ""
+**Railway** (if `railway` CLI authenticated):
+```bash
+railway whoami >/dev/null && echo "Railway: verify DOPPLER_TOKEN in deployment UI"
+```
 
-  exit 1
-else
-  echo "✅ ALL SECRETS CONFIGURED IN DOPPLER"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "Environment: $ENVIRONMENT"
-  echo "Frontend secrets: ${#FRONTEND_SECRETS[@]}"
-  echo "Backend secrets: ${#BACKEND_SECRETS[@]}"
-  echo "Status: All present ✅"
-  echo ""
-  echo "Safe to deploy to $ENVIRONMENT"
-  echo ""
-  echo "Next steps:"
-  echo "  /validate-deploy     # Run pre-flight validation"
-  echo "  /phase-1-ship        # Deploy to staging"
-  echo ""
+### Phase 7: Final Report
 
-  exit 0
-fi
+**JSON output** (`specs/<feature>/reports/check-env.json`):
+```json
+{
+  "environment": "staging",
+  "project": "cfipros",
+  "summary": {
+    "missing": 0,
+    "present": 21
+  },
+  "details": {
+    "missing": [],
+    "present": [
+      "staging_marketing:NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "staging_app:NEXT_PUBLIC_API_URL",
+      "staging_api:DATABASE_URL"
+    ]
+  }
+}
+```
+
+**Exit codes**:
+- `0` — All secrets present, safe to deploy
+- `1` — Missing secrets or mismatched environment
+
+**Console output**:
+
+**Success**:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ ALL SECRETS CONFIGURED IN DOPPLER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Environment: staging
+Safe to deploy
+Report: specs/001-auth/reports/check-env.json
+```
+
+**Failure**:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ MISSING SECRETS IN DOPPLER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Fix with Doppler CLI (examples):
+  doppler secrets set VAR=value --project cfipros --config staging_app
+  doppler secrets set VAR=value --project cfipros --config staging_api
+
+See JSON report: specs/001-auth/reports/check-env.json
 ```
 
 ---
 
 ## ERROR HANDLING
 
-**Vercel CLI not authenticated**: Shows `vercel whoami` command
-
-**Railway CLI not authenticated**: Shows `railway whoami` command
-
-**Environment doesn't exist**: Shows `railway environment` command
-
-**.env.example missing**: Instructs to create with all required vars
-
-**API rate limits**: Retries with exponential backoff
+| Error | Fix |
+|-------|-----|
+| Doppler CLI not installed | Install via `brew install dopplerhq/cli/doppler` (macOS), `curl -Ls https://cli.doppler.com/install.sh \| sh` (Linux), `winget install doppler.doppler` (Windows) |
+| Not authenticated | Run `doppler login` |
+| Missing configs | Run `.spec-flow/scripts/bash/setup-doppler.sh` (if exists) or create configs manually via Doppler dashboard |
+| Missing secrets | Use `doppler secrets set KEY=value --project PROJECT --config CONFIG` or Doppler dashboard |
+| ENVIRONMENT mismatch | Update `ENVIRONMENT` variable in Doppler to match target |
+| URL points to wrong env | Update URL variables in Doppler (staging should contain "staging" or "railway.app", production should be "api.cfipros.com") |
 
 ---
 
 ## CONSTRAINTS
 
-- Requires Vercel CLI installed and authenticated
-- Requires Railway CLI installed and authenticated
-- Requires `.env.example` in repository root
+- Requires Doppler CLI installed and authenticated
+- Requires `.env.example` in repository root (optional, for drift detection)
 - Non-destructive: Only reads environment variables
 - Does not modify any environment variables
 - Does not expose variable values (only checks presence)
+- Platform sync checks require respective CLIs installed and authenticated
 
 ---
 
-## RETURN
+## USAGE EXAMPLES
 
-**Success**:
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ ALL ENVIRONMENT VARIABLES CONFIGURED
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Environment: staging
-Expected: 24 variables
-Status: All present
-
-Safe to deploy to staging
+**Check staging before deployment**:
+```bash
+/check-env staging
+# or via script directly:
+.spec-flow/scripts/bash/check-env.sh staging
 ```
 
-**Failure**:
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-❌ MISSING ENVIRONMENT VARIABLES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-[Missing variables listed above]
-
-Add to Vercel:
-  vercel env add [VAR_NAME] staging
-
-Add to Railway:
-  railway variables set [VAR_NAME]=[value] --environment staging
+**Interactive selection**:
+```bash
+/check-env
+# Prompts:
+# Select environment:
+#   1) staging
+#   2) production
+# Choose (1-2): 1
 ```
 
+**Override project name**:
+```bash
+PROJECT=my-project .spec-flow/scripts/bash/check-env.sh production
+```
+
+**Check JSON report**:
+```bash
+cat specs/NNN-slug/reports/check-env.json | jq '.details.missing'
+```
+
+---
+
+## INTEGRATION
+
+**Pre-ship validation** (recommended):
+```bash
+# In .spec-flow/scripts/bash/validate-deploy.sh
+echo "Validating environment variables..."
+if ! .spec-flow/scripts/bash/check-env.sh "$TARGET"; then
+  echo "❌ Environment validation failed"
+  exit 1
+fi
+```
+
+**CI pipeline**:
+```yaml
+# .github/workflows/deploy.yml
+- name: Validate environment
+  run: |
+    .spec-flow/scripts/bash/check-env.sh staging
+```
+
+**Development workflow**:
+1. Update `.env.example` when adding new required variables
+2. Run `/check-env staging` to verify Doppler sync
+3. Add missing secrets to Doppler
+4. Re-run `/check-env staging` to confirm
+5. Proceed with deployment
+
+---
+
+## ALTERNATIVES
+
+**Schema-driven validation**:
+- Keep `config/schema.yaml` mapping surfaces→required keys
+- Generate Doppler checklists from schema
+- **Pro**: Zero duplication
+- **Con**: Another artifact to maintain
+
+**Doppler Service Tokens in CI**:
+- Use read-only service tokens scoped to each config
+- Verify presence server-side without developer auth
+- **Pro**: Cleaner for CI, no developer context needed
+- **Con**: Slightly more setup
+
+**Platform-native enforcement**:
+- Mirror required keys into Vercel/Railway
+- Block CI if any required key is missing
+- **Pro**: Single pane for platform teams
+- **Con**: Tighter coupling to deploy target
+
+---
+
+## REFERENCES
+
+- [Doppler CLI Installation](https://docs.doppler.com/docs/install-cli)
+- [Doppler Authentication](https://docs.doppler.com/docs/multi-factor-authentication)
+- [Doppler Secrets Management](https://docs.doppler.com/docs/secrets)
+- [Vercel Environment Variables](https://vercel.com/docs/environment-variables)
+- [Railway Environment Variables](https://docs.railway.app/deploy/variables)
+- [GitHub CLI Secrets](https://cli.github.com/manual/gh_secret)

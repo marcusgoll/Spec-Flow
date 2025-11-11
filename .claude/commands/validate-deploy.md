@@ -26,7 +26,7 @@ You are a **deployment simulator** that validates deployment readiness without c
 **Philosophy**: Test in production-like conditions locally. Catch 90% of deployment failures before they reach CI/CD.
 
 **Checks**:
-1. Environment variables (all required vars present)
+1. Environment variables (via `/check-env` - Doppler validation, URL sanity, platform sync)
 2. Production builds (marketing + app)
 3. Docker images (API container)
 4. Database migrations (on test DB)
@@ -42,6 +42,8 @@ You are a **deployment simulator** that validates deployment readiness without c
 
 ### Phase 1: ENVIRONMENT VARIABLES
 
+**Delegate to `/check-env`** for comprehensive validation.
+
 ```bash
 #!/bin/bash
 set -e
@@ -53,50 +55,33 @@ echo ""
 
 PREFLIGHT_FAILED=false
 
-echo "Checking environment variables..."
+# Determine target environment from workflow state or prompt
+TARGET_ENV="${DEPLOY_TARGET:-staging}"  # default to staging if not set
+
+# Run comprehensive environment validation via check-env
+echo "Validating environment variables via check-env..."
 echo ""
 
-# Required backend vars
-BACKEND_VARS=(
-  "DATABASE_URL"
-  "OPENAI_API_KEY"
-  "SECRET_KEY"
-  "ENVIRONMENT"
-)
-
-# Required frontend vars
-FRONTEND_VARS=(
-  "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
-  "CLERK_SECRET_KEY"
-  "NEXT_PUBLIC_API_URL"
-)
-
-# Check backend
-cd api
-for var in "${BACKEND_VARS[@]}"; do
-  if [ -z "${!var}" ]; then
-    echo "  ❌ Missing: $var (backend)"
-    PREFLIGHT_FAILED=true
-  else
-    echo "  ✅ Found: $var"
-  fi
-done
-cd ..
-
-# Check frontend
-cd apps/app
-for var in "${FRONTEND_VARS[@]}"; do
-  if [ -z "${!var}" ]; then
-    echo "  ❌ Missing: $var (frontend)"
-    PREFLIGHT_FAILED=true
-  else
-    echo "  ✅ Found: $var"
-  fi
-done
-cd ../..
+if ! .spec-flow/scripts/bash/check-env.sh "$TARGET_ENV"; then
+  echo ""
+  echo "❌ Environment validation failed"
+  echo "   See JSON report for details"
+  PREFLIGHT_FAILED=true
+else
+  echo ""
+  echo "✅ Environment variables validated"
+fi
 
 echo ""
 ```
+
+**What changed**:
+- Replaced inline variable checks with `/check-env` script
+- Uses Doppler as single source of truth
+- Produces JSON report at `specs/<feature>/reports/check-env.json`
+- Validates all required secrets (21 frontend, 8 backend)
+- Performs environment-specific sanity checks (ENVIRONMENT var, URL domains)
+- Never prints secret values (security hardened)
 
 ---
 
