@@ -1,5 +1,5 @@
 ---
-description: Manual UI/UX testing on local dev server before shipping
+description: Manual UI/UX testing and backend validation on local dev before shipping
 ---
 
 Preview feature: $ARGUMENTS
@@ -9,15 +9,15 @@ Preview feature: $ARGUMENTS
 **Workflow**:\spec-flow → clarify → plan → tasks → analyze → implement → optimize → **preview** → phase-1-ship → validate-staging → phase-2-ship
 
 **What this does**:
-- Generates testing checklist from spec.md
-- Starts dev servers for affected apps
-- Guides manual UI/UX testing
-- Captures screenshots and performance metrics
+- **UI Mode**: Generates testing checklist, starts dev servers, guides manual UI/UX testing, captures screenshots/performance
+- **API Mode**: Contract diffs (OpenAPI), API smoke/property tests (Schemathesis/Newman), lightweight perf (k6), optional security scan (ZAP)
+- **Data/Infra Mode**: Migration validation (Alembic upgrade/downgrade), worker dry-runs (Celery), seed/rollback tests
+- Auto-detects modes from changed files and spec.md
 - Documents issues for debugging
 - Validates design implementation vs mockup
 
 **State machine:**
-- Load feature → Generate checklist → Start servers → Interactive testing → Measure performance → Document results → Suggest next
+- Load feature → Detect modes → Generate checklist → Start servers (UI/API/workers) → Interactive testing → Measure performance → Document results → Suggest next
 
 **Auto-suggest:**
 - If issues found → `/debug`
@@ -25,7 +25,7 @@ Preview feature: $ARGUMENTS
 
 **Prerequisites**:
 - `/optimize` must be complete
-- Production routes implemented
+- Production routes or API endpoints implemented
 - No critical blockers in optimization report
 
 ---
@@ -54,6 +54,9 @@ cleanup() {
   rm -f /tmp/capture-screenshots-*.spec.ts
   rm -f /tmp/marketing-dev.log
   rm -f /tmp/app-dev.log
+  rm -f /tmp/api-dev.log
+  rm -f /tmp/celery-worker.log
+  rm -f /tmp/web-dev.log
 }
 
 trap cleanup EXIT INT TERM
@@ -199,6 +202,50 @@ echo "Routes found: ${#ROUTES[@]}"
 for route in "${ROUTES[@]}"; do
   echo "  🌐 $route"
 done
+echo ""
+```
+
+---
+
+## DETECT NON-UI FEATURES / PREVIEW MODE
+
+**Auto-detect API, Data/Infra, and Worker modes:**
+
+```bash
+echo "Detecting Non-UI changes..."
+echo ""
+
+API_MODE=false
+DATA_MODE=false
+WORKER_MODE=false
+
+# Gather changed files (reuse CHANGED_FILES if available)
+if [ -z "$CHANGED_FILES" ]; then
+  CHANGED_FILES=$(gh pr view "$PR_NUMBER" --json files -q '.files[].path' 2>/dev/null || git diff --name-only HEAD~1)
+fi
+
+if echo "$CHANGED_FILES" | grep -Eq '^api/|^backend/|^services/'; then API_MODE=true; fi
+if echo "$CHANGED_FILES" | grep -Eq '^api/migrations/|^migrations/|alembic.ini|^db/'; then DATA_MODE=true; fi
+if echo "$CHANGED_FILES" | grep -Eq '^api/.+worker|^api/.+tasks|^api/.+celery'; then WORKER_MODE=true; API_MODE=true; fi
+
+# If spec mentions API changes, enable API mode
+if grep -q "## API Changes" "$FEATURE_DIR/spec.md" 2>/dev/null; then API_MODE=true; fi
+
+# Try to find OpenAPI files
+OPENAPI_FILE=""
+for f in api/openapi.json api/openapi.yaml api/openapi.yml; do
+  [ -f "$f" ] && OPENAPI_FILE="$f" && break
+done
+
+if [ -n "$OPENAPI_FILE" ]; then API_MODE=true; fi
+
+echo "Preview modes:"
+$API_MODE && echo "  • API mode"
+$DATA_MODE && echo "  • Data/Infra mode"
+$WORKER_MODE && echo "  • Worker mode"
+if ! $API_MODE && ! $DATA_MODE && ! $WORKER_MODE; then
+  echo "  • None (UI-only or no backend changes)"
+fi
 echo ""
 ```
 
@@ -426,6 +473,38 @@ echo "✅ Checklist generated: $CHECKLIST_FILE"
 echo ""
 ```
 
+**Add API-specific checklist items (Non-UI):**
+
+```bash
+if $API_MODE; then
+  echo "" >> "$CHECKLIST_FILE"
+  echo "---" >> "$CHECKLIST_FILE"
+  echo "" >> "$CHECKLIST_FILE"
+  echo "## API Preview" >> "$CHECKLIST_FILE"
+  echo "" >> "$CHECKLIST_FILE"
+
+  if [ -n "$OPENAPI_FILE" ]; then
+    echo "- [ ] OpenAPI served at /openapi.json or /docs (FastAPI default)" >> "$CHECKLIST_FILE"
+    echo "- [ ] Changed endpoints return 2xx with valid schema" >> "$CHECKLIST_FILE"
+    echo "- [ ] Error responses include machine-readable codes" >> "$CHECKLIST_FILE"
+    echo "- [ ] Auth required endpoints reject anonymous as 401/403" >> "$CHECKLIST_FILE"
+    echo "- [ ] Idempotent writes behave correctly (replay safe)" >> "$CHECKLIST_FILE"
+  else
+    echo "- [ ] Document API changes (no OpenAPI found)" >> "$CHECKLIST_FILE"
+  fi
+
+  if $WORKER_MODE; then
+    echo "- [ ] Background task enqueues and completes" >> "$CHECKLIST_FILE"
+    echo "- [ ] Retry/backoff observed for transient failures" >> "$CHECKLIST_FILE"
+  fi
+
+  if $DATA_MODE; then
+    echo "- [ ] Migration applies and downgrades cleanly" >> "$CHECKLIST_FILE"
+    echo "- [ ] New constraints enforced (insert fails where expected)" >> "$CHECKLIST_FILE"
+  fi
+fi
+```
+
 ---
 
 ## COMPARE TO POLISHED MOCKUP
@@ -493,6 +572,154 @@ COMP
     echo "Remember to start mock server:"
     echo "  cd apps/web && pnpm dev  # Port 3002"
     echo ""
+  fi
+fi
+```
+
+---
+
+## OPENAPI CONTRACT DIFF
+
+**Compare current spec against baseline:**
+
+```bash
+if $API_MODE && [ -n "$OPENAPI_FILE" ]; then
+  echo "Contract diff against baseline (if present)..."
+  BASELINE="api/openapi-baseline.json"
+  DIFF_OUT="$FEATURE_DIR/openapi-diff.txt"
+
+  if [ -f "$BASELINE" ]; then
+    if command -v openapi-diff >/dev/null 2>&1; then
+      openapi-diff "$BASELINE" "$OPENAPI_FILE" > "$DIFF_OUT" 2>&1 || true
+    elif command -v oasdiff >/dev/null 2>&1; then
+      oasdiff breaking "$BASELINE" "$OPENAPI_FILE" > "$DIFF_OUT" 2>&1 || true
+    else
+      echo "openapi-diff/oasdiff not installed; skipping diff." > "$DIFF_OUT"
+    fi
+    echo "✅ Contract diff written: $DIFF_OUT"
+  else
+    echo "No baseline spec at $BASELINE; skipping diff."
+  fi
+fi
+```
+
+---
+
+## API SMOKE / PROPERTY TESTS
+
+**Run schema-driven API tests:**
+
+```bash
+if $API_MODE; then
+  echo "Running API smoke tests..."
+
+  # Schemathesis (property-based tests from OpenAPI)
+  if [ -n "$OPENAPI_FILE" ] && command -v schemathesis >/dev/null 2>&1; then
+    SCHEMA_URL="http://localhost:8000/openapi.json"
+    [ -f "$OPENAPI_FILE" ] && SCHEMA_URL="$OPENAPI_FILE"
+    schemathesis run "$SCHEMA_URL" --checks all --stateful=links \
+      --hypothesis-deadline=500 \
+      --hypothesis-max-examples=30 \
+      --report "$FEATURE_DIR/schemathesis-report.json" || true
+    echo "✅ Schemathesis report: $FEATURE_DIR/schemathesis-report.json"
+  fi
+
+  # Postman collection (if present)
+  if [ -f "api/tests/postman/collection.json" ] && command -v newman >/dev/null 2>&1; then
+    newman run api/tests/postman/collection.json \
+      --env-var baseUrl=http://localhost:8000 \
+      --reporters cli,json \
+      --reporter-json-export "$FEATURE_DIR/newman-report.json" || true
+    echo "✅ Newman report: $FEATURE_DIR/newman-report.json"
+  fi
+fi
+```
+
+---
+
+## DB MIGRATION SAFETY + WORKER DRY-RUN
+
+**Validate migrations and background jobs:**
+
+```bash
+if $DATA_MODE && [ -f "api/alembic.ini" ]; then
+  echo "Validating migrations..."
+  cd api
+
+  # Install deps silently if needed
+  uv pip install -q alembic >/dev/null 2>&1 || true
+
+  set +e
+  uv run alembic upgrade head > /tmp/alembic-up.log 2>&1
+  UP_RC=$?
+  uv run alembic downgrade -1 > /tmp/alembic-down.log 2>&1
+  DN_RC=$?
+  set -e
+  cd ..
+
+  if [ $UP_RC -ne 0 ] || [ $DN_RC -ne 0 ]; then
+    echo "❌ Migration apply/downgrade failed. See /tmp/alembic-*.log"
+    echo "- [ ] Migration failed during preview" >> "$CHECKLIST_FILE"
+  else
+    echo "✅ Migration upgrade/downgrade cycle OK"
+    echo "- [ ] Migration reversible" >> "$CHECKLIST_FILE"
+  fi
+fi
+
+if $WORKER_MODE; then
+  echo "Dry-running background job..."
+  # Optional: fire a test endpoint or Celery ping if available
+  if curl -sf http://localhost:8000/api/v1/health/workerz >/dev/null 2>&1; then
+    echo "✅ Worker health endpoint OK"
+  else
+    echo "ℹ️  No worker health endpoint; skipping"
+  fi
+fi
+```
+
+---
+
+## API PERFORMANCE (quick check)
+
+**Lightweight load test with k6:**
+
+```bash
+if $API_MODE; then
+  echo "API performance quick check..."
+  if command -v k6 >/dev/null 2>&1; then
+    K6_SCRIPT="$FEATURE_DIR/k6-smoke.js"
+    cat > "$K6_SCRIPT" <<'K6'
+import http from 'k6/http';
+import { sleep } from 'k6';
+export const options = { vus: 10, duration: '30s' };
+export default function () {
+  const res = http.get(`${__ENV.BASE_URL}/api/v1/health/healthz`);
+  sleep(0.2);
+}
+K6
+    BASE_URL="http://localhost:8000" k6 run --quiet "$K6_SCRIPT" > "$FEATURE_DIR/k6-output.txt" 2>&1 || true
+    echo "✅ k6 output: $FEATURE_DIR/k6-output.txt"
+  else
+    echo "k6 not installed; skipping perf."
+  fi
+fi
+```
+
+---
+
+## OPTIONAL SECURITY BASELINE (ZAP)
+
+**Quick security scan:**
+
+```bash
+if $API_MODE && command -v docker >/dev/null 2>&1; then
+  echo "Run ZAP API baseline scan? (y/N)"
+  read -r RUN_ZAP
+  if [ "$RUN_ZAP" = "y" ]; then
+    docker run --rm -t -u zap -v "$PWD:$PWD" -w "$PWD" \
+      ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+      -t http://localhost:8000/openapi.json -r "$FEATURE_DIR/zap-baseline.html" || true
+    echo "✅ ZAP baseline: $FEATURE_DIR/zap-baseline.html"
   fi
 fi
 ```
@@ -607,6 +834,58 @@ echo "${SERVER_PIDS[@]}" > /tmp/preview-server-pids.txt
 echo "Dev servers running"
 echo "  Stop: kill \$(cat /tmp/preview-server-pids.txt)"
 echo ""
+```
+
+---
+
+## START BACKEND & WORKERS (Non-UI)
+
+**Launch API server and background workers:**
+
+```bash
+if $API_MODE || $DATA_MODE || $WORKER_MODE; then
+  echo "Starting backend services..."
+  npx kill-port 8000 8010 2>/dev/null || true
+  sleep 1
+
+  BACKEND_PIDS=()
+
+  # Start FastAPI dev server if app exists
+  if [ -d "api/app" ]; then
+    echo "Starting FastAPI (port 8000)..."
+    cd api
+    uv run uvicorn app.main:app --reload --port 8000 > /tmp/api-dev.log 2>&1 &
+    API_PID=$!
+    BACKEND_PIDS+=($API_PID)
+    cd ..
+    echo "  PID: $API_PID"
+    sleep 3
+    if ! curl -sf http://localhost:8000/api/v1/health/healthz >/dev/null 2>&1; then
+      echo "⚠️  API health probe failed. Check /tmp/api-dev.log"
+    else
+      echo "✅ API responding at http://localhost:8000"
+    fi
+  fi
+
+  # Start Celery worker if Celery app exists
+  if $WORKER_MODE && grep -q "celery" api/app/** 2>/dev/null; then
+    echo "Starting Celery worker..."
+    cd api
+    # Try typical entrypoint names; adjust if your app differs
+    (uv run celery -A app.worker worker -l info > /tmp/celery-worker.log 2>&1 &)
+    CELERY_PID=$!
+    BACKEND_PIDS+=($CELERY_PID)
+    cd ..
+    echo "  PID: $CELERY_PID"
+  fi
+
+  # Save PIDs for cleanup
+  if [ ${#BACKEND_PIDS[@]} -gt 0 ]; then
+    echo "${BACKEND_PIDS[@]}" >> /tmp/preview-server-pids.txt
+  fi
+
+  echo ""
+fi
 ```
 
 ---
@@ -1104,6 +1383,22 @@ update_notes_checkpoint "$FEATURE_DIR" "6" "Preview" \
 # Add context budget tracking
 update_notes_context_budget "$FEATURE_DIR" "6" "$CHECKLIST_TOKENS" "checklist"
 
+# Include Non-UI artifacts in NOTES
+if $API_MODE || $DATA_MODE || $WORKER_MODE; then
+  EXTRA_ARTIFACTS=""
+  [ -f "$FEATURE_DIR/openapi-diff.txt" ] && EXTRA_ARTIFACTS="$EXTRA_ARTIFACTS\n- openapi-diff.txt"
+  ls "$FEATURE_DIR"/schemathesis-report.json >/dev/null 2>&1 && EXTRA_ARTIFACTS="$EXTRA_ARTIFACTS\n- schemathesis-report.json"
+  ls "$FEATURE_DIR"/newman-report.json >/dev/null 2>&1 && EXTRA_ARTIFACTS="$EXTRA_ARTIFACTS\n- newman-report.json"
+  ls "$FEATURE_DIR"/k6-output.txt >/dev/null 2>&1 && EXTRA_ARTIFACTS="$EXTRA_ARTIFACTS\n- k6-output.txt"
+
+  update_notes_checkpoint "$FEATURE_DIR" "6A" "Preview (Non-UI)" \
+    "API mode: $API_MODE, Data/Infra: $DATA_MODE, Workers: $WORKER_MODE" \
+    "Artifacts: $(echo -e "$EXTRA_ARTIFACTS")" \
+    "OpenAPI: $OPENAPI_FILE" \
+    "Baseline: $( [ -f api/openapi-baseline.json ] && echo yes || echo no )" \
+    "k6: $( [ -f "$FEATURE_DIR/k6-output.txt" ] && echo yes || echo no )"
+fi
+
 update_notes_timestamp "$FEATURE_DIR"
 
 echo "✅ NOTES.md updated"
@@ -1138,6 +1433,23 @@ fi
 # Add axe reports if any
 if ls "$FEATURE_DIR"/axe-*.json 1> /dev/null 2>&1; then
   git add "$FEATURE_DIR"/axe-*.json
+fi
+
+# Add backend/API artifacts if any
+if [ -f "$FEATURE_DIR/openapi-diff.txt" ]; then
+  git add "$FEATURE_DIR/openapi-diff.txt"
+fi
+if [ -f "$FEATURE_DIR/schemathesis-report.json" ]; then
+  git add "$FEATURE_DIR/schemathesis-report.json"
+fi
+if [ -f "$FEATURE_DIR/newman-report.json" ]; then
+  git add "$FEATURE_DIR/newman-report.json"
+fi
+if [ -f "$FEATURE_DIR/k6-output.txt" ]; then
+  git add "$FEATURE_DIR/k6-output.txt"
+fi
+if [ -f "$FEATURE_DIR/zap-baseline.html" ]; then
+  git add "$FEATURE_DIR/zap-baseline.html"
 fi
 
 # Create commit
@@ -1247,6 +1559,24 @@ if ls "$FEATURE_DIR"/axe-*.json 1> /dev/null 2>&1; then
   AXE_COUNT=$(ls "$FEATURE_DIR"/axe-*.json 2>/dev/null | wc -l)
   echo "  Axe reports: $AXE_COUNT"
 fi
+
+# Backend/API artifacts
+if [ -f "$FEATURE_DIR/openapi-diff.txt" ]; then
+  echo "  OpenAPI diff: Yes"
+fi
+if [ -f "$FEATURE_DIR/schemathesis-report.json" ]; then
+  echo "  Schemathesis report: Yes"
+fi
+if [ -f "$FEATURE_DIR/newman-report.json" ]; then
+  echo "  Newman report: Yes"
+fi
+if [ -f "$FEATURE_DIR/k6-output.txt" ]; then
+  echo "  k6 performance: Yes"
+fi
+if [ -f "$FEATURE_DIR/zap-baseline.html" ]; then
+  echo "  ZAP security scan: Yes"
+fi
+
 echo ""
 ```
 
