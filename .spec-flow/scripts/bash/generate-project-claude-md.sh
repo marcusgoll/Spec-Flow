@@ -151,7 +151,8 @@ extract_common_patterns() {
 
         # Extract path (next line pattern)
         local path=""
-        if IFS= read -r next_line && [[ "$next_line" =~ \`([^`]+)\` ]]; then
+        local pattern='`([^`]+)`'
+        if IFS= read -r next_line && [[ "$next_line" =~ $pattern ]]; then
           path="${BASH_REMATCH[1]}"
         fi
 

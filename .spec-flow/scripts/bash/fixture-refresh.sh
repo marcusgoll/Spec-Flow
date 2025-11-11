@@ -254,7 +254,7 @@ process_openapi_paths() {
     while IFS= read -r operation; do
       [[ -z "$operation" ]] && continue
       [[ "$operation" == "---" ]] && continue
-      [[ "$operation" ==" null" ]] && continue
+      [[ "$operation" == "null" ]] && continue
 
       operation=$(echo "$operation" | sed 's/^[- ]*//')
 

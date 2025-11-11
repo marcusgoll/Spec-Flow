@@ -275,15 +275,15 @@ process_branch() {
   # Categorize
   case "$status" in
     healthy)
-      HEALTHY_BRANCHES+=("$branch ($age"h")")
+      HEALTHY_BRANCHES+=("$branch (${age}h)")
       ((HEALTHY_COUNT++))
       ;;
     warning)
-      WARNING_BRANCHES+=("$branch ($age"h")")
+      WARNING_BRANCHES+=("$branch (${age}h)")
       ((WARNING_COUNT++))
       ;;
     violation)
-      VIOLATION_BRANCHES+=("$branch ($age"h")")
+      VIOLATION_BRANCHES+=("$branch (${age}h)")
       ((VIOLATION_COUNT++))
 
       # Auto-fix if requested

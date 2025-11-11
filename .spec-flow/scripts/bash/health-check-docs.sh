@@ -171,7 +171,7 @@ else
         for item in "${STALE_FILES[@]}"; do
             file="${item%:*}"
             age="${item##*:}"
-            rel_path="${file#$REPO_ROOT/}"
+            rel_path="${file#"$REPO_ROOT"/}"
             echo "  ❌ $rel_path (${age}d old)"
         done
         echo ""
@@ -187,7 +187,7 @@ else
         for warning in "${WARNINGS[@]}"; do
             file="${warning%:*}"
             message="${warning##*:}"
-            rel_path="${file#$REPO_ROOT/}"
+            rel_path="${file#"$REPO_ROOT"/}"
             echo "  ⚠️  $rel_path: $message"
         done
         echo ""
@@ -198,7 +198,7 @@ else
         for item in "${FRESH_FILES[@]}"; do
             file="${item%:*}"
             age="${item##*:}"
-            rel_path="${file#$REPO_ROOT/}"
+            rel_path="${file#"$REPO_ROOT"/}"
             echo "  ✅ $rel_path (${age}d old)"
         done
     fi
