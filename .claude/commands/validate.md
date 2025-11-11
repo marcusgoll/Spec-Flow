@@ -5,7 +5,7 @@ scripts:
   ps: scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
 ---
 
-Analyze feature artifacts for consistency, coverage, and quality.
+Analyze feature artifacts for consistency, coverage, and quality with deterministic, CI-ready output.
 
 <context>
 ## User Input
@@ -21,16 +21,18 @@ You **MUST** consider the user input before proceeding (if not empty).
 **Workflow**: spec-flow → clarify → plan → tasks → **analyze** → implement → optimize → debug → preview → phase-1-ship → validate-staging → phase-2-ship
 
 **State machine:**
-- Run prerequisite script → Load artifacts → Build semantic models → Run detection passes → Assign severity → Generate report → Suggest next
+- Run prerequisite script → Load artifacts → Run detection passes → Generate reports (human + SARIF) → Commit
 
 **Auto-suggest:**
 - When complete → `/implement` (if no critical issues) or Fix issues first
 
 **Operating Constraints:**
-- **STRICTLY READ-ONLY**: Do NOT modify any files
+- **STRICTLY READ-ONLY**: Do NOT modify any files (analysis only)
 - **Constitution Authority**: Constitution violations are automatically CRITICAL
-- **Token Efficient**: Limit to 50 findings max, aggregate overflow
-- **Deterministic**: Rerunning should produce consistent IDs
+- **Hard Cap**: Maximum 50 findings, aggregate overflow
+- **Deterministic**: Rerunning produces identical IDs and results
+- **Evidence-First**: Every finding quotes exact lines with file:line spans
+- **CI-Ready**: Outputs SARIF 2.1.0 for annotations
 </context>
 
 <constraints>
@@ -43,27 +45,28 @@ You **MUST** consider the user input before proceeding (if not empty).
    - ✅ GOOD: Read both files, extract specific quotes, compare them
    - Use Read tool for all files before claiming inconsistencies
 
-2. **Cite exact line numbers when reporting issues**
-   - When reporting mismatch: "spec.md:45 says 'POST /users' but plan.md:120 says 'POST /api/users'"
-   - Include exact quotes from both files
-   - Don't paraphrase - quote verbatim
+2. **Cite exact line numbers with verbatim quotes**
+   - Format: `file:line "exact quote"` vs `file:line "exact quote"`
+   - Example: `spec.md:45 "POST /users" vs plan.md:120 "POST /api/users"`
+   - Never paraphrase - quote verbatim from files
 
 3. **Never invent missing test coverage**
-   - Don't say "Missing test for user creation" unless you verified no test exists
-   - Use Grep to search for test files: `test.*user.*create`
-   - If uncertain whether test exists, search before claiming it's missing
+   - Don't claim "Missing test for user creation" unless you verified no test exists
+   - Use Grep to search test files: `test.*user.*create`
+   - If uncertain, search before claiming missing
 
 4. **Verify constitution rules exist before citing violations**
    - Read constitution.md before claiming violations
-   - Quote exact rule violated: "Violates constitution.md:25 'All APIs must use OpenAPI contracts'"
+   - Quote exact rule: "Violates constitution.md:25 'All APIs must use OpenAPI contracts'"
    - Don't invent constitution rules
 
-5. **Never fabricate severity levels**
-   - Use actual severity assessment based on impact
-   - CRITICAL: Blocks implementation, MAJOR: Causes rework, MINOR: Nice to fix
-   - Don't inflate severity without evidence
+5. **Use strict severity rubric (no inflation)**
+   - **CRITICAL**: Blocks implementation, violates constitution, contradictions
+   - **HIGH**: Causes rework, uncovered FR, non-reversible migration
+   - **MEDIUM**: Traceability, terminology, TDD-ordering
+   - **LOW**: Cosmetic/style drift
 
-**Why this matters**: False inconsistencies waste time investigating non-issues. Invented missing tests create unnecessary work. Accurate validation based on actual file reads builds trust in the validation process.
+**Why this matters**: False inconsistencies waste time investigating non-issues. Accurate validation based on actual file reads builds trust.
 
 ## REASONING APPROACH
 
@@ -74,19 +77,19 @@ Let me analyze this consistency issue:
 1. What does spec.md say? [Quote exact text with line numbers]
 2. What does plan.md say? [Quote exact text with line numbers]
 3. Is this a true inconsistency or semantic equivalence? [Compare meanings]
-4. What's the impact? [Assess severity: blocks implementation, breaks features, cosmetic]
+4. What's the impact? [Assess severity using strict rubric]
 5. What's the fix? [Identify which artifact to update]
 6. Conclusion: [Inconsistency assessment with severity]
 </thinking>
 
 <answer>
-[Validation finding based on reasoning]
+[Validation finding with evidence]
 </answer>
 
 **When to use structured thinking:**
 - Assessing severity of cross-artifact inconsistencies
 - Determining whether differences are true conflicts or semantic equivalents
-- Deciding which artifact to fix (spec vs plan vs tasks vs implementation)
+- Deciding which artifact to fix (spec vs plan vs tasks)
 - Evaluating completeness of test coverage
 - Prioritizing validation findings for developer action
 
@@ -99,6 +102,8 @@ Let me analyze this consistency issue:
 **Execute once from repo root:**
 
 ```bash
+cd .
+
 # Get absolute paths and validate artifacts exist
 if command -v pwsh &> /dev/null; then
   # Windows/PowerShell
@@ -113,11 +118,12 @@ FEATURE_DIR=$(echo "$PREREQ_JSON" | jq -r '.FEATURE_DIR')
 SPEC_FILE=$(echo "$PREREQ_JSON" | jq -r '.FEATURE_SPEC')
 PLAN_FILE=$(echo "$PREREQ_JSON" | jq -r '.IMPL_PLAN')
 TASKS_FILE=$(echo "$PREREQ_JSON" | jq -r '.TASKS')
+CONSTITUTION_FILE=".spec-flow/memory/constitution.md"
 
 # Validate required files
 if [ ! -f "$SPEC_FILE" ]; then
   echo "❌ Missing: spec.md"
-  echo "Run: /specify first"
+  echo "Run: /spec first"
   exit 1
 fi
 
@@ -134,279 +140,182 @@ if [ ! -f "$TASKS_FILE" ]; then
 fi
 ```
 
-For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+## DETECTION PASSES (Evidence-First Analysis)
 
-## LOAD ARTIFACTS (Progressive Disclosure)
+**All findings must include:**
+- Deterministic ID: `UPPER(category[0]) + "-" + sha1(file + ":" + line + ":" + summary)[0..7]`
+- Line-precise evidence: `file:line "verbatim quote"`
+- Severity from strict rubric
+- Category (Constitution, Coverage, Duplication, Ambiguity, Underspecification, Inconsistency, TDD, UI, Migration)
 
-**Load only minimal necessary context from each artifact:**
-
-### From spec.md:
-
-```bash
-# Extract sections (avoid loading full file into context)
-OVERVIEW=$(sed -n '/^## Overview/,/^## /p' "$SPEC_FILE" | head -n -1)
-FUNCTIONAL_REQS=$(sed -n '/^## Functional Requirements/,/^## /p' "$SPEC_FILE" | head -n -1)
-NFRS=$(sed -n '/^## Non-Functional Requirements/,/^## /p' "$SPEC_FILE" | head -n -1)
-USER_STORIES=$(sed -n '/^## User Stories/,/^## /p' "$SPEC_FILE" | head -n -1)
-EDGE_CASES=$(sed -n '/^## Edge Cases/,/^## /p' "$SPEC_FILE" | head -n -1)
-
-# Count requirements
-FUNCTIONAL_COUNT=$(echo "$FUNCTIONAL_REQS" | grep -c "^- " || echo 0)
-NFR_COUNT=$(echo "$NFRS" | grep -c "^- " || echo 0)
-STORY_COUNT=$(echo "$USER_STORIES" | grep -c "^\[US[0-9]\]" || echo 0)
-```
-
-### From plan.md:
-
-```bash
-# Extract key sections
-ARCHITECTURE=$(sed -n '/## \[ARCHITECTURE DECISIONS\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-EXISTING_REUSE=$(sed -n '/## \[EXISTING INFRASTRUCTURE - REUSE\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-NEW_CREATE=$(sed -n '/## \[NEW INFRASTRUCTURE - CREATE\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-SCHEMA=$(sed -n '/## \[SCHEMA\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-CI_CD_IMPACT=$(sed -n '/## \[CI\/CD IMPACT\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-```
-
-### From tasks.md:
-
-```bash
-# Extract task IDs, descriptions, phases
-TASK_COUNT=$(grep -c "^- \[ \] T[0-9]" "$TASKS_FILE" || echo 0)
-PARALLEL_TASKS=$(grep -c "\[P\]" "$TASKS_FILE" || echo 0)
-STORY_TASKS=$(grep -c "\[US[0-9]\]" "$TASKS_FILE" || echo 0)
-
-# Check for TDD markers
-HAS_TDD_MARKERS=$(grep -c "\[RED\]\|\[GREEN\]\|\[REFACTOR\]" "$TASKS_FILE" || echo 0)
-
-# Check for UI tasks
-HAS_UI_TASKS=$(grep -c "polished.*production\|UI promotion" "$TASKS_FILE" || echo 0)
-
-# Check for migration tasks
-HAS_MIGRATION_TASKS=$(grep -c "migration\|alembic\|prisma" "$TASKS_FILE" || echo 0)
-```
-
-### From constitution (if exists):
-
-```bash
-CONSTITUTION_FILE=".spec-flow/memory/constitution.md"
-
-if [ -f "$CONSTITUTION_FILE" ]; then
-  HAS_CONSTITUTION=true
-  MUST_PRINCIPLES=$(grep "^- MUST" "$CONSTITUTION_FILE" | sed 's/^- MUST //')
-  PRINCIPLE_COUNT=$(echo "$MUST_PRINCIPLES" | grep -c "^" || echo 0)
-else
-  HAS_CONSTITUTION=false
-  PRINCIPLE_COUNT=0
-fi
-```
-
-## BUILD SEMANTIC MODELS
-
-**Create internal representations (do not output raw artifacts):**
-
-### Requirements Inventory:
-
-```python
-# Pseudo-code for semantic model
-requirements = {}
-
-for req in functional_requirements:
-    # Generate stable key from imperative phrase
-    # e.g., "User can upload file" → "user-can-upload-file"
-    slug = generate_slug(req)
-    requirements[slug] = {
-        "text": req,
-        "type": "functional",
-        "tasks": [],  # Will populate during coverage mapping
-        "covered": False
-    }
-
-for nfr in non_functional_requirements:
-    slug = generate_slug(nfr)
-    requirements[slug] = {
-        "text": nfr,
-        "type": "non-functional",
-        "tasks": [],
-        "covered": False
-    }
-```
-
-### Task Coverage Mapping:
-
-```python
-# Map tasks to requirements
-for task in tasks:
-    # Extract keywords from task description
-    keywords = extract_keywords(task.description)
-
-    # Find matching requirements (semantic similarity)
-    for req_slug, req_data in requirements.items():
-        req_keywords = extract_keywords(req_data["text"])
-
-        # Calculate similarity (Jaccard index)
-        similarity = len(keywords & req_keywords) / len(keywords | req_keywords)
-
-        if similarity > 0.3:  # Threshold
-            requirements[req_slug]["tasks"].append(task.id)
-            requirements[req_slug]["covered"] = True
-```
-
-### Constitution Rule Set:
-
-```python
-# Extract MUST principles
-constitution_rules = []
-
-for principle in must_principles:
-    # Extract key terms
-    key_terms = extract_keywords(principle)
-
-    constitution_rules.append({
-        "text": principle,
-        "keywords": key_terms,
-        "category": infer_category(principle)  # Architecture, Security, Testing, etc.
-    })
-```
-
-## DETECTION PASSES (Token-Efficient Analysis)
-
-**Focus on high-signal findings. Limit to 50 findings total.**
+**Hard cap: 50 findings maximum. Aggregate overflow.**
 
 ### A. Constitution Alignment (CRITICAL)
 
 ```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🔍 Checking constitution alignment"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 Checking constitution alignment..."
 echo ""
 
 CONSTITUTION_VIOLATIONS=()
+HAS_CONSTITUTION=false
 
-if [ "$HAS_CONSTITUTION" = true ]; then
-  while IFS= read -r principle; do
-    [ -z "$principle" ] && continue
+if [ -f "$CONSTITUTION_FILE" ]; then
+  HAS_CONSTITUTION=true
 
-    # Extract key terms (first 3 significant words)
-    KEY_TERMS=$(echo "$principle" | grep -oE "[a-z]{4,}" | head -3)
+  # Extract MUST principles (line-by-line)
+  while IFS= read -r line_num; do
+    [ -z "$line_num" ] && continue
 
-    # Check if addressed in spec, plan, or tasks
+    LINE_NO=$(echo "$line_num" | cut -d: -f1)
+    PRINCIPLE=$(echo "$line_num" | cut -d: -f2-)
+
+    # Extract key terms with word boundaries
+    KEY_TERMS=$(echo "$PRINCIPLE" | grep -oE "\b[a-zA-Z]{4,}\b" | head -3)
+
+    # Check if addressed in spec, plan, or tasks (word boundaries)
     FOUND=false
     for term in $KEY_TERMS; do
-      if grep -qi "$term" "$SPEC_FILE" "$PLAN_FILE" "$TASKS_FILE" 2>/dev/null; then
+      if grep -Ewqi "\b$term\b" "$SPEC_FILE" "$PLAN_FILE" "$TASKS_FILE" 2>/dev/null; then
         FOUND=true
         break
       fi
     done
 
     if [ "$FOUND" = false ]; then
-      CONSTITUTION_VIOLATIONS+=("CRITICAL|Constitution|spec.md,plan.md,tasks.md|Constitution principle not addressed: $(echo "$principle" | head -c 60)...|Address in spec/plan/tasks")
+      SUMMARY="Constitution principle not addressed: $(echo "$PRINCIPLE" | head -c 60)..."
+      ID=$(echo -n "constitution.md:$LINE_NO:$SUMMARY" | sha1sum | cut -c1-8)
+
+      CONSTITUTION_VIOLATIONS+=("CRITICAL|Constitution|constitution.md:$LINE_NO|C-$ID|\"$PRINCIPLE\"|No coverage in spec/plan/tasks|Address in spec.md, plan.md, or tasks.md")
     fi
-  done <<< "$MUST_PRINCIPLES"
+  done <<< "$(grep -n "^- MUST" "$CONSTITUTION_FILE" | head -20)"
 fi
 
 echo "Constitution violations: ${#CONSTITUTION_VIOLATIONS[@]}"
 echo ""
 ```
 
-### B. Coverage Gaps
+### B. Coverage Gaps (HIGH)
 
 ```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📊 Analyzing requirement coverage"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📊 Analyzing requirement coverage..."
 echo ""
 
 UNCOVERED_REQS=()
 UNMAPPED_TASKS=()
 
+# Extract functional requirements with line numbers
+FR_LINES=$(grep -n "^- FR[0-9]" "$SPEC_FILE" || echo "")
+
 # Check each functional requirement for task coverage
-while IFS= read -r req; do
-  [ -z "$req" ] && continue
+while IFS= read -r line_data; do
+  [ -z "$line_data" ] && continue
 
-  # Extract key terms
-  KEY_TERMS=$(echo "$req" | grep -oE "[A-Z][a-z]+|[0-9]+" | head -3 | tr '\n' ' ')
+  LINE_NO=$(echo "$line_data" | cut -d: -f1)
+  REQ_TEXT=$(echo "$line_data" | cut -d: -f2-)
 
-  # Search tasks.md for these terms
-  MATCHING_TASKS=$(grep -n "^- \[ \] T[0-9]" "$TASKS_FILE" | \
-                   grep -i "$KEY_TERMS" | \
-                   grep -o "T[0-9]\{3\}" | \
-                   tr '\n' ',' | \
-                   sed 's/,$//')
+  # Extract key terms (word boundaries)
+  KEY_TERMS=$(echo "$REQ_TEXT" | grep -oE "\b[A-Z][a-z]+\b" | head -5 | tr '\n' '|' | sed 's/|$//')
+
+  # Search tasks.md for these terms (word boundaries)
+  if [ -n "$KEY_TERMS" ]; then
+    MATCHING_TASKS=$(grep -E "\b($KEY_TERMS)\b" "$TASKS_FILE" | grep -o "T[0-9]\{3\}" | tr '\n' ',' | sed 's/,$//')
+  else
+    MATCHING_TASKS=""
+  fi
 
   if [ -z "$MATCHING_TASKS" ]; then
-    UNCOVERED_REQS+=("HIGH|Coverage|spec.md:L??|Requirement not covered by tasks: $(echo "$req" | head -c 60)...|Add tasks to tasks.md")
+    SUMMARY="Requirement not covered by tasks: $(echo "$REQ_TEXT" | head -c 60)..."
+    ID=$(echo -n "spec.md:$LINE_NO:$SUMMARY" | sha1sum | cut -c1-8)
+
+    UNCOVERED_REQS+=("HIGH|Coverage|spec.md:$LINE_NO|C-$ID|\"$REQ_TEXT\"|No matching tasks|Add tasks to tasks.md covering this requirement")
   fi
-done <<< "$FUNCTIONAL_REQS"
+done <<< "$FR_LINES"
 
 # Check for unmapped tasks (tasks not tracing to requirements)
-while IFS= read -r task_line; do
-  [ -z "$task_line" ] && continue
+TASK_LINES=$(grep -n "^- \[ \] T[0-9]" "$TASKS_FILE" || echo "")
 
-  TASK_ID=$(echo "$task_line" | grep -o "T[0-9]\{3\}")
-  TASK_DESC=$(echo "$task_line" | sed 's/^.*T[0-9]\{3\}[^]]*\] //')
+while IFS= read -r task_line_data; do
+  [ -z "$task_line_data" ] && continue
 
-  # Skip setup/polish tasks (allowed to not map to specific requirements)
-  if echo "$TASK_DESC" | grep -qiE "setup|config|polish|deployment|health|smoke"; then
+  TASK_LINE_NO=$(echo "$task_line_data" | cut -d: -f1)
+  TASK_FULL=$(echo "$task_line_data" | cut -d: -f2-)
+
+  TASK_ID=$(echo "$TASK_FULL" | grep -o "T[0-9]\{3\}")
+  TASK_DESC=$(echo "$TASK_FULL" | sed 's/^.*T[0-9]\{3\}[^]]*\] //')
+
+  # Skip infrastructure tasks (allowed to not map to specific FRs)
+  if echo "$TASK_DESC" | grep -Ewqi "\b(setup|config|polish|deployment|health|smoke|lint|build)\b"; then
     continue
   fi
 
-  # Check if task description keywords match any requirement
-  TASK_KEYWORDS=$(echo "$TASK_DESC" | grep -oE "[A-Z][a-z]+" | head -3)
+  # Check if task keywords match any requirement (word boundaries)
+  TASK_KEYWORDS=$(echo "$TASK_DESC" | grep -oE "\b[A-Z][a-z]+\b" | head -5 | tr '\n' '|' | sed 's/|$//')
   FOUND_REQ=false
 
-  for keyword in $TASK_KEYWORDS; do
-    if echo "$FUNCTIONAL_REQS $NFRS" | grep -qi "$keyword"; then
+  if [ -n "$TASK_KEYWORDS" ]; then
+    if grep -Eq "\b($TASK_KEYWORDS)\b" "$SPEC_FILE" 2>/dev/null; then
       FOUND_REQ=true
-      break
     fi
-  done
+  fi
 
   if [ "$FOUND_REQ" = false ]; then
-    UNMAPPED_TASKS+=("MEDIUM|Coverage|tasks.md:L??|Task $TASK_ID does not map to any requirement|Verify task necessity or add requirement")
+    SUMMARY="Task $TASK_ID does not map to any requirement"
+    ID=$(echo -n "tasks.md:$TASK_LINE_NO:$SUMMARY" | sha1sum | cut -c1-8)
+
+    UNMAPPED_TASKS+=("MEDIUM|Coverage|tasks.md:$TASK_LINE_NO|C-$ID|\"$TASK_DESC\"|No matching requirement|Verify task necessity or add requirement to spec.md")
   fi
-done <<< "$(grep "^- \[ \] T[0-9]" "$TASKS_FILE")"
+done <<< "$TASK_LINES"
 
 echo "Uncovered requirements: ${#UNCOVERED_REQS[@]}"
 echo "Unmapped tasks: ${#UNMAPPED_TASKS[@]}"
 echo ""
 ```
 
-### C. Duplication Detection
+### C. Duplication Detection (HIGH)
 
 ```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🔍 Detecting duplicate requirements"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 Detecting duplicate requirements..."
 echo ""
 
 DUPLICATES=()
 
-if [ "$FUNCTIONAL_COUNT" -gt 1 ]; then
-  # Convert requirements to array
-  readarray -t REQ_ARRAY <<< "$FUNCTIONAL_REQS"
+# Convert requirements to array for pairwise comparison
+readarray -t FR_ARRAY <<< "$(grep "^- FR[0-9]" "$SPEC_FILE" || echo "")"
+FR_COUNT=${#FR_ARRAY[@]}
 
-  # Compare each pair
-  for ((i=0; i<${#REQ_ARRAY[@]}; i++)); do
-    for ((j=i+1; j<${#REQ_ARRAY[@]}; j++)); do
-      REQ1="${REQ_ARRAY[$i]}"
-      REQ2="${REQ_ARRAY[$j]}"
+if [ "$FR_COUNT" -gt 1 ]; then
+  # Compare each pair (Jaccard similarity)
+  for ((i=0; i<FR_COUNT; i++)); do
+    for ((j=i+1; j<FR_COUNT; j++)); do
+      REQ1="${FR_ARRAY[$i]}"
+      REQ2="${FR_ARRAY[$j]}"
 
       [ -z "$REQ1" ] || [ -z "$REQ2" ] && continue
 
-      # Extract key terms
-      TERMS1=$(echo "$REQ1" | tr ' ' '\n' | sort | uniq)
-      TERMS2=$(echo "$REQ2" | tr ' ' '\n' | sort | uniq)
+      # Extract words for similarity calculation
+      WORDS1=$(echo "$REQ1" | grep -oE "\b[a-zA-Z]{3,}\b" | sort | uniq)
+      WORDS2=$(echo "$REQ2" | grep -oE "\b[a-zA-Z]{3,}\b" | sort | uniq)
 
-      # Count common terms
-      COMMON=$(comm -12 <(echo "$TERMS1") <(echo "$TERMS2") | wc -l)
-      TOTAL=$(echo "$TERMS1 $TERMS2" | tr ' ' '\n' | sort | uniq | wc -l)
+      # Count common and total unique words
+      COMMON=$(comm -12 <(echo "$WORDS1") <(echo "$WORDS2") | wc -l)
+      TOTAL=$(echo -e "$WORDS1\n$WORDS2" | sort | uniq | wc -l)
 
-      # If >60% overlap, flag as potential duplicate
-      if [ "$COMMON" -gt 0 ] && [ "$TOTAL" -gt 0 ]; then
-        SIMILARITY=$(( COMMON * 100 / TOTAL ))
+      # Jaccard similarity: intersection / union
+      if [ "$TOTAL" -gt 0 ]; then
+        SIMILARITY=$(awk "BEGIN {printf \"%.0f\", ($COMMON / $TOTAL) * 100}")
 
-        if [ "$SIMILARITY" -gt 60 ]; then
-          DUPLICATES+=("HIGH|Duplication|spec.md:L$((i+1)),L$((j+1))|Requirements R$((i+1)) and R$((j+1)) are $SIMILARITY% similar|Merge or clarify distinction")
+        # Flag if >60% similar (high duplication)
+        if [ "$SIMILARITY" -ge 60 ]; then
+          LINE1=$(grep -n "^- FR[0-9]" "$SPEC_FILE" | sed -n "$((i+1))p" | cut -d: -f1)
+          LINE2=$(grep -n "^- FR[0-9]" "$SPEC_FILE" | sed -n "$((j+1))p" | cut -d: -f1)
+
+          REQ1_SHORT=$(echo "$REQ1" | head -c 50)
+          REQ2_SHORT=$(echo "$REQ2" | head -c 50)
+
+          SUMMARY="Requirements ${SIMILARITY}% similar"
+          ID=$(echo -n "spec.md:$LINE1:$LINE2:$SUMMARY" | sha1sum | cut -c1-8)
+
+          DUPLICATES+=("HIGH|Duplication|spec.md:$LINE1,$LINE2|D-$ID|\"$REQ1_SHORT...\" vs \"$REQ2_SHORT...\"|${SIMILARITY}% word overlap|Merge or clarify distinction")
         fi
       fi
     done
@@ -417,287 +326,309 @@ echo "Potential duplicates: ${#DUPLICATES[@]}"
 echo ""
 ```
 
-### D. Ambiguity Detection
+### D. Ambiguity Detection (HIGH/CRITICAL)
 
 ```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🔍 Detecting ambiguous requirements"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 Detecting ambiguous requirements..."
 echo ""
 
-# Vague terms to flag
-VAGUE_TERMS=(
-  "fast" "slow" "easy" "simple" "good" "bad"
-  "many" "few" "large" "small" "quickly" "slowly"
-  "user-friendly" "intuitive" "clean" "nice"
-  "better" "improved" "robust" "scalable" "secure"
-)
+# Vague terms requiring quantification
+VAGUE_TERMS="\b(fast|slow|easy|simple|good|bad|many|few|large|small|quickly|slowly|user-friendly|intuitive|clean|nice|better|improved|robust|scalable|secure)\b"
 
 AMBIGUOUS_REQS=()
 PLACEHOLDERS=()
 
-# Check functional requirements
-while IFS= read -r req; do
-  [ -z "$req" ] && continue
+# Check functional requirements for vague terms
+FR_LINES_FULL=$(grep -n "^- FR[0-9]" "$SPEC_FILE" || echo "")
 
-  # Check for vague terms
-  for term in "${VAGUE_TERMS[@]}"; do
-    if echo "$req" | grep -qiw "$term"; then
-      AMBIGUOUS_REQS+=("HIGH|Ambiguity|spec.md:L??|Requirement contains vague term '$term' without metric: $(echo "$req" | head -c 50)...|Add measurable criteria (e.g., 'fast' → '<2s response time')")
-      break
-    fi
-  done
+while IFS= read -r line_data; do
+  [ -z "$line_data" ] && continue
 
-  # Check for placeholders
-  if echo "$req" | grep -qiE "TODO|TKTK|\?\?\?|<placeholder>|TBD"; then
-    PLACEHOLDERS+=("CRITICAL|Ambiguity|spec.md:L??|Requirement contains unresolved placeholder: $(echo "$req" | head -c 50)...|Resolve placeholder before implementation")
+  LINE_NO=$(echo "$line_data" | cut -d: -f1)
+  REQ_TEXT=$(echo "$line_data" | cut -d: -f2-)
+
+  # Check for vague terms (word boundaries)
+  VAGUE_MATCH=$(echo "$REQ_TEXT" | grep -oEi "$VAGUE_TERMS" | head -1)
+
+  if [ -n "$VAGUE_MATCH" ]; then
+    SUMMARY="Vague term '$VAGUE_MATCH' without metric"
+    ID=$(echo -n "spec.md:$LINE_NO:$SUMMARY" | sha1sum | cut -c1-8)
+
+    AMBIGUOUS_REQS+=("HIGH|Ambiguity|spec.md:$LINE_NO|A-$ID|\"$REQ_TEXT\"|Contains vague term '$VAGUE_MATCH'|Add measurable criteria (e.g., 'fast' → '<2s response time')")
   fi
-done <<< "$FUNCTIONAL_REQS"
 
-# Check NFRs (more likely to need metrics)
-while IFS= read -r nfr; do
-  [ -z "$nfr" ] && continue
+  # Check for placeholders (CRITICAL)
+  if echo "$REQ_TEXT" | grep -Eqi "\b(TODO|TKTK|TBD)\b|\?\?\?|<placeholder>"; then
+    SUMMARY="Unresolved placeholder in requirement"
+    ID=$(echo -n "spec.md:$LINE_NO:$SUMMARY" | sha1sum | cut -c1-8)
 
-  # NFRs MUST have measurable criteria
-  if ! echo "$nfr" | grep -qE "[0-9]+|<[0-9]|>[0-9]|p[0-9]{2}|%"; then
-    AMBIGUOUS_REQS+=("HIGH|Ambiguity|spec.md:L??|Non-functional requirement lacks metric: $(echo "$nfr" | head -c 50)...|Add quantifiable target")
+    PLACEHOLDERS+=("CRITICAL|Ambiguity|spec.md:$LINE_NO|A-$ID|\"$REQ_TEXT\"|Unresolved placeholder|Resolve before implementation")
   fi
-done <<< "$NFRS"
+done <<< "$FR_LINES_FULL"
+
+# Check NFRs must have measurable criteria
+NFR_LINES=$(grep -n "^- NFR[0-9]" "$SPEC_FILE" || echo "")
+
+while IFS= read -r nfr_line_data; do
+  [ -z "$nfr_line_data" ] && continue
+
+  LINE_NO=$(echo "$nfr_line_data" | cut -d: -f1)
+  NFR_TEXT=$(echo "$nfr_line_data" | cut -d: -f2-)
+
+  # NFRs MUST have metrics (numbers, percentages, comparisons)
+  if ! echo "$NFR_TEXT" | grep -Eq "[0-9]+|<[0-9]|>[0-9]|p[0-9]{2}|%"; then
+    SUMMARY="Non-functional requirement lacks metric"
+    ID=$(echo -n "spec.md:$LINE_NO:$SUMMARY" | sha1sum | cut -c1-8)
+
+    AMBIGUOUS_REQS+=("HIGH|Ambiguity|spec.md:$LINE_NO|A-$ID|\"$NFR_TEXT\"|No quantifiable target|Add measurable metric (e.g., '<200ms', '>99.9%')")
+  fi
+done <<< "$NFR_LINES"
 
 echo "Ambiguous requirements: ${#AMBIGUOUS_REQS[@]}"
 echo "Unresolved placeholders: ${#PLACEHOLDERS[@]}"
 echo ""
 ```
 
-### E. Underspecification
+### E. Underspecification (MEDIUM)
 
 ```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🔍 Checking for underspecification"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 Checking for underspecification..."
 echo ""
 
 UNDERSPECIFIED=()
 
-# Check for requirements with verbs but missing objects
-while IFS= read -r req; do
-  [ -z "$req" ] && continue
-
-  # Check for action verbs without clear outcome
-  if echo "$req" | grep -qiE "should|must|will" && ! echo "$req" | grep -qE "when|if|to|by|with"; then
-    UNDERSPECIFIED+=("MEDIUM|Underspecification|spec.md:L??|Requirement has verb but unclear outcome: $(echo "$req" | head -c 50)...|Add condition or measurable outcome")
-  fi
-done <<< "$FUNCTIONAL_REQS"
-
 # Check user stories for missing acceptance criteria
-STORY_NO_CRITERIA=0
-while IFS= read -r story_line; do
-  [ -z "$story_line" ] && continue
+STORY_LINES=$(grep -n "\[US[0-9]\]" "$SPEC_FILE" || echo "")
 
-  STORY_ID=$(echo "$story_line" | grep -o "\[US[0-9]\]")
+while IFS= read -r story_line_data; do
+  [ -z "$story_line_data" ] && continue
 
-  # Check if acceptance criteria exist for this story
-  if ! grep -A10 "$STORY_ID" "$SPEC_FILE" | grep -q "Acceptance"; then
-    UNDERSPECIFIED+=("HIGH|Underspecification|spec.md:L??|User story $STORY_ID missing acceptance criteria|Add testable acceptance criteria")
-    ((STORY_NO_CRITERIA++))
+  LINE_NO=$(echo "$story_line_data" | cut -d: -f1)
+  STORY_FULL=$(echo "$story_line_data" | cut -d: -f2-)
+  STORY_ID=$(echo "$STORY_FULL" | grep -o "\[US[0-9]\]")
+
+  # Check if acceptance criteria exist within 10 lines
+  if ! sed -n "${LINE_NO},$((LINE_NO+10))p" "$SPEC_FILE" | grep -Ewqi "\b(acceptance|given|when|then)\b"; then
+    SUMMARY="User story $STORY_ID missing acceptance criteria"
+    ID=$(echo -n "spec.md:$LINE_NO:$SUMMARY" | sha1sum | cut -c1-8)
+
+    UNDERSPECIFIED+=("HIGH|Underspecification|spec.md:$LINE_NO|U-$ID|\"$STORY_FULL\"|No acceptance criteria|Add Given/When/Then or acceptance list")
   fi
-done <<< "$USER_STORIES"
+done <<< "$STORY_LINES"
 
-# Check tasks referencing undefined files/components
-while IFS= read -r task_line; do
-  [ -z "$task_line" ] && continue
+# Check tasks referencing undefined components
+TASK_LINES_FILES=$(grep -n "^- \[ \] T[0-9]" "$TASKS_FILE" | grep -E "(src|api|apps)/" || echo "")
 
-  TASK_ID=$(echo "$task_line" | grep -o "T[0-9]\{3\}")
+while IFS= read -r task_line_data; do
+  [ -z "$task_line_data" ] && continue
 
-  # Extract file path from task
-  FILE_PATH=$(echo "$task_line" | grep -oE "(src|api|apps)/[a-zA-Z0-9/_.-]+" | head -1)
+  TASK_LINE_NO=$(echo "$task_line_data" | cut -d: -f1)
+  TASK_FULL=$(echo "$task_line_data" | cut -d: -f2-)
+
+  TASK_ID=$(echo "$TASK_FULL" | grep -o "T[0-9]\{3\}")
+  FILE_PATH=$(echo "$TASK_FULL" | grep -oE "(src|api|apps)/[a-zA-Z0-9/_.-]+" | head -1)
 
   if [ -n "$FILE_PATH" ]; then
-    # Check if component/entity mentioned in plan or spec
-    COMPONENT=$(basename "$FILE_PATH" .py .ts .tsx .js)
+    COMPONENT=$(basename "$FILE_PATH" .py .ts .tsx .js .jsx)
 
-    if ! grep -qi "$COMPONENT" "$SPEC_FILE" "$PLAN_FILE" 2>/dev/null; then
-      UNDERSPECIFIED+=("MEDIUM|Underspecification|tasks.md:L??|Task $TASK_ID references component '$COMPONENT' not defined in spec/plan|Define in plan.md or spec.md")
+    # Check if component mentioned in plan or spec (word boundaries)
+    if ! grep -Ewqi "\b$COMPONENT\b" "$SPEC_FILE" "$PLAN_FILE" 2>/dev/null; then
+      SUMMARY="Task $TASK_ID references undefined component '$COMPONENT'"
+      ID=$(echo -n "tasks.md:$TASK_LINE_NO:$SUMMARY" | sha1sum | cut -c1-8)
+
+      UNDERSPECIFIED+=("MEDIUM|Underspecification|tasks.md:$TASK_LINE_NO|U-$ID|\"$TASK_FULL\"|Component '$COMPONENT' not in spec/plan|Define component in plan.md [ARCHITECTURE DECISIONS]")
     fi
   fi
-done <<< "$(grep "^- \[ \] T[0-9]" "$TASKS_FILE")"
+done <<< "$TASK_LINES_FILES"
 
 echo "Underspecified items: ${#UNDERSPECIFIED[@]}"
 echo ""
 ```
 
-### F. Inconsistency Detection
+### F. Inconsistency Detection (MEDIUM)
 
 ```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🔍 Checking for inconsistencies"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 Checking for terminology inconsistencies..."
 echo ""
 
 TERMINOLOGY_ISSUES=()
 CONFLICTS=()
 
-# Extract key terms from spec (CamelCase words)
-SPEC_TERMS=$(grep -oE "[A-Z][a-z]+[A-Z][a-z]+" "$SPEC_FILE" | sort | uniq)
+# Extract CamelCase/PascalCase terms from spec
+SPEC_TERMS=$(grep -oE "\b[A-Z][a-z]+[A-Z][a-z]*\b" "$SPEC_FILE" | sort | uniq | head -50)
 
-# Check terminology consistency
+# Check for terminology drift across artifacts
+declare -A TERM_VARIANTS
+
 while IFS= read -r term; do
   [ -z "$term" ] && continue
 
-  # Check if term appears differently in other files
-  PLAN_VARIANTS=$(grep -io "${term:0:5}[a-z]*" "$PLAN_FILE" 2>/dev/null | sort | uniq)
-  TASKS_VARIANTS=$(grep -io "${term:0:5}[a-z]*" "$TASKS_FILE" 2>/dev/null | sort | uniq)
+  # Find variants (case-insensitive prefix match)
+  PREFIX=$(echo "$term" | head -c 5)
+  PLAN_VARIANTS=$(grep -ioE "\b${PREFIX}[a-zA-Z]*\b" "$PLAN_FILE" 2>/dev/null | sort | uniq)
+  TASKS_VARIANTS=$(grep -ioE "\b${PREFIX}[a-zA-Z]*\b" "$TASKS_FILE" 2>/dev/null | sort | uniq)
 
-  # If multiple variants found, flag
-  ALL_VARIANTS=$(echo "$term $PLAN_VARIANTS $TASKS_VARIANTS" | tr ' ' '\n' | sort | uniq)
+  # Collect unique variants
+  ALL_VARIANTS=$(echo -e "$term\n$PLAN_VARIANTS\n$TASKS_VARIANTS" | sort | uniq)
   VARIANT_COUNT=$(echo "$ALL_VARIANTS" | grep -c "^" || echo 0)
 
+  # Flag if >1 variant (terminology drift)
   if [ "$VARIANT_COUNT" -gt 1 ]; then
     VARIANTS=$(echo "$ALL_VARIANTS" | tr '\n' ',' | sed 's/,$//')
-    TERMINOLOGY_ISSUES+=("MEDIUM|Inconsistency|spec.md,plan.md,tasks.md|Terminology drift for '$term': variants ($VARIANTS)|Standardize terminology")
+
+    SUMMARY="Terminology drift for '$term'"
+    ID=$(echo -n "spec.md:plan.md:tasks.md:$SUMMARY" | sha1sum | cut -c1-8)
+
+    TERMINOLOGY_ISSUES+=("MEDIUM|Inconsistency|spec.md,plan.md,tasks.md|I-$ID|Term '$term' has variants: $VARIANTS|Inconsistent naming|Standardize to one term")
   fi
 done <<< "$SPEC_TERMS"
 
-# Limit terminology issues to top 10 (avoid overflow)
+# Limit to top 10 (avoid overflow)
 if [ ${#TERMINOLOGY_ISSUES[@]} -gt 10 ]; then
-  TERMINOLOGY_OVERFLOW=$((${#TERMINOLOGY_ISSUES[@]} - 10))
+  OVERFLOW=$((${#TERMINOLOGY_ISSUES[@]} - 10))
   TERMINOLOGY_ISSUES=("${TERMINOLOGY_ISSUES[@]:0:10}")
-  TERMINOLOGY_ISSUES+=("MEDIUM|Inconsistency|*|... and $TERMINOLOGY_OVERFLOW more terminology inconsistencies|Run full terminology audit")
+
+  SUMMARY="... and $OVERFLOW more terminology inconsistencies"
+  ID=$(echo -n "*:$SUMMARY" | sha1sum | cut -c1-8)
+  TERMINOLOGY_ISSUES+=("LOW|Inconsistency|*|I-$ID|$SUMMARY|Overflow capped|Run full audit or fix top 10 first")
 fi
 
-# Check for conflicting requirements
-# Example: One requirement specifies Next.js, another specifies Vue
-TECH_STACK_MENTIONS=$(grep -oiE "Next\.js|Vue|React|Angular|Svelte" "$SPEC_FILE" "$PLAN_FILE" | sort | uniq)
-TECH_COUNT=$(echo "$TECH_STACK_MENTIONS" | grep -c "^" || echo 0)
+# Check for conflicting tech stack mentions
+TECH_MENTIONS=$(grep -oiE "\b(Next\.js|Vue|React|Angular|Svelte|PostgreSQL|MySQL|MongoDB)\b" "$SPEC_FILE" "$PLAN_FILE" 2>/dev/null | sort | uniq)
+FRONTEND_STACK=$(echo "$TECH_MENTIONS" | grep -E "Next\.js|Vue|React|Angular|Svelte" | tr '\n' ',' | sed 's/,$//')
+DATABASE_STACK=$(echo "$TECH_MENTIONS" | grep -E "PostgreSQL|MySQL|MongoDB" | tr '\n' ',' | sed 's/,$//')
 
-if [ "$TECH_COUNT" -gt 1 ]; then
-  CONFLICTS+=("CRITICAL|Inconsistency|spec.md,plan.md|Multiple frontend frameworks mentioned: $(echo "$TECH_STACK_MENTIONS" | tr '\n' ',' | sed 's/,$//')|Choose one framework")
+# Flag if multiple frontend frameworks
+FRONTEND_COUNT=$(echo "$FRONTEND_STACK" | tr ',' '\n' | grep -c "^" || echo 0)
+if [ "$FRONTEND_COUNT" -gt 1 ]; then
+  SUMMARY="Multiple frontend frameworks mentioned"
+  ID=$(echo -n "spec.md:plan.md:$SUMMARY" | sha1sum | cut -c1-8)
+
+  CONFLICTS+=("CRITICAL|Inconsistency|spec.md,plan.md|I-$ID|Frameworks: $FRONTEND_STACK|Cannot use multiple frameworks|Choose one framework")
+fi
+
+# Flag if multiple databases
+DATABASE_COUNT=$(echo "$DATABASE_STACK" | tr ',' '\n' | grep -c "^" || echo 0)
+if [ "$DATABASE_COUNT" -gt 1 ]; then
+  SUMMARY="Multiple databases mentioned"
+  ID=$(echo -n "spec.md:plan.md:$SUMMARY" | sha1sum | cut -c1-8)
+
+  CONFLICTS+=("CRITICAL|Inconsistency|spec.md,plan.md|I-$ID|Databases: $DATABASE_STACK|Cannot use multiple databases|Choose one database")
 fi
 
 echo "Terminology issues: ${#TERMINOLOGY_ISSUES[@]}"
-echo "Conflicts: ${#CONFLICTS[@]}"
+echo "Tech stack conflicts: ${#CONFLICTS[@]}"
 echo ""
 ```
 
-### G. TDD Ordering Validation (if applicable)
+### G. TDD Ordering Validation (MEDIUM)
 
 ```bash
+echo "🔍 Validating TDD task ordering..."
+echo ""
+
+ORDERING_ISSUES=()
+
+# Check if TDD markers exist
+HAS_TDD_MARKERS=$(grep -c "\[RED\]\\|\[GREEN→\\|\[REFACTOR\]" "$TASKS_FILE" || echo 0)
+
 if [ "$HAS_TDD_MARKERS" -gt 0 ]; then
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "🔍 Validating TDD task ordering"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-
-  ORDERING_ISSUES=()
-
-  # Track current phase
+  # Track phase per task
   LAST_PHASE=""
 
-  while IFS= read -r task; do
-    [ -z "$task" ] && continue
+  TDD_TASK_LINES=$(grep -n "T[0-9]\{3\}" "$TASKS_FILE" | grep -E "\[RED\]|\[GREEN→|\[REFACTOR\]")
 
-    TASK_ID=$(echo "$task" | grep -o "T[0-9]\{3\}")
+  while IFS= read -r task_line_data; do
+    [ -z "$task_line_data" ] && continue
 
-    if echo "$task" | grep -q "\[RED\]"; then
-      LAST_PHASE="RED"
-    elif echo "$task" | grep -q "\[GREEN→"; then
-      # Should follow RED
+    LINE_NO=$(echo "$task_line_data" | cut -d: -f1)
+    TASK_FULL=$(echo "$task_line_data" | cut -d: -f2-)
+    TASK_ID=$(echo "$TASK_FULL" | grep -o "T[0-9]\{3\}")
+
+    if echo "$TASK_FULL" | grep -q "\[RED\]"; then
+      CURRENT_PHASE="RED"
+    elif echo "$TASK_FULL" | grep -q "\[GREEN→"; then
+      CURRENT_PHASE="GREEN"
+
+      # GREEN must follow RED
       if [ "$LAST_PHASE" != "RED" ]; then
-        ORDERING_ISSUES+=("MEDIUM|TDD Ordering|tasks.md:L??|Task $TASK_ID: GREEN phase without preceding RED|Follow RED → GREEN → REFACTOR sequence")
+        SUMMARY="Task $TASK_ID: GREEN without preceding RED"
+        ID=$(echo -n "tasks.md:$LINE_NO:$SUMMARY" | sha1sum | cut -c1-8)
+
+        ORDERING_ISSUES+=("MEDIUM|TDD Ordering|tasks.md:$LINE_NO|T-$ID|\"$TASK_FULL\"|GREEN phase without RED|Follow RED → GREEN → REFACTOR sequence")
       fi
-      LAST_PHASE="GREEN"
-    elif echo "$task" | grep -q "\[REFACTOR\]"; then
-      # Should follow GREEN
+    elif echo "$TASK_FULL" | grep -q "\[REFACTOR\]"; then
+      CURRENT_PHASE="REFACTOR"
+
+      # REFACTOR must follow GREEN
       if [ "$LAST_PHASE" != "GREEN" ]; then
-        ORDERING_ISSUES+=("MEDIUM|TDD Ordering|tasks.md:L??|Task $TASK_ID: REFACTOR without preceding GREEN|Follow RED → GREEN → REFACTOR sequence")
+        SUMMARY="Task $TASK_ID: REFACTOR without preceding GREEN"
+        ID=$(echo -n "tasks.md:$LINE_NO:$SUMMARY" | sha1sum | cut -c1-8)
+
+        ORDERING_ISSUES+=("MEDIUM|TDD Ordering|tasks.md:$LINE_NO|T-$ID|\"$TASK_FULL\"|REFACTOR without GREEN|Follow RED → GREEN → REFACTOR sequence")
       fi
-      LAST_PHASE="REFACTOR"
+    else
+      CURRENT_PHASE=""
     fi
-  done <<< "$(grep "T[0-9]\{3\}" "$TASKS_FILE" | grep -E "\[RED\]|\[GREEN→|\[REFACTOR\]")"
 
-  echo "TDD ordering issues: ${#ORDERING_ISSUES[@]}"
-  echo ""
+    LAST_PHASE="$CURRENT_PHASE"
+  done <<< "$TDD_TASK_LINES"
 fi
+
+echo "TDD ordering issues: ${#ORDERING_ISSUES[@]}"
+echo ""
 ```
 
-### H. UI Task Coverage (if applicable)
+### H. Migration Reversibility (HIGH)
 
 ```bash
-if [ "$HAS_UI_TASKS" -gt 0 ] || [ -d "apps/web/mock" ]; then
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "🎨 Analyzing UI task coverage"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
+echo "🗄️  Checking migration reversibility..."
+echo ""
 
-  MISSING_UI_TASKS=()
+NON_REVERSIBLE_MIGRATIONS=()
 
-  # Find polished screens
-  if [ -d "apps/web/mock" ]; then
-    POLISHED_SCREENS=$(find apps/web/mock -path "*/polished/page.tsx" 2>/dev/null)
+# Check if schema changes mentioned in plan
+SCHEMA_SECTION=$(sed -n '/## \[SCHEMA\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
 
-    while IFS= read -r polished_file; do
-      [ -z "$polished_file" ] && continue
-
-      SCREEN=$(echo "$polished_file" | sed 's|.*/\([^/]*\)/polished/.*|\1|')
-
-      # Check if tasks.md has production implementation task for this screen
-      if ! grep -qi "production.*$SCREEN\|$SCREEN.*production" "$TASKS_FILE"; then
-        MISSING_UI_TASKS+=("HIGH|UI Coverage|tasks.md:L??|Polished screen '$SCREEN' has no production implementation task|Add UI promotion task for $SCREEN")
-      fi
-    done <<< "$POLISHED_SCREENS"
-  fi
-
-  echo "Missing UI production tasks: ${#MISSING_UI_TASKS[@]}"
-  echo ""
-fi
-```
-
-### I. Migration Coverage (if applicable)
-
-```bash
-if [ "$HAS_MIGRATION_TASKS" -gt 0 ] || echo "$SCHEMA" | grep -q "[A-Z][a-z]*Table"; then
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "🗄️  Analyzing migration coverage"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-
-  MISSING_MIGRATION_TASKS=()
-  NON_REVERSIBLE_MIGRATIONS=()
-
-  # Extract entities from SCHEMA section
-  ENTITIES=$(echo "$SCHEMA" | grep -oE "[A-Z][a-z]+Table|[A-Z][a-z]+" | sort -u)
+if [ -n "$SCHEMA_SECTION" ]; then
+  # Extract entity names (TableName or EntityName)
+  ENTITIES=$(echo "$SCHEMA_SECTION" | grep -oE "\b[A-Z][a-z]+Table\b|\b[A-Z][a-z]+Entity\b" | sed 's/Table$//' | sed 's/Entity$//' | sort -u)
 
   while IFS= read -r entity; do
     [ -z "$entity" ] && continue
 
-    # Check if tasks.md has migration task for this entity
-    if ! grep -qi "migration.*$entity\|$entity.*migration" "$TASKS_FILE"; then
-      MISSING_MIGRATION_TASKS+=("HIGH|Migration|tasks.md:L??|Entity '$entity' missing migration task|Add migration task for $entity")
-    fi
-
-    # Check if migration file exists and is reversible
     ENTITY_LOWER=$(echo "$entity" | tr '[:upper:]' '[:lower:]')
-    MIGRATION_FILE=$(find . -path "*/alembic/versions/*${ENTITY_LOWER}*" -o -path "*/prisma/migrations/*${ENTITY_LOWER}*" 2>/dev/null | head -1)
 
-    if [ -n "$MIGRATION_FILE" ]; then
-      # Check for downgrade function (Alembic) or down migration (Prisma)
-      if ! grep -q "def downgrade\|down:" "$MIGRATION_FILE" 2>/dev/null; then
-        NON_REVERSIBLE_MIGRATIONS+=("HIGH|Migration|$MIGRATION_FILE|Migration for '$entity' not reversible (no downgrade)|Add downgrade/down function")
+    # Find migration files
+    MIGRATION_FILES=$(find . -type f \( -path "*/alembic/versions/*${ENTITY_LOWER}*" -o -path "*/prisma/migrations/*${ENTITY_LOWER}*" \) 2>/dev/null)
+
+    while IFS= read -r migration_file; do
+      [ -z "$migration_file" ] && continue
+
+      # Check for downgrade/down function (reversibility)
+      if ! grep -Ewq "\b(def downgrade|down:)\b" "$migration_file" 2>/dev/null; then
+        MIGRATION_LINE=$(grep -n "def upgrade\|up:" "$migration_file" | head -1 | cut -d: -f1)
+
+        SUMMARY="Migration for '$entity' not reversible"
+        ID=$(echo -n "$migration_file:$MIGRATION_LINE:$SUMMARY" | sha1sum | cut -c1-8)
+
+        NON_REVERSIBLE_MIGRATIONS+=("HIGH|Migration|$migration_file:$MIGRATION_LINE|M-$ID|Migration lacks downgrade|No rollback function|Add downgrade() or down: function")
       fi
-    fi
+    done <<< "$MIGRATION_FILES"
   done <<< "$ENTITIES"
-
-  echo "Missing migration tasks: ${#MISSING_MIGRATION_TASKS[@]}"
-  echo "Non-reversible migrations: ${#NON_REVERSIBLE_MIGRATIONS[@]}"
-  echo ""
 fi
+
+echo "Non-reversible migrations: ${#NON_REVERSIBLE_MIGRATIONS[@]}"
+echo ""
 ```
 
-## SEVERITY ASSIGNMENT
+## AGGREGATE FINDINGS (Hard 50-Finding Cap)
 
 ```bash
+cd .
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📊 Calculating issue severity"
+echo "📊 Aggregating findings"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -712,10 +643,21 @@ ALL_FINDINGS+=("${AMBIGUOUS_REQS[@]}")
 ALL_FINDINGS+=("${UNDERSPECIFIED[@]}")
 ALL_FINDINGS+=("${TERMINOLOGY_ISSUES[@]}")
 ALL_FINDINGS+=("${ORDERING_ISSUES[@]}")
-ALL_FINDINGS+=("${MISSING_UI_TASKS[@]}")
-ALL_FINDINGS+=("${MISSING_MIGRATION_TASKS[@]}")
 ALL_FINDINGS+=("${NON_REVERSIBLE_MIGRATIONS[@]}")
 ALL_FINDINGS+=("${UNMAPPED_TASKS[@]}")
+
+TOTAL_RAW=${#ALL_FINDINGS[@]}
+
+# Hard cap at 50 findings
+if [ "$TOTAL_RAW" -gt 50 ]; then
+  OVERFLOW=$((TOTAL_RAW - 50))
+  ALL_FINDINGS=("${ALL_FINDINGS[@]:0:50}")
+
+  # Add overflow finding
+  SUMMARY="$OVERFLOW additional findings capped (hard limit: 50)"
+  ID=$(echo -n "*:$SUMMARY" | sha1sum | cut -c1-8)
+  ALL_FINDINGS+=("LOW|Overflow|*|O-$ID|$SUMMARY|Limit reached|Fix top 50, then re-run /validate for remainder")
+fi
 
 # Count by severity
 CRITICAL_ISSUES=0
@@ -736,49 +678,45 @@ done
 
 TOTAL_ISSUES=${#ALL_FINDINGS[@]}
 
-# Limit to 50 findings (token efficiency)
-if [ "$TOTAL_ISSUES" -gt 50 ]; then
-  OVERFLOW=$((TOTAL_ISSUES - 50))
-  ALL_FINDINGS=("${ALL_FINDINGS[@]:0:50}")
-  ALL_FINDINGS+=("LOW|Overflow|*|... and $OVERFLOW more issues not shown|Run detailed analysis or fix top 50 first|")
-fi
-
 echo "Issue Summary:"
 echo "  Critical: $CRITICAL_ISSUES"
 echo "  High: $HIGH_ISSUES"
 echo "  Medium: $MEDIUM_ISSUES"
 echo "  Low: $LOW_ISSUES"
-echo "  Total: $TOTAL_ISSUES (showing max 50)"
+echo "  Total: $TOTAL_ISSUES (max 50)"
 echo ""
 ```
 
-## GENERATE ANALYSIS REPORT
+## GENERATE REPORTS (Human + SARIF)
 
-**Compact table output:**
+**Output both formats: analysis-report.md (human) + analysis.sarif.json (CI)**
+
+### Human Report (analysis-report.md)
 
 ```bash
-ANALYSIS_REPORT="$FEATURE_DIR/analysis.md"
+cd .
 
-echo "Writing analysis report: $ANALYSIS_REPORT"
-echo ""
+REPORT_FILE="$FEATURE_DIR/analysis-report.md"
+REPORT_TMP=$(mktemp)
 
-cat > "$ANALYSIS_REPORT" <<EOF
-# Specification Analysis Report
+cat > "$REPORT_TMP" <<EOF
+# Cross-Artifact Analysis Report
 
 **Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
 **Feature**: $(basename "$FEATURE_DIR")
+**Validator**: spec-flow-validate v2.0
 
 ---
 
 ## Executive Summary
 
-- Total Requirements: $((FUNCTIONAL_COUNT + NFR_COUNT))
-- Total Tasks: $TASK_COUNT
-- Coverage: $(if [ "$FUNCTIONAL_COUNT" -gt 0 ]; then echo "$(( (FUNCTIONAL_COUNT - ${#UNCOVERED_REQS[@]}) * 100 / FUNCTIONAL_COUNT ))%"; else echo "N/A"; fi)
-- Critical Issues: $CRITICAL_ISSUES
-- High Issues: $HIGH_ISSUES
-- Medium Issues: $MEDIUM_ISSUES
-- Low Issues: $LOW_ISSUES
+| Metric | Value |
+|--------|-------|
+| Total Findings | $TOTAL_ISSUES |
+| Critical | $CRITICAL_ISSUES |
+| High | $HIGH_ISSUES |
+| Medium | $MEDIUM_ISSUES |
+| Low | $LOW_ISSUES |
 
 **Status**: $(if [ "$CRITICAL_ISSUES" -gt 0 ]; then echo "❌ Blocked"; elif [ "$HIGH_ISSUES" -gt 0 ]; then echo "⚠️ Review recommended"; else echo "✅ Ready for implementation"; fi)
 
@@ -786,83 +724,50 @@ cat > "$ANALYSIS_REPORT" <<EOF
 
 ## Findings
 
-| ID | Category | Severity | Location(s) | Summary | Recommendation |
-|----|----------|----------|-------------|---------|----------------|
+| ID | Severity | Category | Location | Summary | Evidence | Recommendation |
+|----|----------|----------|----------|---------|----------|----------------|
 EOF
 
 # Add findings to table
-FINDING_ID=1
 for finding in "${ALL_FINDINGS[@]}"; do
   SEVERITY=$(echo "$finding" | cut -d'|' -f1)
   CATEGORY=$(echo "$finding" | cut -d'|' -f2)
   LOCATION=$(echo "$finding" | cut -d'|' -f3)
-  SUMMARY=$(echo "$finding" | cut -d'|' -f4)
-  RECOMMENDATION=$(echo "$finding" | cut -d'|' -f5)
+  ID=$(echo "$finding" | cut -d'|' -f4)
+  EVIDENCE=$(echo "$finding" | cut -d'|' -f5)
+  CONTEXT=$(echo "$finding" | cut -d'|' -f6)
+  RECOMMENDATION=$(echo "$finding" | cut -d'|' -f7)
 
-  # Generate stable ID based on category
-  CATEGORY_PREFIX=$(echo "$CATEGORY" | head -c 1 | tr '[:lower:]' '[:upper:]')
-
-  echo "| ${CATEGORY_PREFIX}${FINDING_ID} | $CATEGORY | $SEVERITY | $LOCATION | $SUMMARY | $RECOMMENDATION |" >> "$ANALYSIS_REPORT"
-  ((FINDING_ID++))
+  echo "| $ID | $SEVERITY | $CATEGORY | $LOCATION | $CONTEXT | $EVIDENCE | $RECOMMENDATION |" >> "$REPORT_TMP"
 done
 
-cat >> "$ANALYSIS_REPORT" <<EOF
+cat >> "$REPORT_TMP" <<EOF
 
 ---
 
-## Coverage Summary
+## Severity Rubric
 
-| Requirement | Has Task? | Task IDs | Notes |
-|-------------|-----------|----------|-------|
-EOF
+**CRITICAL**: Blocks implementation
+- Constitution violations
+- Unresolved placeholders (TODO, TBD, ???)
+- Contradictory tech stack decisions (multiple frameworks)
+- Missing critical requirements
 
-# Add coverage mapping (top 20 requirements)
-REQ_COUNT=0
-while IFS= read -r req; do
-  [ -z "$req" ] && continue
-  ((REQ_COUNT++))
+**HIGH**: Causes rework
+- Uncovered functional requirements
+- Non-reversible migrations (no downgrade)
+- User stories without acceptance criteria
+- Vague requirements without metrics
 
-  # Check if covered
-  KEY_TERMS=$(echo "$req" | grep -oE "[A-Z][a-z]+" | head -3 | tr '\n' ' ')
-  MATCHING_TASKS=$(grep -n "^- \[ \] T[0-9]" "$TASKS_FILE" | \
-                   grep -i "$KEY_TERMS" | \
-                   grep -o "T[0-9]\{3\}" | \
-                   tr '\n' ',' | \
-                   sed 's/,$//')
+**MEDIUM**: Traceability issues
+- Unmapped tasks
+- TDD ordering violations
+- Terminology inconsistencies
+- Underspecified components
 
-  if [ -n "$MATCHING_TASKS" ]; then
-    COVERED="✅"
-  else
-    COVERED="❌"
-    MATCHING_TASKS="None"
-  fi
-
-  REQ_SHORT=$(echo "$req" | head -c 50)
-  echo "| $REQ_SHORT... | $COVERED | $MATCHING_TASKS | |" >> "$ANALYSIS_REPORT"
-
-  # Limit to 20 rows
-  if [ "$REQ_COUNT" -ge 20 ]; then
-    REMAINING=$((FUNCTIONAL_COUNT - 20))
-    if [ "$REMAINING" -gt 0 ]; then
-      echo "| ... and $REMAINING more requirements | | | See full spec.md |" >> "$ANALYSIS_REPORT"
-    fi
-    break
-  fi
-done <<< "$FUNCTIONAL_REQS"
-
-cat >> "$ANALYSIS_REPORT" <<EOF
-
----
-
-## Metrics
-
-- **Requirements**: $FUNCTIONAL_COUNT functional + $NFR_COUNT non-functional
-- **Tasks**: $TASK_COUNT total ($STORY_TASKS story-specific, $PARALLEL_TASKS parallelizable)
-- **User Stories**: $STORY_COUNT
-- **Coverage**: $(if [ "$FUNCTIONAL_COUNT" -gt 0 ]; then echo "$(( (FUNCTIONAL_COUNT - ${#UNCOVERED_REQS[@]}) * 100 / FUNCTIONAL_COUNT ))%"; else echo "N/A"; fi) of requirements mapped to tasks
-- **Ambiguity**: ${#AMBIGUOUS_REQS[@]} vague terms, ${#PLACEHOLDERS[@]} unresolved placeholders
-- **Duplication**: ${#DUPLICATES[@]} potential duplicates
-- **Critical Issues**: $CRITICAL_ISSUES
+**LOW**: Cosmetic/style
+- Minor terminology drift (capped at 10)
+- Overflow findings (fix top 50 first)
 
 ---
 
@@ -872,17 +777,17 @@ EOF
 
 # Generate recommendations based on severity
 if [ "$CRITICAL_ISSUES" -gt 0 ]; then
-  cat >> "$ANALYSIS_REPORT" <<EOF
+  cat >> "$REPORT_TMP" <<EOF
 **⛔ BLOCKED**: Fix $CRITICAL_ISSUES critical issue(s) before proceeding.
 
-1. Review critical issues in findings table above
+1. Review critical findings above
 2. Update spec.md, plan.md, or tasks.md to address
 3. Re-run: \`/validate\`
 
 Do NOT proceed to /implement until critical issues resolved.
 EOF
 elif [ "$HIGH_ISSUES" -gt 0 ]; then
-  cat >> "$ANALYSIS_REPORT" <<EOF
+  cat >> "$REPORT_TMP" <<EOF
 **⚠️ REVIEW RECOMMENDED**: $HIGH_ISSUES high-priority issue(s) found.
 
 Options:
@@ -892,23 +797,14 @@ Options:
 Next: \`/implement\` (or fix issues first)
 EOF
 else
-  cat >> "$ANALYSIS_REPORT" <<EOF
+  cat >> "$REPORT_TMP" <<EOF
 **✅ READY FOR IMPLEMENTATION**
 
 Next: \`/implement\`
-
-/implement will:
-1. Execute tasks from tasks.md ($TASK_COUNT tasks)
-2. Follow TDD where applicable (RED → GREEN → REFACTOR)
-3. Reference polished mockups (if UI feature)
-4. Commit after each task
-5. Update error-log.md (track issues)
-
-Estimated duration: 2-4 hours
 EOF
 fi
 
-cat >> "$ANALYSIS_REPORT" <<EOF
+cat >> "$REPORT_TMP" <<EOF
 
 ---
 
@@ -918,117 +814,175 @@ EOF
 
 if [ "$HAS_CONSTITUTION" = true ]; then
   if [ ${#CONSTITUTION_VIOLATIONS[@]} -eq 0 ]; then
-    echo "✅ All constitution MUST principles addressed" >> "$ANALYSIS_REPORT"
+    echo "✅ All constitution MUST principles addressed" >> "$REPORT_TMP"
   else
-    echo "❌ ${#CONSTITUTION_VIOLATIONS[@]} constitution violation(s) found (see findings table)" >> "$ANALYSIS_REPORT"
+    echo "❌ ${#CONSTITUTION_VIOLATIONS[@]} constitution violation(s) found (see findings table)" >> "$REPORT_TMP"
   fi
 else
-  echo "ℹ️ No constitution.md found (skipping principle validation)" >> "$ANALYSIS_REPORT"
+  echo "ℹ️ No constitution.md found (skipping principle validation)" >> "$REPORT_TMP"
 fi
 
-echo "" >> "$ANALYSIS_REPORT"
-echo "✅ Report written: $ANALYSIS_REPORT"
+# Atomic write
+mv "$REPORT_TMP" "$REPORT_FILE"
+
+echo "✅ Human report written: $(basename "$REPORT_FILE")"
+echo ""
 ```
 
-## OFFER REMEDIATION
+### SARIF Report (analysis.sarif.json)
 
 ```bash
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🔧 Remediation"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+cd .
 
-if [ "$TOTAL_ISSUES" -gt 0 ]; then
-  echo "Would you like me to suggest concrete remediation edits for the top issues?"
-  echo "(This will NOT automatically apply changes - you must approve first)"
-  echo ""
-  echo "Reply 'yes' to see remediation suggestions, or 'no' to skip."
+SARIF_FILE="$FEATURE_DIR/analysis.sarif.json"
+SARIF_TMP=$(mktemp)
 
-  # User will respond in next message
-  # If 'yes', generate specific edit recommendations
-  # If 'no', proceed to return summary
-fi
-```
+# SARIF 2.1.0 schema
+cat > "$SARIF_TMP" <<'SARIF_START'
+{
+  "version": "2.1.0",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "spec-flow-validate",
+          "version": "2.0.0",
+          "informationUri": "https://github.com/spec-flow/workflow-refactor",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ]
+}
+SARIF_START
 
-## TASK STATUS CONSISTENCY CHECK
+# Convert findings to SARIF results
+SARIF_RESULTS="["
+FIRST=true
 
-```bash
-echo ""
-echo "🔍 Validating task status consistency..."
+for finding in "${ALL_FINDINGS[@]}"; do
+  SEVERITY=$(echo "$finding" | cut -d'|' -f1)
+  CATEGORY=$(echo "$finding" | cut -d'|' -f2)
+  LOCATION=$(echo "$finding" | cut -d'|' -f3)
+  ID=$(echo "$finding" | cut -d'|' -f4)
+  EVIDENCE=$(echo "$finding" | cut -d'|' -f5 | sed 's/"/\\"/g')
+  CONTEXT=$(echo "$finding" | cut -d'|' -f6 | sed 's/"/\\"/g')
+  RECOMMENDATION=$(echo "$finding" | cut -d'|' -f7 | sed 's/"/\\"/g')
 
-# Check for task-tracker availability
-TASK_TRACKER=".spec-flow/scripts/bash/task-tracker.sh"
-if [ -f "$TASK_TRACKER" ]; then
-  # Run task-tracker validation
-  VALIDATION_RESULT=$(pwsh -File ".spec-flow/scripts/powershell/task-tracker.ps1" \
-    validate -FeatureDir "$FEATURE_DIR" -Json 2>/dev/null || echo '{"Valid":false,"Issues":[]}')
+  # Map severity to SARIF level
+  case "$SEVERITY" in
+    CRITICAL) LEVEL="error" ;;
+    HIGH) LEVEL="error" ;;
+    MEDIUM) LEVEL="warning" ;;
+    LOW) LEVEL="note" ;;
+    *) LEVEL="note" ;;
+  esac
 
-  # Parse validation results
-  IS_VALID=$(echo "$VALIDATION_RESULT" | jq -r '.Valid' 2>/dev/null || echo "false")
-  ISSUE_COUNT=$(echo "$VALIDATION_RESULT" | jq -r '.Issues | length' 2>/dev/null || echo "0")
+  # Extract file and line from LOCATION
+  FILE_PATH=$(echo "$LOCATION" | cut -d: -f1)
+  LINE_NO=$(echo "$LOCATION" | cut -d: -f2 | grep -o "[0-9]\+" | head -1)
 
-  if [ "$IS_VALID" != "true" ] && [ "$ISSUE_COUNT" -gt 0 ]; then
-    echo "⚠️  Found $ISSUE_COUNT task status inconsistency issue(s)"
-    echo "$VALIDATION_RESULT" | jq -r '.Issues[]' 2>/dev/null || echo "Unable to parse issues"
-    echo ""
-    echo "To fix inconsistencies, run:"
-    echo "  pwsh -File .spec-flow/scripts/powershell/task-tracker.ps1 sync-status -FeatureDir \"$FEATURE_DIR\""
-    echo ""
-    MEDIUM_ISSUES=$((MEDIUM_ISSUES + 1))
-  else
-    echo "✅ Task status consistent (tasks.md ↔ NOTES.md)"
+  # Default to line 1 if no line number
+  if [ -z "$LINE_NO" ]; then
+    LINE_NO=1
   fi
-else
-  echo "⚠️  task-tracker not found - skipping consistency check"
-fi
 
+  # Add comma separator (not for first item)
+  if [ "$FIRST" = true ]; then
+    FIRST=false
+  else
+    SARIF_RESULTS+=","
+  fi
+
+  # SARIF result object
+  SARIF_RESULTS+=$(cat <<SARIF_RESULT
+    {
+      "ruleId": "$ID",
+      "level": "$LEVEL",
+      "message": {
+        "text": "$CONTEXT"
+      },
+      "locations": [
+        {
+          "physicalLocation": {
+            "artifactLocation": {
+              "uri": "$FILE_PATH"
+            },
+            "region": {
+              "startLine": $LINE_NO
+            }
+          }
+        }
+      ],
+      "properties": {
+        "category": "$CATEGORY",
+        "severity": "$SEVERITY",
+        "evidence": "$EVIDENCE",
+        "recommendation": "$RECOMMENDATION"
+      }
+    }
+SARIF_RESULT
+)
+done
+
+SARIF_RESULTS+="]"
+
+# Insert results into SARIF template using jq
+jq --argjson results "$SARIF_RESULTS" '.runs[0].results = $results' "$SARIF_TMP" > "$SARIF_FILE"
+rm "$SARIF_TMP"
+
+echo "✅ SARIF report written: $(basename "$SARIF_FILE")"
 echo ""
 ```
 
-## COMMIT ANALYSIS
-
-**After creating analysis report, commit the artifacts:**
+## COMMIT REPORTS
 
 ```bash
+cd .
+
 # Stage analysis artifacts
-git add "$ANALYSIS_REPORT"
+git add "$REPORT_FILE" "$SARIF_FILE"
 
 # Commit with analysis summary
-git commit -m "docs(analyze): create cross-artifact analysis for $(basename "$FEATURE_DIR")
+git commit -m "docs(validate): cross-artifact analysis for $(basename "$FEATURE_DIR")
 
-- Consistency checks performed
-- Issues found: $TOTAL_ISSUES
-- Critical blockers: $CRITICAL_ISSUES
-- Ready for implementation: $([ "$CRITICAL_ISSUES" -eq 0 ] && echo 'YES' || echo 'NO')
+Phase 1: Validate
+- Findings: $TOTAL_ISSUES (C:$CRITICAL_ISSUES H:$HIGH_ISSUES M:$MEDIUM_ISSUES L:$LOW_ISSUES)
+- Status: $(if [ "$CRITICAL_ISSUES" -gt 0 ]; then echo "BLOCKED"; elif [ "$HIGH_ISSUES" -gt 0 ]; then echo "REVIEW"; else echo "READY"; fi)
+- Reports: analysis-report.md + analysis.sarif.json
 
 🤖 Generated with Claude Code
 Co-Authored-By: Claude <noreply@anthropic.com>"
 
-# Verify commit succeeded
+# Verify commit
 COMMIT_HASH=$(git rev-parse --short HEAD)
 echo ""
 echo "✅ Analysis committed: $COMMIT_HASH"
 echo ""
-git log -1 --oneline
-echo ""
 ```
 
-## RETURN
+## RETURN SUMMARY
 
 ```bash
+cd .
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✅ Analysis Complete"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Report: $(basename "$FEATURE_DIR")/analysis.md"
-echo ""
 echo "📊 Summary:"
-echo "- Requirements: $((FUNCTIONAL_COUNT + NFR_COUNT))"
-echo "- Tasks: $TASK_COUNT"
-echo "- Coverage: $(if [ "$FUNCTIONAL_COUNT" -gt 0 ]; then echo "$(( (FUNCTIONAL_COUNT - ${#UNCOVERED_REQS[@]}) * 100 / FUNCTIONAL_COUNT ))%"; else echo "N/A"; fi)"
-echo "- Issues: $TOTAL_ISSUES (C:$CRITICAL_ISSUES H:$HIGH_ISSUES M:$MEDIUM_ISSUES L:$LOW_ISSUES)"
+echo "- Findings: $TOTAL_ISSUES (max 50)"
+echo "- Critical: $CRITICAL_ISSUES"
+echo "- High: $HIGH_ISSUES"
+echo "- Medium: $MEDIUM_ISSUES"
+echo "- Low: $LOW_ISSUES"
+echo ""
+echo "📄 Reports:"
+echo "- Human: $(basename "$FEATURE_DIR")/analysis-report.md"
+echo "- SARIF: $(basename "$FEATURE_DIR")/analysis.sarif.json"
 echo ""
 
 if [ "$CRITICAL_ISSUES" -gt 0 ]; then
@@ -1040,7 +994,7 @@ if [ "$CRITICAL_ISSUES" -gt 0 ]; then
   echo "Then re-run: /validate"
 elif [ "$HIGH_ISSUES" -gt 0 ]; then
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "⚠️  REVIEW RECOMMENDED: $HIGH_ISSUES high-priority issue(s)"
+  echo "⚠️  REVIEW: $HIGH_ISSUES high-priority issue(s)"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
   echo "Next: /implement (or fix issues first)"
@@ -1054,4 +1008,5 @@ fi
 
 echo ""
 ```
+
 </instructions>
