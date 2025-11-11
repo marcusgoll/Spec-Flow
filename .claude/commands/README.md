@@ -68,7 +68,7 @@ All commands can be invoked via `/command-name` in Claude Code. Each command is 
 |---------|-------------|--------|---------|----------|
 | `/gate-ci` | CI quality gate (tests, linters, coverage) | 🚧 Beta | - | ⏳ Needs v2.0 |
 | `/gate-sec` | Security gate (SAST, secrets scan, dependencies) | 🚧 Beta | - | ⏳ Needs v2.0 |
-| `/fix-ci` | Fix CI/deployment blockers after /ship creates PR | ✅ Stable | - | ⏳ Needs v2.0 |
+| `/fix-ci` | Fix CI/deployment blockers after /ship creates PR | ✅ Stable | v2.0 | ✅ Done |
 
 ---
 
@@ -175,6 +175,7 @@ Commands marked "Needs v2.0" should be refactored to include:
 - ✅ `/constitution` - Structured actions, evidence-backed policies (WCAG, OWASP)
 - ✅ `/deploy-prod` - Non-interactive, platform-specific rollback (Vercel, Railway, Netlify, Git)
 - ✅ `/optimize` - Parallel checks, binary pass/fail, evidence-backed standards (WCAG, OWASP, Twelve-Factor)
+- ✅ `/fix-ci` - Verified GitHub CLI commands, correct tool flags, generic quota handling
 
 ---
 
@@ -375,5 +376,5 @@ internal: true  # Optional: mark as internal-only
 ---
 
 **Last Updated**: 2025-11-10
-**Commands**: 46 total (6 refactored to v2.0, 40 pending)
+**Commands**: 46 total (7 refactored to v2.0, 39 pending)
 **Next Priority**: Refactor phase commands (`/spec`, `/plan`, `/tasks`, `/implement`)
