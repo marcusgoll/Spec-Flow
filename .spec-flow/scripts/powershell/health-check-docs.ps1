@@ -112,7 +112,7 @@ if ($Json) {
         Write-Host ""
         foreach ($warning in $warnings) {
             $relPath = $warning.file -replace [regex]::Escape($repoRoot + [IO.Path]::DirectorySeparatorChar), ''
-            Write-Host "  ⚠️  $relPath: $($warning.message)" -ForegroundColor Yellow
+            Write-Host "  ⚠️  ${relPath}: $($warning.message)" -ForegroundColor Yellow
         }
         Write-Host ""
     }
