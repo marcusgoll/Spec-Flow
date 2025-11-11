@@ -163,6 +163,82 @@ Only refactor when you see duplication:
 
 Do NOT refactor prematurely.
 
+## Task Tool Integration
+
+When invoked via Task() from `implement-phase-agent`, you are executing a single task in parallel with other specialists (frontend-shipper, database-architect).
+
+**Inputs** (from Task() prompt):
+- Task ID (e.g., T015)
+- Task description and acceptance criteria
+- Feature directory path (e.g., specs/001-feature-slug)
+- Domain: "backend" (FastAPI, Python, API routes, models)
+
+**Workflow**:
+1. **Read task details** from `${FEATURE_DIR}/tasks.md`
+2. **Load selective context** from NOTES.md (<500 tokens):
+   ```bash
+   sed -n '/## Key Decisions/,/^## /p' ${FEATURE_DIR}/NOTES.md | head -20
+   sed -n '/## Blockers/,/^## /p' ${FEATURE_DIR}/NOTES.md | head -20
+   ```
+3. **Execute TDD workflow** (described above):
+   - RED: Write failing test, commit
+   - GREEN: Implement code to pass, commit
+   - REFACTOR: Clean up if needed, commit
+4. **Run quality gates** (ruff, mypy --strict, pytest, coverage ≥80%)
+5. **Run security gates** (no SQL injection, auth tests, secrets check)
+6. **Update task-tracker** with completion:
+   ```bash
+   .spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
+     -TaskId "${TASK_ID}" \
+     -Notes "Implementation summary (1-2 sentences)" \
+     -Evidence "pytest: NN/NN passing, <500ms p95" \
+     -Coverage "NN% line (+ΔΔ%)" \
+     -CommitHash "$(git rev-parse --short HEAD)" \
+     -FeatureDir "${FEATURE_DIR}"
+   ```
+7. **Return JSON** to implement-phase-agent:
+   ```json
+   {
+     "task_id": "T015",
+     "status": "completed",
+     "summary": "Implemented Message model with email validation. All tests passing.",
+     "files_changed": ["api/app/models/message.py", "api/tests/test_message.py"],
+     "test_results": "pytest: 25/25 passing, coverage: 92% (+8%)",
+     "commits": ["a1b2c3d", "e4f5g6h", "i7j8k9l"]
+   }
+   ```
+
+**On task failure** (tests fail, quality gates fail, security issues):
+```bash
+# Rollback uncommitted changes
+git restore .
+
+# Mark task failed with specific error
+.spec-flow/scripts/bash/task-tracker.sh mark-failed \
+  -TaskId "${TASK_ID}" \
+  -ErrorMessage "Detailed error: [pytest output or mypy errors]" \
+  -FeatureDir "${FEATURE_DIR}"
+```
+
+Return failure JSON:
+```json
+{
+  "task_id": "T015",
+  "status": "failed",
+  "summary": "Failed: mypy type errors in Message model",
+  "files_changed": [],
+  "test_results": "pytest: 0/25 passing (module import failed)",
+  "blockers": ["mypy error: app/models/message.py:12: Incompatible types in assignment"]
+}
+```
+
+**Critical rules**:
+- ✅ Always use task-tracker.sh for status updates (never manually edit tasks.md/NOTES.md)
+- ✅ Provide commit hash with completion (Git Workflow Enforcer blocks without it)
+- ✅ Return structured JSON for orchestrator parsing
+- ✅ Include specific evidence (test counts, coverage delta, performance metrics)
+- ✅ Rollback on failure before returning (leave clean state)
+
 ## Contract-First Development
 
 Always update contract BEFORE writing code:

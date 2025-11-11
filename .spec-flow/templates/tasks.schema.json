@@ -1,0 +1,316 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://spec-flow.dev/schemas/tasks.schema.json",
+  "title": "Spec-Flow Task List",
+  "description": "Canonical task breakdown with verified paths and dependencies",
+  "type": "object",
+  "required": ["version", "feature", "metadata", "tasks", "dependency_graph"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.0$",
+      "description": "Schema version"
+    },
+    "feature": {
+      "type": "object",
+      "required": ["slug", "name", "feature_dir"],
+      "properties": {
+        "slug": {
+          "type": "string",
+          "description": "Feature slug (branch name or explicit identifier)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable feature name"
+        },
+        "feature_dir": {
+          "type": "string",
+          "description": "Relative path to feature directory"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["generated_at", "plan_file", "spec_file"],
+      "properties": {
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of generation"
+        },
+        "plan_file": {
+          "type": "string",
+          "description": "Path to plan.md relative to repo root"
+        },
+        "spec_file": {
+          "type": "string",
+          "description": "Path to spec.md relative to repo root"
+        },
+        "data_model_file": {
+          "type": "string",
+          "description": "Path to data-model.md if exists"
+        },
+        "contracts_dir": {
+          "type": "string",
+          "description": "Path to contracts directory if exists"
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "description": "List of tasks in execution order",
+      "items": {
+        "type": "object",
+        "required": ["id", "description", "phase", "files", "from"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^T[0-9]{3}$",
+            "description": "Stable task ID (T001, T002, etc.)"
+          },
+          "hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{8}$",
+            "description": "Content hash for stability across runs"
+          },
+          "story": {
+            "type": "string",
+            "pattern": "^US[0-9]+$",
+            "description": "User story ID (US1, US2, etc.)"
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9,
+            "description": "Story priority (1 = highest)"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10,
+            "description": "Concrete task description with exact file paths"
+          },
+          "phase": {
+            "type": "string",
+            "enum": ["setup", "foundational", "story", "polish"],
+            "description": "Task phase category"
+          },
+          "phase_label": {
+            "type": "string",
+            "description": "Human-readable phase (e.g., 'Phase 1: Setup')"
+          },
+          "files": {
+            "type": "array",
+            "description": "File paths referenced by this task (verified to exist or marked as [NEW])",
+            "items": {
+              "type": "string"
+            }
+          },
+          "from": {
+            "type": "object",
+            "required": ["doc", "start_line", "end_line"],
+            "description": "Traceability to source design document",
+            "properties": {
+              "doc": {
+                "type": "string",
+                "enum": ["plan.md", "spec.md", "data-model.md", "contracts"],
+                "description": "Source document"
+              },
+              "section": {
+                "type": "string",
+                "description": "Section heading"
+              },
+              "start_line": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Starting line number in source doc"
+              },
+              "end_line": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Ending line number in source doc"
+              }
+            }
+          },
+          "reuse": {
+            "type": "array",
+            "description": "Existing code/patterns to reuse (paths verified)",
+            "items": {
+              "type": "object",
+              "required": ["name", "path"],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Component/service name"
+                },
+                "path": {
+                  "type": "string",
+                  "description": "Verified file path"
+                }
+              }
+            }
+          },
+          "pattern": {
+            "type": "array",
+            "description": "Similar files to follow as patterns (paths verified)",
+            "items": {
+              "type": "string"
+            }
+          },
+          "depends_on": {
+            "type": "array",
+            "description": "Task IDs that must complete before this task",
+            "items": {
+              "type": "string",
+              "pattern": "^T[0-9]{3}$"
+            }
+          },
+          "parallelizable": {
+            "type": "boolean",
+            "description": "Can run in parallel with other parallelizable tasks in same phase"
+          },
+          "acceptance_criteria": {
+            "type": "array",
+            "description": "Quoted verbatim from spec.md or derived in Given-When-Then format",
+            "items": {
+              "type": "object",
+              "required": ["text"],
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Acceptance criterion text"
+                },
+                "from_spec": {
+                  "type": "boolean",
+                  "description": "True if quoted from spec.md"
+                },
+                "spec_line": {
+                  "type": "integer",
+                  "description": "Line number in spec.md if quoted"
+                }
+              }
+            }
+          },
+          "test_required": {
+            "type": "boolean",
+            "description": "Requires automated test (from spec TDD requirement)"
+          }
+        }
+      }
+    },
+    "dependency_graph": {
+      "type": "object",
+      "required": ["is_acyclic", "story_order"],
+      "properties": {
+        "is_acyclic": {
+          "type": "boolean",
+          "description": "True if dependency graph has no cycles"
+        },
+        "cycles": {
+          "type": "array",
+          "description": "Detected cycles if any",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "story_order": {
+          "type": "array",
+          "description": "Story completion order based on dependencies",
+          "items": {
+            "type": "object",
+            "required": ["story", "phase"],
+            "properties": {
+              "story": {
+                "type": "string"
+              },
+              "phase": {
+                "type": "string"
+              },
+              "priority": {
+                "type": "integer"
+              },
+              "depends_on": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "parallel_opportunities": {
+          "type": "array",
+          "description": "Groups of tasks that can run in parallel",
+          "items": {
+            "type": "object",
+            "required": ["phase", "task_ids"],
+            "properties": {
+              "phase": {
+                "type": "string"
+              },
+              "task_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "implementation_strategy": {
+      "type": "object",
+      "properties": {
+        "mvp_scope": {
+          "type": "string",
+          "description": "Which phase/story defines MVP"
+        },
+        "incremental_delivery": {
+          "type": "array",
+          "description": "Delivery sequence",
+          "items": {
+            "type": "string"
+          }
+        },
+        "testing_approach": {
+          "type": "string",
+          "enum": ["TDD required", "Optional - integration only", "E2E only", "No tests"],
+          "description": "Testing strategy from spec"
+        }
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "properties": {
+        "total_tasks": {
+          "type": "integer"
+        },
+        "setup_tasks": {
+          "type": "integer"
+        },
+        "foundational_tasks": {
+          "type": "integer"
+        },
+        "story_tasks": {
+          "type": "integer"
+        },
+        "polish_tasks": {
+          "type": "integer"
+        },
+        "parallel_tasks": {
+          "type": "integer"
+        },
+        "test_tasks": {
+          "type": "integer"
+        },
+        "reuse_count": {
+          "type": "integer",
+          "description": "Number of existing modules identified for reuse"
+        }
+      }
+    }
+  }
+}

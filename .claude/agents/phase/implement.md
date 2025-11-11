@@ -93,49 +93,94 @@ n# Start timing for Batch 1
 start_sub_phase_timing "$FEATURE_DIR" "implement" "batch_1"
 ### Step 3: Execute Batches with Parallel Task() Calls
 
-**For each batch, launch parallel Task() calls in SINGLE message:**
+**Domain-to-Specialist Routing:**
+Map task domain to appropriate specialist agent:
+```javascript
+// Domain detection (from task description, files, or explicit tags)
+function getSpecialist(taskDescription, taskId) {
+  // backend: FastAPI, Python, PostgreSQL, API routes, models
+  if (taskDescription.match(/api|endpoint|fastapi|sqlalchemy|alembic|migration|model|\.py/i)) {
+    return "backend-dev";
+  }
+  // frontend: Next.js, React, Tailwind, components, pages
+  if (taskDescription.match(/component|page|ui|frontend|next\.js|react|tailwind|\.tsx|\.jsx/i)) {
+    return "frontend-shipper";
+  }
+  // database: schemas, migrations, queries
+  if (taskDescription.match(/schema|migration|database|query|index|constraint|\.sql/i)) {
+    return "database-architect";
+  }
+  // tests: fallback to backend (covers pytest, integration tests)
+  if (taskDescription.match(/test|spec|e2e|integration/i)) {
+    return "backend-dev";
+  }
+  // fallback: general-purpose for uncategorized tasks
+  return "general-purpose";
+}
+```
+
+**For each batch, launch parallel Task() calls in SINGLE message with specialist routing:**
 
 ```javascript
 // CRITICAL: All tasks in a batch MUST be in single message with multiple Task() calls
 
-// Batch 1 execution
+// Batch 1 execution (mixed domains → different specialists)
 Task({
-  subagent_type: "general-purpose",
+  subagent_type: "database-architect",  // ← Specialist routing
   description: "T001: Database schema",
-  prompt: `Implement task T001 from ${TASKS_FILE}:
+  prompt: `You are the database-architect specialist. Execute task T001 from ${TASKS_FILE}:
+
+1. Read full task description and acceptance criteria from ${TASKS_FILE}
+2. Follow your agent brief workflow (.claude/agents/implementation/database.md):
+   - Reversible migrations (up/down cycle)
+   - Data validation scripts
+   - Query profiling if needed
+3. Use task-tracker for atomic updates:
+   bash .spec-flow/scripts/bash/task-tracker.sh complete T001 "Migration created and validated"
+4. Log errors to ${ERROR_LOG} if any
+5. Return JSON: {task_id: "T001", status: "completed|failed", summary: "...", files_changed: [...], test_results: "..."}
+`
+})
+
+Task({
+  subagent_type: "backend-dev",  // ← Specialist routing
+  description: "T002: API routes setup",
+  prompt: `You are the backend-dev specialist. Execute task T002 from ${TASKS_FILE}:
 
 1. Read full task description from ${TASKS_FILE}
-2. Follow TDD workflow:
-   - Write failing test first
-   - Implement minimum code to pass
-   - Refactor
-3. Update ${NOTES_FILE} with:
-   - ✅ T001: [completion summary]
-   - Key decisions made
+2. Follow your agent brief TDD workflow (.claude/agents/implementation/backend.md):
+   - RED: Write failing pytest test
+   - GREEN: Implement minimum code to pass
+   - REFACTOR: Clean up with ruff/mypy validation
+   - Quality gates: ruff, mypy --strict, coverage ≥80%
+3. Use task-tracker for atomic updates:
+   bash .spec-flow/scripts/bash/task-tracker.sh complete T002 "API routes implemented with tests (coverage: 85%)"
 4. Log errors to ${ERROR_LOG} if any
-5. Return completion status: {task_id: "T001", status: "completed|failed", summary: "..."}
+5. Return JSON: {task_id: "T002", status: "completed|failed", summary: "...", files_changed: [...], test_results: "pytest: 12/12 passing"}
 `
 })
 
 Task({
-  subagent_type: "general-purpose",
-  description: "T002: API routes setup",
-  prompt: `Implement task T002 from ${TASKS_FILE}:
-[Same structure as above]
-`
-})
-
-Task({
-  subagent_type: "general-purpose",
+  subagent_type: "frontend-shipper",  // ← Specialist routing
   description: "T003: Frontend components setup",
-  prompt: `Implement task T003 from ${TASKS_FILE}:
-[Same structure as above]
+  prompt: `You are the frontend-shipper specialist. Execute task T003 from ${TASKS_FILE}:
+
+1. Read full task description from ${TASKS_FILE}
+2. Follow your agent brief TDD workflow (.claude/agents/implementation/frontend.md):
+   - RED: Write failing Jest/RTL test
+   - GREEN: Implement component to pass tests
+   - REFACTOR: Style with design tokens (style-guide.md, tokens.json)
+   - Quality gates: ESLint, TypeScript, Lighthouse ≥85, WCAG AA
+3. Use task-tracker for atomic updates:
+   bash .spec-flow/scripts/bash/task-tracker.sh complete T003 "Component implemented with a11y (WCAG score: 96)"
+4. Log errors to ${ERROR_LOG} if any
+5. Return JSON: {task_id: "T003", status: "completed|failed", summary: "...", files_changed: [...], test_results: "jest: 8/8 passing"}
 `
 })
 
 // Wait for all Batch 1 tasks to complete before proceeding to Batch 2
 // Check completion status of all tasks in batch
-// Verify NOTES.md updated with ✅ T001, ✅ T002, ✅ T003
+// Verify task-tracker updated tasks.md with ✅ T001, ✅ T002, ✅ T003
 ```
 
 **After each batch:**

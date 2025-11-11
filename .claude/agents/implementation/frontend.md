@@ -305,6 +305,100 @@ Only refactor when you see duplication:
 
 Do NOT refactor prematurely.
 
+## Task Tool Integration
+
+When invoked via Task() from `implement-phase-agent`, you are executing a single frontend task in parallel with other specialists (backend-dev, database-architect).
+
+**Inputs** (from Task() prompt):
+- Task ID (e.g., T007)
+- Task description and acceptance criteria
+- Feature directory path (e.g., specs/001-feature-slug)
+- Domain: "frontend" (Next.js, React, components, pages, Tailwind)
+
+**Workflow**:
+1. **Read task details** from `${FEATURE_DIR}/tasks.md`
+2. **Load selective context** from NOTES.md (<500 tokens):
+   ```bash
+   sed -n '/## Key Decisions/,/^## /p' ${FEATURE_DIR}/NOTES.md | head -20
+   sed -n '/## Blockers/,/^## /p' ${FEATURE_DIR}/NOTES.md | head -20
+   ```
+3. **Load design system context**:
+   - Read `docs/project/style-guide.md` (comprehensive UI/UX SST)
+   - Read `design/systems/tokens.json` (colors, typography, spacing)
+   - Read `design/systems/ui-inventory.md` (available shadcn/ui components)
+4. **Execute TDD workflow** (described above):
+   - RED: Write failing Jest/RTL test, commit
+   - GREEN: Implement component to pass, commit
+   - REFACTOR: Apply design tokens (OKLCH colors, 8pt grid), commit
+5. **Run quality gates**:
+   - ESLint (pnpm lint)
+   - TypeScript (pnpm type-check)
+   - Tests (pnpm test --coverage)
+   - Design lint (design-lint.js - 0 critical/errors)
+6. **Run performance gates**:
+   - Lighthouse ≥85 (Performance, Accessibility, Best Practices, SEO)
+   - Core Web Vitals (LCP <2.5s, FID <100ms, CLS <0.1)
+   - Bundle size <200kb for page chunks
+7. **Run accessibility gates**:
+   - WCAG 2.1 AA compliance
+   - axe-core violations ≥95 score
+   - Keyboard navigation functional
+8. **Update task-tracker** with completion:
+   ```bash
+   .spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
+     -TaskId "${TASK_ID}" \
+     -Notes "Implementation summary (1-2 sentences)" \
+     -Evidence "jest: NN/NN passing, Lighthouse: 92, WCAG score: 96" \
+     -Coverage "NN% line (+ΔΔ%)" \
+     -CommitHash "$(git rev-parse --short HEAD)" \
+     -FeatureDir "${FEATURE_DIR}"
+   ```
+9. **Return JSON** to implement-phase-agent:
+   ```json
+   {
+     "task_id": "T007",
+     "status": "completed",
+     "summary": "Implemented StudyProgressCard component with accessible progress indicator. Passes all quality/performance gates.",
+     "files_changed": ["components/StudyProgressCard.tsx", "components/StudyProgressCard.test.tsx"],
+     "test_results": "jest: 12/12 passing, coverage: 89% (+6%), Lighthouse: 92, WCAG: 96",
+     "commits": ["a1b2c3d", "e4f5g6h", "i7j8k9l"]
+   }
+   ```
+
+**On task failure** (tests fail, quality gates fail, a11y issues):
+```bash
+# Rollback uncommitted changes
+git restore .
+
+# Mark task failed with specific error
+.spec-flow/scripts/bash/task-tracker.sh mark-failed \
+  -TaskId "${TASK_ID}" \
+  -ErrorMessage "Detailed error: [jest output, ESLint errors, or axe violations]" \
+  -FeatureDir "${FEATURE_DIR}"
+```
+
+Return failure JSON:
+```json
+{
+  "task_id": "T007",
+  "status": "failed",
+  "summary": "Failed: WCAG AA violations (color contrast 3.2:1, need 4.5:1 minimum)",
+  "files_changed": [],
+  "test_results": "jest: 0/12 passing (component import failed)",
+  "blockers": ["axe-core: 12 violations (color-contrast, aria-required-children)"]
+}
+```
+
+**Critical rules**:
+- ✅ Always use task-tracker.sh for status updates (never manually edit tasks.md/NOTES.md)
+- ✅ Follow style-guide.md Core 9 Rules (line length, bullet icons, 8pt grid, OKLCH colors)
+- ✅ Use tokens from tokens.json (never hardcode hex/rgb/hsl colors)
+- ✅ Context-aware token mapping (brand for CTAs, neutral for structure, semantic for states)
+- ✅ Provide commit hash with completion (Git Workflow Enforcer blocks without it)
+- ✅ Return structured JSON for orchestrator parsing
+- ✅ Include specific evidence (test counts, Lighthouse scores, WCAG score, bundle size)
+- ✅ Rollback on failure before returning (leave clean state)
+
 ## API Integration
 
 Always define types BEFORE fetching:
