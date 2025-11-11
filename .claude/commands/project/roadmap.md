@@ -200,6 +200,14 @@ fi
 - `size:large` - Effort 4
 - `size:xl` - Effort 5
 
+**Epic Labels** (group related features):
+- `epic:<name>` - Groups features into larger initiatives
+- Example: `epic:aktr` for all AKTR-related features
+
+**Sprint Labels** (time-boxed iterations):
+- `sprint:S01` through `sprint:S12` - 2-week sprints (Week 1-24)
+- Used to organize epic features into deliverable iterations
+
 **Issue Frontmatter** (ICE scoring in YAML):
 ```yaml
 ---
@@ -212,6 +220,8 @@ metadata:
   area: app
   role: student
   slug: student-progress-widget
+  epic: aktr               # Optional: epic grouping
+  sprint: S01              # Optional: sprint assignment
 ---
 
 ## Problem
@@ -248,10 +258,16 @@ Add a progress widget...
 ### 1. ADD FEATURE
 
 **Parse natural language:**
-- Extract: title, area, role, requirements
+- Extract: title, area, role, requirements, epic (optional), sprint (optional)
 - Infer: Impact (1-5), Effort (1-5), Confidence (0-1)
 - Generate: URL-friendly slug (lowercase-with-hyphens, max 30 chars)
 - Calculate: ICE score (use SCORING defaults if unclear)
+
+**Epic/Sprint Organization** (optional):
+- `--epic <name>` - Assign feature to an epic (e.g., `--epic aktr`)
+- `--sprint <num>` - Assign feature to a sprint (e.g., `--sprint S01`)
+- If epic/sprint labels don't exist, they will be auto-created
+- Epic features can be worked on with `/feature epic:<name>` for intelligent sprint selection
 
 **Deduplicate:**
 - Check if slug exists in GitHub Issues via `get_issue_by_slug()`
@@ -379,7 +395,7 @@ $SOLUTION_DESCRIPTION
 
 $REQUIREMENTS_LIST"
 
-# Create issue
+# Create issue (without epic/sprint)
 create_roadmap_issue \
   "$TITLE" \
   "$BODY" \
@@ -390,6 +406,20 @@ create_roadmap_issue \
   "$ROLE" \
   "$SLUG" \
   "type:feature,status:backlog"
+
+# Create issue with epic and sprint
+create_roadmap_issue \
+  "$TITLE" \
+  "$BODY" \
+  "$IMPACT" \
+  "$EFFORT" \
+  "$CONFIDENCE" \
+  "$AREA" \
+  "$ROLE" \
+  "$SLUG" \
+  "type:feature,status:backlog" \
+  "aktr" \
+  "S01"
 ```
 
 **PowerShell:**
@@ -415,7 +445,7 @@ $solutionDescription
 $requirementsList
 "@
 
-# Create issue
+# Create issue (without epic/sprint)
 New-RoadmapIssue `
   -Title $title `
   -Body $body `
@@ -426,6 +456,20 @@ New-RoadmapIssue `
   -Role $role `
   -Slug $slug `
   -Labels "type:feature,status:backlog"
+
+# Create issue with epic and sprint
+New-RoadmapIssue `
+  -Title $title `
+  -Body $body `
+  -Impact $impact `
+  -Effort $effort `
+  -Confidence $confidence `
+  -Area $area `
+  -Role $role `
+  -Slug $slug `
+  -Labels "type:feature,status:backlog" `
+  -Epic "aktr" `
+  -Sprint "S01"
 ```
 
 **Auto-clarification (if `[CLARIFY]` found in requirements):**
@@ -833,6 +877,18 @@ gh issue list --repo "$(get_repo_info)" \
 ### 6. /feature HANDOFF
 
 **Parse**: "/feature [slug]" or "create spec for [slug]"
+
+**Epic/Sprint Modes:**
+- `/feature epic:<name>` - Auto-select next issue from epic (intelligent sprint detection)
+- `/feature epic:<name>:sprint:<num>` - Select from specific epic sprint
+- `/feature sprint:<num>` - Select from any epic in given sprint
+
+**Intelligent Sprint Selection** (for `/feature epic:<name>`):
+1. Fetches all issues with `epic:<name>` label
+2. Detects incomplete sprints (has issues not shipped/blocked)
+3. Selects first incomplete sprint automatically
+4. If no sprints exist, auto-creates `sprint:S01` and assigns all epic issues
+5. Picks highest priority available issue from selected sprint
 
 **Execute:**
 
