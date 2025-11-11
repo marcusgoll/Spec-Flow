@@ -44,6 +44,19 @@
 
 ## 🆕 Recent Updates
 
+### v4.4.0 (November 2025)
+
+**v2.0 Command Refactor Complete** (11/46 commands - 24%)
+
+- Refactored 6 major commands to v2.0 pattern (/spec, /clarify, /plan, /tasks, /implement, /optimize)
+- Fixed PowerShell and Bash script CI failures
+- Consolidated bash sections (15+ blocks → 1 unified script per command)
+- Added strict error handling (`set -Eeuo pipefail`, error traps)
+- Implemented tool preflight checks with install URLs
+- Deterministic repo root detection
+- Actionable error messages with "Fix:" instructions
+
+
 ### v4.3.0 (November 2025)
 **Epic & Sprint Roadmap System** - Comprehensive parallel epic workflow with trunk-based development
 

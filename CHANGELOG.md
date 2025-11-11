@@ -1,4 +1,13 @@
 
+## [4.4.0] - 2025-11-11
+
+### Changed
+- Version bump to 4.4.0
+
+<!-- Add detailed release notes here -->
+
+---
+
 ## [4.3.1] - 2025-11-10
 
 ### 🐛 Bug Fix - Package Fix
