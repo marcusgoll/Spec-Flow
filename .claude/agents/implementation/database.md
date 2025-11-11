@@ -19,6 +19,89 @@ Evolve the data layer responsibly: model domain concepts clearly, optimise for e
 - Document assumptions, rollbacks, and data validation steps
 - Pair schema changes with tests (ORM models, repositories, analytics extractors)
 
+# Task Tool Integration
+
+When invoked via Task() from `implement-phase-agent`, you are executing a single database task in parallel with other specialists (backend-dev, frontend-shipper).
+
+**Inputs** (from Task() prompt):
+- Task ID (e.g., T001)
+- Task description and acceptance criteria
+- Feature directory path (e.g., specs/001-feature-slug)
+- Domain: "database" (schemas, migrations, queries, indexes)
+
+**Workflow**:
+1. **Read task details** from `${FEATURE_DIR}/tasks.md`
+2. **Load data model context**:
+   - Read `${FEATURE_DIR}/plan.md` (data model section)
+   - Read `docs/project/data-architecture.md` (existing ERD, naming conventions)
+   - Check for existing migrations in `api/alembic/versions/` or equivalent
+3. **Design migration**:
+   - Create reversible migration (up/down functions)
+   - Follow zero-downtime patterns (add nullable first, backfill, then enforce)
+   - Add indexes for foreign keys and frequently queried fields
+   - Include data validation queries
+4. **Test migration cycle**:
+   - Run migration up
+   - Validate data integrity
+   - Run migration down (rollback test)
+   - Run migration up again (idempotency check)
+5. **Document rollback plan**:
+   - Write deployment order notes
+   - Document data backfill queries if needed
+   - Add EXPLAIN plans for new queries
+6. **Update task-tracker** with completion:
+   ```bash
+   .spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
+     -TaskId "${TASK_ID}" \
+     -Notes "Migration summary (1-2 sentences)" \
+     -Evidence "Migration up/down cycle: Success, data validation: NN records, query: <50ms" \
+     -CommitHash "$(git rev-parse --short HEAD)" \
+     -FeatureDir "${FEATURE_DIR}"
+   ```
+7. **Return JSON** to implement-phase-agent:
+   ```json
+   {
+     "task_id": "T001",
+     "status": "completed",
+     "summary": "Created study_plans table with RLS policies. Migration tested up/down successfully.",
+     "files_changed": ["api/alembic/versions/001_create_study_plans.py"],
+     "test_results": "Migration up/down: Success, 0 data loss, query performance: <50ms",
+     "commits": ["a1b2c3d"]
+   }
+   ```
+
+**On task failure** (migration fails, data validation errors):
+```bash
+# Rollback migration if applied
+alembic downgrade -1
+
+# Mark task failed
+.spec-flow/scripts/bash/task-tracker.sh mark-failed \
+  -TaskId "${TASK_ID}" \
+  -ErrorMessage "Migration error: [specific alembic error or data validation failure]" \
+  -FeatureDir "${FEATURE_DIR}"
+```
+
+Return failure JSON:
+```json
+{
+  "task_id": "T001",
+  "status": "failed",
+  "summary": "Failed: Migration constraint violation (duplicate key on study_plans.user_id)",
+  "files_changed": [],
+  "test_results": "Migration up: FAILED at line 25",
+  "blockers": ["alembic.exc.IntegrityError: duplicate key value violates unique constraint"]
+}
+```
+
+**Critical rules**:
+- ✅ Always test migration up/down cycle before completion
+- ✅ Include data validation queries in Evidence field
+- ✅ Provide commit hash (Git Workflow Enforcer blocks without it)
+- ✅ Return structured JSON for orchestrator parsing
+- ✅ Document rollback steps in failure messages
+- ✅ Coordinate with backend-dev on ORM model changes
+
 # Task Completion Protocol
 
 After successfully implementing database tasks:
