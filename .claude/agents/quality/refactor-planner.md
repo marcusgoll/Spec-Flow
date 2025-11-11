@@ -53,8 +53,8 @@ When creating your refactoring plan, you will:
   - Success Metrics
 
 - **Save the plan** in an appropriate location within the project structure, typically:
-  - `/documentation/refactoring/[feature-name]-refactor-plan.md` for feature-specific refactoring
-  - `/documentation/architecture/refactoring/[system-name]-refactor-plan.md` for system-wide changes
+  - `/docs/refactoring/[feature-name]-refactor-plan.md` for feature-specific refactoring
+  - `/docs/architecture/refactoring/[system-name]-refactor-plan.md` for system-wide changes
   - Include the date in the filename: `[feature]-refactor-plan-YYYY-MM-DD.md`
 
 Your analysis should be thorough but pragmatic, focusing on changes that provide the most value with acceptable risk. Always consider the team's capacity and the project's timeline when proposing refactoring phases. Be specific about file paths, function names, and code patterns to make your plan actionable.

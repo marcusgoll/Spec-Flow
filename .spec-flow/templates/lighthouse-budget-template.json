@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Lighthouse Performance Budget Template",
+  "description": "Performance budgets enforced via Lighthouse CI. Updated during /plan phase based on project scale tier and requirements.",
+
+  "lighthouse": {
+    "performance": 85,
+    "accessibility": 95,
+    "best-practices": 90,
+    "seo": 90,
+    "pwa": 0
+  },
+
+  "timings": {
+    "fcp": 1500,
+    "lcp": 2500,
+    "tti": 3000,
+    "tbt": 200,
+    "cls": 0.1,
+    "si": 3000
+  },
+
+  "resourceSizes": {
+    "total": 300000,
+    "script": 150000,
+    "stylesheet": 50000,
+    "image": 100000,
+    "font": 50000,
+    "document": 50000,
+    "other": 50000,
+    "media": 100000,
+    "third-party": 100000
+  },
+
+  "resourceCounts": {
+    "total": 50,
+    "script": 15,
+    "stylesheet": 10,
+    "image": 20,
+    "font": 5,
+    "document": 1,
+    "other": 10,
+    "third-party": 15
+  },
+
+  "api": {
+    "response_time_p50_ms": 100,
+    "response_time_p95_ms": 200,
+    "response_time_p99_ms": 400,
+    "throughput_rps": 100,
+    "error_rate_percent": 0.1
+  },
+
+  "metadata": {
+    "generated_at": "YYYY-MM-DDTHH:MM:SSZ",
+    "commit": "xxxxxxx",
+    "feature": "feature-slug",
+    "scale_tier": "micro|small|medium|large",
+    "enforcement": "blocking|warning|informational",
+    "version": "1.0.0"
+  },
+
+  "_documentation": {
+    "lighthouse_scores": {
+      "performance": "Lighthouse performance score (0-100). Recommended: ≥85 for production",
+      "accessibility": "WCAG compliance score (0-100). Recommended: ≥95 for AA compliance",
+      "best-practices": "Security and best practices score (0-100). Recommended: ≥90",
+      "seo": "SEO optimization score (0-100). Recommended: ≥90 for public sites",
+      "pwa": "Progressive Web App score (0-100). Set to 0 if not a PWA"
+    },
+
+    "timings_ms": {
+      "fcp": "First Contentful Paint - time to first text/image (ms). Target: <1500ms",
+      "lcp": "Largest Contentful Paint - time to largest content (ms). Target: <2500ms",
+      "tti": "Time to Interactive - time until page is fully interactive (ms). Target: <3000ms",
+      "tbt": "Total Blocking Time - total time main thread is blocked (ms). Target: <200ms",
+      "cls": "Cumulative Layout Shift - visual stability (unitless). Target: <0.1",
+      "si": "Speed Index - how quickly content is visually displayed (ms). Target: <3000ms"
+    },
+
+    "resource_sizes_bytes": {
+      "total": "Total page weight (bytes). Target: <300KB for good performance",
+      "script": "JavaScript bundle size (bytes). Target: <150KB",
+      "stylesheet": "CSS bundle size (bytes). Target: <50KB",
+      "image": "Total image size (bytes). Target: <100KB (use WebP, lazy loading)",
+      "font": "Web font size (bytes). Target: <50KB (subset fonts, use font-display)",
+      "document": "HTML document size (bytes). Target: <50KB",
+      "other": "Other resources (SVG, JSON, etc.) in bytes. Target: <50KB",
+      "media": "Video/audio resources (bytes). Target: <100KB",
+      "third-party": "Third-party scripts (analytics, ads) in bytes. Target: <100KB"
+    },
+
+    "resource_counts": {
+      "total": "Total number of resources. Target: <50",
+      "script": "Number of JavaScript files. Target: <15 (bundle and split strategically)",
+      "stylesheet": "Number of CSS files. Target: <10",
+      "image": "Number of images. Target: <20 (use sprites, lazy loading)",
+      "font": "Number of font files. Target: <5",
+      "document": "Number of HTML documents. Target: 1",
+      "other": "Number of other resources. Target: <10",
+      "third-party": "Number of third-party requests. Target: <15"
+    },
+
+    "api_performance": {
+      "response_time_p50_ms": "Median API response time (ms). Target: <100ms",
+      "response_time_p95_ms": "95th percentile response time (ms). Target: <200ms",
+      "response_time_p99_ms": "99th percentile response time (ms). Target: <400ms",
+      "throughput_rps": "Requests per second capacity. Adjust based on scale tier",
+      "error_rate_percent": "Acceptable error rate (%). Target: <0.1%"
+    },
+
+    "scale_tier_guidelines": {
+      "micro": {
+        "users": "<100",
+        "api_p95_ms": 200,
+        "page_weight_kb": 300,
+        "rps": 10
+      },
+      "small": {
+        "users": "100-1K",
+        "api_p95_ms": 150,
+        "page_weight_kb": 250,
+        "rps": 50
+      },
+      "medium": {
+        "users": "1K-10K",
+        "api_p95_ms": 100,
+        "page_weight_kb": 200,
+        "rps": 100
+      },
+      "large": {
+        "users": "10K+",
+        "api_p95_ms": 50,
+        "page_weight_kb": 150,
+        "rps": 500
+      }
+    },
+
+    "enforcement_modes": {
+      "blocking": "CI fails if budgets exceeded. Use for production deployments",
+      "warning": "CI warns but passes if budgets exceeded. Use during development",
+      "informational": "CI reports budgets but never fails. Use for experimentation"
+    },
+
+    "usage_lighthouse_ci": {
+      "install": "npm install -g @lhci/cli",
+      "run": "lhci autorun --budgets-file=specs/NNN-slug/budgets.json",
+      "config": "Add lighthouserc.json to repo root with assertions",
+      "ci_integration": "Add to .github/workflows/verify.yml before deployment"
+    },
+
+    "usage_curl_api": {
+      "measure_p95": "Use wrk or k6 for load testing: k6 run --vus 10 --duration 30s load-test.js",
+      "format_file": "Create curl-format.txt with: time_total=%{time_total}\\n",
+      "command": "curl -w '@curl-format.txt' -o /dev/null -s http://localhost:8000/api/v1/endpoint"
+    },
+
+    "references": {
+      "web_vitals": "https://web.dev/vitals/",
+      "lighthouse_scoring": "https://web.dev/performance-scoring/",
+      "lighthouse_budgets": "https://web.dev/performance-budgets-101/",
+      "rfc_7807": "https://tools.ietf.org/html/rfc7807",
+      "budget_calculator": "https://www.performancebudget.io/"
+    }
+  }
+}
