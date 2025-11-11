@@ -30,8 +30,34 @@ internal: true
 **Purpose**: Final safety checks before production deployment
 
 ```bash
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# Error trap to ensure proper cleanup on failure
+on_error() {
+  echo "⚠️  Error in /deploy-prod. Marking phase as failed."
+  complete_phase_timing "$FEATURE_DIR" "ship:deploy-prod" 2>/dev/null || true
+  update_workflow_phase "$FEATURE_DIR" "ship:deploy-prod" "failed" 2>/dev/null || true
+}
+trap on_error ERR
+
+# Always start at repo root
+cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+# Tool preflight checks
+need() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "❌ Missing required tool: $1"
+    echo "   Install via: brew install $1  # or appropriate package manager"
+    exit 1
+  }
+}
+
+need git
+need yq
+need jq
+need gh
+need curl
 
 # Source state management functions
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
@@ -41,7 +67,7 @@ else
 fi
 
 # Find feature directory
-FEATURE_DIR=$(ls -td specs/*/ | head -1)
+FEATURE_DIR=$(ls -td specs/*/ 2>/dev/null | head -1)
 STATE_FILE="$FEATURE_DIR/workflow-state.yaml"
 
 if [ ! -f "$STATE_FILE" ]; then
@@ -51,7 +77,7 @@ fi
 
 # Update phase
 update_workflow_phase "$FEATURE_DIR" "ship:deploy-prod" "in_progress"
-n# Start timing for deploy-prod phase
+# Start timing for deploy-prod phase
 start_phase_timing "$FEATURE_DIR" "ship:deploy-prod"
 
 echo "🚀 Direct Production Deployment"
@@ -93,12 +119,26 @@ else
 fi
 
 # Check 4: Production workflow exists
-if [ ! -f ".github/workflows/deploy-production.yml" ] && [ ! -f ".github/workflows/deploy.yml" ]; then
+PROD_WORKFLOW=""
+if [ -f ".github/workflows/deploy-production.yml" ]; then
+  PROD_WORKFLOW="deploy-production.yml"
+elif [ -f ".github/workflows/deploy.yml" ]; then
+  PROD_WORKFLOW="deploy.yml"
+else
   echo "❌ No production deployment workflow found"
   echo "   Expected: .github/workflows/deploy-production.yml or .github/workflows/deploy.yml"
   CHECKS_PASSED=false
-else
-  echo "✅ Production workflow found"
+fi
+
+# Check 5: Workflow has workflow_dispatch trigger
+if [ -n "$PROD_WORKFLOW" ]; then
+  if ! grep -q "workflow_dispatch:" ".github/workflows/$PROD_WORKFLOW"; then
+    echo "❌ Workflow missing 'on: workflow_dispatch' trigger"
+    echo "   Required for manual deployment via gh CLI"
+    CHECKS_PASSED=false
+  else
+    echo "✅ Production workflow found with dispatch trigger"
+  fi
 fi
 
 echo ""
@@ -118,6 +158,14 @@ echo ""
 - Optimization not complete
 - Preview not approved
 - No production workflow file
+- Workflow missing `workflow_dispatch` trigger
+
+**Changes from v1.x**:
+- ✅ Added strict bash mode (`set -Eeuo pipefail`)
+- ✅ Added error trap for cleanup
+- ✅ Added tool preflight checks
+- ✅ Fixed typo on line 54 (`n#` → `#`)
+- ✅ Added workflow_dispatch verification
 
 ---
 
@@ -130,17 +178,6 @@ echo "🔧 Phase DP.2: Trigger Production Deployment"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Determine production workflow file
-PROD_WORKFLOW=""
-if [ -f ".github/workflows/deploy-production.yml" ]; then
-  PROD_WORKFLOW="deploy-production.yml"
-elif [ -f ".github/workflows/deploy.yml" ]; then
-  PROD_WORKFLOW="deploy.yml"
-else
-  echo "❌ No production workflow found"
-  exit 1
-fi
-
 echo "Production workflow: $PROD_WORKFLOW"
 echo ""
 
@@ -148,28 +185,18 @@ echo ""
 CURRENT_BRANCH=$(git branch --show-current)
 echo "Current branch: $CURRENT_BRANCH"
 
-# Check if we need to push
+# Fail fast if uncommitted changes detected (non-interactive)
 if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "⚠️  Uncommitted changes detected"
+  echo "❌ Uncommitted changes detected"
   echo ""
-  read -p "Commit changes before deployment? (yes/no): " SHOULD_COMMIT
-
-  if [ "$SHOULD_COMMIT" = "yes" ]; then
-    echo ""
-    echo "Creating deployment commit..."
-
-    git add .
-    git commit -m "chore: prepare for production deployment
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-
-    echo "✅ Changes committed"
-  else
-    echo "❌ Cannot deploy with uncommitted changes"
-    exit 1
-  fi
+  echo "Production deployments must be from a clean working tree."
+  echo ""
+  echo "Fix options:"
+  echo "  1. Commit changes: git add . && git commit -m 'chore: prepare for deployment'"
+  echo "  2. Stash changes: git stash"
+  echo "  3. Discard changes: git restore ."
+  echo ""
+  exit 1
 fi
 
 # Push to remote if needed
@@ -224,9 +251,15 @@ echo ""
 
 **Actions**:
 1. Detect production workflow file
-2. Commit and push any pending changes
-3. Trigger GitHub Actions workflow
-4. Record run ID for monitoring
+2. **Fail fast** if uncommitted changes (non-interactive)
+3. Push to remote if needed
+4. Trigger GitHub Actions workflow
+5. Record run ID for monitoring
+
+**Changes from v1.x**:
+- ✅ Removed interactive `read -p "Commit changes?"` prompt
+- ✅ Fail fast with actionable error messages
+- ✅ CI-safe (no human intervention required)
 
 ---
 
@@ -272,14 +305,55 @@ After fixing the issue, retry with:
 /ship continue
 \`\`\`
 
-## Manual Rollback
+## Manual Rollback (Platform-Specific)
 
 If the deployment partially succeeded and broke production:
 
-1. Check previous deployment ID (if available)
-2. Use your deployment platform's rollback feature
-3. For Vercel: \`vercel alias set <previous-id> <production-url>\`
-4. For Railway/other: Use platform's UI or CLI
+### Vercel Rollback
+
+1. **Find previous deployment ID**:
+   \`\`\`bash
+   vercel ls --token=\$VERCEL_TOKEN
+   \`\`\`
+
+2. **Alias previous deployment to production URL**:
+   \`\`\`bash
+   vercel alias set <previous-deployment-id> <production-url> --token=\$VERCEL_TOKEN
+   # Example: vercel alias set app-abc123.vercel.app myapp.com --token=\$VERCEL_TOKEN
+   \`\`\`
+
+### Railway Rollback
+
+1. Go to Railway dashboard: https://railway.app
+2. Select your project
+3. Click "Deployments" tab
+4. Select previous successful deployment
+5. Click "Redeploy" button
+
+### Netlify Rollback
+
+1. **Find previous deployment ID**:
+   \`\`\`bash
+   netlify sites:list
+   netlify deploys:list --site=<site-id>
+   \`\`\`
+
+2. **Restore previous deployment**:
+   \`\`\`bash
+   netlify deploy:restore <previous-deploy-id> --site=<site-id>
+   \`\`\`
+
+### Git-Based Rollback (Universal)
+
+\`\`\`bash
+# Revert the git commit (safe, creates new commit)
+git revert $(git rev-parse HEAD)
+git push
+
+# OR reset to previous commit (destructive, rewrites history)
+git reset --hard HEAD~1
+git push --force
+\`\`\`
 
 ## Debug Workflow
 
@@ -292,6 +366,9 @@ cat .github/workflows/$PROD_WORKFLOW
 
 # Verify environment secrets
 gh secret list
+
+# Check environment variables in GitHub Actions
+gh variable list
 \`\`\`
 EOF
 
@@ -307,8 +384,14 @@ echo ""
 **Monitoring**:
 - Live output from GitHub Actions
 - Automatic failure detection
-- Failure report generation with debug commands
+- Failure report generation with platform-specific rollback instructions
 - Exit on deployment failure
+
+**Changes from v1.x**:
+- ✅ Added concrete Vercel rollback commands
+- ✅ Added concrete Railway rollback steps
+- ✅ Added concrete Netlify rollback commands
+- ✅ Added git-based universal rollback
 
 ---
 
@@ -367,7 +450,7 @@ fi
 if [ -z "$MARKETING_ID" ] && [ -z "$APP_ID" ] && [ -z "$API_IMAGE" ] && [ -z "$RAILWAY_ID" ] && [ -z "$NETLIFY_ID" ]; then
   echo ""
   echo "⚠️  WARNING: Could not extract deployment IDs from logs"
-  echo "   Rollback may not be possible without manual ID lookup"
+  echo "   Rollback may require manual ID lookup"
   echo ""
   echo "Check logs manually: gh run view $PROD_RUN --log"
   echo ""
@@ -613,6 +696,9 @@ If issues arise, rollback using the deployment IDs above.
 ### Vercel Rollback
 
 \`\`\`bash
+# Find previous deployments
+vercel ls --token=\$VERCEL_TOKEN
+
 # Rollback app to previous deployment
 vercel alias set <previous-deployment-id> <production-url> --token=\$VERCEL_TOKEN
 
@@ -622,21 +708,32 @@ vercel alias set <previous-deployment-id> <production-url> --token=\$VERCEL_TOKE
 
 ### Railway Rollback
 
-1. Go to Railway dashboard
+1. Go to Railway dashboard: https://railway.app
 2. Select your project
-3. Click "Deployments"
-4. Select previous deployment and click "Redeploy"
+3. Click "Deployments" tab
+4. Select previous successful deployment
+5. Click "Redeploy" button
 
-### Manual Rollback
+### Netlify Rollback
 
 \`\`\`bash
-# Revert the git commit
+# Find previous deployments
+netlify sites:list
+netlify deploys:list --site=<site-id>
+
+# Restore previous deployment
+netlify deploy:restore <previous-deploy-id> --site=<site-id>
+\`\`\`
+
+### Git-Based Rollback (Universal)
+
+\`\`\`bash
+# Revert the git commit (safe, creates new commit)
 git revert $(git rev-parse HEAD)
+git push
 
-# Or reset to previous commit (WARNING: destructive)
+# OR reset to previous commit (destructive, rewrites history)
 git reset --hard HEAD~1
-
-# Force push (if necessary)
 git push --force
 \`\`\`
 
@@ -666,7 +763,7 @@ EOF
 
 echo "📄 Production report created: $FEATURE_DIR/production-ship-report.md"
 echo ""
-n# Complete timing for deploy-prod phase
+# Complete timing for deploy-prod phase
 complete_phase_timing "$FEATURE_DIR" "ship:deploy-prod"
 
 # Update workflow state
@@ -723,7 +820,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 - Production URL
 - Deployment IDs for rollback
 - Health check results
-- Rollback instructions for multiple platforms
+- **Platform-specific rollback instructions** (Vercel, Railway, Netlify, Git)
 - Post-deployment task checklist
 - Links to all artifacts
 
@@ -731,6 +828,13 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 - Mark `ship:deploy-prod` as completed
 - Store production URL
 - Record deployment timestamp
+
+**Changes from v1.x**:
+- ✅ Added concrete Vercel rollback commands with examples
+- ✅ Added step-by-step Railway rollback instructions
+- ✅ Added Netlify rollback commands
+- ✅ Added git-based universal rollback
+- ✅ Fixed typo on line 669 (`n#` → `#`)
 
 ---
 
@@ -774,7 +878,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 **Recovery Steps**:
 - Fix the issue causing failure
 - Run `/ship continue` to retry
-- If production is broken, use manual rollback instructions
+- If production is broken, use platform-specific rollback instructions from the failure report
 - Check workflow logs for detailed error messages
 
 ---
@@ -798,6 +902,6 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 - **Best for**: Simple applications, solo developers, rapid iteration
 - **Rollback**: Critical to extract and store deployment IDs
 - **Monitoring**: Manual monitoring more important without staging gate
-- **Recovery**: Document manual rollback procedures if IDs not extracted
+- **Recovery**: Platform-specific rollback procedures documented in failure report
 
 This command is automatically called by `/ship` when deployment model is `direct-prod`.
