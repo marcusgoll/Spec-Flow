@@ -31,7 +31,7 @@ All commands can be invoked via `/command-name` in Claude Code. Each command is 
 | `/spec` | Create feature specification from natural language | ✅ Stable | v2.0 | ✅ Done |
 | `/clarify` | Reduce spec ambiguity via targeted questions | ✅ Stable | v2.0 | ✅ Done |
 | `/plan` | Generate design artifacts from feature spec | ✅ Stable | v2.0 | ✅ Done |
-| `/tasks` | Generate concrete TDD tasks from design artifacts | ✅ Stable | - | ⏳ Needs v2.0 |
+| `/tasks` | Generate concrete TDD tasks from design artifacts | ✅ Stable | v2.0 | ✅ Done |
 | `/implement` | Execute tasks with TDD, anti-duplication checks | ✅ Stable | - | ⏳ Needs v2.0 |
 | `/validate` | Cross-artifact consistency analysis | ✅ Stable | - | ⏳ Needs v2.0 |
 | `/optimize` | Production readiness validation (perf, security, a11y) | ✅ Stable | v2.0 | ✅ Done |
@@ -178,6 +178,7 @@ Commands marked "Needs v2.0" should be refactored to include:
 - ✅ `/fix-ci` - Verified GitHub CLI commands, correct tool flags, generic quota handling
 - ✅ `/spec` - Consolidated bash (15 blocks → 1), error trap with rollback, tool checks
 - ✅ `/plan` - Consolidated bash (9 blocks → 1), removed interactive prompts, project docs mandatory
+- ✅ `/tasks` - Consolidated bash sections, anti-hallucination rules, task organization by user stories
 
 ---
 
@@ -378,5 +379,5 @@ internal: true  # Optional: mark as internal-only
 ---
 
 **Last Updated**: 2025-11-10
-**Commands**: 46 total (9 refactored to v2.0, 37 pending)
-**Next Priority**: Refactor phase commands (`/tasks`, `/implement`)
+**Commands**: 46 total (10 refactored to v2.0, 36 pending)
+**Next Priority**: Refactor phase commands (`/implement`, `/validate`)

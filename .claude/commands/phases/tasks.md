@@ -1,7 +1,29 @@
----description: Generate concrete TDD tasks from design artifacts (no generic placeholders)
+---
+description: Generate concrete TDD tasks from design artifacts (no generic placeholders)
 ---
 
 Create tasks from: specs/$SLUG/plan.md
+
+<context>
+## MENTAL MODEL
+
+**Workflow**: spec → clarify → plan → tasks → implement → optimize → preview → ship
+
+**State machine**: Load design artifacts → Extract user stories → Map to tasks → Generate by story priority
+
+**Philosophy**:
+- **Traceable**: Every task links to exact source lines in plan/spec
+- **Deterministic**: Same inputs always produce same outputs
+- **Verifiable**: All paths checked via git, all sections checked via grep
+- **User story organization**: One phase per story for clear progress tracking
+
+**Auto-suggest**: When complete → `/validate`
+
+**Prerequisites**:
+- Git repository
+- jq installed (JSON parsing)
+- Feature spec and plan completed (spec.md, plan.md exist)
+</context>
 
 <constraints>
 ## ANTI-HALLUCINATION RULES
@@ -64,11 +86,58 @@ Let me analyze this task structure:
 </constraints>
 
 <instructions>
-## LOAD FEATURE
+## UNIFIED TASK GENERATION SCRIPT
 
-**Get feature from argument or current branch:**
+**Execute complete task generation workflow in one unified script:**
 
 ```bash
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ERROR TRAP
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+on_error() {
+  echo "⚠️  Error in /tasks. Cleaning up."
+  exit 1
+}
+trap on_error ERR
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# TOOL PREFLIGHT CHECKS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+need() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "❌ Missing required tool: $1"
+    echo ""
+    case "$1" in
+      git)
+        echo "Install: https://git-scm.com/downloads"
+        ;;
+      jq)
+        echo "Install: brew install jq (macOS) or apt install jq (Linux)"
+        echo "         https://stedolan.github.io/jq/download/"
+        ;;
+      *)
+        echo "Check documentation for installation"
+        ;;
+    esac
+    exit 1
+  }
+}
+
+need git
+need jq
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SETUP - Deterministic repo root
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cd "$(git rev-parse --show-toplevel)"
+
+# Get feature from argument or current branch
 if [ -n "$ARGUMENTS" ]; then
   SLUG="$ARGUMENTS"
 else
@@ -78,112 +147,267 @@ fi
 FEATURE_DIR="specs/$SLUG"
 PLAN_FILE="$FEATURE_DIR/plan.md"
 SPEC_FILE="$FEATURE_DIR/spec.md"
-```
+TASKS_FILE="$FEATURE_DIR/tasks.md"
 
-**Validate feature exists:**
-```bash
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# VALIDATE FEATURE EXISTS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 if [ ! -d "$FEATURE_DIR" ]; then
   echo "❌ Feature not found: $FEATURE_DIR"
+  echo ""
+  echo "Fix: Run /spec to create feature first"
+  echo "     Or provide correct feature slug: /tasks <slug>"
   exit 1
 fi
-```
 
-**Validate required files:**
-```bash
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# VALIDATE REQUIRED FILES
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 if [ ! -f "$PLAN_FILE" ]; then
   echo "❌ Missing: $PLAN_FILE"
-  echo "Run /plan first"
+  echo ""
+  echo "Fix: Run /plan first to generate implementation plan"
   exit 1
 fi
 
 if [ ! -f "$SPEC_FILE" ]; then
   echo "❌ Missing: $SPEC_FILE"
-  echo "Run /specify first"
+  echo ""
+  echo "Fix: Run /spec first to create feature specification"
   exit 1
 fi
-```
 
-## MENTAL MODEL
+echo "Feature: $SLUG"
+echo "Plan: $PLAN_FILE"
+echo "Spec: $SPEC_FILE"
+echo ""
 
-**Workflow**: spec-flow → clarify → plan → tasks → analyze → implement → optimize → debug → preview → phase-1-ship → validate-staging → phase-2-ship
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# LOAD DESIGN ARTIFACTS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**State machine:**
-- Load design artifacts → Extract user stories → Map to tasks → Generate by story priority
-
-**Auto-suggest:**
-- When complete → `/analyze`
-
-## LOAD DESIGN ARTIFACTS
-
-**Required files:**
-```bash
-PLAN_FILE="$FEATURE_DIR/plan.md"
-SPEC_FILE="$FEATURE_DIR/spec.md"
-```
-
-**Optional files:**
-```bash
+# Optional files
 DATA_MODEL="$FEATURE_DIR/data-model.md"
 CONTRACTS_DIR="$FEATURE_DIR/contracts"
 RESEARCH="$FEATURE_DIR/research.md"
 VISUALS="$FEATURE_DIR/visuals/README.md"
 ERROR_LOG="$FEATURE_DIR/error-log.md"
-```
 
-**Extract from plan.md:**
-```bash
-ARCHITECTURE=$(sed -n '/## \[ARCHITECTURE DECISIONS\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-EXISTING_REUSE=$(sed -n '/## \[EXISTING INFRASTRUCTURE - REUSE\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-NEW_CREATE=$(sed -n '/## \[NEW INFRASTRUCTURE - CREATE\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-SCHEMA=$(sed -n '/## \[SCHEMA\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-CI_CD_IMPACT=$(sed -n '/## \[CI\/CD IMPACT\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-DEPLOYMENT=$(sed -n '/## \[DEPLOYMENT ACCEPTANCE\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-```
+# Extract sections from plan.md
+echo "Loading design artifacts from plan.md..."
 
-**Extract user stories from spec.md:**
-```bash
-# Parse user stories with priorities (P1, P2, P3...)
-# Example: "As a user, I want to... [P1]"
-USER_STORIES=$(grep -E "^(As a|As an)" "$SPEC_FILE" | sed 's/\[P\([0-9]\)\]/@PRIORITY:\1/')
-```
+# Claude Code extracts key sections here:
+# ARCHITECTURE=$(sed -n '/## \[ARCHITECTURE DECISIONS\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
+# EXISTING_REUSE=$(sed -n '/## \[EXISTING INFRASTRUCTURE - REUSE\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
+# NEW_CREATE=$(sed -n '/## \[NEW INFRASTRUCTURE - CREATE\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
+# SCHEMA=$(sed -n '/## \[SCHEMA\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
+# CI_CD_IMPACT=$(sed -n '/## \[CI\/CD IMPACT\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
+# DEPLOYMENT=$(sed -n '/## \[DEPLOYMENT ACCEPTANCE\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
 
-**Check for polished UI designs:**
-```bash
-POLISHED_SCREENS=$(find apps/web/mock/$SLUG -path "*/polished/page.tsx" 2>/dev/null)
+# Extract user stories from spec.md
+# USER_STORIES=$(grep -E "^(As a|As an)" "$SPEC_FILE" | sed 's/\[P\([0-9]\)\]/@PRIORITY:\1/')
+
+echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CHECK FOR POLISHED UI DESIGNS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+POLISHED_SCREENS=$(find apps/web/mock/$SLUG -path "*/polished/page.tsx" 2>/dev/null || echo "")
 if [ -n "$POLISHED_SCREENS" ]; then
   HAS_UI_DESIGN=true
   UI_SCREEN_COUNT=$(echo "$POLISHED_SCREENS" | wc -l)
+  echo "✅ Found $UI_SCREEN_COUNT polished UI designs"
 else
   HAS_UI_DESIGN=false
+  echo "ℹ️  No polished UI designs found (backend/API feature)"
 fi
-```
 
-## SCAN CODEBASE FOR REUSE
+echo ""
 
-**Find existing patterns to follow:**
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SCAN CODEBASE FOR REUSE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-```bash
+echo "🔍 Scanning codebase for reuse patterns..."
+
 # Scan for models
-EXISTING_MODELS=$(find . -path "*/models/*.py" -o -path "*/models/*.ts" 2>/dev/null | head -20)
+EXISTING_MODELS=$(find . -path "*/models/*.py" -o -path "*/models/*.ts" 2>/dev/null | head -20 || echo "")
 
 # Scan for services
-EXISTING_SERVICES=$(find . -path "*/services/*.py" -o -path "*/services/*.ts" 2>/dev/null | head -20)
+EXISTING_SERVICES=$(find . -path "*/services/*.py" -o -path "*/services/*.ts" 2>/dev/null | head -20 || echo "")
 
 # Scan for endpoints
-EXISTING_ENDPOINTS=$(find . -path "*/routes/*.py" -o -path "*/api/*.ts" 2>/dev/null | head -20)
+EXISTING_ENDPOINTS=$(find . -path "*/routes/*.py" -o -path "*/api/*.ts" 2>/dev/null | head -20 || echo "")
 
 # Scan for UI components
-EXISTING_COMPONENTS=$(find . -path "*/components/*.tsx" -o -path "*/components/*.jsx" 2>/dev/null | head -20)
+EXISTING_COMPONENTS=$(find . -path "*/components/*.tsx" -o -path "*/components/*.jsx" 2>/dev/null | head -20 || echo "")
 
-# Document REUSE opportunities
-echo "[CODEBASE REUSE ANALYSIS]"
-echo "Scanned: $(pwd)"
+echo "✅ Codebase scan complete"
 echo ""
-echo "[EXISTING - REUSE]"
-# List existing infrastructure from plan.md [EXISTING INFRASTRUCTURE - REUSE]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# TASK GENERATION (Claude Code performs here)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Claude Code generates tasks.md based on:
+# 1. Analyze User Stories (from spec.md)
+#    - Extract user stories with priorities (P1, P2, P3...)
+#    - Map entities, endpoints, UI components → stories they serve
+#    - Identify story dependencies
+#    - Generate independent test criteria per story
+#
+# 2. Map Components to Stories
+#    - From data-model.md: Map entities → user stories
+#    - From contracts/: Map endpoints → user stories
+#    - From plan.md: Shared infrastructure → Setup phase
+#
+# 3. Generate Dependency Graph
+#    - Story completion order
+#    - Identify blocking prerequisites
+#
+# 4. Identify Parallel Opportunities
+#    - Tasks that can run in parallel (different files, no deps)
+#
+# 5. Define MVP Strategy
+#    - MVP Scope: Phase 3 (US1) only
+#    - Incremental delivery: US1 → staging → US2 → US3
+#
+# Output structure:
+# - [CODEBASE REUSE ANALYSIS]
+# - [DEPENDENCY GRAPH]
+# - [PARALLEL EXECUTION OPPORTUNITIES]
+# - [IMPLEMENTATION STRATEGY]
+# - Phase 1: Setup
+# - Phase 2: Foundational (blocking prerequisites)
+# - Phase 3+: User Stories (one per story)
+# - Phase N: Polish & Cross-Cutting Concerns
+# - [TEST GUARDRAILS] (if tests requested)
+
+echo "Generating tasks.md..."
 echo ""
-echo "[NEW - CREATE]"
-# List new infrastructure from plan.md [NEW INFRASTRUCTURE - CREATE]
+
+# Claude Code writes tasks.md with format:
+# - [ ] [TID] [P?] [Story?] Description with file path
+#   - REUSE: ExistingService (path/to/service.py)
+#   - Pattern: path/to/similar/file.py
+#   - From: design-doc.md section
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# UPDATE NOTES.md
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Count tasks
+TOTAL_TASKS=$(grep -c "^- \[ \] T[0-9]" "$TASKS_FILE" 2>/dev/null || echo 0)
+SETUP_TASKS=$(grep -c "^- \[ \] T[0-9].*Phase 1" "$TASKS_FILE" 2>/dev/null || echo 0)
+STORY_TASKS=$(grep -c "\[US[0-9]\]" "$TASKS_FILE" 2>/dev/null || echo 0)
+PARALLEL_TASKS=$(grep -c "\[P\]" "$TASKS_FILE" 2>/dev/null || echo 0)
+
+# Add Phase 2 checkpoint
+cat >> "$FEATURE_DIR/NOTES.md" <<EOF
+
+## Phase 2: Tasks ($(date '+%Y-%m-%d %H:%M' 2>/dev/null || date))
+
+**Summary**:
+- Total tasks: $TOTAL_TASKS
+- User story tasks: $STORY_TASKS
+- Parallel opportunities: $PARALLEL_TASKS
+- Setup tasks: $SETUP_TASKS
+- Task file: specs/$SLUG/tasks.md
+
+**Checkpoint**:
+- ✅ Tasks generated: $TOTAL_TASKS
+- ✅ User story organization: Complete
+- ✅ Dependency graph: Created
+- ✅ MVP strategy: Defined (US1 only)
+- 📋 Ready for: /validate
+
+EOF
+
+echo "✅ Updated NOTES.md with Phase 2 checkpoint"
+echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GIT COMMIT
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+git add specs/${SLUG}/tasks.md specs/${SLUG}/NOTES.md
+
+git commit -m "$(cat <<COMMITMSG
+design:tasks: generate $TOTAL_TASKS concrete tasks organized by user story
+
+- $TOTAL_TASKS tasks (setup, foundational, US1-USN, polish)
+- $STORY_TASKS user story tasks
+- $PARALLEL_TASKS parallel opportunities
+- REUSE markers for existing modules
+- Dependency graph + parallel opportunities
+- MVP strategy (US1 only for first release)
+
+Artifacts:
+- specs/$SLUG/tasks.md ($TOTAL_TASKS tasks)
+- specs/$SLUG/NOTES.md (Phase 2 checkpoint)
+
+Next: /validate
+
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>
+COMMITMSG
+)"
+
+# Verify commit succeeded
+COMMIT_HASH=$(git rev-parse --short HEAD)
+echo ""
+echo "✅ Tasks committed: $COMMIT_HASH"
+echo ""
+git log -1 --oneline
+echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# RETURN - Summary and next steps
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ TASKS GENERATED"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "File: specs/$SLUG/tasks.md"
+echo ""
+echo "📊 Summary:"
+echo "- Total: $TOTAL_TASKS tasks"
+echo "- User story tasks: $STORY_TASKS (organized by priority)"
+echo "- Parallel opportunities: $PARALLEL_TASKS tasks marked [P]"
+echo "- Setup tasks: $SETUP_TASKS"
+
+if [ "$HAS_UI_DESIGN" = true ]; then
+  echo "- UI promotion: $UI_SCREEN_COUNT screens to promote"
+fi
+
+echo ""
+echo "📋 Task organization:"
+echo "- Phase 1 (Setup): Infrastructure and dependencies"
+echo "- Phase 2 (Foundational): Blocking prerequisites"
+echo "- Phase 3+ (User Stories): Story-specific implementation"
+echo "- Phase N (Polish): Cross-cutting concerns"
+echo ""
+echo "NOTES.md: Phase 2 checkpoint added"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📋 NEXT: /validate"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "/validate will:"
+echo "1. Read tasks.md (task breakdown)"
+echo "2. Scan codebase for patterns (anti-duplication check)"
+echo "3. Validate architecture decisions (no conflicts)"
+echo "4. Identify risks (complexity, dependencies)"
+echo "5. Generate implementation hints (concrete examples)"
+echo "6. Update error-log.md (potential issues)"
+echo ""
+echo "Output: specs/$SLUG/analysis-report.md"
+echo ""
+echo "Duration: ~5 minutes"
 ```
 
 ## TASK ORGANIZATION RULES
@@ -220,61 +444,6 @@ echo "[NEW - CREATE]"
 **NO generic placeholders:**
 - ❌ `Create [Entity] model in src/models/[entity].py`
 - ✅ `Create Message model in api/src/modules/chat/models/message.py`
-
-## TASK GENERATION WORKFLOW
-
-### 1. Analyze User Stories (from spec.md)
-
-**Primary organization**: One phase per user story
-- Extract user stories with priorities (P1, P2, P3...)
-- Map entities, endpoints, UI components → stories they serve
-- Identify story dependencies (most should be independent)
-- Generate independent test criteria per story
-
-### 2. Map Components to Stories
-
-**From data-model.md** (if exists):
-- Map each entity → user story that needs it
-- If entity serves multiple stories → earliest story or Setup phase
-- Relationships → service layer tasks in appropriate story phase
-
-**From contracts/** (if exists):
-- Map each endpoint → user story it serves
-- Contract tests [P] before implementation in story phase
-
-**From plan.md**:
-- Shared infrastructure → Setup phase (Phase 1)
-- Blocking prerequisites → Foundational phase (Phase 2)
-- Story-specific code → within story phase
-
-### 3. Generate Dependency Graph
-
-**Story completion order:**
-```markdown
-## [DEPENDENCY GRAPH]
-Story completion order:
-1. Phase 2: Foundational (blocks all stories)
-2. Phase 3: US1 [P1] (independent)
-3. Phase 4: US2 [P2] (depends on US1 models)
-4. Phase 5: US3 [P3] (independent)
-```
-
-### 4. Identify Parallel Opportunities
-
-**Per-story parallelization:**
-```markdown
-## [PARALLEL EXECUTION OPPORTUNITIES]
-- US1: T010, T011, T012 (different files, no deps)
-- US2: T020, T021 (after US1 complete)
-```
-
-### 5. Define MVP Strategy
-
-```markdown
-## [IMPLEMENTATION STRATEGY]
-**MVP Scope**: Phase 3 (US1) only
-**Incremental delivery**: US1 → staging validation → US2 → US3
-```
 
 ## OUTPUT STRUCTURE (tasks.md)
 
@@ -534,115 +703,4 @@ expect(screen.getByText('Message sent')).toBeInTheDocument()
 **Reference**: `.spec-flow/templates/test-patterns.md` for copy-paste templates
 ```
 
-## GIT COMMIT
-
-```bash
-git add specs/${SLUG}/tasks.md
-git commit -m "design:tasks: generate N concrete tasks organized by user story
-
-- N tasks (setup, foundational, US1-USN, polish)
-- REUSE markers for existing modules
-- Dependency graph + parallel opportunities
-- MVP strategy (US1 only for first release)
-
-🤖 Generated with Claude Code
-Co-Authored-By: Claude <noreply@anthropic.com>"
-
-# Verify commit succeeded
-COMMIT_HASH=$(git rev-parse --short HEAD)
-echo ""
-echo "✅ Tasks committed: $COMMIT_HASH"
-echo ""
-git log -1 --oneline
-echo ""
-```
-
-## UPDATE NOTES.md
-
-```bash
-# Count tasks
-TOTAL_TASKS=$(grep -c "^- \[ \] T[0-9]" "$FEATURE_DIR/tasks.md")
-SETUP_TASKS=$(grep -c "^- \[ \] T[0-9].*Phase 1" "$FEATURE_DIR/tasks.md")
-STORY_TASKS=$(grep -c "\[US[0-9]\]" "$FEATURE_DIR/tasks.md")
-PARALLEL_TASKS=$(grep -c "\[P\]" "$FEATURE_DIR/tasks.md")
-
-# Add Phase 2 checkpoint
-cat >> "$FEATURE_DIR/NOTES.md" <<EOF
-
-## Phase 2: Tasks ($(date '+%Y-%m-%d %H:%M'))
-
-**Summary**:
-- Total tasks: $TOTAL_TASKS
-- User story tasks: $STORY_TASKS
-- Parallel opportunities: $PARALLEL_TASKS
-- Setup tasks: $SETUP_TASKS
-- Task file: specs/$SLUG/tasks.md
-
-**Checkpoint**:
-- ✅ Tasks generated: $TOTAL_TASKS
-- ✅ User story organization: Complete
-- ✅ Dependency graph: Created
-- ✅ MVP strategy: Defined (US1 only)
-- 📋 Ready for: /analyze
-
-EOF
-```
-
-## RETURN
-
-```
-✅ Tasks generated: specs/$SLUG/tasks.md (N tasks)
-
-📊 Summary:
-- Total: N tasks
-- User story tasks: M (organized by priority P1, P2, P3...)
-- Parallel opportunities: K tasks marked [P]
-- REUSE: L existing modules identified
-- UI promotion: O tasks (if polished designs exist)
-- MVP scope: Phase 3 (US1) only
-
-📋 Task breakdown:
-- Phase 1 (Setup): X tasks
-- Phase 2 (Foundational): Y tasks
-- Phase 3+ (User Stories): Z tasks
-- Phase N (Polish): W tasks
-
-NOTES.md: Phase 2 checkpoint added
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 NEXT: /analyze
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/analyze will:
-1. Read tasks.md (task breakdown)
-2. Scan codebase for patterns (anti-duplication check)
-3. Validate architecture decisions (no conflicts)
-4. Identify risks (complexity, dependencies)
-5. Generate implementation hints (concrete examples)
-6. Update error-log.md (potential issues)
-
-Output: specs/$SLUG/artifacts/analysis-report.md
-
-Duration: ~5 minutes
-```
 </instructions>
-alysis-report.md
-
-Duration: ~5 minutes
-```
-</instructions>
-
-## MENTAL MODEL
-
-**Workflow**: spec → clarify → plan → tasks → validate → implement → optimize → debug → preview → ship
-
-**State machine**: Load design artifacts → Verify all paths → Extract user stories → Map to tasks → Generate JSON (canonical) → Validate schema → Render MD → Commit with provenance
-
-**Philosophy**:
-- **JSON first**: tasks.json is the source of truth, tasks.md is a view
-- **Fail fast**: Stop on first verification failure with precise error
-- **Traceable**: Every task links to exact source lines in plan/spec
-- **Deterministic**: Same inputs always produce same outputs
-- **Verifiable**: All paths checked via git, all sections checked via grep
-
-**Auto-suggest**: When complete → `/validate`
