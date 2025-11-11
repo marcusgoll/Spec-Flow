@@ -186,6 +186,22 @@ create_label "size:large" "Large - 2-4 weeks" "fb8c00"
 create_label "size:xl" "Extra Large - 4+ weeks (consider splitting)" "d73a4a"
 echo ""
 
+# Sprint Labels (time-boxed iterations)
+echo "Sprint Labels:"
+create_label "sprint:S01" "Sprint 1 (Week 1-2)" "c2e0c6"
+create_label "sprint:S02" "Sprint 2 (Week 3-4)" "c2e0c6"
+create_label "sprint:S03" "Sprint 3 (Week 5-6)" "c2e0c6"
+create_label "sprint:S04" "Sprint 4 (Week 7-8)" "c2e0c6"
+create_label "sprint:S05" "Sprint 5 (Week 9-10)" "c2e0c6"
+create_label "sprint:S06" "Sprint 6 (Week 11-12)" "c2e0c6"
+create_label "sprint:S07" "Sprint 7 (Week 13-14)" "c2e0c6"
+create_label "sprint:S08" "Sprint 8 (Week 15-16)" "c2e0c6"
+create_label "sprint:S09" "Sprint 9 (Week 17-18)" "c2e0c6"
+create_label "sprint:S10" "Sprint 10 (Week 19-20)" "c2e0c6"
+create_label "sprint:S11" "Sprint 11 (Week 21-22)" "c2e0c6"
+create_label "sprint:S12" "Sprint 12 (Week 23-24)" "c2e0c6"
+echo ""
+
 # Special Labels
 echo "Special Labels:"
 create_label "blocked" "Blocked by dependency or external factor" "d73a4a"
