@@ -34,7 +34,7 @@ All commands can be invoked via `/command-name` in Claude Code. Each command is 
 | `/tasks` | Generate concrete TDD tasks from design artifacts | ✅ Stable | - | ⏳ Needs v2.0 |
 | `/implement` | Execute tasks with TDD, anti-duplication checks | ✅ Stable | - | ⏳ Needs v2.0 |
 | `/validate` | Cross-artifact consistency analysis | ✅ Stable | - | ⏳ Needs v2.0 |
-| `/optimize` | Production readiness validation (perf, security, a11y) | ✅ Stable | - | ⏳ Needs v2.0 |
+| `/optimize` | Production readiness validation (perf, security, a11y) | ✅ Stable | v2.0 | ✅ Done |
 | `/preview` | Manual UI/UX testing on local dev server | ✅ Stable | - | ⏳ Needs v2.0 |
 | `/finalize` | Workflow completion, artifact archival, roadmap update | ✅ Stable | - | ⏳ Needs v2.0 |
 | `/debug` | Debug errors and update error-log.md | ✅ Stable | - | ⏳ Needs v2.0 |
@@ -98,7 +98,6 @@ All commands can be invoked via `/command-name` in Claude Code. Each command is 
 | `/constitution` | Update engineering principles (8 core standards) | ✅ Stable | v2.0 | ✅ Done |
 | `/update-project-config` | Update project configuration (deployment model, scale tier) | ✅ Stable | - | ⏳ Needs v2.0 |
 | `/init-brand-tokens` | Initialize design system brand tokens | 🚧 Beta | - | ⏳ Needs v2.0 |
-| `/dev-docs` | Generate developer documentation | 🚧 Beta | - | ⏳ Needs v2.0 |
 
 ---
 
@@ -175,6 +174,7 @@ Commands marked "Needs v2.0" should be refactored to include:
 - ✅ `/clarify` - Anti-hallucination, repo precedent, atomic commits
 - ✅ `/constitution` - Structured actions, evidence-backed policies (WCAG, OWASP)
 - ✅ `/deploy-prod` - Non-interactive, platform-specific rollback (Vercel, Railway, Netlify, Git)
+- ✅ `/optimize` - Parallel checks, binary pass/fail, evidence-backed standards (WCAG, OWASP, Twelve-Factor)
 
 ---
 
@@ -229,13 +229,12 @@ Commands marked "Needs v2.0" should be refactored to include:
 │   ├── flag-cleanup.md
 │   └── fixture-refresh.md
 │
-├── project/                (6 commands)
+├── project/                (5 commands)
 │   ├── init-project.md
 │   ├── roadmap.md
 │   ├── constitution.md
 │   ├── update-project-config.md
-│   ├── init-brand-tokens.md
-│   └── dev-docs.md
+│   └── init-brand-tokens.md
 │
 ├── metrics/                (2 commands)
 │   ├── metrics.md
@@ -376,5 +375,5 @@ internal: true  # Optional: mark as internal-only
 ---
 
 **Last Updated**: 2025-11-10
-**Commands**: 47 total (5 refactored to v2.0, 42 pending)
-**Next Priority**: Refactor phase commands (`/spec`, `/plan`, `/tasks`, `/implement`, `/optimize`)
+**Commands**: 46 total (6 refactored to v2.0, 40 pending)
+**Next Priority**: Refactor phase commands (`/spec`, `/plan`, `/tasks`, `/implement`)
