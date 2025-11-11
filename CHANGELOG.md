@@ -1,4 +1,25 @@
 
+## [4.3.1] - 2025-11-10
+
+### 🐛 Bug Fix - Package Fix
+
+**Fixed npm package missing new commands**
+
+- **Critical Fix**: Added 13 missing command files to package.json "files" array
+- Commands now properly included in npm package:
+  - `/contract.bump`, `/contract.verify`, `/fixture.refresh`
+  - `/branch.enforce`
+  - `/flag.add`, `/flag.list`, `/flag.cleanup`
+  - `/gate.ci`, `/gate.sec`
+  - `/metrics-dora`
+  - `/scheduler.assign`, `/scheduler.park`, `/scheduler.list`
+
+**Problem**: v4.3.0 shipped without the 13 new epic/sprint commands due to explicit package.json whitelist not being updated.
+
+**Impact**: Users installing v4.3.1 now receive all 13 new commands. v4.3.0 users should upgrade immediately.
+
+---
+
 ## [4.3.0] - 2025-11-10
 
 ### ✨ New Features - Epic & Sprint Roadmap System
