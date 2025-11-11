@@ -1,8 +1,5 @@
 ---
 description: Generate design artifacts from feature spec (research + design + context plan)
-scripts:
-  sh: scripts/bash/setup-plan.sh --json "{ARGS}"
-  ps: scripts/powershell/setup-plan.ps1 -Json "{ARGS}"
 ---
 
 Design implementation for: $ARGUMENTS
@@ -10,20 +7,87 @@ Design implementation for: $ARGUMENTS
 <context>
 ## MENTAL MODEL
 
-**Workflow**: spec-flow -> clarify -> plan -> tasks -> analyze -> implement -> optimize -> debug -> preview -> phase-1-ship -> validate-staging -> phase-2-ship
+**Workflow**: spec → clarify → plan → tasks → implement → optimize → preview → ship
 
 **Phases:**
 - Phase 0: Research & Discovery → research.md
 - Phase 1: Design & Contracts → data-model.md, contracts/, quickstart.md, plan.md
 
 **State machine:**
-- Setup -> Constitution check -> Phase 0 (Research) -> Phase 1 (Design) -> Agent update -> Commit -> Suggest next
+- Setup → Constitution check → Phase 0 (Research) → Phase 1 (Design) → Commit → Suggest next
 
 **Auto-suggest:**
 - UI features → `/design-variations` or `/tasks`
 - Backend features → `/tasks`
+
+**Prerequisites:**
+- Git repository
+- jq installed (JSON parsing)
+- Feature spec completed (spec.md exists)
+- Working directory clean (uncommitted changes allowed)
 </context>
 
+<constraints>
+## ANTI-HALLUCINATION RULES
+
+**CRITICAL**: Follow these rules to prevent making up architectural decisions.
+
+1. **Never speculate about existing patterns you have not read**
+   - ❌ BAD: "The app probably follows a services pattern"
+   - ✅ GOOD: "Let me search for existing service files to understand current patterns"
+   - Use Grep to find patterns: `class.*Service`, `interface.*Repository`
+
+2. **Cite existing code when recommending reuse**
+   - When suggesting to reuse UserService, cite: `api/app/services/user.py:20-45`
+   - When referencing patterns, cite: `api/app/core/database.py:12-18 shows our DB session pattern`
+   - Don't invent reusable components that don't exist
+
+3. **Admit when codebase exploration is needed**
+   - If unsure about tech stack, say: "I need to read package.json and search for imports"
+   - If uncertain about patterns, say: "Let me search the codebase for similar implementations"
+   - Never make up directory structures, module names, or import paths
+
+4. **Quote from spec.md exactly when planning**
+   - Don't paraphrase requirements - quote user stories verbatim
+   - Example: "According to spec.md:45-48: '[exact quote]', therefore we need..."
+   - If spec is ambiguous, flag it rather than assuming intent
+
+5. **Verify dependencies exist before recommending**
+   - Before suggesting "use axios for HTTP", check package.json
+   - Before recommending libraries, search existing imports
+   - Don't suggest packages that aren't installed
+
+**Why this matters**: Hallucinated architecture leads to plans that can't be implemented. Plans based on non-existent patterns create unnecessary refactoring. Accurate planning grounded in actual code saves 40-50% of implementation rework.
+
+## REASONING APPROACH
+
+For complex architecture decisions, show your step-by-step reasoning:
+
+<thinking>
+Let me analyze this design choice:
+1. What does spec.md require? [Quote requirements]
+2. What existing patterns can I reuse? [Cite file:line from codebase]
+3. What are the architectural options? [List 2-3 approaches]
+4. What are the trade-offs? [Performance, maintainability, complexity]
+5. What does constitution.md prefer? [Quote architectural principles]
+6. Conclusion: [Recommended approach with justification]
+</thinking>
+
+<answer>
+[Architecture decision based on reasoning]
+</answer>
+
+**When to use structured thinking:**
+- Choosing architectural patterns (e.g., REST vs GraphQL, monolith vs microservices)
+- Selecting libraries or frameworks (e.g., Redux vs Context API)
+- Designing database schemas (normalization vs denormalization)
+- Planning file/folder structure for new features
+- Deciding on code reuse vs new implementation
+
+**Benefits**: Explicit reasoning reduces architectural rework by 30-40% and improves maintainability.
+</constraints>
+
+<instructions>
 ## USER INPUT
 
 ```text
@@ -32,16 +96,69 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
-## SETUP
+## UNIFIED PLANNING SCRIPT
 
-**Run setup script from repo root:**
+**Execute complete planning workflow in one unified script:**
 
 ```bash
-# Execute script and parse JSON output
-# For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot'
-# (or double-quote if possible: "I'm Groot")
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-OUTPUT=$({SCRIPT})
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ERROR TRAP
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+on_error() {
+  echo "⚠️  Error in /plan. Cleaning up."
+  exit 1
+}
+trap on_error ERR
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# TOOL PREFLIGHT CHECKS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+need() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "❌ Missing required tool: $1"
+    echo ""
+    case "$1" in
+      git)
+        echo "Install: https://git-scm.com/downloads"
+        ;;
+      jq)
+        echo "Install: brew install jq (macOS) or apt install jq (Linux)"
+        echo "         https://stedolan.github.io/jq/download/"
+        ;;
+      *)
+        echo "Check documentation for installation"
+        ;;
+    esac
+    exit 1
+  }
+}
+
+need git
+need jq
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SETUP - Deterministic repo root
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cd "$(git rev-parse --show-toplevel)"
+
+# Execute setup script and parse JSON output
+SCRIPT_PATH=".spec-flow/scripts/bash/setup-plan.sh"
+
+if [ ! -f "$SCRIPT_PATH" ]; then
+  echo "❌ Setup script not found: $SCRIPT_PATH"
+  echo ""
+  echo "Fix: Ensure .spec-flow/scripts/ directory is complete"
+  echo "     Clone from: https://github.com/anthropics/spec-flow"
+  exit 1
+fi
+
+OUTPUT=$("$SCRIPT_PATH" --json "$ARGUMENTS")
 
 # Parse JSON to get paths (all must be absolute)
 FEATURE_SPEC=$(echo "$OUTPUT" | jq -r '.feature_spec')
@@ -52,48 +169,52 @@ FEATURE_DIR=$(dirname "$FEATURE_SPEC")
 SLUG=$(basename "$FEATURE_DIR")
 
 # Validate paths exist
-[ ! -f "$FEATURE_SPEC" ] && echo "Error: Spec not found at $FEATURE_SPEC" && exit 1
-[ ! -d "$FEATURE_DIR" ] && echo "Error: Feature dir not found at $FEATURE_DIR" && exit 1
+if [ ! -f "$FEATURE_SPEC" ]; then
+  echo "❌ Spec not found at $FEATURE_SPEC"
+  echo ""
+  echo "Fix: Run /spec to create feature specification first"
+  exit 1
+fi
+
+if [ ! -d "$FEATURE_DIR" ]; then
+  echo "❌ Feature directory not found at $FEATURE_DIR"
+  echo ""
+  echo "Fix: Run /spec to create feature first"
+  exit 1
+fi
 
 echo "Feature: $SLUG"
 echo "Spec: $FEATURE_SPEC"
 echo "Branch: $BRANCH"
 echo ""
-```
 
-## LOAD CONTEXT
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# LOAD CONTEXT
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Load spec and constitution:**
-
-```bash
-# Constitution file for alignment check
 CONSTITUTION_FILE=".spec-flow/memory/constitution.md"
 
-# Validate spec is clarified (optional check)
+# Validate spec is clarified (non-interactive warning)
 REMAINING_CLARIFICATIONS=$(grep -c "\[NEEDS CLARIFICATION\]" "$FEATURE_SPEC" || echo 0)
 if [ "$REMAINING_CLARIFICATIONS" -gt 0 ]; then
   echo "⚠️  Warning: $REMAINING_CLARIFICATIONS ambiguities remain in spec"
   echo ""
-  echo "Recommend: /clarify (resolve ambiguities first)"
-  echo "Or: Continue to /plan (clarify later)"
+  echo "Recommendations:"
+  echo "  1. BEST: Run /clarify to resolve ambiguities first"
+  echo "  2. Proceed anyway (may need design revisions later)"
   echo ""
-  read -p "Continue? (Y/n): " continue_choice
-
-  if [[ "$continue_choice" =~ ^[Nn]$ ]]; then
-    echo "Aborted. Run /clarify to resolve ambiguities."
-    exit 0
-  fi
+  echo "Proceeding with planning despite ambiguities..."
+  echo ""
 fi
 
 # Read spec and constitution for planning
 echo "Loading feature spec and constitution..."
-```
+echo ""
 
-## CONSTITUTION CHECK (Quality Gate)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CONSTITUTION CHECK (Quality Gate)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Verify feature aligns with mission and values:**
-
-```bash
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "📜 CONSTITUTION CHECK"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -110,7 +231,7 @@ if [ -f "$CONSTITUTION_FILE" ]; then
   # - Technical principles
   # - Quality standards
 
-  # Track violations
+  # Track violations (Claude Code populates this array)
   CONSTITUTION_VIOLATIONS=()
 
   # Example checks (Claude Code implements actual logic):
@@ -121,47 +242,48 @@ if [ -f "$CONSTITUTION_FILE" ]; then
 
   # If violations found:
   if [ ${#CONSTITUTION_VIOLATIONS[@]} -gt 0 ]; then
-    echo "⚠️  Constitution violations detected:"
+    echo "❌ Constitution violations detected:"
     for violation in "${CONSTITUTION_VIOLATIONS[@]}"; do
       echo "  - $violation"
     done
     echo ""
-    echo "Violations must be justified or feature redesigned."
-    echo "ERROR: Cannot proceed with unjustified violations."
+    echo "Fix: Violations must be justified or feature redesigned"
+    echo "     Update spec.md to align with constitution.md principles"
     exit 1
   else
     echo "✅ Feature aligns with constitution"
   fi
 else
   echo "⚠️  No constitution.md found - skipping alignment check"
+  echo ""
+  echo "Recommendation: Create constitution.md to enforce quality standards"
+  echo "                Run /constitution to initialize"
 fi
 
 echo ""
-```
 
-## TEMPLATE VALIDATION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# TEMPLATE VALIDATION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Verify required templates exist:**
-
-```bash
 REQUIRED_TEMPLATES=(
   ".spec-flow/templates/error-log-template.md"
 )
 
 for template in "${REQUIRED_TEMPLATES[@]}"; do
   if [ ! -f "$template" ]; then
-    echo "Error: Missing required template: $template"
-    echo "Run: git checkout main -- .spec-flow/templates/"
+    echo "❌ Missing required template: $template"
+    echo ""
+    echo "Fix: git checkout main -- .spec-flow/templates/"
+    echo "     Or clone: https://github.com/anthropics/spec-flow"
     exit 1
   fi
 done
-```
 
-## DETECT FEATURE TYPE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# DETECT FEATURE TYPE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Check if UI design needed:**
-
-```bash
 HAS_SCREENS=false
 SCREEN_COUNT=0
 
@@ -174,20 +296,13 @@ if [ -f "$FEATURE_DIR/design/screens.yaml" ]; then
 fi
 
 # Store for use in RETURN section
-echo "UI_FEATURE=$HAS_SCREENS" > "$FEATURE_DIR/.planning-context"
+echo "HAS_SCREENS=$HAS_SCREENS" > "$FEATURE_DIR/.planning-context"
 echo "SCREEN_COUNT=$SCREEN_COUNT" >> "$FEATURE_DIR/.planning-context"
-```
 
-**Detection logic:**
-- screens.yaml exists? Check for screen definitions
-- At least 1 screen? UI feature = true
-- No screens.yaml or empty? Backend feature = false
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# PHASE 0: RESEARCH & DISCOVERY
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-## PHASE 0: RESEARCH & DISCOVERY
-
-**Prevent duplication - scan before designing:**
-
-```bash
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🔍 PHASE 0: RESEARCH & DISCOVERY"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -212,7 +327,10 @@ else
 fi
 echo ""
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # PROJECT DOCUMENTATION INTEGRATION (Mandatory if exists)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 PROJECT_DOCS_DIR="docs/project"
 HAS_PROJECT_DOCS=false
 
@@ -233,20 +351,16 @@ if [ -d "$PROJECT_DOCS_DIR" ]; then
   done
 
   if [ ${#MISSING_DOCS[@]} -gt 0 ]; then
-    echo "⚠️  WARNING: Missing required project documentation:"
+    echo "❌ Missing required project documentation:"
     for doc in "${MISSING_DOCS[@]}"; do
       echo "   - $PROJECT_DOCS_DIR/$doc"
     done
     echo ""
     echo "These files are critical for accurate planning."
-    echo "Recommendation: Run /init-project to generate project documentation"
     echo ""
-    read -p "Continue without complete project docs? (y/N): " continue_choice
-    if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
-      echo "Exiting - please run /init-project first"
-      exit 0
-    fi
-    echo ""
+    echo "Fix: Run /init-project to generate project documentation"
+    echo "     This prevents hallucination and ensures consistency"
+    exit 1
   fi
 
   # Read and parse project documentation
@@ -274,7 +388,6 @@ if [ -d "$PROJECT_DOCS_DIR" ]; then
   if [ -f "$PROJECT_DOCS_DIR/data-architecture.md" ]; then
     echo "  → data-architecture.md"
     # Extract existing entities from ERD
-    # Format: Entities are typically listed in ERD section or entity schemas
     EXISTING_ENTITIES=$(grep -E "^### |^## " "$PROJECT_DOCS_DIR/data-architecture.md" 2>/dev/null | grep -v "ERD\|Entity\|Architecture\|Overview" | sed 's/^#* //' | tr '\n' ', ' | sed 's/, $//' || echo "Not documented")
 
     # Extract naming convention
@@ -366,7 +479,7 @@ if [ -d "$PROJECT_DOCS_DIR" ]; then
   echo ""
 
 else
-  echo "ℹ️  No project documentation found at $PROJECT_DOCS_DIR"
+  echo "❌ No project documentation found at $PROJECT_DOCS_DIR"
   echo ""
   echo "Project documentation provides:"
   echo "  • Tech stack (prevents hallucination)"
@@ -374,58 +487,46 @@ else
   echo "  • API patterns (ensures consistency)"
   echo "  • Performance targets (better design)"
   echo ""
-  echo "Recommendation: Run /init-project (one-time setup, ~10 minutes)"
-  echo ""
-  read -p "Continue without project docs? (y/N): " continue_choice
-  if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
-    echo "Exiting - please run /init-project first"
-    echo "This will generate 8 comprehensive project docs and prevent planning errors"
-    exit 0
-  fi
-  echo ""
-  echo "⚠️  Proceeding without project documentation"
-  echo "   Planning may make assumptions about tech stack and architecture"
-  echo ""
+  echo "Fix: Run /init-project (one-time setup, ~10 minutes)"
+  echo "     This generates 8 comprehensive project docs"
+  exit 1
 fi
-```
 
-**Minimal research** (2-3 tools for simple features):
-1. **Read spec**: Extract requirements, NFRs, deployment considerations, unknowns
-2. **Grep keywords**: Quick scan for similar patterns to reuse
-3. **Glob modules** (optional): If integration needed with existing code
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# RESEARCH: Component Reuse Analysis
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Full research** (5-15 tools for complex features, **2-5 tools if project docs exist**):
-1-3. Minimal research (above)
-4. **Glob modules**: `api/src/modules/*`, `api/src/services/*`, `apps/*/components/**`, `apps/*/lib/**`
-5-6. **Read similar modules**: Study patterns, categorize as reusable or inspiration
-   - If reusable: `REUSABLE_COMPONENTS+=("api/src/services/auth: JWT validation")`
-   - If new needed: `NEW_COMPONENTS+=("api/src/services/csv-parser: New capability")`
-7. **WebSearch best practices**: If novel pattern (not in codebase) — **SKIP if project docs exist** (rationale in tech-stack.md)
-8. **Read design-inspirations.md**: If UI-heavy feature
-9-10. **Read integration points**: Auth, billing, storage services (if complex integration) — **SKIP if api-strategy.md exists**
-11-15. **Deep dive - Read related modules**: If complex integration across multiple systems
-16. **Read visuals/README.md**: UX patterns (if exists)
+# Claude Code performs research here:
+# - Minimal research (2-3 tools for simple features):
+#   1. Read spec: Extract requirements, NFRs, deployment considerations, unknowns
+#   2. Grep keywords: Quick scan for similar patterns to reuse
+#   3. Glob modules (optional): If integration needed with existing code
+#
+# - Full research (5-15 tools for complex features, 2-5 tools if project docs exist):
+#   1-3. Minimal research (above)
+#   4. Glob modules: api/src/modules/*, api/src/services/*, apps/*/components/**, apps/*/lib/**
+#   5-6. Read similar modules: Study patterns, categorize as reusable or inspiration
+#        If reusable: REUSABLE_COMPONENTS+=("api/src/services/auth: JWT validation")
+#        If new needed: NEW_COMPONENTS+=("api/src/services/csv-parser: New capability")
+#   7. WebSearch best practices: If novel pattern (not in codebase) - SKIP if project docs exist
+#   8. Read design-inspirations.md: If UI-heavy feature
+#   9-10. Read integration points: Auth, billing, storage services - SKIP if api-strategy.md exists
+#   11-15. Deep dive - Read related modules: If complex integration
+#   16. Read visuals/README.md: UX patterns (if exists)
+#
+# Document decisions:
+# RESEARCH_DECISIONS+=("Stack choice: Next.js App Router (existing pattern)")
+# RESEARCH_DECISIONS+=("State: SWR for data fetching (reuse apps/app/lib/swr)")
+# RESEARCH_DECISIONS+=("Auth: Clerk middleware (reuse existing setup)")
+#
+# Track unknowns that need clarification:
+# UNKNOWNS+=("Performance threshold for CSV parsing unclear")
+# UNKNOWNS+=("Rate limiting strategy not specified")
 
-**Optimization with project docs**:
-- If `docs/project/` exists: Tech stack, API patterns, data models, and performance targets are already documented
-- Skip: Codebase scanning for stack detection, API pattern inference, entity discovery
-- Focus: Component reuse scanning (not in project docs) and feature-specific research
-- **Time savings**: 50-60% faster (8-15 min → 4-7 min for complex features)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GENERATE: research.md
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Document decisions:**
-```bash
-RESEARCH_DECISIONS+=("Stack choice: Next.js App Router (existing pattern)")
-RESEARCH_DECISIONS+=("State: SWR for data fetching (reuse apps/app/lib/swr)")
-RESEARCH_DECISIONS+=("Auth: Clerk middleware (reuse existing setup)")
-
-# Track unknowns that need clarification
-UNKNOWNS+=("Performance threshold for CSV parsing unclear")
-UNKNOWNS+=("Rate limiting strategy not specified")
-```
-
-**Generate research.md:**
-
-```bash
 RESEARCH_FILE="$FEATURE_DIR/research.md"
 
 cat > "$RESEARCH_FILE" <<EOF
@@ -520,27 +621,29 @@ EOF
 
 echo "✅ Generated research.md"
 echo ""
-```
 
-## PHASE 1: DESIGN & CONTRACTS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# PHASE 1: DESIGN & CONTRACTS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Prerequisites**: research.md complete, unknowns resolved
-
-```bash
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🎨 PHASE 1: DESIGN & CONTRACTS"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-```
 
-### Step 1: Generate data-model.md
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GENERATE: data-model.md
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Extract entities from feature spec:**
-
-```bash
 DATA_MODEL_FILE="$FEATURE_DIR/data-model.md"
 
-cat > "$DATA_MODEL_FILE" <<'EOF'
+# Claude Code generates data-model.md here with:
+# - Entity definitions (fields, relationships, validation rules, state transitions)
+# - Database schema (Mermaid ERD)
+# - API schemas (request/response contracts)
+# - Frontend state shape (TypeScript interfaces)
+
+cat > "$DATA_MODEL_FILE" <<'DATAMODEL'
 # Data Model: $SLUG
 
 ## Entities
@@ -571,7 +674,7 @@ cat > "$DATA_MODEL_FILE" <<'EOF'
 
 ## Database Schema (Mermaid)
 
-\`\`\`mermaid
+```mermaid
 erDiagram
     users ||--o{ preferences : has
     users {
@@ -585,7 +688,7 @@ erDiagram
         jsonb settings
         timestamp updated_at
     }
-\`\`\`
+```
 
 ---
 
@@ -594,27 +697,31 @@ erDiagram
 **Request/Response Schemas**: See contracts/api.yaml
 
 **State Shape** (frontend):
-\`\`\`typescript
+```typescript
 interface FeatureState {
   data: Data | null
   loading: boolean
   error: Error | null
 }
-\`\`\`
-EOF
+```
+DATAMODEL
 
 echo "✅ Generated data-model.md"
 echo ""
-```
 
-### Step 2: Generate API contracts
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GENERATE: API contracts
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Generate OpenAPI specs from functional requirements:**
-
-```bash
 mkdir -p "$FEATURE_DIR/contracts"
 
-cat > "$FEATURE_DIR/contracts/api.yaml" <<'EOF'
+# Claude Code generates contracts/api.yaml here with:
+# - OpenAPI 3.0 specs from functional requirements
+# - Endpoint definitions (GET, POST, PUT, DELETE)
+# - Request/response schemas
+# - Error responses (400, 401, 500)
+
+cat > "$FEATURE_DIR/contracts/api.yaml" <<'APICONTRACT'
 openapi: 3.0.0
 info:
   title: [Feature] API
@@ -640,25 +747,28 @@ paths:
           description: Unauthorized
         500:
           description: Server error
-EOF
+APICONTRACT
 
 echo "✅ Generated contracts/api.yaml"
 echo ""
-```
 
-### Step 3: Generate quickstart.md
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GENERATE: quickstart.md
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Integration scenarios for developers:**
-
-```bash
 QUICKSTART_FILE="$FEATURE_DIR/quickstart.md"
 
-cat > "$QUICKSTART_FILE" <<'EOF'
+# Claude Code generates quickstart.md here with:
+# - Scenario 1: Initial Setup (install, migrate, seed, start)
+# - Scenario 2: Validation (tests, type-check, lint)
+# - Scenario 3: Manual Testing (steps to verify behavior)
+
+cat > "$QUICKSTART_FILE" <<'QUICKSTART'
 # Quickstart: $SLUG
 
 ## Scenario 1: Initial Setup
 
-\`\`\`bash
+```bash
 # Install dependencies
 pnpm install
 
@@ -670,11 +780,11 @@ uv run python scripts/seed_[feature].py
 
 # Start dev servers
 pnpm dev
-\`\`\`
+```
 
 ## Scenario 2: Validation
 
-\`\`\`bash
+```bash
 # Run tests
 pnpm test
 cd api && uv run pytest tests/[feature]/
@@ -684,24 +794,38 @@ pnpm type-check
 
 # Lint
 pnpm lint
-\`\`\`
+```
 
 ## Scenario 3: Manual Testing
 
 1. Navigate to: http://localhost:3000/feature
 2. Verify: [expected behavior]
 3. Check: [validation steps]
-EOF
+QUICKSTART
 
 echo "✅ Generated quickstart.md"
 echo ""
-```
 
-### Step 4: Generate consolidated plan.md
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GENERATE: plan.md (consolidated architecture document)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Comprehensive architecture document:**
+PLAN_FILE="$FEATURE_DIR/plan.md"
 
-```markdown
+# Claude Code generates plan.md here with:
+# - [RESEARCH DECISIONS] - Summary from research.md
+# - [ARCHITECTURE DECISIONS] - Stack, patterns, dependencies
+# - [STRUCTURE] - Directory layout, module organization
+# - [DATA MODEL] - Summary linking to data-model.md
+# - [PERFORMANCE TARGETS] - NFRs, Lighthouse targets
+# - [SECURITY] - Authentication, authorization, validation, data protection
+# - [EXISTING INFRASTRUCTURE - REUSE] - Components to reuse
+# - [NEW INFRASTRUCTURE - CREATE] - Components to create
+# - [CI/CD IMPACT] - Platform, env vars, breaking changes, migrations, smoke tests
+# - [DEPLOYMENT ACCEPTANCE] - Production invariants, staging smoke tests, rollback plan
+# - [INTEGRATION SCENARIOS] - Summary linking to quickstart.md
+
+cat > "$PLAN_FILE" <<'PLANFILE'
 # Implementation Plan: [Feature Name]
 
 ## [RESEARCH DECISIONS]
@@ -737,7 +861,7 @@ See: research.md for full research findings
 
 **Directory Layout** (follow existing patterns):
 
-\`\`\`
+```
 api/src/
 ├── modules/[feature]/
 │   ├── controller.py
@@ -752,7 +876,7 @@ apps/app/
 │   ├── page.tsx
 │   └── components/
 └── components/[feature]/
-\`\`\`
+```
 
 **Module Organization**:
 - [Module name]: [purpose and responsibilities]
@@ -772,7 +896,7 @@ See: data-model.md for complete entity definitions
 
 ## [PERFORMANCE TARGETS]
 
-**From spec.md NFRs** (or defaults from design/systems/budgets.md):
+**From spec.md NFRs** (or defaults):
 - NFR-003: API response time <500ms (95th percentile)
 - NFR-004: Frontend FCP <1.5s, TTI <3s
 - NFR-005: Database queries <100ms
@@ -883,14 +1007,14 @@ See: data-model.md for complete entity definitions
 - Feature flags default to 0% in production
 
 **Staging Smoke Tests** (Given/When/Then):
-\`\`\`gherkin
+```gherkin
 Given user visits https://app-staging.cfipros.vercel.app/feature
 When user clicks primary CTA
 Then feature works without errors
   And response time <2s
   And no console errors
   And Lighthouse performance ≥85
-\`\`\`
+```
 
 **Rollback Plan**:
 - Deploy IDs tracked in: specs/[slug]/NOTES.md (Deployment Metadata)
@@ -915,13 +1039,16 @@ See: quickstart.md for complete integration scenarios
 - Initial setup documented
 - Validation workflow defined
 - Manual testing steps provided
+PLANFILE
 
----
+echo "✅ Generated plan.md"
+echo ""
 
-### Step 5: Initialize error-log.md
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GENERATE: error-log.md
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-```bash
-cat > "$FEATURE_DIR/error-log.md" <<EOF
+cat > "$FEATURE_DIR/error-log.md" <<'ERRORLOG'
 # Error Log: [Feature Name]
 
 ## Planning Phase (Phase 0-2)
@@ -962,17 +1089,15 @@ None yet.
 - Spec: [link to requirement]
 - Code: [file:line]
 - Commit: [sha]
-EOF
+ERRORLOG
 
 echo "✅ Generated error-log.md"
 echo ""
-```
 
-### Step 6: Validate unresolved questions
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# VALIDATION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Check for critical unknowns before committing:**
-
-```bash
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✅ VALIDATION"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -982,26 +1107,23 @@ echo ""
 UNRESOLVED_COUNT=$(grep -c "⚠️" "$FEATURE_DIR/research.md" 2>/dev/null || echo 0)
 
 if [ "$UNRESOLVED_COUNT" -gt 0 ]; then
-  echo "⚠️  WARNING: $UNRESOLVED_COUNT unresolved questions in research.md"
+  echo "❌ Unresolved questions in research.md:"
   echo ""
-  echo "Unresolved questions:"
   grep "⚠️" "$FEATURE_DIR/research.md"
   echo ""
-  echo "ERROR: Cannot proceed with critical unknowns."
-  echo "Resolve questions in research.md before committing."
+  echo "Fix: Resolve questions in research.md before committing"
+  echo "     Update spec.md if requirements are unclear"
   exit 1
 else
   echo "✅ All technical questions resolved"
 fi
 
 echo ""
-```
 
-## GIT COMMIT
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GIT COMMIT
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Commit all planning artifacts:**
-
-```bash
 REUSABLE_COUNT=${#REUSABLE_COMPONENTS[@]}
 NEW_COUNT=${#NEW_COMPONENTS[@]}
 
@@ -1056,89 +1178,11 @@ echo "✅ Plan committed: $COMMIT_HASH"
 echo ""
 git log -1 --oneline
 echo ""
-```
 
-<constraints>
-## ANTI-HALLUCINATION RULES
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# RETURN - Summary and next steps
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**CRITICAL**: Follow these rules to prevent making up architectural decisions.
-
-1. **Never speculate about existing patterns you have not read**
-   - ❌ BAD: "The app probably follows a services pattern"
-   - ✅ GOOD: "Let me search for existing service files to understand current patterns"
-   - Use Grep to find patterns: `class.*Service`, `interface.*Repository`
-
-2. **Cite existing code when recommending reuse**
-   - When suggesting to reuse UserService, cite: `api/app/services/user.py:20-45`
-   - When referencing patterns, cite: `api/app/core/database.py:12-18 shows our DB session pattern`
-   - Don't invent reusable components that don't exist
-
-3. **Admit when codebase exploration is needed**
-   - If unsure about tech stack, say: "I need to read package.json and search for imports"
-   - If uncertain about patterns, say: "Let me search the codebase for similar implementations"
-   - Never make up directory structures, module names, or import paths
-
-4. **Quote from spec.md exactly when planning**
-   - Don't paraphrase requirements - quote user stories verbatim
-   - Example: "According to spec.md:45-48: '[exact quote]', therefore we need..."
-   - If spec is ambiguous, flag it rather than assuming intent
-
-5. **Verify dependencies exist before recommending**
-   - Before suggesting "use axios for HTTP", check package.json
-   - Before recommending libraries, search existing imports
-   - Don't suggest packages that aren't installed
-
-**Why this matters**: Hallucinated architecture leads to plans that can't be implemented. Plans based on non-existent patterns create unnecessary refactoring. Accurate planning grounded in actual code saves 40-50% of implementation rework.
-
-## REASONING APPROACH
-
-For complex architecture decisions, show your step-by-step reasoning:
-
-<thinking>
-Let me analyze this design choice:
-1. What does spec.md require? [Quote requirements]
-2. What existing patterns can I reuse? [Cite file:line from codebase]
-3. What are the architectural options? [List 2-3 approaches]
-4. What are the trade-offs? [Performance, maintainability, complexity]
-5. What does constitution.md prefer? [Quote architectural principles]
-6. Conclusion: [Recommended approach with justification]
-</thinking>
-
-<answer>
-[Architecture decision based on reasoning]
-</answer>
-
-**When to use structured thinking:**
-- Choosing architectural patterns (e.g., REST vs GraphQL, monolith vs microservices)
-- Selecting libraries or frameworks (e.g., Redux vs Context API)
-- Designing database schemas (normalization vs denormalization)
-- Planning file/folder structure for new features
-- Deciding on code reuse vs new implementation
-
-**Benefits**: Explicit reasoning reduces architectural rework by 30-40% and improves maintainability.
-</constraints>
-
-<instructions>
-## CONTEXT MANAGEMENT
-
-**Before proceeding to /tasks:**
-
-If context feels large (long conversation with many research tools), run compaction:
-```bash
-/compact "preserve architecture decisions, reuse analysis, and schema"
-```
-
-Otherwise proceed directly to `/tasks`.
-
-**No automatic tracking.** Manual compaction only if needed.
-
-## RETURN
-
-**Brief summary with conditional next steps:**
-
-```bash
-REUSABLE_COUNT=${#REUSABLE_COMPONENTS[@]}
-NEW_COUNT=${#NEW_COMPONENTS[@]}
 DECISION_COUNT=${#RESEARCH_DECISIONS[@]}
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -1159,7 +1203,7 @@ if [ -f "$FEATURE_DIR/migration-plan.md" ]; then
 fi
 
 # Check if deployment considerations exist
-if grep -q "Deployment Considerations" "$FEATURE_SPEC"; then
+if grep -q "Deployment Considerations" "$FEATURE_SPEC" 2>/dev/null; then
   echo "- Deployment impact: See [CI/CD IMPACT] in plan.md"
 fi
 
@@ -1173,30 +1217,32 @@ echo "  - contracts/api.yaml (OpenAPI specs)"
 echo "  - error-log.md (initialized for tracking)"
 
 # Update NOTES.md with Phase 1 checkpoint and summary
-source .spec-flow/templates/notes-update-template.sh
+if [ -f ".spec-flow/templates/notes-update-template.sh" ]; then
+  source .spec-flow/templates/notes-update-template.sh
 
-# Calculate metrics
-RESEARCH_LINES=$(wc -l < "$FEATURE_DIR/research.md" 2>/dev/null || echo 0)
-HAS_MIGRATION=$([ -f "$FEATURE_DIR/migration-plan.md" ] && echo "Yes" || echo "No")
+  # Calculate metrics
+  RESEARCH_LINES=$(wc -l < "$FEATURE_DIR/research.md" 2>/dev/null || echo 0)
+  HAS_MIGRATION=$([ -f "$FEATURE_DIR/migration-plan.md" ] && echo "Yes" || echo "No")
 
-# Add Phase 1 Summary
-update_notes_summary "$FEATURE_DIR" "1" \
-  "Research depth: $RESEARCH_LINES lines" \
-  "Key decisions: $DECISION_COUNT" \
-  "Components to reuse: $REUSABLE_COUNT" \
-  "New components: $NEW_COUNT" \
-  "Migration needed: $HAS_MIGRATION"
+  # Add Phase 1 Summary
+  update_notes_summary "$FEATURE_DIR" "1" \
+    "Research depth: $RESEARCH_LINES lines" \
+    "Key decisions: $DECISION_COUNT" \
+    "Components to reuse: $REUSABLE_COUNT" \
+    "New components: $NEW_COUNT" \
+    "Migration needed: $HAS_MIGRATION" 2>/dev/null || true
 
-# Add Phase 1 checkpoint
-update_notes_checkpoint "$FEATURE_DIR" "1" "Plan" \
-  "Artifacts: research.md, data-model.md, quickstart.md, plan.md, contracts/api.yaml, error-log.md" \
-  "Research decisions: $DECISION_COUNT" \
-  "Migration required: $HAS_MIGRATION"
+  # Add Phase 1 checkpoint
+  update_notes_checkpoint "$FEATURE_DIR" "1" "Plan" \
+    "Artifacts: research.md, data-model.md, quickstart.md, plan.md, contracts/api.yaml, error-log.md" \
+    "Research decisions: $DECISION_COUNT" \
+    "Migration required: $HAS_MIGRATION" 2>/dev/null || true
 
-update_notes_timestamp "$FEATURE_DIR"
+  update_notes_timestamp "$FEATURE_DIR" 2>/dev/null || true
 
-echo ""
-echo "NOTES.md: Phase 1 checkpoint and summary added"
+  echo ""
+  echo "NOTES.md: Phase 1 checkpoint and summary added"
+fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -1205,7 +1251,9 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Load planning context
-source "$FEATURE_DIR/.planning-context"
+if [ -f "$FEATURE_DIR/.planning-context" ]; then
+  source "$FEATURE_DIR/.planning-context"
+fi
 
 # Determine path based on UI detection
 if [ "$HAS_SCREENS" = true ]; then
@@ -1263,13 +1311,19 @@ echo ""
 echo "Automated (full workflow):"
 echo "  → /feature continue"
 echo ""
-
-# Optional compaction reminder if conversation is long
-CONTEXT_CHECK=$(wc -l < /dev/stdin 2>/dev/null || echo 0)
-if [ "$CONTEXT_CHECK" -gt 500 ]; then
-  echo "💡 Tip: Long conversation detected"
-  echo "   Consider: /compact before /tasks"
-fi
 ```
+
+## CONTEXT MANAGEMENT
+
+**Before proceeding to /tasks:**
+
+If context feels large (long conversation with many research tools), run compaction:
+```bash
+/compact "preserve architecture decisions, reuse analysis, and schema"
+```
+
+Otherwise proceed directly to `/tasks`.
+
+**No automatic tracking.** Manual compaction only if needed.
 
 </instructions>
