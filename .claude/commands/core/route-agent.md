@@ -39,6 +39,8 @@ Else: Set TASK_DESCRIPTION = $ARGUMENTS
 
 **Tool used**: Claude Code's Task tool (available in this environment)
 
+**Shared configuration**: This command uses `.claude/agents/agent-routing-rules.json` and `.claude/hooks/routingEngine.ts` for consistent routing logic with the auto-routing hook.
+
 ## ANALYZE TASK
 
 **Extract classification signals from task description:**
@@ -63,119 +65,70 @@ Else: Set TASK_DESCRIPTION = $ARGUMENTS
 
 ## ROUTING DECISION TREE
 
-**Score each agent based on triggers, then select highest score:**
+**All routing logic is defined in `.claude/agents/agent-routing-rules.json`**
 
-### Backend API/Services → `backend-dev`
+This shared configuration contains:
+- **26 specialist agents** (backend-dev, frontend-shipper, database-architect, qa-test, debugger, senior-code-reviewer, 10 phase agents, and others)
+- **Trigger patterns** for each agent:
+  - File path globs (`api/**/*.py`, `apps/**/*.tsx`, `**/tests/**`, etc.)
+  - Keywords (endpoint, component, migration, test, bug, etc.)
+  - Intent patterns (regex matching task descriptions)
+- **Context files** each agent should receive
+- **Chain rules** for sequential agent delegation
+- **Tie-breaking rules** for conflict resolution
+- **Anti-loop protection** (max chain depth: 3, cooldown: 5s)
 
-**Triggers (+10 points each)**:
-- File paths: `api/**/*.py`, `app/**/*.py`
-- Keywords: "endpoint", "route", "service", "FastAPI", "Pydantic", "middleware", "API"
-- Task types: Implement API, create service, add endpoint
+**To view full routing rules**:
+```bash
+cat .claude/agents/agent-routing-rules.json
+```
 
-**Context to gather**:
-- spec.md (requirements section)
-- tasks.md (REUSE markers if T0NN task)
-- error-log.md (recent entries for debugging context)
-
----
-
-### Frontend UI/Components → `frontend-shipper`
-
-**Triggers (+10 points each)**:
-- File paths: `apps/**/*.tsx`, `apps/**/*.ts`, `components/**`
-- Keywords: "component", "UI", "React", "Next.js", "page", "form", "button", "tsx"
-- Task types: Implement UI, create component, add page
-
-**Context to gather**:
-- visuals/README.md (UX patterns)
-- design/systems/ui-inventory.md (component catalog)
-- tasks.md (REUSE markers)
-
----
-
-### Database Schema/Queries → `database-architect`
-
-**Triggers (+10 points each)**:
-- File paths: `api/alembic/**`, `api/app/models/**`
-- Keywords: "migration", "schema", "database", "SQL", "Alembic", "table", "RLS", "model"
-- Task types: Create migration, update schema, optimize query
-
-**Specificity bonus**: +5 points (most specific domain)
-
-**Context to gather**:
-- data-model.md (ERD and schema)
-- api/alembic/versions/ (existing migrations)
-- plan.md (performance targets)
-
----
-
-### Tests/QA → `qa-test`
-
-**Triggers (+10 points each)**:
-- File paths: `**/tests/**`, `**/test_*.py`, `**/*.test.ts`
-- Keywords: "test", "coverage", "E2E", "Playwright", "Jest", "integration", "unit"
-- Task types: Write tests, increase coverage, fix failing tests
-
-**Context to gather**:
-- \spec-flow/templates/test-patterns.md
-- plan.md (coverage targets: 80%+ line/branch)
-- TDD workflow reminder
-
----
-
-### Debugging/Error Fixing → `debugger`
-
-**Triggers (+10 points each)**:
-- Keywords: "bug", "error", "failing", "broken", "fix", "debug", "crash"
-- Task types: Debug issue, fix error, resolve failure
-
-**Default agent**: If no other agent scores >0, route to debugger
-
-**Context to gather**:
-- error-log.md (recent entries)
-- Stack trace or error message
-- Files involved in error
-
----
-
-### Code Review/Quality → `senior-code-reviewer`
-
-**Triggers (+10 points each)**:
-- Keywords: "review", "quality", "contract", "KISS", "DRY", "security", "compliance"
-- Task types: Review code, validate contracts, check quality gates
-
-**Context to gather**:
-- git diff (files changed)
-- OpenAPI contracts (if in specs/NNN/contracts/)
-- plan.md (quality gate requirements)
-- \spec-flow/memory/constitution.md
+**Key specialists** (excerpt):
+- `backend-dev` — Backend APIs, services, business logic
+- `frontend-shipper` — UI components, pages, client-side logic
+- `database-architect` — Schema design, migrations, query optimization
+- `qa-test` — Test creation, QA planning, automated suites
+- `debugger` — Error triage, bug investigation, root cause analysis
+- `senior-code-reviewer` — Code quality, DRY/KISS, contract compliance
 
 ---
 
 ## SELECT AGENT
 
-**Scoring algorithm**:
+**Use shared routing engine** (`.claude/hooks/routingEngine.ts`):
 
-1. Count keyword matches for each agent (each match = +10 points)
-2. Check file path patterns (match = +10 points)
-3. Apply specificity bonuses:
-   - Database: +5 (most specific)
-   - If database AND backend both match: database wins
-   - If debugger AND qa both match on "test": qa wins
-4. Select agent with highest score
-5. If all scores = 0: Default to `debugger`
+The routing engine implements this scoring algorithm:
+1. **File path matching**: +20 points per matched glob pattern
+2. **Keyword matching**: +10 points per matched keyword
+3. **Intent pattern matching**: +15 points for regex match on task description
+4. **Specificity bonus**: Additional points from config (database-architect: +5, phase agents: +10)
+5. **Tie-breaking**: Apply conflict resolution rules (database wins over backend, qa wins over debugger, etc.)
+6. **Confidence threshold**: Only route if score ≥ 10 (minScore from config)
+
+**Example TypeScript usage** (if calling programmatically):
+```typescript
+import { routeToSpecialist } from '.claude/hooks/routingEngine.js';
+
+const result = routeToSpecialist({
+  filePaths: ['api/app/main.py'],
+  keywords: ['endpoint', 'fastapi'],
+  intent: 'Implement POST /api/users endpoint'
+});
+
+// result = { specialist: "backend-dev", score: 30, reason: "file path match, keyword match", ... }
+```
 
 **Display routing decision**:
 ```
 Routing analysis:
-  Backend: 20 points
-  Frontend: 0 points
-  Database: 15 points
-  Tests: 0 points
-  Debug: 10 points
-  Review: 0 points
+  backend-dev: 30 points
+  frontend-shipper: 0 points
+  database-architect: 5 points (specificity bonus only)
+  qa-test: 0 points
+  debugger: 0 points
 
-Selected: backend-dev (20 points)
+Selected: backend-dev (30 points, high confidence)
+Reason: file path match, keyword match
 ```
 
 ## GATHER CONTEXT
@@ -186,13 +139,11 @@ Selected: backend-dev (20 points)
    - Current working directory may be `specs/NNN-feature-name/`
    - Or check for most recent feature: `specs/` directories sorted by date
 
-2. **Read context files based on agent type**:
-   - Backend: spec.md, tasks.md, error-log.md
-   - Frontend: visuals/README.md, design/systems/ui-inventory.md, tasks.md
-   - Database: data-model.md, api/alembic/versions/*, plan.md
-   - Tests: \spec-flow/templates/test-patterns.md, plan.md
-   - Debug: error-log.md, stack trace
-   - Review: git diff output, OpenAPI contracts, constitution.md
+2. **Read context files from routing config**:
+   - The selected agent's `contextFiles` array in `.claude/agents/agent-routing-rules.json` specifies which files to load
+   - Example for `backend-dev`: `["spec.md", "plan.md", "tasks.md"]`
+   - Example for `database-architect`: `["spec.md", "plan.md", "tasks.md", "docs/project/data-architecture.md"]`
+   - Example for `frontend-shipper`: `["spec.md", "plan.md", "tasks.md", "visuals/screens.yaml"]`
 
 3. **Extract relevant sections**:
    - Don't send entire files - extract relevant sections only
