@@ -1,4 +1,16 @@
 
+## [4.4.1] - 2025-11-11
+
+### Fixed
+- **Package contents**: Updated package.json files array to use directory glob patterns (.claude/commands/**)
+- **Removed duplicates**: Deleted 13 duplicate root-level command files (now in subdirectories)
+- **Proper exclusion**: Ensured internal/ command directory is excluded from npm package
+- **Issue**: v4.4.0 used old flat file listing, missing reorganized commands in subdirectories
+
+**Impact**: Users installing v4.4.1 now receive all 46 reorganized commands correctly. v4.4.0 users should upgrade.
+
+---
+
 ## [4.4.0] - 2025-11-11
 
 ### Changed
