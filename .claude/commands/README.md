@@ -178,21 +178,21 @@ Commands marked "Needs v2.0" should be refactored to include:
 
 ---
 
-## Proposed Directory Structure
+## Directory Structure
 
-**Future organization** (not yet implemented):
+**Current organization** (implemented 2025-11-10):
 
 ```
 .claude/commands/
 ├── README.md (this file)
 │
-├── core/
+├── core/                   (4 commands)
 │   ├── feature.md
 │   ├── help.md
 │   ├── quick.md
 │   └── route-agent.md
 │
-├── phases/
+├── phases/                 (10 commands)
 │   ├── spec.md
 │   ├── clarify.md
 │   ├── plan.md
@@ -204,7 +204,7 @@ Commands marked "Needs v2.0" should be refactored to include:
 │   ├── finalize.md
 │   └── debug.md
 │
-├── deployment/
+├── deployment/             (10 commands)
 │   ├── ship.md
 │   ├── ship-staging.md
 │   ├── validate-staging.md
@@ -216,12 +216,12 @@ Commands marked "Needs v2.0" should be refactored to include:
 │   ├── deployment-budget.md
 │   └── check-env.md
 │
-├── quality/
+├── quality/                (3 commands)
 │   ├── gate-ci.md
 │   ├── gate-sec.md
 │   └── fix-ci.md
 │
-├── infrastructure/
+├── infrastructure/         (6 commands)
 │   ├── contract-bump.md
 │   ├── contract-verify.md
 │   ├── flag-add.md
@@ -229,7 +229,7 @@ Commands marked "Needs v2.0" should be refactored to include:
 │   ├── flag-cleanup.md
 │   └── fixture-refresh.md
 │
-├── project/
+├── project/                (6 commands)
 │   ├── init-project.md
 │   ├── roadmap.md
 │   ├── constitution.md
@@ -237,27 +237,30 @@ Commands marked "Needs v2.0" should be refactored to include:
 │   ├── init-brand-tokens.md
 │   └── dev-docs.md
 │
-├── metrics/
+├── metrics/                (2 commands)
 │   ├── metrics.md
 │   └── metrics-dora.md
 │
-├── build/
+├── build/                  (2 commands)
 │   ├── build-local.md
 │   └── branch-enforce.md
 │
-├── scheduling/
+├── scheduling/             (3 commands)
 │   ├── scheduler-assign.md
 │   ├── scheduler-list.md
 │   └── scheduler-park.md
 │
-└── internal/
+└── internal/               (1 command)
     └── release.md
 ```
 
-**Migration notes**:
-- Requires updating references in skills, agents, and slash command loader
-- Should be done as separate task after v2.0 refactors complete
-- Use symlinks or path mappings for backward compatibility during transition
+**Directory Benefits**:
+- Improved navigation and discoverability
+- Logical grouping by function
+- Easier to find related commands
+- Scalable as new commands are added
+
+**Note**: Slash command loader automatically searches subdirectories
 
 ---
 
