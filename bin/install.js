@@ -1,6 +1,8 @@
+// install.js (refactored)
 const fs = require('fs-extra');
 const path = require('path');
 const ora = require('ora');
+
 const {
   getPackageRoot,
   copyDirectory,
@@ -13,161 +15,210 @@ const { checkExistingInstallation, runPreflightChecks } = require('./validate');
 const { resolveConflict, STRATEGIES } = require('./conflicts');
 
 /**
- * User-generated directories that must NEVER be touched during install/update
- * These are excluded from all copy/install operations
+ * User-owned directories that must NEVER be touched during install/update.
+ * These are excluded from all copy/install operations.
  */
 const USER_DATA_DIRECTORIES = [
-  'specs',           // Feature specifications (user's primary work)
-  'node_modules',    // Dependencies (managed by package manager)
-  '.git',            // Git repository
-  'dist',            // Build output
-  'build',           // Build output
-  'coverage',        // Test coverage
-  '.next',           // Next.js build
-  '.nuxt',           // Nuxt build
-  'out'              // Output directories
+  'specs',        // feature specs
+  'node_modules', // deps
+  '.git',         // repo
+  'dist', 'build', 'coverage',
+  '.next', '.nuxt', 'out'
 ];
 
-/**
- * Install spec-flow to target directory
- * @param {Object} options - Installation options
- * @param {string} options.targetDir - Target directory
- * @param {boolean} options.preserveMemory - Whether to preserve memory files
- * @param {boolean} options.verbose - Show detailed output
- * @param {string} options.conflictStrategy - Conflict resolution strategy (merge|backup|skip|force)
- * @param {Array<string>} options.excludeDirectories - Directories to exclude from copying
- * @returns {Promise<Object>} { success: boolean, error: string|null, conflictActions: Array }
- */
-async function install(options) {
-  const { targetDir, preserveMemory = false, verbose = false, conflictStrategy = STRATEGIES.MERGE, excludeDirectories = [] } = options;
-  const packageRoot = getPackageRoot();
+/** Root-level docs we ship */
+const ROOT_DOC_FILES = ['CLAUDE.md', 'QUICKSTART.md', 'LICENSE'];
 
-  // Pre-flight checks
-  if (verbose) {
-    printHeader('Pre-flight Checks');
-  }
+/** Merge and normalize an exclude list */
+function buildExcludeList(extra = []) {
+  const set = new Set([...USER_DATA_DIRECTORIES, ...(extra || [])]);
+  return Array.from(set);
+}
 
-  const checks = await runPreflightChecks({
+/** Guard + normalize options */
+function normalizeOptions(opts = {}) {
+  const {
     targetDir,
-    packageRoot,
-    verbose
-  });
+    preserveMemory = false,
+    verbose = false,
+    conflictStrategy = STRATEGIES.MERGE,
+    excludeDirectories = []
+  } = opts;
 
-  if (!checks.passed) {
-    return {
-      success: false,
-      error: `Pre-flight checks failed:\n${checks.errors.join('\n')}`
-    };
+  if (!targetDir || typeof targetDir !== 'string') {
+    throw new Error('options.targetDir is required');
   }
 
-  // Check if already installed (only block if preserveMemory is false)
-  // Note: The wizard handles this check earlier and offers to update,
-  // so this is primarily a safety net for direct calls to install()
-  const existing = await checkExistingInstallation(targetDir);
+  const resolvedTarget = path.resolve(targetDir); // official behavior: resolves to absolute path.
 
-  if (existing.installed && !preserveMemory) {
-    if (verbose) {
-      printWarning('Spec-Flow is already installed in this directory');
-      console.log('\nTo update existing installation:');
-      console.log('  npx spec-flow update');
-      console.log('\nOr run init again to be guided through the update process:');
-      console.log('  npx spec-flow init\n');
-    }
-    return {
-      success: false,
-      error: 'Already installed. Run "npx spec-flow init" or "npx spec-flow update" to upgrade.'
-    };
-  }
+  return {
+    targetDir: resolvedTarget,
+    preserveMemory,
+    verbose,
+    conflictStrategy,
+    excludeDirectories: buildExcludeList(excludeDirectories)
+  };
+}
 
-  let spinner;
-  const conflictActions = []; // Track conflict resolutions
-
+/** Spinner helper with guaranteed cleanup */
+async function withSpinner(label, fn, { enabled = true } = {}) {
+  const spinner = enabled ? ora(label).start() : null;
   try {
-    // Copy .claude directory
-    spinner = ora('Installing .claude directory...').start();
-    const claudeSource = path.join(packageRoot, '.claude');
-    const claudeDest = path.join(targetDir, '.claude');
+    const result = await fn((text) => spinner && (spinner.text = text));
+    spinner && spinner.succeed(label);
+    return result;
+  } catch (err) {
+    spinner && spinner.fail(label);
+    throw err;
+  }
+}
 
-    await copyDirectory(claudeSource, claudeDest, {
-      preserveMemory: false,
-      conflictStrategy,
-      excludeDirectories,
-      onProgress: (msg) => {
-        if (verbose) spinner.text = msg;
-      }
-    });
-    spinner.succeed('.claude directory installed');
-
-    // Copy .spec-flow directory
-    spinner = ora('Installing .spec-flow directory...').start();
-    const specFlowSource = path.join(packageRoot, '.spec-flow');
-    const specFlowDest = path.join(targetDir, '.spec-flow');
-
-    await copyDirectory(specFlowSource, specFlowDest, {
+/** Install a directory from packageRoot into targetDir */
+async function installDir({ source, dest, label, preserveMemory, conflictStrategy, excludeDirectories, verbose }) {
+  return withSpinner(label, async (setText) => {
+    await copyDirectory(source, dest, {
       preserveMemory,
       conflictStrategy,
       excludeDirectories,
       onProgress: (msg) => {
-        if (verbose) spinner.text = msg;
+        if (verbose && msg) setText(`${label} · ${msg}`);
       }
     });
+  }, { enabled: process.env.CI !== 'true' }); // keep logs cleaner in CI
+}
 
-    if (preserveMemory) {
-      spinner.succeed('.spec-flow directory installed (memory preserved)');
-    } else {
-      spinner.succeed('.spec-flow directory installed');
-    }
-
-    // Copy root files with conflict resolution
-    spinner = ora('Installing documentation files...').start();
-    const rootFiles = ['CLAUDE.md', 'QUICKSTART.md', 'LICENSE'];
-
-    for (const file of rootFiles) {
+/** Copy doc files with conflict resolution; collect actions */
+async function installDocs({ packageRoot, targetDir, conflictStrategy, verbose }) {
+  const actions = [];
+  await withSpinner('Installing documentation files...', async (setText) => {
+    for (const file of ROOT_DOC_FILES) {
       const source = path.join(packageRoot, file);
       const dest = path.join(targetDir, file);
-
-      if (await fs.pathExists(source)) {
+      if (await fs.pathExists(source)) { // fs-extra pathExists is a boolean promise. :contentReference[oaicite:1]{index=1}
         const action = await resolveConflict({
           sourcePath: source,
           targetPath: dest,
           strategy: conflictStrategy,
           fileName: file
         });
-        conflictActions.push(action);
-
-        if (verbose) {
-          spinner.text = `${file}: ${action.action}`;
-        }
+        actions.push(action);
+        if (verbose) setText(`${file}: ${action.action}`);
       }
     }
-    spinner.succeed('Documentation files installed');
+  }, { enabled: process.env.CI !== 'true' });
+  return actions;
+}
 
-    printSuccess('\nInstallation complete!');
+/**
+ * Install spec-flow to target directory
+ * @param {Object} options
+ * @param {string} options.targetDir
+ * @param {boolean} [options.preserveMemory=false]
+ * @param {boolean} [options.verbose=false]
+ * @param {string} [options.conflictStrategy='merge'] STRATEGIES.{MERGE|BACKUP|SKIP|FORCE}
+ * @param {Array<string>} [options.excludeDirectories=[]]
+ * @returns {Promise<{ success: boolean, error: string|null, conflictActions: Array }>}
+ */
+async function install(options) {
+  let settings;
+  try {
+    settings = normalizeOptions(options);
+  } catch (e) {
+    return { success: false, error: e.message, conflictActions: [] };
+  }
 
-    return { success: true, error: null, conflictActions };
-  } catch (error) {
-    if (spinner) spinner.fail('Installation failed');
+  const {
+    targetDir,
+    preserveMemory,
+    verbose,
+    conflictStrategy,
+    excludeDirectories
+  } = settings;
+
+  const packageRoot = getPackageRoot();
+
+  if (verbose) printHeader('Pre-flight Checks');
+
+  const checks = await runPreflightChecks({ targetDir, packageRoot, verbose });
+  if (!checks.passed) {
     return {
       success: false,
-      error: `Installation error: ${error.message}`
+      error: `Pre-flight checks failed:\n${checks.errors.join('\n')}`,
+      conflictActions: []
     };
+  }
+
+  // Safety net: block blind overwrite unless explicitly preserving memory or caller opted into update flow
+  const existing = await checkExistingInstallation(targetDir);
+  if (existing.installed && !preserveMemory) {
+    if (verbose) {
+      printWarning('Spec-Flow already installed in this directory');
+      console.log('\nTo update existing installation:');
+      console.log('  npx spec-flow update');
+      console.log('\nOr re-run init to be guided through an update:');
+      console.log('  npx spec-flow init\n');
+    }
+    return {
+      success: false,
+      error: 'Already installed. Run "npx spec-flow init" or "npx spec-flow update" to upgrade.',
+      conflictActions: []
+    };
+  }
+
+  const conflictActions = [];
+  try {
+    // 1) .claude (memory=false to ensure templates refresh)
+    await installDir({
+      source: path.join(packageRoot, '.claude'),
+      dest: path.join(targetDir, '.claude'),
+      label: 'Installing .claude directory...',
+      preserveMemory: false,
+      conflictStrategy,
+      excludeDirectories,
+      verbose
+    });
+
+    // 2) .spec-flow (respect preserveMemory)
+    await installDir({
+      source: path.join(packageRoot, '.spec-flow'),
+      dest: path.join(targetDir, '.spec-flow'),
+      label: preserveMemory
+        ? 'Installing .spec-flow directory (memory preserved)...'
+        : 'Installing .spec-flow directory...',
+      preserveMemory,
+      conflictStrategy,
+      excludeDirectories,
+      verbose
+    });
+
+    // 3) root docs
+    const docActions = await installDocs({ packageRoot, targetDir, conflictStrategy, verbose });
+    conflictActions.push(...docActions);
+
+    printSuccess('\nInstallation complete!');
+    return { success: true, error: null, conflictActions };
+  } catch (error) {
+    printError('Installation failed');
+    return { success: false, error: `Installation error: ${error.message}`, conflictActions };
   }
 }
 
 /**
  * Update existing spec-flow installation
- * @param {Object} options - Update options
- * @param {string} options.targetDir - Target directory
- * @param {boolean} options.force - Deprecated (kept for backwards compatibility)
- * @param {boolean} options.verbose - Show detailed output
- * @returns {Promise<Object>} { success: boolean, error: string|null }
+ * Preserves memory and excludes user data directories by default.
+ * @param {Object} options
+ * @param {string} options.targetDir
+ * @param {boolean} [options.verbose=false]
+ * @returns {Promise<{ success: boolean, error: string|null }>}
  */
 async function update(options) {
-  const { targetDir, verbose = false } = options;
+  let { targetDir, verbose = false } = options || {};
+  if (!targetDir) {
+    return { success: false, error: 'options.targetDir is required' };
+  }
+  targetDir = path.resolve(targetDir);
 
-  // Check if installed
   const existing = await checkExistingInstallation(targetDir);
-
   if (!existing.installed) {
     return {
       success: false,
@@ -176,8 +227,6 @@ async function update(options) {
   }
 
   try {
-    // Run installation with memory preservation and user directory exclusion
-    // This updates templates while preserving user data (memory, specs, learnings.md)
     const result = await install({
       targetDir,
       preserveMemory: true,
@@ -186,23 +235,13 @@ async function update(options) {
     });
 
     if (!result.success) {
-      return {
-        success: false,
-        error: result.error
-      };
+      return { success: false, error: result.error || 'Unknown update error' };
     }
 
     printSuccess('Update complete!');
-
-    return {
-      success: true,
-      error: null
-    };
+    return { success: true, error: null };
   } catch (error) {
-    return {
-      success: false,
-      error: `Update error: ${error.message}`
-    };
+    return { success: false, error: `Update error: ${error.message}` };
   }
 }
 
