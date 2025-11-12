@@ -44,6 +44,24 @@
 
 ## 🆕 Recent Updates
 
+### v4.6.0 (November 2025)
+
+**Infrastructure Command Integration & /init-project Enhancements**
+
+- **Infrastructure Automation**: Context-aware detection and prompts for `/flag-add`, `/contract-bump`, `/flag-cleanup`, `/fixture-refresh` integrated into core phases
+- **Idempotent /init-project**: Update mode (fills `[NEEDS CLARIFICATION]` only), force mode (regenerate all), write-missing-only mode
+- **Node.js Template Renderer**: Consistent `{{VARIABLE}}` placeholder replacement with 677-line Bash and 669-line PowerShell implementations
+- **Brownfield Scanning**: Auto-detect tech stack from existing codebases (package.json, requirements.txt, docker-compose.yml)
+- **Quality Gates**: WCAG contrast validation, C4 model checks, markdown linting, NEEDS CLARIFICATION detection
+- **Project Templates**: CODEOWNERS (204 lines), CONTRIBUTING (308 lines), SECURITY (231 lines) templates
+- **Design System**: Streamlined design-principles.md v2.0.1, WCAG 2.2 aligned checklist with non-UI UX section
+
+**Problem Solved**: Manual /init-project re-runs overwrite customizations. No automated infrastructure command detection. Missing project governance templates.
+
+**Impact**: Safe re-runs preserve existing docs. Brownfield projects get accurate tech stack detection. Context-aware infrastructure prompts reduce manual command invocation.
+
+---
+
 ### v4.4.0 (November 2025)
 
 **v2.0 Command Refactor Complete** (11/46 commands - 24%)

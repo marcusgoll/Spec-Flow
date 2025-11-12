@@ -1,4 +1,54 @@
 
+## [4.6.0] - 2025-11-12
+
+### ✨ New Features
+
+**Infrastructure Command Integration**
+- Automated detection and contextual prompts for infrastructure commands
+- Centralized detection script (detect-infrastructure-needs.sh) with JSON output
+- Integration into /implement, /plan, /ship, /optimize phases
+- Context-aware recommendations:
+  - Feature flags when branch age >18h
+  - Contract bumps when API changes detected
+  - Fixture refresh after migrations
+  - Flag cleanup after production deployment
+
+**/init-project Enhancements**
+- Idempotent operation modes: --update, --force, default (first-time)
+- Update mode: only fills [NEEDS CLARIFICATION] sections
+- Force mode: regenerates all documentation
+- Write-missing-only: preserves existing files
+- New Node.js template renderer for consistent output
+- Parallel Bash (677 lines) and PowerShell (669 lines) implementations
+- Environment variable support (15 variables) for non-interactive mode
+- Config file support (JSON/YAML) for CI/CD integration
+- Brownfield scanning: auto-detect tech stack from existing codebase
+- Quality gates: NEEDS CLARIFICATION detection, C4 validation, markdown linting
+
+**Project Templates**
+- CODEOWNERS template (204 lines) with role-based code ownership patterns
+- CONTRIBUTING template (308 lines) with conventional commits and workflow guidelines
+- SECURITY template (231 lines) with vulnerability reporting process
+
+### 📝 Documentation
+
+**Design System Refinement**
+- Streamlined design-principles.md (v2.0.1)
+- More concise OKLCH explanations
+- Added executable Color.js contrast verification examples
+- Improved WCAG 2.2 Focus Appearance specification
+- Refactored dont-make-me-think-checklist.md with WCAG 2.2 AA alignment
+- Added non-UI UX section for API/CLI features
+- Improved accessibility guidelines
+
+### 🧹 Maintenance
+- Removed archived roadmap files
+- Fixed package.json dependency issue (removed invalid spec-flow file reference)
+- Fixed line ending consistency
+
+---
+
+
 ## [4.5.0] - 2025-11-11
 
 ### ✨ New Features
