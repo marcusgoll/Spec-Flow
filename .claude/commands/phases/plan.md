@@ -1307,6 +1307,31 @@ else
   echo ""
 fi
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# INFRASTRUCTURE RECOMMENDATIONS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ -f .spec-flow/scripts/bash/detect-infrastructure-needs.sh ]; then
+  API_PLANNED=$(.spec-flow/scripts/bash/detect-infrastructure-needs.sh api-changes-planned 2>/dev/null | jq -r '.planned // false')
+
+  if [ "$API_PLANNED" = "true" ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "ℹ️  API CHANGES PLANNED"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "This feature modifies APIs. After implementation:"
+    echo ""
+    echo "  1. Bump contract version:"
+    echo "     /contract-bump [major|minor|patch] --reason \"Change description\""
+    echo ""
+    echo "  2. Verify consumers:"
+    echo "     /contract-verify"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  fi
+fi
+
 echo ""
 echo "Automated (full workflow):"
 echo "  → /feature continue"

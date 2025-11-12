@@ -327,6 +327,50 @@ Essential Cleanup Done:
 Production URL: [url]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### 6.4: Check for Infrastructure Cleanup Needs
+
+After deployment completes, check if infrastructure commands need to be run:
+
+```bash
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# INFRASTRUCTURE CLEANUP RECOMMENDATIONS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ -f .spec-flow/scripts/bash/detect-infrastructure-needs.sh ]; then
+  FLAG_CLEANUP_NEEDED=$(.spec-flow/scripts/bash/detect-infrastructure-needs.sh flag-cleanup 2>/dev/null | jq -r '.needed // false')
+
+  if [ "$FLAG_CLEANUP_NEEDED" = "true" ]; then
+    ACTIVE_FLAGS=$(.spec-flow/scripts/bash/detect-infrastructure-needs.sh flag-cleanup 2>/dev/null | jq -r '.active_flags[]')
+    FLAG_COUNT=$(echo "$ACTIVE_FLAGS" | wc -l)
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🚩 ACTIVE FEATURE FLAGS DETECTED ($FLAG_COUNT)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Remove flags that are no longer needed:"
+    echo ""
+
+    while IFS= read -r flag; do
+      if [ -n "$flag" ]; then
+        echo "  /flag-cleanup $flag"
+      fi
+    done <<< "$ACTIVE_FLAGS"
+
+    echo ""
+    echo "Keeping flags increases tech debt. Clean up before next sprint."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+  fi
+fi
+```
+
+Display final message:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📚 Optional: Full Documentation
 

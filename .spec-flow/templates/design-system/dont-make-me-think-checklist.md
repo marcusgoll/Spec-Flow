@@ -1,433 +1,427 @@
-# Don't Make Me Think Checklist
+# Don't Make Me Think — Ship Gate Checklist
 
 **Feature**: [Feature Name]
-**Phase**: [Variations / Functional / Polish]
+**Phase**: [Variations | Functional | Polish]
 **Evaluator**: [Name]
-**Date**: [Date]
+**Date**: [YYYY-MM-DD]
+**Scope**: [UI | API | CLI | Mixed]
 
 ---
 
-## Overview
+## How scoring works
 
-This checklist ensures your interface is intuitive, self-explanatory, and requires minimal cognitive effort from users. Based on Steve Krug's "Don't Make Me Think" principles, each item should be answered "Yes" for optimal usability.
+* Every item has a priority: Critical = 2 pts, Important = 1 pt, Nice-to-have = 0.5 pt.
+* Section score = sum of passed items.
+* Phase must meet all "Phase Gate" rules at the bottom.
 
-**Scoring**:
-- **Critical (🔴)**: Must be "Yes" - blocks progression if "No"
-- **Important (🟡)**: Should be "Yes" - address before finalizing
-- **Nice-to-have (🟢)**: Ideally "Yes" - optimize if time permits
+**Targets**
 
-**Target Score**: 100% Critical, 90%+ Important, 80%+ Nice-to-have
+* Critical: 100% pass
+* Important: ≥90% pass
+* Nice-to-have: ≥80% pass
 
----
-
-## 1. Visual Clarity
-
-### Is it obvious what things are?
-
-**🔴 Critical**:
-- [ ] **Clickable elements look clickable** (buttons have depth/color, links are underlined or colored)
-- [ ] **Non-clickable elements don't look clickable** (no hover effects on static text, no button-like styling on labels)
-- [ ] **Primary action is visually dominant** (largest button, highest contrast, most prominent position)
-- [ ] **Destructive actions are visually distinct** (red color, icon, confirmation required)
-- [ ] **Disabled elements look disabled** (gray-400 color, reduced opacity, no hover effects)
-
-**🟡 Important**:
-- [ ] **Headings look like headings** (larger size, bolder weight, clear hierarchy)
-- [ ] **Body text is clearly distinguishable** (gray-900 for primary, gray-600 for secondary)
-- [ ] **Form fields are obviously interactive** (border, shadow on z-1, clear label association)
-- [ ] **Images have clear purpose** (not decorative noise, support content)
-- [ ] **Icons reinforce meaning** (not the sole conveyor of information, paired with text)
-
-**🟢 Nice-to-have**:
-- [ ] **Hover states provide clear affordance** (elevation increase, color change, cursor change)
-- [ ] **Focus states are highly visible** (ring-2 ring-blue-500, clear indicator)
-- [ ] **Loading states are informative** (skeleton screens show structure, spinners indicate progress)
-
-**Phase-Specific**:
-- **Variations**: Check each variant (3-5) for visual clarity consistency
-- **Functional**: Verify all interactive elements have clear affordance
-- **Polish**: Ensure brand application didn't reduce visual clarity
+> Rationale for thresholds and key rules draws from WCAG 2.2 AA/AAA and established research patterns.
 
 ---
 
-## 2. Navigation & Orientation
+## 0) Scope Guard
 
-### Can users find what they need and know where they are?
+Before you waste time testing the wrong thing, pick the path:
 
-**🔴 Critical**:
-- [ ] **Users can answer "Where am I?"** (page title, breadcrumbs, or active nav indicator)
-- [ ] **Users can answer "How did I get here?"** (clear navigation path, back button works)
-- [ ] **Users can answer "Where can I go?"** (navigation is visible, links are clear)
-- [ ] **Home link is in expected location** (top-left corner, logo is clickable)
-- [ ] **Navigation doesn't disappear or move** (persistent across pages, sticky if needed)
-
-**🟡 Important**:
-- [ ] **Search is easy to find** (top-right corner, visible on all pages)
-- [ ] **Navigation labels are clear** (no jargon, describe destination, not clever)
-- [ ] **Active page is highlighted in nav** (different color, bold, or underline)
-- [ ] **Breadcrumbs show clear path** (if deep hierarchy, show "Home > Category > Page")
-- [ ] **Footer contains expected links** (About, Contact, Privacy, Terms)
-
-**🟢 Nice-to-have**:
-- [ ] **"Skip to content" link for keyboard users** (hidden until focused)
-- [ ] **Mega menu is scannable** (if many nav items, grouped logically)
-- [ ] **Recently visited pages are accessible** (browser history, or app history)
-
-**Phase-Specific**:
-- **Variations**: Test navigation visibility in each variant
-- **Functional**: Verify navigation interactions (clicks, hovers, focus)
-- **Polish**: Ensure navigation hierarchy is clear with final typography
+* [ ] **UI present** → run Sections 1–10 + "Non-UI (if applicable)"
+* [ ] **No UI (API/CLI only)** → run "Non-UI UX" section first, then only UI-relevant items (skip visual-only)
 
 ---
 
-## 3. Content Scannability
+## 1) Visual Clarity
 
-### Can users quickly understand what they're reading?
+**Critical (2 pts each)**
 
-**🔴 Critical**:
-- [ ] **Most important content is top-left** (F-pattern: users scan top-horizontal, then left-vertical)
-- [ ] **Headings are descriptive** (tell users what the section is about, not vague)
-- [ ] **Paragraphs are short** (3-4 sentences max, break up long text)
-- [ ] **Key information stands out** (bold, color, larger size, or in callout box)
-- [ ] **No walls of text** (every screen has visual breaks: headings, bullets, images)
+* [ ] Clickables look clickable; non-clickables don't.
+* [ ] One primary action clearly dominates the page.
+* [ ] Destructive actions are visually distinct and require confirmation.
+* [ ] Disabled looks disabled (reduced contrast/opacity; no hover/focus).
+* [ ] Labels/inputs have obvious association.
 
-**🟡 Important**:
-- [ ] **Bullet points are used for lists** (easier to scan than paragraphs)
-- [ ] **Text hierarchy is clear** (2:1 heading ratios, visual distinction between levels)
-- [ ] **Links are descriptive** ("Learn about pricing" not "Click here")
-- [ ] **Important words are at start of lines** (front-load information, don't bury key details)
-- [ ] **Unnecessary words are eliminated** ("Get started" not "Click here to get started now")
+**Important (1 pt each)**
 
-**🟢 Nice-to-have**:
-- [ ] **Callouts highlight key info** (cards, boxes, or colored backgrounds for important notes)
-- [ ] **Images support text** (diagrams, screenshots, icons reinforce content)
-- [ ] **White space improves readability** (generous margins, line height, section spacing)
+* [ ] Heading hierarchy is visually obvious (size/weight/spacing).
+* [ ] Primary vs secondary body text are distinct.
+* [ ] Images actually support content, not decorate emptiness.
+* [ ] Icons reinforce text, never replace it.
 
-**Phase-Specific**:
-- **Variations**: Test different content layouts (tight vs. airy, linear vs. grid)
-- **Functional**: Verify F-pattern with real content (not Lorem Ipsum)
-- **Polish**: Ensure hierarchy ratios are 2:1 (measure actual rendered sizes)
+**Nice-to-have (0.5 pt each)**
+
+* [ ] Hover gives clear affordance.
+* [ ] Focus states are highly visible.
+* [ ] Loading states show structure (skeletons) or progress.
 
 ---
 
-## 4. Interactions & Affordance
+## 2) Navigation & Orientation
 
-### Are actions obvious and easy to perform?
+**Critical**
 
-**🔴 Critical**:
-- [ ] **Users know what will happen before they click** (button labels are verbs: "Save", "Delete", "Cancel")
-- [ ] **Primary action is obvious** (one clear CTA per screen, visually dominant)
-- [ ] **Destructive actions require confirmation** ("Delete account" has confirmation dialog)
-- [ ] **Forms show what's required** (asterisk or "Required" label, clear error messages)
-- [ ] **Submit buttons are enabled only when valid** (or provide clear error on submit)
+* [ ] "Where am I?" visible via title/active-nav/breadcrumb.
+* [ ] "Where can I go?" obvious; nav stable across pages.
+* [ ] Home = logo in top-left; works.
 
-**🟡 Important**:
-- [ ] **Related actions are grouped** (Save + Cancel together, not separated)
-- [ ] **Secondary actions are less prominent** (ghost button, smaller size, or text link)
-- [ ] **Undo is available for destructive actions** (or confirmation with preview of consequences)
-- [ ] **Multi-step forms show progress** (stepper, progress bar, or "Step 2 of 5")
-- [ ] **Long processes show feedback** (loading spinner, progress percentage, estimated time)
+**Important**
 
-**🟢 Nice-to-have**:
-- [ ] **Keyboard shortcuts are provided** (and documented, like "Ctrl+S to save")
-- [ ] **Drag-and-drop is intuitive** (visual feedback, drop zones are clear)
-- [ ] **Gestures work as expected** (swipe, pinch-to-zoom on mobile)
+* [ ] Search is easy to find on all relevant screens.
+* [ ] Nav labels use plain language (destination > clever).
+* [ ] Active page clearly highlighted.
+* [ ] Footer has expected links (About, Contact, Privacy, Terms).
 
-**Phase-Specific**:
-- **Variations**: Test different interaction patterns (e.g., inline edit vs. modal)
-- **Functional**: Verify all interactions work (hover, focus, click, keyboard)
-- **Polish**: Ensure transitions are smooth (200ms duration, no jarring changes)
+**Nice-to-have**
+
+* [ ] "Skip to content" link appears on focus.
 
 ---
 
-## 5. Feedback & Communication
+## 3) Content Scannability
 
-### Do users know what's happening?
+**Critical**
 
-**🔴 Critical**:
-- [ ] **Success messages are shown** (toast, banner, or inline message after actions)
-- [ ] **Error messages are shown immediately** (inline below field, not hidden)
-- [ ] **Loading states are shown** (spinner, skeleton, or progress bar during waits)
-- [ ] **System status is visible** ("Saving...", "Saved!", "Error saving")
-- [ ] **Errors explain what went wrong** ("Email is already registered" not "Error 409")
+* [ ] Key info is placed for F-pattern scanning (top row, then left column).
+* [ ] Headings are descriptive, not cute.
+* [ ] Paragraphs are short; no walls of text.
+* [ ] Key info visually stands out.
 
-**🟡 Important**:
-- [ ] **Errors explain how to fix** ("Use at least 8 characters" not "Invalid password")
-- [ ] **Success messages are dismissible** (auto-dismiss after 5s, or manual close)
-- [ ] **Error messages are near the error** (inline below field, not at top of page)
-- [ ] **Confirmation dialogs are specific** ("Delete 5 items?" not "Are you sure?")
-- [ ] **Progress is shown for long operations** (upload percentage, processing steps)
+**Important**
 
-**🟢 Nice-to-have**:
-- [ ] **Optimistic updates reduce perceived latency** (show success immediately, revert if fails)
-- [ ] **Tooltips provide extra help** (on hover, explain complex features)
-- [ ] **Empty states are helpful** ("No items yet. Create your first one!" with CTA)
+* [ ] Lists use bullets for scannability.
+* [ ] Clear typographic hierarchy (approx 2:1 heading ratios).
+* [ ] Links are descriptive ("View pricing," not "Click here").
 
-**Phase-Specific**:
-- **Variations**: Test different feedback locations (toast vs. inline vs. modal)
-- **Functional**: Verify all feedback is implemented (success, error, loading)
-- **Polish**: Ensure feedback uses correct colors (green-600 success, red-600 error)
+**Nice-to-have**
+
+* [ ] Callouts for critical info.
+* [ ] Purposeful whitespace aids reading.
 
 ---
 
-## 6. Cognitive Load
+## 4) Interactions & Affordances
 
-### Is the interface simple and focused?
+**Critical**
 
-**🔴 Critical**:
-- [ ] **Each page has one primary goal** (not trying to do too much)
-- [ ] **Unnecessary elements are removed** (no decorative noise, every element has purpose)
-- [ ] **Options are limited** (Hick's Law: fewer choices = faster decisions)
-- [ ] **Forms ask only essential questions** (defer optional fields to later)
-- [ ] **User isn't required to remember things** (show previous selection, provide defaults)
+* [ ] Users know outcome before click (verb labels).
+* [ ] One obvious primary CTA per screen.
+* [ ] Destructive actions confirm.
+* [ ] Required fields are marked; errors appear inline immediately.
 
-**🟡 Important**:
-- [ ] **Related information is grouped** (use cards, sections, or white space to cluster)
-- [ ] **Progressive disclosure hides complexity** (advanced options in "More" or collapse)
-- [ ] **Smart defaults are provided** (pre-fill forms with likely values)
-- [ ] **Similar pages have consistent layouts** (same positions for navigation, CTAs)
-- [ ] **Jargon is avoided** (use plain language, explain technical terms)
+**Important**
 
-**🟢 Nice-to-have**:
-- [ ] **Onboarding guides new users** (tooltips, tours, or empty state instructions)
-- [ ] **Shortcuts are available for power users** (keyboard shortcuts, bulk actions)
-- [ ] **Personalization reduces noise** (show relevant content based on user context)
+* [ ] Related actions are grouped.
+* [ ] Secondary action visually de-emphasized.
+* [ ] Long operations show feedback and progress.
 
-**Phase-Specific**:
-- **Variations**: Test minimal vs. rich layouts (prefer minimal)
-- **Functional**: Remove any elements that don't serve primary goal
-- **Polish**: Verify final design is focused (not cluttered by brand elements)
+**Nice-to-have**
+
+* [ ] Keyboard shortcuts documented for power users.
 
 ---
 
-## 7. Conventions & Patterns
+## 5) Feedback & System Status
 
-### Does it work like users expect?
+**Critical**
 
-**🔴 Critical**:
-- [ ] **Logo links to home** (top-left corner, universal expectation)
-- [ ] **Forms follow expected order** (name before email, email before password)
-- [ ] **Cancel buttons don't save changes** (no surprising side effects)
-- [ ] **Confirmation buttons are on the right** ("Cancel" on left, "Confirm" on right)
-- [ ] **Links are underlined or colored** (blue-600, or underline on hover)
+* [ ] Success, error, loading states exist and are visible.
+* [ ] Errors explain the problem in plain language and where it occurred.
 
-**🟡 Important**:
-- [ ] **Search icon is a magnifying glass** (universally recognized)
-- [ ] **Menu icon is three lines** (hamburger icon on mobile)
-- [ ] **Close icon is an X** (top-right of modals, universally expected)
-- [ ] **Checkboxes for multiple, radio for single** (don't use checkboxes for single-select)
-- [ ] **Date pickers use calendar UI** (not text input with manual typing)
+**Important**
 
-**🟢 Nice-to-have**:
-- [ ] **Common gestures work** (swipe to delete, pull to refresh on mobile)
-- [ ] **Common shortcuts work** (Ctrl+S to save, Escape to close)
-- [ ] **Colors follow conventions** (red for danger, green for success, blue for info)
+* [ ] Errors say how to fix.
+* [ ] Success toasts auto-dismiss but can be read.
+* [ ] Long tasks show progress/remaining work.
 
-**Phase-Specific**:
-- **Variations**: Don't deviate from conventions without strong reason
-- **Functional**: Verify all interactions follow expected patterns
-- **Polish**: Ensure brand doesn't override conventions (e.g., don't make links green if brand is green)
+**Nice-to-have**
+
+* [ ] Optimistic UI where safe; reverts on failure.
+* [ ] Helpful empty states with CTA.
 
 ---
 
-## 8. Error Prevention & Recovery
+## 6) Cognitive Load
 
-### Are errors preventable and fixable?
+**Critical**
 
-**🔴 Critical**:
-- [ ] **Required fields are marked** (asterisk, "Required" label, or disabled submit)
-- [ ] **Validation happens early** (inline validation on blur, not only on submit)
-- [ ] **Destructive actions require confirmation** ("Delete 50 items?" with checkbox)
-- [ ] **Users can undo or cancel** (undo button, cancel button, or back button)
-- [ ] **Errors are recoverable** (don't lose user's work, allow retry)
+* [ ] Each screen has one primary goal.
+* [ ] Remove non-essential elements.
+* [ ] Don't make users remember context (persist selections, show defaults).
 
-**🟡 Important**:
-- [ ] **Forms validate as user types** (show green checkmark when valid, red X when invalid)
-- [ ] **Constraints are shown upfront** ("Password must be 8+ characters" before typing)
-- [ ] **Destructive actions are hard to trigger** (not next to safe actions, require confirmation)
-- [ ] **Auto-save prevents data loss** (save drafts, preserve form state across refreshes)
-- [ ] **Users can review before submitting** (preview screen, summary of changes)
+**Important**
 
-**🟢 Nice-to-have**:
-- [ ] **Suggestions help fix errors** ("Did you mean john@gmail.com?")
-- [ ] **Partial progress is saved** (multi-step forms save each step)
-- [ ] **Version history allows rollback** (see previous versions, restore)
+* [ ] Group related info; progressive disclosure for advanced options.
+* [ ] Smart defaults applied.
 
-**Phase-Specific**:
-- **Variations**: Test different validation patterns (inline vs. on-submit)
-- **Functional**: Verify all validation is implemented correctly
-- **Polish**: Ensure error messages use correct tone (helpful, not accusatory)
+**Nice-to-have**
+
+* [ ] First-time onboarding hints; power-user shortcuts later.
+
+**Note**: Limit choices. Hick's Law is real; fewer options = faster decisions.
 
 ---
 
-## 9. Mobile & Responsive
+## 7) Conventions & Patterns
 
-### Does it work on all screen sizes?
+**Critical**
 
-**🔴 Critical**:
-- [ ] **Touch targets are 44x44px minimum** (WCAG guideline, prevents mis-taps)
-- [ ] **Text is readable without zoom** (16px minimum for body text)
-- [ ] **Navigation is accessible on mobile** (hamburger menu, or simplified nav)
-- [ ] **Forms are usable on mobile** (large inputs, proper input types)
-- [ ] **Content fits without horizontal scroll** (responsive layout, no fixed widths)
+* [ ] Logo → Home.
+* [ ] Form order follows expectations (name→email→password).
+* [ ] Confirm on right; cancel on left; no surprises.
 
-**🟡 Important**:
-- [ ] **Important content is above the fold** (mobile screens are short, prioritize)
-- [ ] **Buttons are full-width on mobile** (easier to tap, less precision required)
-- [ ] **Menus are finger-friendly** (spacing between items, large tap targets)
-- [ ] **Images scale correctly** (responsive images, no pixelation or overflow)
-- [ ] **Modal dialogs fit mobile screens** (no awkward scrolling within modals)
+**Important**
 
-**🟢 Nice-to-have**:
-- [ ] **Mobile-specific patterns are used** (swipe gestures, pull to refresh)
-- [ ] **Desktop shortcuts are replaced** (hover tooltips → tap to reveal)
-- [ ] **Landscape orientation works** (not broken when phone rotated)
+* [ ] Common icons (search, menu, close) are standard.
+* [ ] Correct control types (radio for single, checkbox for multi).
 
-**Phase-Specific**:
-- **Variations**: Test each variant on mobile (320px width)
-- **Functional**: Verify responsive breakpoints (320px, 768px, 1024px)
-- **Polish**: Ensure mobile typography is readable (may need to scale down)
+**Nice-to-have**
+
+* [ ] Conventional coloring (red=danger, green=success, blue=info).
 
 ---
 
-## 10. Accessibility
+## 8) Error Prevention & Recovery
 
-### Can everyone use it?
+**Critical**
 
-**🔴 Critical**:
-- [ ] **All text has 7:1 contrast** (WCAG AAA, use contrast checker)
-- [ ] **All interactive elements are keyboard accessible** (tab to navigate, enter to activate)
-- [ ] **All images have alt text** (meaningful description, not "image")
-- [ ] **All form fields have labels** (associated with `htmlFor`, visible on screen)
-- [ ] **All icon-only buttons have aria-label** (screen reader announces purpose)
+* [ ] Early validation (on blur) prevents junk submissions.
+* [ ] Undo or confirmation for destructive operations.
+* [ ] Errors are recoverable without losing work.
 
-**🟡 Important**:
-- [ ] **Focus indicator is visible** (ring-2 ring-blue-500, high contrast)
-- [ ] **Color is not the only indicator** (use icons, text, or patterns in addition to color)
-- [ ] **Headings are semantic** (h1, h2, h3 in order, not just styled text)
-- [ ] **Links are distinguishable** (underlined or colored, not just bold)
-- [ ] **Error messages are announced** (aria-live="polite" for screen readers)
+**Important**
 
-**🟢 Nice-to-have**:
-- [ ] **Skip links are provided** ("Skip to content" for keyboard users)
-- [ ] **ARIA landmarks are used** (role="navigation", role="main", role="search")
-- [ ] **Reduced motion is respected** (prefers-reduced-motion disables animations)
+* [ ] Constraints shown before input (e.g., password rules).
+* [ ] Auto-save drafts for multi-step forms.
 
-**Phase-Specific**:
-- **Variations**: Check contrast in each variant (use Lighthouse)
-- **Functional**: Verify keyboard navigation works (tab through all elements)
-- **Polish**: Run axe-core scan (0 violations required)
+**Nice-to-have**
+
+* [ ] Suggestions help fix errors (e.g., email typos).
+
+---
+
+## 9) Mobile & Responsive
+
+**Critical**
+
+* [ ] Touch targets meet **WCAG 2.2 AA** minimum: **≥24×24 CSS px** (or spacing alternative).
+* [ ] Body text readable at 16px without zoom.
+* [ ] No horizontal scroll; layouts adapt.
+
+**Important**
+
+* [ ] Important content is above the fold.
+* [ ] Full-width buttons where appropriate.
+* [ ] Modals fit and behave on small screens.
+
+**Nice-to-have**
+
+* [ ] Common mobile patterns supported (e.g., pull-to-refresh where expected).
+
+**Stretch goal**
+
+* [ ] **AAA** target size parity (≈ **44×44** CSS px) when feasible for high-risk controls.
+
+---
+
+## 10) Accessibility (WCAG 2.2 aligned)
+
+**Critical**
+
+* [ ] **Contrast (AA)**: normal text ≥ **4.5:1**; large text (≥18pt/24px or 14pt/18.66px bold) ≥ **3:1**.
+* [ ] **Keyboard**: all interactions are operable via keyboard (no traps). ([W3C][1])
+* [ ] **Focus visible** on every interactive element.
+* [ ] **Labels**: every field has a programmatic label; icon-only buttons have `aria-label`.
+* [ ] **Images** have meaningful `alt` text (or `alt=""` when decorative).
+
+**Important**
+
+* [ ] Focus indicator has strong contrast and sufficient size.
+* [ ] Color isn't the only signal (add text/icon).
+* [ ] Headings are semantic and ordered (h1→h2→h3).
+* [ ] Error messages are announced (`aria-live="polite"`).
+
+**Nice-to-have**
+
+* [ ] Skip links; ARIA landmarks for regions.
+* [ ] Respects reduced motion preferences.
+
+**Stretch goal**
+
+* [ ] **Contrast (AAA)**: normal text ≥ **7:1** when feasible.
+
+---
+
+## 11) Non-UI UX (API / CLI features)
+
+Run this when the "feature" has no screens or ships mostly as backend.
+
+**Critical**
+
+* [ ] **Contract**: documented schema (OpenAPI/JSON Schema), versioned, and published.
+* [ ] **HTTP semantics**: correct verbs, status codes, and idempotency where needed (e.g., POST+idempotency-key).
+* [ ] **Errors**: human message + machine code; consistent envelope.
+* [ ] **Pagination/limits** documented; safe defaults.
+* [ ] **Auth**: clear flows, scopes, and token lifetimes.
+* [ ] **Time**: explicit timezones and ISO-8601 everywhere.
+
+**Important**
+
+* [ ] **Rate limits** and headers documented.
+* [ ] **Retries / backoff** guidance documented; timeouts set server-side.
+* [ ] **Webhooks**: signatures, replay protection, retry policy.
+* [ ] **Deprecation policy**: semver, sunsetting dates, and migration steps.
+
+**Nice-to-have**
+
+* [ ] **SDKs** generated from contract; examples per language.
+* [ ] **CLI** has `--help` with concise examples; returns non-zero on failure.
 
 ---
 
 ## Scoring Summary
 
-**Phase**: [Variations / Functional / Polish]
+| Category             | Critical (Pass/Total) | Important (Pass/Total) | Nice-to-have (Pass/Total) |
+| -------------------- | --------------------: | ---------------------: | ------------------------: |
+| 1. Visual            |                  __/5 |                   __/4 |                      __/3 |
+| 2. Navigation        |                  __/3 |                   __/4 |                      __/1 |
+| 3. Content           |                  __/4 |                   __/3 |                      __/2 |
+| 4. Interactions      |                  __/4 |                   __/3 |                      __/1 |
+| 5. Feedback          |                  __/3 |                   __/3 |                      __/2 |
+| 6. Cognitive Load    |                  __/3 |                   __/2 |                      __/2 |
+| 7. Conventions       |                  __/3 |                   __/2 |                      __/1 |
+| 8. Error Prevention  |                  __/3 |                   __/2 |                      __/2 |
+| 9. Mobile            |                  __/3 |                   __/3 |                      __/1 |
+| 10. Accessibility    |                  __/5 |                   __/4 |                      __/2 |
+| 11. Non-UI (if used) |                  __/6 |                   __/4 |                      __/2 |
+| **TOTAL**            |                **__** |                 **__** |                    **__** |
 
-| Category | Critical (Pass/Total) | Important (Pass/Total) | Nice-to-have (Pass/Total) |
-|----------|------------------------|-------------------------|----------------------------|
-| 1. Visual Clarity | __ / 5 | __ / 5 | __ / 3 |
-| 2. Navigation | __ / 5 | __ / 5 | __ / 3 |
-| 3. Content | __ / 5 | __ / 5 | __ / 3 |
-| 4. Interactions | __ / 5 | __ / 5 | __ / 3 |
-| 5. Feedback | __ / 5 | __ / 5 | __ / 3 |
-| 6. Cognitive Load | __ / 5 | __ / 5 | __ / 3 |
-| 7. Conventions | __ / 5 | __ / 5 | __ / 3 |
-| 8. Error Prevention | __ / 5 | __ / 5 | __ / 3 |
-| 9. Mobile | __ / 5 | __ / 5 | __ / 3 |
-| 10. Accessibility | __ / 5 | __ / 5 | __ / 3 |
-| **TOTAL** | **__ / 50** | **__ / 50** | **__ / 30** |
+**Computed**
 
-**Critical Pass Rate**: ___% (Target: 100%)
-**Important Pass Rate**: ___% (Target: 90%+)
-**Nice-to-have Pass Rate**: ___% (Target: 80%+)
+* Critical pass rate: ___% (target 100%)
+* Important pass rate: ___% (target ≥90%)
+* Nice-to-have pass rate: ___% (target ≥80%)
 
 ---
 
 ## Blockers (Critical failures)
 
-List all Critical items that failed:
+1. [Item]
 
-1. [Item description]
-   - **Issue**: [What's wrong]
-   - **Fix**: [How to resolve]
-   - **Owner**: [Who will fix]
-   - **Target**: [When will it be fixed]
-
----
-
-## Improvement Areas (Important failures)
-
-List all Important items that failed:
-
-1. [Item description]
-   - **Issue**: [What's wrong]
-   - **Fix**: [How to resolve]
-   - **Priority**: [High / Medium / Low]
+* Issue:
+* Fix:
+* Owner:
+* Target date:
 
 ---
 
-## Future Enhancements (Nice-to-have failures)
+## Improvements (Important failures)
 
-List all Nice-to-have items that failed:
+1. [Item]
 
-1. [Item description]
-   - **Enhancement**: [What could be better]
-   - **Benefit**: [Why it matters]
-   - **Effort**: [Low / Medium / High]
+* Issue:
+* Fix:
+* Priority:
 
 ---
 
-## Phase Gate Decision
+## Future Enhancements (Nice-to-have)
 
-**Variations → Functional**:
-- [ ] ✅ All Critical items pass (100%)
-- [ ] ✅ At least 80% of Important items pass
-- [ ] ✅ Selected variant is most intuitive (user testing or team consensus)
+1. [Item]
 
-**Functional → Polish**:
-- [ ] ✅ All Critical items pass (100%)
-- [ ] ✅ At least 90% of Important items pass
-- [ ] ✅ All interactions work correctly
-- [ ] ✅ Accessibility audit passes (0 critical violations)
+* Enhancement:
+* Benefit:
+* Effort:
 
-**Polish → Implementation**:
-- [ ] ✅ All Critical items pass (100%)
-- [ ] ✅ All Important items pass (100%)
-- [ ] ✅ At least 80% of Nice-to-have items pass
-- [ ] ✅ Design lint passes (0 critical, 0 errors)
-- [ ] ✅ Final prototype is approved
+---
 
-**Decision**: [ ] PASS - Proceed to next phase | [ ] FAIL - Address blockers
+## Phase Gates
+
+**Variations → Functional**
+
+* [ ] 100% Critical pass
+* [ ] ≥80% Important pass
+* [ ] Variant chosen via quick test or team consensus (document why)
+
+**Functional → Polish**
+
+* [ ] 100% Critical pass
+* [ ] ≥90% Important pass
+* [ ] All interactions behave correctly
+* [ ] Accessibility audit shows zero critical violations
+
+**Polish → Implementation**
+
+* [ ] 100% Critical pass
+* [ ] 100% Important pass
+* [ ] ≥80% Nice-to-have pass
+* [ ] Design lint: 0 critical errors
+* [ ] Final sign-off recorded
+
+**Decision**: [ ] PASS | [ ] FAIL | [ ] CONDITIONAL PASS (list conditions)
 
 ---
 
 ## Tester Notes
 
-**What worked well**:
-- [Observation]
+**What worked well**
 
-**What caused confusion**:
-- [Observation]
+* …
 
-**Suggestions for improvement**:
-- [Suggestion]
+**What caused confusion**
 
-**Overall impression**:
-[Summary paragraph about intuitiveness, clarity, ease of use]
+* …
 
----
+**Suggestions**
 
-## Sign-off
+* …
 
-**Phase**: [Variations / Functional / Polish]
-**Status**: [Pass / Fail / Conditional Pass]
-**Evaluator**: [Name]
-**Date**: [Date]
-**Next Action**: [Proceed to [Next Phase] / Fix blockers and re-evaluate]
+**Overall impression**
+
+* …
 
 ---
 
-**End of Don't Make Me Think Checklist**
+## Reference notes (why these rules exist)
 
-This checklist should be completed at the end of each design phase (Variations, Functional, Polish) to ensure the interface is intuitive before progressing to the next phase or implementation.
+* **Contrast AA/AAA thresholds** and **large text definitions** are from WCAG 2.x. AA minimums are Critical; AAA is a stretch target.
+* **Focus visible** is required at AA; don't ship without it.
+* **Touch target sizing**: WCAG 2.2 added **2.5.8 Target Size (Minimum)** at AA (≥24×24 or spacing alternative). 44×44 remains a solid AAA/industry goal.
+* **F-pattern scanning** and scanning-first layout priorities are well-documented by NNG.
+* **Fewer choices reduce decision time** (Hick's Law). Don't dump option soup on users.
+
+---
+
+## What changed in this refactor
+
+1. **Aligned Accessibility to WCAG 2.2**
+   Criticals now use AA minimums (contrast, focus, target size). AAA stays as stretch. Your old checklist incorrectly treated 7:1 and 44×44 as must-haves everywhere.
+
+2. **Added Non-UI UX**
+   Backend features now have a first-class audit: contracts, errors, idempotency, pagination, rate limits, versioning, and deprecation. This prevents "invisible" features from bypassing usability scrutiny.
+
+3. **Deterministic Phase Gates**
+   No more hand-wavy "feels good." You either hit the thresholds or you don't.
+
+4. **Points System**
+   Priority-weighted scoring lets you see exactly where risk lives without letting nice-to-haves block release.
+
+5. **Scope Guard**
+   Forces the reviewer to pick UI vs non-UI up front. Fewer wasted cycles.
+
+---
+
+## Apply it now (no ceremony)
+
+* Drop this file into `design/checklists/dont-make-me-think.md`.
+* In `/preview`, load and render section counts for fast pass/fail, and block Phase-1 ship on Critical misses.
+* For API-only features, require the **Non-UI UX** section plus Accessibility AA for docs and examples.
+
+---
+
+**End of checklist**
+
+Complete at the end of each design phase (Variations, Functional, Polish) to ensure the interface is intuitive before progressing.
+
+[1]: https://www.w3.org/TR/2012/NOTE-UNDERSTANDING-WCAG20-20120103/navigation-mechanisms-focus-visible.html "Understanding Success Criterion 2.4.7"

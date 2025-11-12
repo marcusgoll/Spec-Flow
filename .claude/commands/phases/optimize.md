@@ -353,6 +353,45 @@ fi
 echo "📊 Aggregating check results..."
 echo ""
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CONTRACT VERIFICATION (Auto-run if contracts exist)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ -f .spec-flow/scripts/bash/detect-infrastructure-needs.sh ]; then
+  CONTRACT_VERIFY_NEEDED=$(.spec-flow/scripts/bash/detect-infrastructure-needs.sh contract-verify 2>/dev/null | jq -r '.needed // false')
+
+  if [ "$CONTRACT_VERIFY_NEEDED" = "true" ]; then
+    PACT_COUNT=$(.spec-flow/scripts/bash/detect-infrastructure-needs.sh contract-verify 2>/dev/null | jq -r '.pact_count')
+
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🔍 RUNNING CONTRACT VERIFICATION"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Found $PACT_COUNT consumer contracts - verifying compatibility..."
+    echo ""
+
+    if command -v /contract-verify >/dev/null 2>&1; then
+      if /contract-verify; then
+        echo "✅ All consumer contracts verified"
+        echo ""
+      else
+        echo "❌ Contract verification failed"
+        echo ""
+        echo "Consumers depend on APIs that may have changed."
+        echo "Fix contract violations before shipping."
+        echo ""
+        update_workflow_phase "$FEATURE_DIR" "optimize" "failed" || true
+        exit 1
+      fi
+    else
+      echo "⚠️  /contract-verify command not found - skipping"
+      echo ""
+    fi
+  fi
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 BLOCKERS=()
 
 # Check each optimization result

@@ -1,0 +1,204 @@
+# CODEOWNERS - {{PROJECT_NAME}}
+#
+# This file defines code ownership for automatic PR review assignment.
+# Lines are processed in order - last matching pattern takes precedence.
+#
+# Format: pattern @owner1 @owner2
+# Patterns use gitignore-style matching
+#
+# Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+# Unless a later match takes precedence, these users will be requested for review
+* @[DEFAULT_OWNER]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Documentation
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Project documentation
+/docs/ @[TECH_LEAD]
+/docs/project/ @[TECH_LEAD] @[ARCHITECT]
+/docs/api/ @[BACKEND_LEAD]
+/docs/guides/ @[TECH_WRITER]
+
+# ADRs (Architecture Decision Records) require architect approval
+/docs/adr/ @[ARCHITECT] @[TECH_LEAD]
+
+# README and contributing guides
+README.md @[TECH_LEAD]
+CONTRIBUTING.md @[TECH_LEAD]
+SECURITY.md @[SECURITY_LEAD]
+CODE_OF_CONDUCT.md @[COMMUNITY_MANAGER]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Frontend ({{FRONTEND}})
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# All frontend code
+/app/ @[FRONTEND_LEAD]
+/components/ @[FRONTEND_LEAD]
+/pages/ @[FRONTEND_LEAD]
+/lib/client/ @[FRONTEND_LEAD]
+/styles/ @[FRONTEND_LEAD] @[DESIGNER]
+
+# UI components (may need design review)
+/components/ui/ @[FRONTEND_LEAD] @[DESIGNER]
+
+# Frontend tests
+*.test.tsx @[FRONTEND_LEAD] @[QA_LEAD]
+*.spec.tsx @[FRONTEND_LEAD] @[QA_LEAD]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Backend ({{API_STYLE}} API)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# All backend code
+/api/ @[BACKEND_LEAD]
+/server/ @[BACKEND_LEAD]
+/src/modules/ @[BACKEND_LEAD]
+/src/services/ @[BACKEND_LEAD]
+
+# API routes and controllers
+/api/routes/ @[BACKEND_LEAD] @[API_ARCHITECT]
+/api/controllers/ @[BACKEND_LEAD]
+
+# Business logic
+/src/services/ @[BACKEND_LEAD] @[TECH_LEAD]
+
+# Backend tests
+*.test.ts @[BACKEND_LEAD] @[QA_LEAD]
+*.spec.ts @[BACKEND_LEAD] @[QA_LEAD]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Database ({{DATABASE}})
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Database migrations (require careful review)
+/migrations/ @[DATABASE_LEAD] @[BACKEND_LEAD]
+/prisma/migrations/ @[DATABASE_LEAD] @[BACKEND_LEAD]
+/alembic/versions/ @[DATABASE_LEAD] @[BACKEND_LEAD]
+
+# Database schema
+/prisma/schema.prisma @[DATABASE_LEAD]
+/db/schema/ @[DATABASE_LEAD]
+
+# Seed data
+/prisma/seed.ts @[DATABASE_LEAD]
+/db/seeds/ @[DATABASE_LEAD]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Infrastructure & DevOps
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# CI/CD pipelines
+/.github/workflows/ @[DEVOPS_LEAD] @[TECH_LEAD]
+/.gitlab-ci.yml @[DEVOPS_LEAD] @[TECH_LEAD]
+
+# Docker and deployment
+/Dockerfile @[DEVOPS_LEAD]
+/docker-compose.yml @[DEVOPS_LEAD]
+/docker-compose.*.yml @[DEVOPS_LEAD]
+
+# Infrastructure as code
+/terraform/ @[DEVOPS_LEAD]
+/infrastructure/ @[DEVOPS_LEAD]
+
+# Deployment configs
+/vercel.json @[DEVOPS_LEAD]
+/railway.json @[DEVOPS_LEAD]
+/render.yaml @[DEVOPS_LEAD]
+
+# Environment configs (security-sensitive)
+.env.example @[DEVOPS_LEAD] @[SECURITY_LEAD]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Security
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Security policies and configs
+SECURITY.md @[SECURITY_LEAD]
+/.github/SECURITY.md @[SECURITY_LEAD]
+
+# Authentication and authorization
+/src/auth/ @[SECURITY_LEAD] @[BACKEND_LEAD]
+/api/middleware/auth.ts @[SECURITY_LEAD] @[BACKEND_LEAD]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Configuration & Dependencies
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Package manifests (may introduce vulnerabilities)
+package.json @[TECH_LEAD] @[SECURITY_LEAD]
+package-lock.json @[TECH_LEAD]
+yarn.lock @[TECH_LEAD]
+pnpm-lock.yaml @[TECH_LEAD]
+
+# Python dependencies
+requirements.txt @[BACKEND_LEAD] @[SECURITY_LEAD]
+Pipfile @[BACKEND_LEAD]
+pyproject.toml @[BACKEND_LEAD]
+
+# Linting and formatting
+.eslintrc.* @[TECH_LEAD]
+.prettierrc.* @[TECH_LEAD]
+tsconfig.json @[TECH_LEAD]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Testing
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Test configuration
+/jest.config.js @[QA_LEAD]
+/playwright.config.ts @[QA_LEAD]
+/cypress.config.ts @[QA_LEAD]
+
+# E2E tests
+/tests/e2e/ @[QA_LEAD] @[FRONTEND_LEAD]
+/cypress/ @[QA_LEAD] @[FRONTEND_LEAD]
+/e2e/ @[QA_LEAD]
+
+# Load/performance tests
+/tests/performance/ @[QA_LEAD] @[DEVOPS_LEAD]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Legal & Compliance
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# License
+LICENSE @[LEGAL] @[TECH_LEAD]
+
+# Privacy policy, terms of service
+/legal/ @[LEGAL]
+/privacy.md @[LEGAL]
+/terms.md @[LEGAL]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Example Ownership Assignments
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Replace placeholders with actual GitHub usernames:
+#
+# [DEFAULT_OWNER] = @your-github-username
+# [TECH_LEAD] = @tech-lead-username
+# [ARCHITECT] = @architect-username
+# [FRONTEND_LEAD] = @frontend-lead
+# [BACKEND_LEAD] = @backend-lead
+# [DATABASE_LEAD] = @database-expert
+# [DEVOPS_LEAD] = @devops-engineer
+# [SECURITY_LEAD] = @security-expert
+# [QA_LEAD] = @qa-lead
+# [DESIGNER] = @ui-designer
+# [TECH_WRITER] = @technical-writer
+# [COMMUNITY_MANAGER] = @community-manager
+# [LEGAL] = @legal-counsel
+#
+# For solo developers, use your GitHub username for all roles:
+# * @your-username
+#
+# For small teams, assign multiple roles to same person:
+# * @team-lead
+# /api/ @backend-developer
+# /app/ @frontend-developer
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

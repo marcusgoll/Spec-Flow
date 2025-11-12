@@ -389,6 +389,74 @@ fi
 
 echo "Next: /optimize (auto-continues from /feature)"
 echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# INFRASTRUCTURE RECOMMENDATIONS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ -f .spec-flow/scripts/bash/detect-infrastructure-needs.sh ]; then
+  INFRA_NEEDS=$(.spec-flow/scripts/bash/detect-infrastructure-needs.sh all 2>/dev/null || echo '{}')
+
+  # Check for feature flag needs (branch age >18h)
+  FLAG_NEEDED=$(echo "$INFRA_NEEDS" | jq -r '.flag_needed.needed // false')
+  if [ "$FLAG_NEEDED" = "true" ]; then
+    BRANCH_AGE=$(echo "$INFRA_NEEDS" | jq -r '.flag_needed.branch_age_hours')
+    SLUG=$(echo "$INFRA_NEEDS" | jq -r '.flag_needed.slug')
+
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "⚠️  BRANCH AGE WARNING: ${BRANCH_AGE}h (24h limit)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Consider adding a feature flag to merge daily:"
+    echo "  /flag-add ${SLUG}_enabled --reason \"Large feature - daily merges\""
+    echo ""
+    echo "This allows merging incomplete work behind a flag."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+  fi
+
+  # Check for contract bump needs (API changes)
+  CONTRACT_BUMP_NEEDED=$(echo "$INFRA_NEEDS" | jq -r '.contract_bump.needed // false')
+  if [ "$CONTRACT_BUMP_NEEDED" = "true" ]; then
+    CHANGED_COUNT=$(echo "$INFRA_NEEDS" | jq -r '.contract_bump.changed_files | length')
+
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🔌 API CHANGES DETECTED ($CHANGED_COUNT files)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Consider updating API contracts:"
+    echo ""
+    echo "  1. If breaking change:"
+    echo "     /contract-bump major --reason \"Breaking change description\""
+    echo ""
+    echo "  2. If backward-compatible:"
+    echo "     /contract-bump minor --reason \"New endpoint added\""
+    echo ""
+    echo "  3. Verify all consumers still work:"
+    echo "     /contract-verify"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+  fi
+
+  # Check for fixture refresh needs (migrations)
+  FIXTURE_REFRESH_NEEDED=$(echo "$INFRA_NEEDS" | jq -r '.fixture_refresh.needed // false')
+  if [ "$FIXTURE_REFRESH_NEEDED" = "true" ]; then
+    MIGRATION_COUNT=$(echo "$INFRA_NEEDS" | jq -r '.fixture_refresh.migration_files | length')
+
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🗄️  DATABASE MIGRATIONS DETECTED ($MIGRATION_COUNT files)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Consider refreshing test fixtures:"
+    echo "  /fixture-refresh --env production --anonymize"
+    echo ""
+    echo "This ensures tests use realistic, up-to-date data."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+  fi
+fi
+
 ```
 
 </instructions>

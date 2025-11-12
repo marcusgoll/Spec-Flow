@@ -1,5 +1,5 @@
 ---
-description: Initialize project design documentation (one-time setup for new projects)
+description: Initialize project design documentation with idempotent operation modes
 ---
 
 Initialize project-level system design: $ARGUMENTS
@@ -9,792 +9,335 @@ Initialize project-level system design: $ARGUMENTS
 
 Create comprehensive project documentation that answers:
 - **What**: Vision, users, scope (overview.md)
-- **How**: System architecture, tech stack (system-architecture.md, tech-stack.md)
-- **Data**: Data architecture, API strategy (data-architecture.md, api-strategy.md)
+- **How**: System architecture (C4 model), tech stack (system-architecture.md, tech-stack.md)
+- **Data**: Data architecture (ERD), API strategy (data-architecture.md, api-strategy.md)
 - **Scale**: Capacity planning (capacity-planning.md)
 - **Deploy**: Deployment strategy (deployment-strategy.md)
 - **Team**: Development workflow (development-workflow.md)
+- **Standards**: Engineering principles, ADRs (docs/adr/0001-baseline.md)
 
-These docs are the foundation for all features. Run ONCE per project.
+These docs are the foundation for all features. Can be run multiple times with different modes.
 
 ## WORKFLOW INTEGRATION
 
 ```
-/init-project (once) → /roadmap (ongoing) → /feature (per-feature)
+/init-project (once or multiple times) → /roadmap (ongoing) → /feature (per-feature)
+```
+
+## OPERATION MODES
+
+**First-time setup** (default):
+```bash
+/init-project "ProjectName"
+```
+
+**Update mode** (only fix [NEEDS CLARIFICATION] sections):
+```bash
+/init-project --update
+```
+
+**Force overwrite** (destructive, regenerate all docs):
+```bash
+/init-project --force
+```
+
+**Write missing only** (preserve existing files):
+```bash
+/init-project --write-missing-only
+```
+
+**CI/CD mode** (non-interactive, fail on missing answers):
+```bash
+INIT_NAME="MyProject" INIT_VISION="..." /init-project --ci
+```
+
+**Config file mode** (load from YAML/JSON):
+```bash
+/init-project --config project-config.json --non-interactive
 ```
 
 ## USER INPUT
 
-Project name or description (optional): `$ARGUMENTS`
+**Interactive mode** (default):
+- Project name: `$ARGUMENTS` or prompted
+- 15 questions about project vision, tech stack, scale, team
 
-If empty, will prompt interactively.
+**Non-interactive mode**:
+- Environment variables: `INIT_NAME`, `INIT_VISION`, `INIT_USERS`, etc.
+- Config file: JSON or YAML with all answers
 </context>
 
-## CHECK IF ALREADY INITIALIZED
+## IDEMPOTENT OPERATION
 
+The `/init-project` command is now **idempotent** - safe to run multiple times with different modes:
+
+**Modes**:
+- `default`: First-time setup (asks before overwriting)
+- `--force`: Overwrite all existing docs (destructive)
+- `--update`: Only update `[NEEDS CLARIFICATION]` sections (safe)
+- `--write-missing-only`: Only create missing files, preserve existing
+
+**Environment Variables** (for non-interactive/CI mode):
 ```bash
-# Check if project docs already exist
-if [ -d "docs/project" ]; then
-  echo "⚠️  Project documentation already exists at docs/project/"
-  echo ""
-  echo "Options:"
-  echo "  1. Skip initialization (docs already complete)"
-  echo "  2. Re-initialize (WARNING: will overwrite existing docs)"
-  echo "  3. Update specific doc (choose which file to regenerate)"
-  echo ""
-  read -p "Choice (1/2/3): " choice
+# Required (CI mode only)
+INIT_NAME              # Project name
+INIT_VISION            # One-sentence vision
+INIT_USERS             # Primary users
 
-  case $choice in
-    1)
-      echo "Skipping initialization. Existing docs preserved."
-      exit 0
-      ;;
-    2)
-      echo "⚠️  WARNING: This will overwrite all files in docs/project/"
-      read -p "Are you sure? (yes/NO): " confirm
-      if [ "$confirm" != "yes" ]; then
-        echo "Aborted."
-        exit 0
-      fi
-      ;;
-    3)
-      echo "Interactive update not yet implemented."
-      echo "Manually edit files in docs/project/ or re-initialize."
-      exit 0
-      ;;
-    *)
-      echo "Invalid choice. Aborting."
-      exit 1
-      ;;
-  esac
-fi
+# Optional (defaults provided)
+INIT_SCALE             # micro | small | medium | large
+INIT_TEAM_SIZE         # solo | small | medium | large
+INIT_ARCHITECTURE      # monolith | microservices | serverless
+INIT_DATABASE          # PostgreSQL | MySQL | MongoDB | SQLite
+INIT_DEPLOY_PLATFORM   # Vercel | Railway | AWS | Render
+INIT_API_STYLE         # REST | GraphQL | tRPC | gRPC
+INIT_AUTH_PROVIDER     # Clerk | Auth0 | Supabase | Custom | None
+INIT_BUDGET_MVP        # Monthly budget USD (e.g., "50")
+INIT_PRIVACY           # public | PII | GDPR | HIPAA
+INIT_GIT_WORKFLOW      # GitHub Flow | Git Flow | Trunk-Based
+INIT_DEPLOY_MODEL      # staging-prod | direct-prod | local-only
+INIT_FRONTEND          # Next.js | Vite + React | Vue | Svelte
 ```
 
-## GREENFIELD VS BROWNFIELD DETECTION
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🏗️  PROJECT TYPE DETECTION"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-# Detect if greenfield (new project) or brownfield (existing codebase)
-PROJECT_TYPE="greenfield"
-
-# Check for existing code indicators
-if [ -f "package.json" ] || [ -f "requirements.txt" ] || [ -f "Cargo.toml" ] || [ -f "go.mod" ]; then
-  PROJECT_TYPE="brownfield"
-  echo "✓ Detected: Brownfield project (existing codebase found)"
-  echo ""
-  echo "Will scan codebase to infer:"
-  echo "  - Tech stack (from dependencies)"
-  echo "  - Project structure"
-  echo "  - Existing patterns"
-  echo ""
-else
-  echo "✓ Detected: Greenfield project (no existing code)"
-  echo ""
-  echo "Will guide you through technology choices."
-  echo ""
-fi
+**Config File Format** (JSON):
+```json
+{
+  "project": {
+    "name": "FlightPro",
+    "vision": "Student pilot progress tracking for flight instructors",
+    "users": "Flight instructors and student pilots",
+    "scale": "small",
+    "team_size": "solo",
+    "architecture": "monolith",
+    "database": "PostgreSQL",
+    "deploy_platform": "Vercel",
+    "api_style": "REST",
+    "auth_provider": "Clerk",
+    "budget_mvp": "50",
+    "privacy": "PII",
+    "git_workflow": "GitHub Flow",
+    "deploy_model": "staging-prod",
+    "frontend": "Next.js"
+  }
+}
 ```
 
-## INTERACTIVE QUESTIONS (15 TOTAL)
-
-**Goal**: Gather enough info to populate 8 template files
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📋 PROJECT INFORMATION"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Answer 15 questions (~10 minutes)."
-echo "You can always update docs/project/*.md later."
-echo ""
-
-# Q1: Project Name
-if [ -z "$ARGUMENTS" ]; then
-  read -p "Q1. Project name (e.g., 'FlightPro', 'AcmeApp'): " PROJECT_NAME
-else
-  PROJECT_NAME="$ARGUMENTS"
-  echo "Q1. Project name: $PROJECT_NAME (from command)"
-fi
-
-# Q2: Vision (one sentence)
-read -p "Q2. What does this project do? (1 sentence): " VISION
-
-# Q3: Target Users
-read -p "Q3. Who are the primary users? (e.g., 'Flight instructors'): " PRIMARY_USERS
-
-# Q4: Expected Scale (initial)
-echo ""
-echo "Q4. Expected initial scale?"
-echo "  1. Micro (< 100 users)"
-echo "  2. Small (100-1K users)"
-echo "  3. Medium (1K-10K users)"
-echo "  4. Large (10K+ users)"
-read -p "Choice (1-4): " SCALE_CHOICE
-
-case $SCALE_CHOICE in
-  1) SCALE="micro"; MAX_USERS=100;;
-  2) SCALE="small"; MAX_USERS=1000;;
-  3) SCALE="medium"; MAX_USERS=10000;;
-  4) SCALE="large"; MAX_USERS=100000;;
-  *) SCALE="micro"; MAX_USERS=100;;
-esac
-
-# Q5: Team Size
-echo ""
-echo "Q5. Current team size?"
-echo "  1. Solo (1 developer)"
-echo "  2. Small (2-5 developers)"
-echo "  3. Medium (5-15 developers)"
-echo "  4. Large (15+ developers)"
-read -p "Choice (1-4): " TEAM_CHOICE
-
-case $TEAM_CHOICE in
-  1) TEAM_SIZE="solo";;
-  2) TEAM_SIZE="small";;
-  3) TEAM_SIZE="medium";;
-  4) TEAM_SIZE="large";;
-  *) TEAM_SIZE="solo";;
-esac
-
-# Q6: Architecture Style (if greenfield)
-if [ "$PROJECT_TYPE" = "greenfield" ]; then
-  echo ""
-  echo "Q6. Architecture preference?"
-  echo "  1. Monolith (recommended for < 10K users)"
-  echo "  2. Microservices (complex, high scale)"
-  echo "  3. Serverless (AWS Lambda, Vercel Functions)"
-  read -p "Choice (1-3): " ARCH_CHOICE
-
-  case $ARCH_CHOICE in
-    1) ARCHITECTURE="monolith";;
-    2) ARCHITECTURE="microservices";;
-    3) ARCHITECTURE="serverless";;
-    *) ARCHITECTURE="monolith";;
-  esac
-else
-  # Brownfield: Infer from codebase
-  echo ""
-  echo "Q6. Architecture (auto-detected from codebase)..."
-  # Claude Code: Scan codebase to infer architecture
-  # - Check for /services/, /lambdas/, /api/ patterns
-  # - Look for docker-compose.yml (microservices indicator)
-  # - Infer from project structure
-  ARCHITECTURE="monolith"  # Default, will be overridden by scan
-fi
-
-# Q7: Database (if greenfield)
-if [ "$PROJECT_TYPE" = "greenfield" ]; then
-  echo ""
-  echo "Q7. Primary database?"
-  echo "  1. PostgreSQL (recommended for relational data)"
-  echo "  2. MySQL/MariaDB"
-  echo "  3. MongoDB (document store)"
-  echo "  4. SQLite (local/small projects)"
-  echo "  5. Other / None yet"
-  read -p "Choice (1-5): " DB_CHOICE
-
-  case $DB_CHOICE in
-    1) DATABASE="PostgreSQL";;
-    2) DATABASE="MySQL";;
-    3) DATABASE="MongoDB";;
-    4) DATABASE="SQLite";;
-    5) read -p "Specify database: " DATABASE;;
-    *) DATABASE="PostgreSQL";;
-  esac
-else
-  # Brownfield: Detect from code
-  echo ""
-  echo "Q7. Database (auto-detected)..."
-  # Claude Code: Scan for database usage
-  # - Check package.json / requirements.txt for pg, mysql, mongoose
-  # - Look for connection strings in env.example
-  DATABASE="[NEEDS CLARIFICATION]"
-fi
-
-# Q8: Deployment Platform (if greenfield)
-if [ "$PROJECT_TYPE" = "greenfield" ]; then
-  echo ""
-  echo "Q8. Deployment platform?"
-  echo "  1. Vercel (Next.js, frontend)"
-  echo "  2. Railway (full-stack, Docker)"
-  echo "  3. AWS (flexible, complex)"
-  echo "  4. Render"
-  echo "  5. Self-hosted / Other"
-  read -p "Choice (1-5): " DEPLOY_CHOICE
-
-  case $DEPLOY_CHOICE in
-    1) DEPLOY_PLATFORM="Vercel";;
-    2) DEPLOY_PLATFORM="Railway";;
-    3) DEPLOY_PLATFORM="AWS";;
-    4) DEPLOY_PLATFORM="Render";;
-    5) read -p "Specify platform: " DEPLOY_PLATFORM;;
-    *) DEPLOY_PLATFORM="Vercel";;
-  esac
-else
-  # Brownfield: Check for vercel.json, railway.json, etc.
-  echo ""
-  echo "Q8. Deployment platform (auto-detected)..."
-  DEPLOY_PLATFORM="[NEEDS CLARIFICATION]"
-fi
-
-# Q9: API Style
-echo ""
-echo "Q9. API style?"
-echo "  1. REST (recommended for most projects)"
-echo "  2. GraphQL"
-echo "  3. tRPC (TypeScript end-to-end)"
-echo "  4. gRPC"
-echo "  5. Other / None"
-read -p "Choice (1-5): " API_CHOICE
-
-case $API_CHOICE in
-  1) API_STYLE="REST";;
-  2) API_STYLE="GraphQL";;
-  3) API_STYLE="tRPC";;
-  4) API_STYLE="gRPC";;
-  5) read -p "Specify API style: " API_STYLE;;
-  *) API_STYLE="REST";;
-esac
-
-# Q10: Authentication
-echo ""
-echo "Q10. Authentication provider?"
-echo "  1. Clerk (recommended for SaaS)"
-echo "  2. Auth0"
-echo "  3. Supabase Auth"
-echo "  4. Roll-your-own (JWT, sessions)"
-echo "  5. None / Public app"
-read -p "Choice (1-5): " AUTH_CHOICE
-
-case $AUTH_CHOICE in
-  1) AUTH_PROVIDER="Clerk";;
-  2) AUTH_PROVIDER="Auth0";;
-  3) AUTH_PROVIDER="Supabase Auth";;
-  4) AUTH_PROVIDER="Custom (JWT)";;
-  5) AUTH_PROVIDER="None (public app)";;
-  *) AUTH_PROVIDER="Clerk";;
-esac
-
-# Q11: Monthly Budget (MVP)
-echo ""
-read -p "Q11. Monthly infrastructure budget (USD) for MVP? (e.g., 50): $" BUDGET_MVP
-
-# Q12: Data Privacy Requirements
-echo ""
-echo "Q12. Data privacy requirements?"
-echo "  1. Public data (no sensitive info)"
-echo "  2. PII (names, emails)"
-echo "  3. GDPR compliance required"
-echo "  4. HIPAA compliance required"
-echo "  5. Other / Unsure"
-read -p "Choice (1-5): " PRIVACY_CHOICE
-
-case $PRIVACY_CHOICE in
-  1) PRIVACY="public";;
-  2) PRIVACY="PII";;
-  3) PRIVACY="GDPR";;
-  4) PRIVACY="HIPAA";;
-  5) read -p "Specify privacy requirements: " PRIVACY;;
-  *) PRIVACY="PII";;
-esac
-
-# Q13: Git Workflow
-echo ""
-echo "Q13. Git workflow preference?"
-echo "  1. GitHub Flow (simple, recommended for small teams)"
-echo "  2. Git Flow (feature/develop/main branches)"
-echo "  3. Trunk-Based Development"
-read -p "Choice (1-3): " GIT_WORKFLOW_CHOICE
-
-case $GIT_WORKFLOW_CHOICE in
-  1) GIT_WORKFLOW="GitHub Flow";;
-  2) GIT_WORKFLOW="Git Flow";;
-  3) GIT_WORKFLOW="Trunk-Based";;
-  *) GIT_WORKFLOW="GitHub Flow";;
-esac
-
-# Q14: Deployment Model
-echo ""
-echo "Q14. Deployment model?"
-echo "  1. staging-prod (recommended: staging validation before production)"
-echo "  2. direct-prod (deploy directly to production)"
-echo "  3. local-only (no remote deployment)"
-read -p "Choice (1-3): " DEPLOY_MODEL_CHOICE
-
-case $DEPLOY_MODEL_CHOICE in
-  1) DEPLOY_MODEL="staging-prod";;
-  2) DEPLOY_MODEL="direct-prod";;
-  3) DEPLOY_MODEL="local-only";;
-  *) DEPLOY_MODEL="staging-prod";;
-esac
-
-# Q15: Frontend Framework (if greenfield and has frontend)
-if [ "$PROJECT_TYPE" = "greenfield" ]; then
-  echo ""
-  echo "Q15. Frontend framework?"
-  echo "  1. Next.js (React, SSR)"
-  echo "  2. Vite + React (SPA)"
-  echo "  3. Vue/Nuxt"
-  echo "  4. Svelte/SvelteKit"
-  echo "  5. No frontend (API only)"
-  echo "  6. Other"
-  read -p "Choice (1-6): " FRONTEND_CHOICE
-
-  case $FRONTEND_CHOICE in
-    1) FRONTEND="Next.js";;
-    2) FRONTEND="Vite + React";;
-    3) FRONTEND="Vue/Nuxt";;
-    4) FRONTEND="Svelte";;
-    5) FRONTEND="None (API only)";;
-    6) read -p "Specify frontend: " FRONTEND;;
-    *) FRONTEND="Next.js";;
-  esac
-else
-  echo ""
-  echo "Q15. Frontend framework (auto-detected)..."
-  # Claude Code: Detect from package.json
-  FRONTEND="[NEEDS CLARIFICATION]"
-fi
-
-echo ""
-echo "✅ Questionnaire complete!"
-echo ""
+**Config File Format** (YAML):
+```yaml
+project:
+  name: FlightPro
+  vision: Student pilot progress tracking for flight instructors
+  users: Flight instructors and student pilots
+  scale: small
+  team_size: solo
+  architecture: monolith
+  database: PostgreSQL
+  deploy_platform: Vercel
+  api_style: REST
+  auth_provider: Clerk
+  budget_mvp: "50"
+  privacy: PII
+  git_workflow: GitHub Flow
+  deploy_model: staging-prod
+  frontend: Next.js
 ```
 
-## GENERATE PROJECT DOCS (Use Project-Architect Agent)
+## QUALITY GATES
 
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🤖 GENERATING PROJECT DOCUMENTATION"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+**Automated checks before commit**:
 
-# Create docs/project directory
-mkdir -p docs/project
+1. **[NEEDS CLARIFICATION] detection**: Warns if unanswered questions remain
+   - **CI mode**: Fails (exit code 2)
+   - **Interactive mode**: Warning only
 
-# Launch project-architect agent to generate all 8 docs
-# Agent will:
-# 1. Read templates from .spec-flow/templates/project/
-# 2. Fill templates with answers from questionnaire
-# 3. If brownfield: Scan codebase to fill tech stack, architecture
-# 4. Generate realistic examples
-# 5. Mark [NEEDS CLARIFICATION] where info missing
-# 6. Write 11 files to docs/project/
+2. **Markdown linting** (if `markdownlint` installed):
+   - Checks formatting, structure
+   - **Non-blocking** in all modes
 
-echo "Generating 11 project documentation files..."
-echo "  1. overview.md"
-echo "  2. system-architecture.md"
-echo "  3. tech-stack.md"
-echo "  4. data-architecture.md"
-echo "  5. api-strategy.md"
-echo "  6. capacity-planning.md"
-echo "  7. deployment-strategy.md"
-echo "  8. development-workflow.md"
-echo "  9. engineering-principles.md"
-echo "  10. project-configuration.md"
-echo "  11. style-guide.md"
-echo ""
+3. **Link checking** (if `lychee` installed):
+   - Validates all internal/external links
+   - **Non-blocking** in all modes
 
-# Agent context:
-# - PROJECT_TYPE (greenfield | brownfield)
-# - All questionnaire answers
-# - Template locations
-# - Output directory: docs/project/
+4. **C4 model validation**:
+   - Ensures Context/Container/Component sections exist in `system-architecture.md`
+   - **CI mode**: Fails if missing
+   - **Interactive mode**: Warning only
 
-# Claude Code: Launch project-architect agent
-# Provide all questionnaire answers and context
-# Agent generates 11 files
+**Exit codes**:
+- `0`: Success
+- `1`: Missing required input (CI mode)
+- `2`: Quality gate failure (CI mode)
+
+## EXECUTION
+
+**Call the appropriate script** based on your operating system:
+
+### Windows (PowerShell):
+```powershell
+# Default mode (interactive)
+pwsh -File .spec-flow/scripts/powershell/init-project.ps1 "ProjectName"
+
+# Update mode
+pwsh -File .spec-flow/scripts/powershell/init-project.ps1 -Update
+
+# Force overwrite
+pwsh -File .spec-flow/scripts/powershell/init-project.ps1 -Force
+
+# CI mode with environment variables
+$env:INIT_NAME="MyProject"; $env:INIT_VISION="..."; pwsh -File .spec-flow/scripts/powershell/init-project.ps1 -CI
+
+# Config file mode
+pwsh -File .spec-flow/scripts/powershell/init-project.ps1 -ConfigFile project-config.json -NonInteractive
 ```
 
-**Agent Task**: Generate docs/project/*.md
-
-**Agent Prompt**:
-You are the project-architect agent. Generate 11 comprehensive project documentation files.
-
-**Input**:
-- Project type: $PROJECT_TYPE
-- Answers:
-  - Name: $PROJECT_NAME
-  - Vision: $VISION
-  - Users: $PRIMARY_USERS
-  - Scale: $SCALE ($MAX_USERS users)
-  - Team: $TEAM_SIZE
-  - Architecture: $ARCHITECTURE
-  - Database: $DATABASE
-  - Deployment: $DEPLOY_PLATFORM
-  - API: $API_STYLE
-  - Auth: $AUTH_PROVIDER
-  - Budget: $BUDGET_MVP/mo
-  - Privacy: $PRIVACY
-  - Git workflow: $GIT_WORKFLOW
-  - Deploy model: $DEPLOY_MODEL
-  - Frontend: $FRONTEND
-
-**Templates**: `.spec-flow/templates/project/*.md` and `.spec-flow/templates/style-guide.md`
-
-**Output**: 11 files in `docs/project/`
-
-**Instructions**:
-1. Read each template
-2. Replace placeholders with answers
-3. Generate realistic examples (not Lorem Ipsum)
-4. If brownfield: Scan codebase (package.json, requirements.txt, src/) to infer tech stack, patterns
-5. Mark [NEEDS CLARIFICATION] for missing info (user can fill later)
-6. Use Mermaid diagrams for architecture, ERDs
-7. Be technology-agnostic where possible (focus on concepts, not specific frameworks)
-
-**Quality**: Docs should be ready for a new developer to read and understand the entire project.
-
----
-
-## UPDATE CONSTITUTION
-
+### macOS/Linux (Bash):
 ```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📜 UPDATING CONSTITUTION"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+# Default mode (interactive)
+.spec-flow/scripts/bash/init-project.sh "ProjectName"
 
-# Add reference to project docs in constitution.md
-CONSTITUTION_FILE=".spec-flow/memory/constitution.md"
+# Update mode
+.spec-flow/scripts/bash/init-project.sh --update
 
-if [ -f "$CONSTITUTION_FILE" ]; then
-  # Check if project docs section already exists
-  if grep -q "## Project Documentation" "$CONSTITUTION_FILE"; then
-    echo "✓ Constitution already references project docs"
-  else
-    # Append project documentation section
-    cat >> "$CONSTITUTION_FILE" <<'EOF'
+# Force overwrite
+.spec-flow/scripts/bash/init-project.sh --force
 
----
+# CI mode with environment variables
+INIT_NAME="MyProject" INIT_VISION="..." .spec-flow/scripts/bash/init-project.sh --ci
 
-## Project Documentation
-
-**Location**: `docs/project/`
-
-Comprehensive project-level design documentation:
-- `overview.md` - Vision, users, scope, success metrics
-- `system-architecture.md` - Components, integrations, Mermaid diagrams
-- `tech-stack.md` - Technology choices with rationale
-- `data-architecture.md` - ERD, storage strategy, data lifecycle
-- `api-strategy.md` - REST patterns, auth, versioning
-- `capacity-planning.md` - Micro → scale tiers
-- `deployment-strategy.md` - CI/CD, environments, rollback
-- `development-workflow.md` - Git flow, PR process, DoD
-- `engineering-principles.md` - 8 core engineering standards
-- `project-configuration.md` - Deployment model, scale tier, quick changes
-- `style-guide.md` - Comprehensive UI/UX design system SST with core 9 rules
-
-**Created**: [DATE] via `/init-project`
-
-**Maintenance**: Update docs when:
-- Adding new service/component (system-architecture.md)
-- Changing tech stack (tech-stack.md)
-- Scaling to next tier (capacity-planning.md)
-- Adjusting deployment strategy (deployment-strategy.md)
-- Engineering standards evolve (engineering-principles.md)
-- Deployment model changes (project-configuration.md)
-- Design system changes (style-guide.md - colors, spacing, components)
-
-**Workflow Integration**:
-All features MUST align with project architecture:
-- `/roadmap` - Checks overview.md for vision alignment, tech-stack.md for feasibility
-- `/spec` - References project docs during research
-- `/plan` - Heavily integrates with all 11 docs
-- `/tasks` - Follows patterns from tech-stack.md, api-strategy.md
-- `/quick` - Loads style-guide.md for all UI changes (enforces core 9 rules)
-- `/optimize` - Enforces engineering-principles.md quality standards
-EOF
-
-    echo "✓ Constitution updated with project docs reference"
-  fi
-else
-  echo "⚠️  Constitution file not found at $CONSTITUTION_FILE"
-  echo "   Skipping constitution update."
-fi
-
-echo ""
+# Config file mode
+.spec-flow/scripts/bash/init-project.sh --config project-config.json --non-interactive
 ```
 
-## GENERATE PROJECT CLAUDE.MD
+## BROWNFIELD SCANNING
 
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📝 GENERATING PROJECT CLAUDE.MD"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+**Auto-detection** when existing codebase found:
 
-# Generate project-level CLAUDE.md for context navigation
-echo "Generating project CLAUDE.md for AI context navigation..."
+**Detected indicators**:
+- `package.json` → Node.js project
+- `requirements.txt` / `pyproject.toml` → Python project
+- `Cargo.toml` → Rust project
+- `go.mod` → Go project
 
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-  pwsh -NoProfile -File .spec-flow/scripts/powershell/generate-project-claude-md.ps1
-else
-  .spec-flow/scripts/bash/generate-project-claude-md.sh
-fi
+**Auto-inferred values**:
+- **Database**: Scanned from dependencies (`pg`, `mysql2`, `mongoose`, `psycopg2`)
+- **Frontend**: Detected from `package.json` (`next`, `vite`, `vue`, etc.)
+- **Deployment**: Detected from config files (`vercel.json`, `railway.json`, etc.)
+- **Architecture**: Inferred from `docker-compose.yml` service count and directory structure
 
-echo ""
-echo "✓ Project CLAUDE.md generated"
-echo ""
-echo "Benefits:"
-echo "  - Token cost: ~2,000 tokens (vs 12,000 for reading all project docs)"
-echo "  - Quick navigation to active features and detailed docs"
-echo "  - Auto-updated as features progress"
-echo ""
-```
+**Result**: 20-30% fewer `[NEEDS CLARIFICATION]` tokens in generated docs
 
-## GIT COMMIT
+## QUESTIONNAIRE (15 QUESTIONS)
 
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📦 COMMITTING PROJECT DOCUMENTATION"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+**Interactive mode** (~10 minutes):
 
-# Commit all generated docs
-git add docs/project/
-git add .spec-flow/memory/constitution.md
-git add CLAUDE.md
+1. **Project name** - e.g., "FlightPro", "AcmeApp"
+2. **Vision** - One sentence: "What does this project do?"
+3. **Primary users** - e.g., "Flight instructors"
+4. **Expected scale** - Micro (<100) | Small (100-1K) | Medium (1K-10K) | Large (10K+)
+5. **Team size** - Solo | Small (2-5) | Medium (5-15) | Large (15+)
+6. **Architecture** - Monolith | Microservices | Serverless (auto-detected for brownfield)
+7. **Database** - PostgreSQL | MySQL | MongoDB | SQLite (auto-detected for brownfield)
+8. **Deployment platform** - Vercel | Railway | AWS | Render (auto-detected for brownfield)
+9. **API style** - REST | GraphQL | tRPC | gRPC
+10. **Authentication** - Clerk | Auth0 | Supabase | Custom | None
+11. **Monthly budget** - USD for MVP (e.g., $50)
+12. **Privacy** - Public | PII | GDPR | HIPAA
+13. **Git workflow** - GitHub Flow | Git Flow | Trunk-Based
+14. **Deployment model** - staging-prod | direct-prod | local-only
+15. **Frontend framework** - Next.js | Vite+React | Vue | Svelte (auto-detected for brownfield)
 
-git commit -m "docs: initialize project design documentation
+**Greenfield** (new project): Answer all questions
+**Brownfield** (existing code): Questions 6-8, 15 auto-detected, fewer manual answers
 
-Project: $PROJECT_NAME
-Type: $PROJECT_TYPE
-Architecture: $ARCHITECTURE
-Database: $DATABASE
-Deployment: $DEPLOY_PLATFORM ($DEPLOY_MODEL)
-Team: $TEAM_SIZE
-Scale: $SCALE ($MAX_USERS users initially)
+## GENERATED OUTPUTS
 
-Generated 11 comprehensive docs:
-- overview.md (vision, users, scope)
-- system-architecture.md (components, Mermaid diagrams)
-- tech-stack.md (technology choices)
-- data-architecture.md (ERD, storage strategy)
-- api-strategy.md (REST, auth, versioning)
-- capacity-planning.md (micro → scale path)
-- deployment-strategy.md (CI/CD, environments)
-- development-workflow.md (git flow, PR process)
-- engineering-principles.md (8 core standards)
-- project-configuration.md (deployment model, scale tier)
-- style-guide.md (comprehensive UI/UX SST with core 9 rules)
+The scripts generate the following outputs:
 
-Updated:
-- constitution.md (references project docs)
-- CLAUDE.md (project-level AI context navigation - 2k tokens vs 12k)
+### Project Documentation (8 files in `docs/project/`)
 
-Next: Review docs/project/*.md, fill [NEEDS CLARIFICATION] sections
+1. **overview.md** - Vision, target users, scope, success metrics, competitive landscape
+2. **system-architecture.md** - C4 diagrams (Context/Container/Component), data flows, security architecture
+3. **tech-stack.md** - All technology choices with rationale and alternatives rejected
+4. **data-architecture.md** - ERD (Mermaid), entity schemas, storage strategy, migrations
+5. **api-strategy.md** - REST/GraphQL patterns, auth, versioning, error handling (RFC 7807)
+6. **capacity-planning.md** - Scaling from micro (100 users) to 1000x growth with cost model
+7. **deployment-strategy.md** - CI/CD pipeline, environments (dev/staging/prod), rollback
+8. **development-workflow.md** - Git flow, PR process, testing strategy, Definition of Done
 
-🤖 Generated with Claude Code
-Co-Authored-By: Claude <noreply@anthropic.com>"
+### Architecture Decision Records (`docs/adr/`)
 
-COMMIT_HASH=$(git rev-parse --short HEAD)
-echo ""
-echo "✅ Project documentation committed: $COMMIT_HASH"
-echo ""
-```
+- **0001-project-architecture-baseline.md** - Baseline ADR documenting initial tech stack choices, architectural style, and rationale
 
-## CREATE FOUNDATION ISSUE (Greenfield Only)
+### Optional Meta Files (Project Root)
 
-**For greenfield projects, auto-create a GitHub Issue for project foundation setup:**
+If enabled (not created by default, can be generated with `--meta-files` flag):
 
-```bash
-if [ "$PROJECT_TYPE" = "greenfield" ]; then
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "📋 CREATING FOUNDATION ROADMAP ISSUE"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
+- **CONTRIBUTING.md** - Contribution guidelines, branch naming, commit conventions, PR process
+- **SECURITY.md** - Security policy, vulnerability reporting, security best practices
+- **CODEOWNERS** - GitHub code ownership for automatic PR review assignment
 
-  # Check GitHub authentication
-  if command -v gh &> /dev/null && gh auth status &> /dev/null; then
-    # Source GitHub roadmap manager
-    source .spec-flow/scripts/bash/github-roadmap-manager.sh
+### Project CLAUDE.md
 
-    # Generate foundation feature body from tech-stack variables
-    FOUNDATION_BODY=$(cat <<EOF
-## Problem
+- **CLAUDE.md** (project root) - AI context navigation file
+  - Token cost: ~2,000 tokens (vs 12,000 for all project docs)
+  - Auto-updated as features progress
+  - Quick reference to active features and tech stack
 
-New greenfield project needs initial project scaffolding based on documented tech stack.
+### Git Commit
 
-## Proposed Solution
+All generated files committed with comprehensive message:
+- Lists all generated docs
+- Records project type (greenfield/brownfield)
+- Documents tech stack choices
+- Includes mode used (default/force/update)
 
-Create foundational project structure with:
+## FOUNDATION ISSUE (Greenfield Projects Only)
 
-### Frontend ($FRONTEND)
-- Initialize $FRONTEND project with TypeScript
-- Install core dependencies and UI libraries
-- Setup linting (ESLint), formatting (Prettier), type checking
-- Create base directory structure (components, pages, utils)
-- Configure build and dev scripts
+**Auto-created for greenfield projects** (if GitHub authenticated):
 
-### Backend & Database
-- Initialize backend framework
-- Setup $DATABASE database connection
-- Configure migrations and schema management
-- Install dependencies and dev tools
-- Create base API structure
+- **Issue title**: "Project Foundation Setup"
+- **Priority**: HIGH (blocks all other features)
+- **Content**:
+  - Frontend scaffolding ({{FRONTEND}})
+  - Backend setup
+  - Database connection ({{DATABASE}})
+  - Deployment config ({{DEPLOY_PLATFORM}})
+  - Authentication ({{AUTH_PROVIDER}})
+  - Linting, formatting, TypeScript
+  - .env.example template
+  - CI/CD pipeline init
+  - README with setup instructions
 
-### Infrastructure
-- Setup deployment platform: $DEPLOY_PLATFORM
-- Configure authentication: $AUTH_PROVIDER
-- Initialize CI/CD pipeline configuration
-- Setup environment variables template
+**Created via**: GitHub CLI (`gh issue create`)
+**View**: `gh issue view project-foundation`
+**Start**: `/feature "project-foundation"`
 
-### Development Environment
-- Create .env.example with all required variables
-- Setup development scripts (dev, build, test, lint)
-- Configure Docker (if applicable)
-- Initialize git hooks (pre-commit, commit-msg)
-- Write comprehensive README with setup instructions
+**Skipped if**:
+- Brownfield project (existing codebase detected)
+- GitHub CLI not installed
+- Not authenticated (`gh auth login`)
 
-## Acceptance Criteria
+## FINAL OUTPUT
 
-- [ ] Frontend dev server runs successfully
-- [ ] Backend API server runs successfully (if applicable)
-- [ ] Database connection verified (if applicable)
-- [ ] All linters and formatters configured and passing
-- [ ] README with clear setup instructions created
-- [ ] .env.example with all required variables documented
-- [ ] First successful build completes without errors
-- [ ] Initial deployment configuration validated
+The scripts display a summary with:
 
-## References
+**Project Details**:
+- Name, type (greenfield/brownfield)
+- Architecture, database, deployment platform
+- Scale tier, team size, budget
 
-- Tech Stack: docs/project/tech-stack.md
-- Architecture: docs/project/system-architecture.md
-- Deployment: docs/project/deployment-strategy.md
-- Data: docs/project/data-architecture.md
+**Generated Files**:
+- List of all 8 project docs
+- ADR-0001 baseline
+- Optional meta files (if enabled)
+- Project CLAUDE.md
 
-## Technical Notes
+**Foundation Issue** (greenfield only):
+- GitHub issue number and priority
+- Command to start: `/feature "project-foundation"`
 
-- Follow tech stack exactly as documented
-- Use documented API style: $API_STYLE
-- Scale tier: $SCALE (affects infrastructure choices)
-- Authentication provider: $AUTH_PROVIDER
-EOF
-)
+**Next Steps**:
+- **Greenfield**: Build foundation first, then add features
+- **Brownfield**: Review docs, fill `[NEEDS CLARIFICATION]`, start features
 
-    # Create issue with high priority (foundation is critical)
-    # Impact: 5 (blocks all other features)
-    # Effort: 3 (moderate complexity, well-defined)
-    # Confidence: 0.9 (high certainty, clear requirements)
-    # Score: (5 × 0.9) / 3 = 1.5 (high priority)
-    create_roadmap_issue \
-      "Project Foundation Setup" \
-      "$FOUNDATION_BODY" \
-      5 \
-      3 \
-      0.9 \
-      "infra" \
-      "all" \
-      "project-foundation"
-
-    if [ $? -eq 0 ]; then
-      echo ""
-      echo "✅ Created roadmap issue: project-foundation"
-      echo "   Priority: HIGH (Score: 1.5)"
-      echo "   View: gh issue view project-foundation"
-      echo "   When ready: /feature \"project-foundation\""
-      echo ""
-    else
-      echo ""
-      echo "⚠️  Failed to create foundation issue"
-      echo "   You can create it manually with: /roadmap add \"Project foundation\""
-      echo ""
-    fi
-  else
-    echo "ℹ️  GitHub authentication not detected"
-    echo "   To auto-create foundation issue, authenticate with: gh auth login"
-    echo "   Or manually create later with: /roadmap add \"Project foundation\""
-    echo ""
-  fi
-else
-  echo "ℹ️  Brownfield project detected - skipping foundation issue"
-  echo "   Existing codebase structure preserved"
-  echo ""
-fi
-```
-
-## RETURN
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ PROJECT INITIALIZATION COMPLETE"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Project: $PROJECT_NAME"
-echo "Type: $PROJECT_TYPE"
-echo "Architecture: $ARCHITECTURE"
-echo "Scale: $SCALE ($MAX_USERS users initially)"
-echo "Team: $TEAM_SIZE"
-echo "Budget: $BUDGET_MVP/mo (MVP)"
-echo ""
-echo "📁 Generated Documentation:"
-echo "   docs/project/overview.md"
-echo "   docs/project/system-architecture.md"
-echo "   docs/project/tech-stack.md"
-echo "   docs/project/data-architecture.md"
-echo "   docs/project/api-strategy.md"
-echo "   docs/project/capacity-planning.md"
-echo "   docs/project/deployment-strategy.md"
-echo "   docs/project/development-workflow.md"
-echo "   docs/project/engineering-principles.md"
-echo "   docs/project/project-configuration.md"
-echo "   docs/project/style-guide.md"
-echo ""
-
-# Show foundation issue if created
-if [ "$PROJECT_TYPE" = "greenfield" ] && command -v gh &> /dev/null && gh auth status &> /dev/null; then
-  echo "🎯 Created Roadmap Issue:"
-  echo "   #1 project-foundation (HIGH priority)"
-  echo "   View: gh issue view project-foundation"
-  echo ""
-fi
-
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📋 NEXT STEPS"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-if [ "$PROJECT_TYPE" = "greenfield" ]; then
-  echo "🚀 Greenfield Project - Start with foundation:"
-  echo ""
-  echo "1. Review generated docs:"
-  echo "   open docs/project/"
-  echo ""
-  echo "2. Build project foundation (CRITICAL FIRST STEP):"
-  echo "   /feature \"project-foundation\""
-  echo "   This will scaffold your $FRONTEND + $DATABASE project"
-  echo ""
-  echo "3. After foundation is built, add features:"
-  echo "   /roadmap"
-  echo "   /feature \"your-feature\""
-  echo ""
-else
-  echo "📦 Brownfield Project - Existing codebase detected:"
-  echo ""
-  echo "1. Review generated docs:"
-  echo "   open docs/project/"
-  echo ""
-  echo "2. Fill [NEEDS CLARIFICATION] sections (if any):"
-  echo "   grep -r 'NEEDS CLARIFICATION' docs/project/"
-  echo ""
-  echo "3. Customize for your project:"
-  echo "   - Add specific technologies"
-  echo "   - Update Mermaid diagrams"
-  echo "   - Refine capacity estimates"
-  echo ""
-  echo "4. Start building features:"
-  echo "   /roadmap"
-  echo "   /feature \"your-first-feature\""
-  echo ""
-fi
-
-echo "💡 Tip: Update project docs as your project evolves."
-echo "    They're living documents, not one-time artifacts."
-echo ""
-```
+**Important**: All documentation files support `{{VARIABLE}}` placeholders that get replaced during rendering.
