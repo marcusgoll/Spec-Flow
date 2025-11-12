@@ -1,4 +1,49 @@
 
+## [4.5.0] - 2025-11-11
+
+### ✨ New Features
+
+**Agent Auto-Routing Hook System**
+- Silent sub-agent auto-routing after file edits (Edit/Write/MultiEdit) and task completions
+- Shared routing configuration for 26 specialists (.claude/agents/agent-routing-rules.json)
+- Intelligent scoring: file paths (+20), keywords (+10), intent patterns (+15), specificity bonuses
+- Anti-loop protection: MAX_CHAIN_DEPTH=3, 5s cooldown, session history tracking
+- Chain rules: backend-dev → qa-test, database-architect → backend-dev
+- Minimal output: "→ specialist-name" only
+- Confidence threshold: Only route if score ≥ 10
+
+**Epic & Sprint Roadmap Integration**
+- GitHub Projects V2 native epic/sprint features integrated with roadmap manager
+- Epic manager script for organizing features into epics with milestones
+- Sprint support in /feature command for intelligent workflow assignment
+- Automatic epic/sprint detection and tracking
+
+**Backend Preview Support**
+- /preview command now handles backend-only features (API/Data/Infra modes)
+- Auto-detect modes from changed files: API mode, Data/Infra mode, Worker mode
+- API contract diffs with OpenAPI (openapi-diff, oasdiff)
+- API testing: Schemathesis (property-based), Newman (Postman collections)
+- Database migration validation (Alembic upgrade/downgrade)
+- Performance testing with k6 (lightweight load tests)
+- Security baseline with ZAP (OWASP scans)
+- Backend service startup (FastAPI, Celery workers)
+
+**Refactored /route-agent Command**
+- Now uses shared routing configuration (.claude/agents/agent-routing-rules.json)
+- Consistent routing logic with auto-routing hook (DRY principle)
+- Updated documentation with TypeScript usage examples
+
+### 📝 Documentation
+- Added comprehensive setup instructions for agent auto-routing hooks
+- Updated VSCode settings template with new hook registrations
+- Created test suite for agent routing system
+
+### 🧹 Maintenance
+- Cleaned up deprecated summary files (DESIGN_REVAMP_STATUS.md, etc.)
+- Updated bin scripts for roadmap management compatibility
+
+---
+
 ## [4.4.1] - 2025-11-11
 
 ### Fixed
