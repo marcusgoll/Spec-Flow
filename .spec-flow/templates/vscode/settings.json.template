@@ -5,6 +5,18 @@
       "command": ".claude/hooks/skill-activation-prompt.sh",
       "matcher": "UserPromptSubmit",
       "description": "Auto-suggest phase skills and cross-cutting skills based on user prompts"
+    },
+    {
+      "type": "command",
+      "command": ".claude/hooks/agent-auto-route.sh",
+      "matcher": "AfterToolUse",
+      "description": "Auto-route to specialist sub-agent after file edits (Edit/Write/MultiEdit)"
+    },
+    {
+      "type": "command",
+      "command": ".claude/hooks/agent-auto-route.sh",
+      "matcher": "AfterTaskCompletion",
+      "description": "Chain to next specialist sub-agent after task completion"
     }
   ],
   "files.exclude": {

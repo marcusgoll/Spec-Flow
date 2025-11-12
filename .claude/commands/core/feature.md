@@ -109,7 +109,14 @@ Use this template for: skipping clarify, choosing deployment path, retry logic, 
 cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 
 if [ -z "$ARGUMENTS" ]; then
-  echo "Usage: /feature [slug | \"feature description\" | continue | next]"
+  echo "Usage: /feature [slug | \"feature description\" | continue | next | epic:<name> | epic:<name>:sprint:<num> | sprint:<num>]"
+  echo ""
+  echo "Examples:"
+  echo "  /feature next                    - Next priority issue"
+  echo "  /feature epic:aktr               - Next issue from epic (auto-selects incomplete sprint)"
+  echo "  /feature epic:aktr:sprint:S02    - Specific sprint in epic"
+  echo "  /feature sprint:S01              - Next issue from any sprint S01"
+  echo "  /feature continue                - Resume last feature"
   exit 1
 fi
 
@@ -117,11 +124,38 @@ MODE=""
 SEARCH_TERM=""
 CONTINUE_MODE=false
 NEXT_MODE=false
+EPIC_FILTER=""
+SPRINT_FILTER=""
 
 case "$ARGUMENTS" in
-  continue) CONTINUE_MODE=true ; MODE="continue" ;;
-  next)     NEXT_MODE=true     ; MODE="next" ;;
-  *)        SEARCH_TERM="$ARGUMENTS" ; MODE="lookup" ;;
+  continue)
+    CONTINUE_MODE=true
+    MODE="continue"
+    ;;
+  next)
+    NEXT_MODE=true
+    MODE="next"
+    ;;
+  epic:*:sprint:*)
+    # Extract epic and sprint from epic:aktr:sprint:S02
+    EPIC_FILTER=$(echo "$ARGUMENTS" | sed -n 's/^epic:\([^:]*\):sprint:.*/\1/p')
+    SPRINT_FILTER=$(echo "$ARGUMENTS" | sed -n 's/^epic:[^:]*:sprint:\(.*\)/\1/p')
+    MODE="epic-sprint"
+    ;;
+  epic:*)
+    # Extract epic from epic:aktr
+    EPIC_FILTER="${ARGUMENTS#epic:}"
+    MODE="epic"
+    ;;
+  sprint:*)
+    # Extract sprint from sprint:S01
+    SPRINT_FILTER="${ARGUMENTS#sprint:}"
+    MODE="sprint"
+    ;;
+  *)
+    SEARCH_TERM="$ARGUMENTS"
+    MODE="lookup"
+    ;;
 esac
 ```
 
@@ -199,6 +233,182 @@ if [ "$MODE" = "lookup" ] && [ -n "$SEARCH_TERM" ]; then
     echo "No roadmap item found for: \"$SEARCH_TERM\". Create now or add to roadmap first."
     exit 1
   fi
+fi
+```
+
+---
+
+## Epic/Sprint Selection (when `MODE=epic`, `epic-sprint`, or `sprint`)
+
+Select next issue from epic/sprint based on ICE scores and sprint progress. Auto-creates sprint:S01 if no sprints exist.
+
+```bash
+cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+
+if [[ "$MODE" == "epic" || "$MODE" == "epic-sprint" || "$MODE" == "sprint" ]]; then
+  gh auth status >/dev/null || { echo "❌ gh not authenticated. Run: gh auth login"; exit 1; }
+  REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner) || { echo "❌ Not in a GitHub repo"; exit 1; }
+
+  # Build label filter based on mode
+  LABEL_FILTER="type:feature"
+
+  if [ -n "$EPIC_FILTER" ]; then
+    LABEL_FILTER="$LABEL_FILTER,epic:$EPIC_FILTER"
+  fi
+
+  if [ "$MODE" = "epic-sprint" ] && [ -n "$SPRINT_FILTER" ]; then
+    LABEL_FILTER="$LABEL_FILTER,sprint:$SPRINT_FILTER"
+  fi
+
+  if [ "$MODE" = "sprint" ] && [ -n "$SPRINT_FILTER" ]; then
+    LABEL_FILTER="$LABEL_FILTER,sprint:$SPRINT_FILTER"
+  fi
+
+  echo "🔍 Searching for issues with labels: $LABEL_FILTER"
+  echo ""
+
+  # Fetch issues
+  JSON=$(gh issue list --repo "$REPO" --label "$LABEL_FILTER" --json number,title,body,labels,state --limit 100)
+
+  if [ -z "$JSON" ] || [ "$JSON" = "[]" ]; then
+    if [ "$MODE" = "epic" ]; then
+      # Check if epic has any issues (without sprint filter)
+      EPIC_JSON=$(gh issue list --repo "$REPO" --label "type:feature,epic:$EPIC_FILTER" --json number,labels --limit 100)
+
+      if [ -z "$EPIC_JSON" ] || [ "$EPIC_JSON" = "[]" ]; then
+        echo "❌ No issues found with label epic:$EPIC_FILTER"
+        echo "   Create epic label: gh label create \"epic:$EPIC_FILTER\" --description \"Epic: $EPIC_FILTER\" --color \"5319e7\""
+        exit 1
+      fi
+
+      # Epic exists but no sprint labels - auto-create sprint:S01
+      echo "✨ No sprints found in epic:$EPIC_FILTER - auto-creating sprint:S01"
+
+      # Get all issue numbers in epic
+      ISSUE_NUMBERS=$(echo "$EPIC_JSON" | jq -r '.[].number')
+
+      # Bulk-assign to sprint:S01
+      for ISSUE_NUM in $ISSUE_NUMBERS; do
+        gh issue edit "$ISSUE_NUM" --add-label "sprint:S01" --repo "$REPO" >/dev/null 2>&1 || true
+      done
+
+      echo "✅ Assigned $(echo "$ISSUE_NUMBERS" | wc -w) issues to sprint:S01"
+      echo ""
+
+      # Re-fetch with sprint filter
+      SPRINT_FILTER="S01"
+      LABEL_FILTER="type:feature,epic:$EPIC_FILTER,sprint:S01"
+      JSON=$(gh issue list --repo "$REPO" --label "$LABEL_FILTER" --json number,title,body,labels,state --limit 100)
+    else
+      echo "❌ No issues found with labels: $LABEL_FILTER"
+      exit 1
+    fi
+  fi
+
+  # Auto-detect next incomplete sprint if MODE=epic (no explicit sprint specified)
+  if [ "$MODE" = "epic" ] && [ -z "$SPRINT_FILTER" ]; then
+    # Extract unique sprint labels from all epic issues
+    ALL_EPIC_ISSUES=$(gh issue list --repo "$REPO" --label "type:feature,epic:$EPIC_FILTER" --json labels --limit 100)
+    SPRINTS=$(echo "$ALL_EPIC_ISSUES" | jq -r '.[].labels[] | select(.name | startswith("sprint:")) | .name' | sort -u)
+
+    # Find first incomplete sprint
+    FOUND_SPRINT=false
+    for SPRINT_LABEL in $SPRINTS; do
+      SPRINT_NUM="${SPRINT_LABEL#sprint:}"
+
+      # Get all issues in this sprint
+      SPRINT_ISSUES=$(echo "$JSON" | jq -r --arg sprint "$SPRINT_LABEL" '
+        map(select(.labels[] | .name == $sprint))
+      ')
+
+      # Count incomplete issues (not shipped and not blocked)
+      INCOMPLETE_COUNT=$(echo "$SPRINT_ISSUES" | jq -r '
+        map(select(
+          (.labels[] | .name != "status:shipped") and
+          (.labels[] | .name != "status:blocked")
+        )) | length
+      ')
+
+      TOTAL_COUNT=$(echo "$SPRINT_ISSUES" | jq -r 'length')
+
+      if [ "$INCOMPLETE_COUNT" -gt 0 ]; then
+        echo "✅ Found incomplete sprint: $SPRINT_NUM ($INCOMPLETE_COUNT/$TOTAL_COUNT remaining)"
+        SPRINT_FILTER="$SPRINT_NUM"
+        FOUND_SPRINT=true
+        break
+      else
+        echo "   Sprint $SPRINT_NUM: $TOTAL_COUNT/$TOTAL_COUNT complete ✅"
+      fi
+    done
+    echo ""
+
+    if [ "$FOUND_SPRINT" = false ]; then
+      echo "🎉 All sprints in epic:$EPIC_FILTER are complete!"
+      echo ""
+      echo "Create next sprint with:"
+      echo "  /roadmap add \"Feature name\" --epic $EPIC_FILTER --sprint SXX"
+      exit 0
+    fi
+
+    # Re-filter by discovered sprint
+    LABEL_FILTER="type:feature,epic:$EPIC_FILTER,sprint:$SPRINT_FILTER"
+    JSON=$(gh issue list --repo "$REPO" --label "$LABEL_FILTER" --json number,title,body,labels,state --limit 100)
+  fi
+
+  # Filter to only issues that are available (status:next or status:backlog)
+  AVAILABLE_JSON=$(echo "$JSON" | jq -r '
+    map(select(
+      (.labels[] | .name == "status:next") or
+      (.labels[] | .name == "status:backlog")
+    ))
+  ')
+
+  # Sort by ICE score (priority labels) and pick first
+  ISSUE=$(echo "$AVAILABLE_JSON" | jq -r '
+    sort_by(
+      .labels[] | select(.name | startswith("priority:")) | .name |
+      if . == "priority:high" then 1
+      elif . == "priority:medium" then 2
+      elif . == "priority:low" then 3
+      else 4 end
+    ) | first
+  ')
+
+  if [ -z "$ISSUE" ] || [ "$ISSUE" = "null" ]; then
+    echo "❌ No available issues in $LABEL_FILTER"
+    echo "   (All issues may be in-progress, shipped, or blocked)"
+    exit 1
+  fi
+
+  ISSUE_NUMBER=$(echo "$ISSUE" | jq -r .number)
+  ISSUE_TITLE=$(echo "$ISSUE" | jq -r .title)
+  ISSUE_BODY=$(echo "$ISSUE" | jq -r '.body // ""')
+
+  # Claim immediately
+  gh issue edit "$ISSUE_NUMBER" \
+    --remove-label "status:next" --remove-label "status:backlog" \
+    --add-label "status:in-progress" \
+    --repo "$REPO" >/dev/null || true
+
+  # Extract slug
+  SLUG=$(echo "$ISSUE_BODY" | grep -oP '^slug:\s*"\K[^"]+' | head -1)
+  if [ -z "$SLUG" ]; then
+    SLUG=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g;s/--*/-/g;s/^-//;s/-$//' | cut -c1-20)
+  fi
+
+  FEATURE_DESCRIPTION="$ISSUE_TITLE"
+
+  # Display selection summary
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📋 Selected Issue from Epic/Sprint"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  [ -n "$EPIC_FILTER" ] && echo "  Epic: $EPIC_FILTER"
+  [ -n "$SPRINT_FILTER" ] && echo "  Sprint: $SPRINT_FILTER"
+  echo "  Issue: #$ISSUE_NUMBER"
+  echo "  Title: $ISSUE_TITLE"
+  echo "  Slug: $SLUG"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
 fi
 ```
 

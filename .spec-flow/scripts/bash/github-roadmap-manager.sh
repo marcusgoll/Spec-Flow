@@ -105,6 +105,8 @@ generate_ice_frontmatter() {
   local area="${4:-app}"
   local role="${5:-all}"
   local slug="$6"
+  local epic="$7"
+  local sprint="$8"
   local score
   score=$(calculate_ice_score "$impact" "$effort" "$confidence")
 
@@ -118,7 +120,9 @@ ice:
 metadata:
   area: $area
   role: $role
-  slug: $slug
+  slug: $slug$([ -n "$epic" ] && echo "
+  epic: $epic")$([ -n "$sprint" ] && echo "
+  sprint: $sprint")
 ---
 EOF
 }
@@ -138,6 +142,8 @@ create_roadmap_issue() {
   local role="${7:-all}"
   local slug="$8"
   local labels="${9:-type:feature,status:backlog}"
+  local epic="${10}"
+  local sprint="${11}"
 
   local repo
   repo=$(get_repo_info)
@@ -148,7 +154,7 @@ create_roadmap_issue() {
 
   # Generate frontmatter
   local frontmatter
-  frontmatter=$(generate_ice_frontmatter "$impact" "$effort" "$confidence" "$area" "$role" "$slug")
+  frontmatter=$(generate_ice_frontmatter "$impact" "$effort" "$confidence" "$area" "$role" "$slug" "$epic" "$sprint")
 
   # Combine frontmatter with body
   local full_body
@@ -161,6 +167,10 @@ EOF
 
   # Add area and role labels
   local all_labels="$labels,area:$area,role:$role"
+
+  # Add epic and sprint labels if provided
+  [ -n "$epic" ] && all_labels="$all_labels,epic:$epic"
+  [ -n "$sprint" ] && all_labels="$all_labels,sprint:$sprint"
 
   # Determine size label based on effort
   case "$effort" in

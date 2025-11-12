@@ -1,267 +1,267 @@
 #!/usr/bin/env node
-
 /**
- * setup-roadmap.js - Interactive GitHub Issues roadmap setup
+ * setup-roadmap.js — Interactive GitHub Issues roadmap setup (refactored)
  *
- * Guides users through:
- * 1. GitHub authentication
- * 2. Label creation
- * 3. Optional migration from markdown roadmap
+ * Goals:
+ * - No shell injection footguns (avoid shell:true)
+ * - Cross-platform script runner (bash / pwsh)
+ * - Clear non-interactive flags for CI
+ * - Smaller surface area, better errors
  */
 
-const { spawn } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+const { spawn, spawnSync } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
 const chalk = require('chalk');
 const inquirer = require('inquirer');
 const ora = require('ora');
 
-// Determine OS and script paths
+// -------------------------------
+// Args / constants
+// -------------------------------
+const argv = new Set(process.argv.slice(2));
+const FLAG_YES = argv.has('--yes');
+const FLAG_NO_LABELS = argv.has('--no-labels');
+const FLAG_MIGRATE = argv.has('--migrate');
+const FLAG_DRY_RUN = argv.has('--dry-run');
+const FLAG_NONINTERACTIVE = argv.has('--non-interactive') || process.env.CI === 'true';
+
 const isWindows = process.platform === 'win32';
-const isMac = process.platform === 'darwin';
-const isLinux = process.platform === 'linux';
+const SCRIPT_ROOTS = [
+  // local dev repo
+  path.join(process.cwd(), '.spec-flow', 'scripts'),
+  // installed package layout (node_modules/spec-flow/dist/../.spec-flow/scripts)
+  path.join(__dirname, '..', '.spec-flow', 'scripts'),
+];
 
-// Find spec-flow scripts
-function getScriptPath(scriptName) {
-  // Check if running from installed package
-  const installedPath = path.join(__dirname, '..', '.spec-flow', 'scripts');
+// -------------------------------
+// Utilities
+// -------------------------------
+function logTitle(title) {
+  console.log(chalk.cyan.bold('\n' + '═'.repeat(67)));
+  console.log(chalk.cyan.bold(' ' + title));
+  console.log(chalk.cyan.bold(' ' + '═'.repeat(65) + '\n'));
+}
 
-  // Check if in development
-  const devPath = path.join(process.cwd(), '.spec-flow', 'scripts');
+function commandExists(cmd) {
+  const whichCmd = isWindows ? 'where' : 'which';
+  const res = spawnSync(whichCmd, [cmd], { stdio: 'ignore' });
+  return res.status === 0;
+}
 
-  const scriptPath = fs.existsSync(installedPath) ? installedPath : devPath;
+function getScriptPath(name) {
+  for (const root of SCRIPT_ROOTS) {
+    const p = path.join(root, isWindows ? 'powershell' : 'bash', `${name}${isWindows ? '.ps1' : '.sh'}`);
+    if (fs.existsSync(p)) return p;
+  }
+  throw new Error(`Script not found: ${name} (searched: ${SCRIPT_ROOTS.join(', ')})`);
+}
 
-  if (isWindows) {
-    return path.join(scriptPath, 'powershell', `${scriptName}.ps1`);
-  } else {
-    return path.join(scriptPath, 'bash', `${scriptName}.sh`);
+function runScript(scriptPath, args = []) {
+  return new Promise((resolve, reject) => {
+    const runner = isWindows
+      ? (commandExists('pwsh') ? 'pwsh' : 'powershell') // prefer PowerShell Core if present
+      : 'bash';
+
+    const proc = spawn(runner, isWindows ? ['-NoProfile', '-File', scriptPath, ...args] : [scriptPath, ...args], {
+      stdio: 'inherit', // stream through for better UX
+      windowsHide: true,
+    });
+
+    proc.on('error', reject);
+    proc.on('close', code => (code === 0 ? resolve() : reject(new Error(`${path.basename(scriptPath)} exited with ${code}`))));
+  });
+}
+
+async function ghAuthStatus() {
+  // Prefer GH CLI; fall back to PAT
+  if (commandExists('gh')) {
+    return new Promise(resolve => {
+      const p = spawn('gh', ['auth', 'status'], { stdio: 'ignore' });
+      p.on('close', code => resolve(code === 0 ? 'gh' : (process.env.GITHUB_TOKEN ? 'token' : 'none')));
+      p.on('error', () => resolve(process.env.GITHUB_TOKEN ? 'token' : 'none'));
+    });
+  }
+  return process.env.GITHUB_TOKEN ? 'token' : 'none';
+}
+
+function ensureGitRepo() {
+  const r1 = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { stdio: 'ignore' });
+  if (r1.status !== 0) {
+    console.error(chalk.red('❌ Not a git repository'));
+    process.exit(1);
+  }
+  const r2 = spawnSync('git', ['config', '--get', 'remote.origin.url'], { stdio: 'ignore' });
+  if (r2.status !== 0) {
+    console.error(chalk.red('❌ No GitHub remote found (missing origin)'));
+    process.exit(1);
   }
 }
 
-// Run a script and return promise
-function runScript(scriptPath, args = []) {
-  return new Promise((resolve, reject) => {
-    let command, scriptArgs;
-
-    if (isWindows) {
-      command = 'pwsh';
-      scriptArgs = ['-File', scriptPath, ...args];
-    } else {
-      command = 'bash';
-      scriptArgs = [scriptPath, ...args];
-    }
-
-    const proc = spawn(command, scriptArgs, {
-      stdio: 'inherit',
-      shell: true
-    });
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`Script exited with code ${code}`));
-      }
-    });
-
-    proc.on('error', (err) => {
-      reject(err);
-    });
-  });
-}
-
-// Check if gh CLI is available
-function checkGhCli() {
-  return new Promise((resolve) => {
-    const proc = spawn('gh', ['auth', 'status'], {
-      stdio: 'ignore'
-    });
-
-    proc.on('close', (code) => {
-      resolve(code === 0);
-    });
-
-    proc.on('error', () => {
-      resolve(false);
-    });
-  });
-}
-
-// Main setup function
+// -------------------------------
+// Main
+// -------------------------------
 async function setupRoadmap() {
-  console.log(chalk.cyan.bold('\n═══════════════════════════════════════════════════════════════════'));
-  console.log(chalk.cyan.bold(' 🗺️  GitHub Issues Roadmap Setup'));
-  console.log(chalk.cyan.bold('═══════════════════════════════════════════════════════════════════\n'));
+  logTitle('🗺️  GitHub Issues Roadmap Setup');
 
-  console.log(chalk.white('This wizard will help you set up GitHub Issues for roadmap management.\n'));
+  console.log(chalk.white('This wizard sets up labels and optionally migrates your Markdown roadmap to GitHub Issues.\n'));
 
-  // Step 1: Check GitHub authentication
+  // Step 0: repo check
+  ensureGitRepo();
+
+  // Step 1: Authentication
   console.log(chalk.yellow('Step 1: GitHub Authentication'));
   console.log(chalk.gray('─────────────────────────────\n'));
 
-  const hasGhCli = await checkGhCli();
-  const hasToken = !!process.env.GITHUB_TOKEN;
+  const authMethod = await ghAuthStatus();
 
-  if (hasGhCli) {
+  if (authMethod === 'gh') {
     console.log(chalk.green('✓ GitHub CLI authenticated\n'));
-  } else if (hasToken) {
-    console.log(chalk.green('✓ GITHUB_TOKEN environment variable found\n'));
+  } else if (authMethod === 'token') {
+    console.log(chalk.green('✓ GITHUB_TOKEN detected (classic/fine-grained)\n'));
   } else {
     console.log(chalk.yellow('⚠  No GitHub authentication found\n'));
 
-    const { authMethod } = await inquirer.prompt([{
-      type: 'list',
-      name: 'authMethod',
-      message: 'How would you like to authenticate?',
-      choices: [
-        { name: 'GitHub CLI (Recommended) - Run: gh auth login', value: 'gh' },
-        { name: 'Personal Access Token - Set GITHUB_TOKEN env var', value: 'token' },
-        { name: 'Skip for now', value: 'skip' }
-      ]
-    }]);
-
-    if (authMethod === 'skip') {
-      console.log(chalk.gray('\nSkipping authentication. You can set it up later.\n'));
-      console.log(chalk.white('To authenticate later:'));
-      console.log(chalk.gray('  Option 1: gh auth login'));
-      console.log(chalk.gray('  Option 2: export GITHUB_TOKEN=your_token\n'));
-      process.exit(0);
+    if (FLAG_NONINTERACTIVE) {
+      console.error(chalk.red('❌ Authentication required in non-interactive mode'));
+      console.error(chalk.gray('   Use: gh auth login  OR  export GITHUB_TOKEN=...'));
+      process.exit(1);
     }
 
-    if (authMethod === 'gh') {
-      console.log(chalk.white('\nPlease run:'));
-      console.log(chalk.cyan('  gh auth login\n'));
-      console.log(chalk.gray('Then run this setup again: npx spec-flow setup-roadmap\n'));
+    const { method } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'method',
+        message: 'How would you like to authenticate?',
+        choices: [
+          { name: 'GitHub CLI (recommended): gh auth login', value: 'gh' },
+          { name: 'Personal Access Token: set GITHUB_TOKEN', value: 'token' },
+          { name: 'Exit and do it later', value: 'skip' },
+        ],
+      },
+    ]);
+
+    if (method === 'skip') {
+      console.log(chalk.gray('\nSkipping auth. Re-run after configuring auth:\n  gh auth login\n  # or\n  export GITHUB_TOKEN=...'));
       process.exit(0);
     }
-
-    if (authMethod === 'token') {
-      console.log(chalk.white('\nTo create a Personal Access Token:'));
-      console.log(chalk.gray('  1. Go to: https://github.com/settings/tokens'));
-      console.log(chalk.gray('  2. Click "Generate new token (classic)"'));
-      console.log(chalk.gray('  3. Select scopes: repo, write:discussion'));
-      console.log(chalk.gray('  4. Set environment variable:'));
-      console.log(chalk.cyan('     export GITHUB_TOKEN=ghp_your_token\n'));
-      console.log(chalk.gray('Then run this setup again: npx spec-flow setup-roadmap\n'));
+    if (method === 'gh') {
+      console.log(chalk.white('\nRun:'), chalk.cyan('gh auth login'));
+      console.log(chalk.gray('Then re-run:'), chalk.cyan('npx spec-flow setup-roadmap\n'));
+      process.exit(0);
+    }
+    if (method === 'token') {
+      console.log(chalk.white('\nMinimal scopes to create/manage issues:'));
+      console.log(chalk.gray('  • public repos:  public_repo'));
+      console.log(chalk.gray('  • private repos: repo\n'));
+      console.log(chalk.white('Export token and re-run:'));
+      console.log(chalk.cyan('  export GITHUB_TOKEN=ghp_xxx\n'));
       process.exit(0);
     }
   }
 
-  // Step 2: Create labels
+  // Step 2: Labels
   console.log(chalk.yellow('Step 2: Create GitHub Labels'));
   console.log(chalk.gray('────────────────────────────\n'));
 
-  const { createLabels } = await inquirer.prompt([{
-    type: 'confirm',
-    name: 'createLabels',
-    message: 'Create labels for roadmap management? (priority, type, area, role, status, size)',
-    default: true
-  }]);
+  const shouldCreateLabels =
+    FLAG_NO_LABELS ? false : (FLAG_YES || FLAG_NONINTERACTIVE ? true : (await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'createLabels',
+        message: 'Create labels for roadmap (priority, type, area, role, status, size)?',
+        default: true,
+      },
+    ])).createLabels);
 
-  if (createLabels) {
+  if (shouldCreateLabels) {
     const spinner = ora('Creating labels...').start();
-
     try {
-      const scriptPath = getScriptPath('setup-github-labels');
-      await runScript(scriptPath);
-      spinner.succeed('Labels created successfully');
-    } catch (error) {
+      await runScript(getScriptPath('setup-github-labels'));
+      spinner.succeed('Labels created');
+    } catch (e) {
       spinner.fail('Failed to create labels');
-      console.log(chalk.red(`\nError: ${error.message}\n`));
+      console.error(chalk.red(e.message));
       process.exit(1);
     }
   } else {
     console.log(chalk.gray('Skipping label creation\n'));
   }
 
-  // Step 3: Check for existing markdown roadmap
-  console.log(chalk.yellow('\nStep 3: Markdown Roadmap Migration'));
+  // Step 3: Migration (optional)
+  console.log(chalk.yellow('Step 3: Markdown Roadmap Migration'));
   console.log(chalk.gray('───────────────────────────────────\n'));
 
   const oldRoadmapPath = path.join(process.cwd(), '.spec-flow', 'memory', 'roadmap.md');
   const hasOldRoadmap = fs.existsSync(oldRoadmapPath);
 
-  if (hasOldRoadmap) {
+  if (!hasOldRoadmap) {
+    console.log(chalk.gray('No existing markdown roadmap found\n'));
+  } else {
     console.log(chalk.yellow('⚠  Found existing markdown roadmap\n'));
 
-    const { migrateRoadmap } = await inquirer.prompt([{
-      type: 'confirm',
-      name: 'migrateRoadmap',
-      message: 'Migrate markdown roadmap to GitHub Issues?',
-      default: false
-    }]);
+    const doMigrate = FLAG_MIGRATE
+      ? true
+      : (FLAG_NONINTERACTIVE
+          ? false
+          : (await inquirer.prompt([{ type: 'confirm', name: 'migrateRoadmap', message: 'Migrate to GitHub Issues?', default: false }])).migrateRoadmap);
 
-    if (migrateRoadmap) {
-      const { dryRun } = await inquirer.prompt([{
-        type: 'confirm',
-        name: 'dryRun',
-        message: 'Run migration in dry-run mode first? (recommended)',
-        default: true
-      }]);
+    if (doMigrate) {
+      const doDryRun = FLAG_DRY_RUN || (!FLAG_NONINTERACTIVE && (await inquirer.prompt([
+        { type: 'confirm', name: 'dryRun', message: 'Run migration preview (dry-run)?', default: true },
+      ])).dryRun);
 
-      const spinner = ora(dryRun ? 'Running migration preview...' : 'Migrating roadmap...').start();
-
+      const spinner = ora(doDryRun ? 'Running migration preview...' : 'Migrating roadmap...').start();
       try {
-        const scriptPath = getScriptPath('migrate-roadmap-to-github');
-        const args = dryRun ? ['--dry-run'] : [];
-        await runScript(scriptPath, args);
-        spinner.succeed(dryRun ? 'Migration preview complete' : 'Roadmap migrated successfully');
+        const args = doDryRun ? ['--dry-run'] : [];
+        await runScript(getScriptPath('migrate-roadmap-to-github'), args);
+        spinner.succeed(doDryRun ? 'Migration preview complete' : 'Roadmap migrated');
 
-        if (dryRun) {
-          const { runActual } = await inquirer.prompt([{
-            type: 'confirm',
-            name: 'runActual',
-            message: 'Preview looks good. Run actual migration?',
-            default: true
-          }]);
-
+        if (doDryRun && !FLAG_NONINTERACTIVE) {
+          const { runActual } = await inquirer.prompt([
+            { type: 'confirm', name: 'runActual', message: 'Preview looks good. Run actual migration?', default: true },
+          ]);
           if (runActual) {
-            const actualSpinner = ora('Migrating roadmap...').start();
-            await runScript(scriptPath, ['--archive']);
-            actualSpinner.succeed('Roadmap migrated and archived');
+            const s2 = ora('Migrating roadmap...').start();
+            await runScript(getScriptPath('migrate-roadmap-to-github'), ['--archive']);
+            s2.succeed('Roadmap migrated and archived');
           }
         }
-      } catch (error) {
+      } catch (e) {
         spinner.fail('Migration failed');
-        console.log(chalk.red(`\nError: ${error.message}\n`));
+        console.error(chalk.red(e.message));
         process.exit(1);
       }
     } else {
-      console.log(chalk.gray('Skipping migration. You can migrate later with:'));
-      console.log(chalk.cyan('  npm run setup:roadmap\n'));
+      console.log(chalk.gray('Skipping migration. Later:'), chalk.cyan('npm run setup:roadmap\n'));
     }
-  } else {
-    console.log(chalk.gray('No existing markdown roadmap found\n'));
   }
 
   // Step 4: Summary
-  console.log(chalk.cyan.bold('\n═══════════════════════════════════════════════════════════════════'));
-  console.log(chalk.cyan.bold(' ✓ Roadmap Setup Complete'));
-  console.log(chalk.cyan.bold('═══════════════════════════════════════════════════════════════════\n'));
+  logTitle('✓ Roadmap Setup Complete');
 
-  console.log(chalk.white('Your roadmap is now managed via GitHub Issues!\n'));
+  console.log(chalk.white('Your roadmap is now managed in GitHub Issues.\n'));
 
-  console.log(chalk.white('Quick Start:'));
-  console.log(chalk.green('  gh issue list --label type:feature') + chalk.gray('  # View roadmap'));
-  console.log(chalk.green('  gh issue create --template feature.yml') + chalk.gray('  # Add feature\n'));
+  console.log(chalk.white('Quick start:'));
+  console.log(chalk.green('  gh issue list --label type:feature') + chalk.gray('   # view roadmap'));
+  console.log(chalk.green('  gh issue create --template feature.yml') + chalk.gray('  # add feature\n'));
 
-  console.log(chalk.white('Using /roadmap command:'));
+  console.log(chalk.white('Spec-Flow commands:'));
   console.log(chalk.gray('  /roadmap add "Feature description"'));
   console.log(chalk.gray('  /roadmap brainstorm deep backend'));
   console.log(chalk.gray('  /roadmap move feature-slug to next\n'));
 
-  console.log(chalk.white('Documentation:'));
-  console.log(chalk.gray('  See: docs/github-roadmap-migration.md'));
-  console.log(chalk.gray('  Or: https://github.com/marcusgoll/Spec-Flow#roadmap\n'));
+  console.log(chalk.white('Docs:'));
+  console.log(chalk.gray('  docs/github-roadmap-migration.md'));
+  console.log(chalk.gray('  https://github.com/marcusgoll/Spec-Flow#roadmap\n'));
 }
 
 // Run if called directly
 if (require.main === module) {
-  setupRoadmap().catch((error) => {
-    console.error(chalk.red('\nSetup failed:'), error.message);
-    if (process.env.DEBUG) {
-      console.error(error.stack);
-    }
+  setupRoadmap().catch(err => {
+    console.error(chalk.red('\nSetup failed:'), err.message);
+    if (process.env.DEBUG) console.error(err.stack);
     process.exit(1);
   });
 }
