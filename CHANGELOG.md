@@ -1,3 +1,25 @@
+## [6.2.0] - 2025-11-13
+
+### Added
+- **Implementation Skills Integration**: Connected 4 new specialist agents to implementation-phase workflow
+  - `test-architect` integrated into TDD workflow (RED phase)
+  - `type-enforcer` integrated into continuous testing (post-batch validation)
+  - `refactor-surgeon` integrated into TDD workflow (REFACTOR phase)
+  - `security-sentry` integrated into continuous testing (security validation)
+
+### Changed
+- Updated `.claude/skills/implementation-phase/resources/tdd-workflow.md` with test-architect and refactor-surgeon guidance
+- Updated `.claude/skills/implementation-phase/resources/continuous-testing.md` with type-enforcer and security-sentry validation
+- Updated `.claude/skills/implementation-phase/SKILL.md` quick reference checklist (7 → 10 steps)
+- Updated `.claude/skills/SKILL_DEPENDENCIES.md` with new agent dependencies
+
+### Documentation
+- Implementation skills now comprehensively reference all v6.1.0 specialist agents
+- Added "when to use" guidelines for each agent (optional/conditional usage)
+- Positioned agents at appropriate TDD workflow phases (RED/GREEN/REFACTOR)
+
+---
+
 ## [6.1.0] - 2025-11-13
 
 ### Added
