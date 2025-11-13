@@ -44,21 +44,11 @@ get_repo_info() {
 }
 
 # ============================================================================
-# ICE SCORING FUNCTIONS
+# METADATA FUNCTIONS
 # ============================================================================
 
-# Calculate ICE score from impact, effort, confidence
-calculate_ice_score() {
-  local impact="$1"
-  local effort="$2"
-  local confidence="$3"
-
-  # ICE = (Impact × Confidence) / Effort
-  awk "BEGIN {printf \"%.2f\", ($impact * $confidence) / $effort}"
-}
-
-# Parse ICE frontmatter from issue body
-parse_ice_from_body() {
+# Parse metadata frontmatter from issue body
+parse_metadata_from_body() {
   local body="$1"
 
   # Extract YAML frontmatter between --- delimiters
@@ -70,13 +60,7 @@ parse_ice_from_body() {
     return 1
   fi
 
-  # Parse ICE values
-  local impact
-  impact=$(echo "$frontmatter" | grep "impact:" | sed 's/.*impact: *//' | tr -d ' ')
-  local effort
-  effort=$(echo "$frontmatter" | grep "effort:" | sed 's/.*effort: *//' | tr -d ' ')
-  local confidence
-  confidence=$(echo "$frontmatter" | grep "confidence:" | sed 's/.*confidence: *//' | tr -d ' ')
+  # Parse metadata values
   local area
   area=$(echo "$frontmatter" | grep "area:" | sed 's/.*area: *//' | tr -d ' ')
   local role
@@ -87,9 +71,6 @@ parse_ice_from_body() {
   # Return JSON
   cat <<EOF
 {
-  "impact": ${impact:-3},
-  "effort": ${effort:-3},
-  "confidence": ${confidence:-0.7},
   "area": "${area:-app}",
   "role": "${role:-all}",
   "slug": "${slug:-unknown}"
@@ -97,26 +78,16 @@ parse_ice_from_body() {
 EOF
 }
 
-# Generate ICE frontmatter for issue body
-generate_ice_frontmatter() {
-  local impact="$1"
-  local effort="$2"
-  local confidence="$3"
-  local area="${4:-app}"
-  local role="${5:-all}"
-  local slug="$6"
-  local epic="$7"
-  local sprint="$8"
-  local score
-  score=$(calculate_ice_score "$impact" "$effort" "$confidence")
+# Generate metadata frontmatter for issue body
+generate_metadata_frontmatter() {
+  local area="${1:-app}"
+  local role="${2:-all}"
+  local slug="$3"
+  local epic="$4"
+  local sprint="$5"
 
   cat <<EOF
 ---
-ice:
-  impact: $impact
-  effort: $effort
-  confidence: $confidence
-  score: $score
 metadata:
   area: $area
   role: $role
@@ -131,19 +102,16 @@ EOF
 # ISSUE OPERATIONS
 # ============================================================================
 
-# Create a roadmap issue with ICE frontmatter
+# Create a roadmap issue with metadata frontmatter
 create_roadmap_issue() {
   local title="$1"
   local body="$2"
-  local impact="$3"
-  local effort="$4"
-  local confidence="$5"
-  local area="${6:-app}"
-  local role="${7:-all}"
-  local slug="$8"
-  local labels="${9:-type:feature,status:backlog}"
-  local epic="${10}"
-  local sprint="${11}"
+  local area="${3:-app}"
+  local role="${4:-all}"
+  local slug="$5"
+  local labels="${6:-type:feature,status:backlog}"
+  local epic="$7"
+  local sprint="$8"
 
   local repo
   repo=$(get_repo_info)
@@ -154,7 +122,7 @@ create_roadmap_issue() {
 
   # Generate frontmatter
   local frontmatter
-  frontmatter=$(generate_ice_frontmatter "$impact" "$effort" "$confidence" "$area" "$role" "$slug" "$epic" "$sprint")
+  frontmatter=$(generate_metadata_frontmatter "$area" "$role" "$slug" "$epic" "$sprint")
 
   # Combine frontmatter with body
   local full_body
@@ -171,26 +139,6 @@ EOF
   # Add epic and sprint labels if provided
   [ -n "$epic" ] && all_labels="$all_labels,epic:$epic"
   [ -n "$sprint" ] && all_labels="$all_labels,sprint:$sprint"
-
-  # Determine size label based on effort
-  case "$effort" in
-    1) all_labels="$all_labels,size:small" ;;
-    2) all_labels="$all_labels,size:small" ;;
-    3) all_labels="$all_labels,size:medium" ;;
-    4) all_labels="$all_labels,size:large" ;;
-    5) all_labels="$all_labels,size:xl" ;;
-  esac
-
-  # Determine priority label based on ICE score
-  local score
-  score=$(calculate_ice_score "$impact" "$effort" "$confidence")
-  local priority="medium"
-  if awk "BEGIN {exit !($score >= 1.5)}"; then
-    priority="high"
-  elif awk "BEGIN {exit !($score < 0.8)}"; then
-    priority="low"
-  fi
-  all_labels="$all_labels,priority:$priority"
 
   # Create issue
   local auth_method
@@ -264,81 +212,7 @@ get_issue_by_slug() {
   fi
 }
 
-# Update issue ICE scores
-update_issue_ice() {
-  local issue_number="$1"
-  local impact="$2"
-  local effort="$3"
-  local confidence="$4"
-
-  local repo
-  repo=$(get_repo_info)
-
-  if [ -z "$repo" ]; then
-    echo "Error: Could not determine repository" >&2
-    return 1
-  fi
-
-  local auth_method
-  auth_method=$(check_github_auth)
-
-  # Get current issue body
-  local current_body=""
-  if [ "$auth_method" = "gh_cli" ]; then
-    current_body=$(gh issue view "$issue_number" --repo "$repo" --json body -q .body)
-  elif [ "$auth_method" = "api" ]; then
-    local api_url="https://api.github.com/repos/$repo/issues/$issue_number"
-    current_body=$(curl -s \
-      -H "Authorization: token $GITHUB_TOKEN" \
-      -H "Accept: application/vnd.github.v3+json" \
-      "$api_url" | jq -r '.body')
-  else
-    echo "Error: No GitHub authentication available" >&2
-    return 1
-  fi
-
-  # Parse existing metadata
-  local metadata
-  metadata=$(parse_ice_from_body "$current_body")
-  local area
-  area=$(echo "$metadata" | jq -r '.area')
-  local role
-  role=$(echo "$metadata" | jq -r '.role')
-  local slug
-  slug=$(echo "$metadata" | jq -r '.slug')
-
-  # Remove old frontmatter
-  local body_without_frontmatter
-  body_without_frontmatter=$(echo "$current_body" | sed '/^---$/,/^---$/d' | sed '/^$/d')
-
-  # Generate new frontmatter
-  local new_frontmatter
-  new_frontmatter=$(generate_ice_frontmatter "$impact" "$effort" "$confidence" "$area" "$role" "$slug")
-
-  # Combine
-  local new_body
-  new_body=$(cat <<EOF
-$new_frontmatter
-
-$body_without_frontmatter
-EOF
-)
-
-  # Update issue
-  if [ "$auth_method" = "gh_cli" ]; then
-    echo "$new_body" | gh issue edit "$issue_number" --repo "$repo" --body-file -
-  elif [ "$auth_method" = "api" ]; then
-    local api_url="https://api.github.com/repos/$repo/issues/$issue_number"
-    local json_body
-    json_body=$(jq -n --arg body "$new_body" '{body: $body}')
-
-    curl -s -X PATCH \
-      -H "Authorization: token $GITHUB_TOKEN" \
-      -H "Accept: application/vnd.github.v3+json" \
-      "$api_url" \
-      -d "$json_body"
-  fi
-}
+# update_issue_ice removed - no longer using ICE scores
 
 # Mark issue as in progress
 mark_issue_in_progress() {
@@ -605,12 +479,10 @@ EOF
 # Export functions
 export -f check_github_auth
 export -f get_repo_info
-export -f calculate_ice_score
-export -f parse_ice_from_body
-export -f generate_ice_frontmatter
+export -f parse_metadata_from_body
+export -f generate_metadata_frontmatter
 export -f create_roadmap_issue
 export -f get_issue_by_slug
-export -f update_issue_ice
 export -f mark_issue_in_progress
 export -f mark_issue_shipped
 export -f list_issues_by_status

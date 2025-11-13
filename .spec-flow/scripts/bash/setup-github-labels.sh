@@ -2,7 +2,7 @@
 
 # setup-github-labels.sh - Create GitHub labels for roadmap management
 #
-# Creates a comprehensive label schema for managing features with ICE prioritization
+# Creates a comprehensive label schema for managing features
 #
 # Usage:
 #   ./setup-github-labels.sh [--dry-run]
@@ -134,11 +134,11 @@ echo "Creating GitHub Labels"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Priority Labels (red spectrum)
-echo "Priority Labels:"
-create_label "priority:high" "High priority - address soon" "d73a4a"
-create_label "priority:medium" "Medium priority - normal queue" "fb8c00"
-create_label "priority:low" "Low priority - nice to have" "fef2c0"
+# Priority Labels (optional - for manual prioritization only)
+echo "Priority Labels (manual use):"
+create_label "priority:high" "High priority - manual override" "d73a4a"
+create_label "priority:medium" "Medium priority - manual override" "fb8c00"
+create_label "priority:low" "Low priority - manual override" "fef2c0"
 echo ""
 
 # Type Labels (blue/purple spectrum)

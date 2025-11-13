@@ -3,7 +3,7 @@
     Create GitHub labels for roadmap management
 
 .DESCRIPTION
-    Creates a comprehensive label schema for managing features with ICE prioritization.
+    Creates a comprehensive label schema for managing features.
     Supports both gh CLI and GitHub API authentication.
 
 .PARAMETER DryRun
@@ -195,11 +195,11 @@ Write-Host "Creating GitHub Labels"
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 Write-Host ""
 
-# Priority Labels
-Write-Host "Priority Labels:"
-New-GitHubLabel -Name "priority:high" -Description "High priority - address soon" -Color "d73a4a" -Repository $Repo -UseCli $UseGhCli -IsDryRun $DryRun
-New-GitHubLabel -Name "priority:medium" -Description "Medium priority - normal queue" -Color "fb8c00" -Repository $Repo -UseCli $UseGhCli -IsDryRun $DryRun
-New-GitHubLabel -Name "priority:low" -Description "Low priority - nice to have" -Color "fef2c0" -Repository $Repo -UseCli $UseGhCli -IsDryRun $DryRun
+# Priority Labels (optional - for manual prioritization only)
+Write-Host "Priority Labels (manual use):"
+New-GitHubLabel -Name "priority:high" -Description "High priority - manual override" -Color "d73a4a" -Repository $Repo -UseCli $UseGhCli -IsDryRun $DryRun
+New-GitHubLabel -Name "priority:medium" -Description "Medium priority - manual override" -Color "fb8c00" -Repository $Repo -UseCli $UseGhCli -IsDryRun $DryRun
+New-GitHubLabel -Name "priority:low" -Description "Low priority - manual override" -Color "fef2c0" -Repository $Repo -UseCli $UseGhCli -IsDryRun $DryRun
 Write-Host ""
 
 # Type Labels

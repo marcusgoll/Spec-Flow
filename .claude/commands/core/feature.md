@@ -178,13 +178,8 @@ if [ "$NEXT_MODE" = true ]; then
   fi
   [ -z "$JSON" ] && { echo "❌ No next/backlog items"; exit 1; }
 
-  # Sort by priority label and pick first
-  ISSUE=$(echo "$JSON" | jq -r '
-    map(select(.labels | any(.name | startswith("priority:")))) |
-    sort_by(
-      .labels[] | select(.name | startswith("priority:")) | .name |
-      if .=="priority:high" then 1 elif .=="priority:medium" then 2 elif .=="priority:low" then 3 else 4 end
-    ) | first')
+  # Pick first issue (GitHub returns in creation order)
+  ISSUE=$(echo "$JSON" | jq -r 'first')
 
   ISSUE_NUMBER=$(echo "$ISSUE" | jq -r .number)
   ISSUE_TITLE=$(echo "$ISSUE" | jq -r .title)
@@ -363,14 +358,11 @@ if [[ "$MODE" == "epic" || "$MODE" == "epic-sprint" || "$MODE" == "sprint" ]]; t
     ))
   ')
 
-  # Sort by ICE score (priority labels) and pick first
+  # Sort by epic name (alphabetical) if multiple epics, then by creation order
+  # GitHub returns issues in creation order by default
   ISSUE=$(echo "$AVAILABLE_JSON" | jq -r '
     sort_by(
-      .labels[] | select(.name | startswith("priority:")) | .name |
-      if . == "priority:high" then 1
-      elif . == "priority:medium" then 2
-      elif . == "priority:low" then 3
-      else 4 end
+      [.labels[] | select(.name | startswith("epic:")) | .name] | .[0] // "zzz"
     ) | first
   ')
 

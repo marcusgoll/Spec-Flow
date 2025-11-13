@@ -6,13 +6,13 @@ allowed-tools: Read, Write, Edit, Bash
 
 # Roadmap Integration: Product Feature Management
 
-> **Training Guide**: Execute the `/roadmap` command to manage features via GitHub Issues with ICE prioritization and vision alignment validation.
+> **Training Guide**: Execute the `/roadmap` command to manage features via GitHub Issues with vision alignment validation and creation-order prioritization.
 
 ---
 
 ## Phase Overview
 
-**Purpose**: Brainstorm features, validate against project vision, prioritize with ICE scoring, track shipped features
+**Purpose**: Brainstorm features, validate against project vision, track shipped features (prioritized by creation order)
 
 **Inputs**:
 - Feature ideas (natural language descriptions)
@@ -20,10 +20,10 @@ allowed-tools: Read, Write, Edit, Bash
 - Existing GitHub Issues (roadmap state)
 
 **Outputs**:
-- GitHub Issues created with ICE metadata
-- Priority labels auto-applied (high/medium/low)
+- GitHub Issues created with metadata (area, role, slug)
 - Vision alignment validation report
 - Roadmap summary (Backlog/Next/In Progress/Shipped counts)
+- Issues prioritized by creation order (earlier = higher priority)
 
 **Expected duration**: 5-15 minutes per feature add, 30-60 minutes for brainstorming
 
@@ -188,12 +188,12 @@ Target Users:
 2. Extract parameters (slug, title, requirements, filters)
 
 **Action types**:
-- `add` - Add new feature with ICE scoring
+- `add` - Add new feature (prioritized by creation order)
 - `brainstorm` - Generate feature ideas via web research
 - `move` - Change feature status (Backlog → Next → In Progress)
 - `delete` - Remove feature from roadmap
-- `prioritize` - Show sorted list by ICE score
-- `search` - Find features by keyword/area/role
+- `prioritize` - Show sorted list by creation order
+- `search` - Find features by keyword/area/role/sprint
 - `ship` - Mark feature as shipped
 
 **Examples**:
@@ -481,31 +481,14 @@ Confirm primary user (or 'skip'): Flight students
 
 ---
 
-### Step 5: ICE Scoring and GitHub Issue Creation
+### Step 5: GitHub Issue Creation
 
 **Actions** (after vision validation passes):
 1. Extract title, requirements, area, role
-2. Infer ICE scores (Impact, Effort, Confidence)
-3. Calculate ICE score: (Impact × Confidence) / Effort
-4. Generate URL-friendly slug
-5. Check for duplicates
-6. Create GitHub Issue with metadata
-
-**ICE scoring defaults**:
-- Impact: 3 (medium value)
-- Effort: 3 (medium complexity)
-- Confidence: 0.7 (medium certainty)
-
-**Scoring heuristics**:
-
-| Feature Characteristic | Impact | Effort | Confidence |
-|------------------------|--------|--------|------------|
-| "Quick win" mentioned | 3-4 | 1-2 | 0.9-1.0 |
-| "Strategic" mentioned | 4-5 | 3-4 | 0.7-0.8 |
-| >30 requirements | 4-5 | 4-5 | 0.6-0.7 |
-| "Simple" or "basic" | 2-3 | 1-2 | 0.9-1.0 |
-| "Complex" or "advanced" | 4-5 | 4-5 | 0.6-0.8 |
-| Piggybacks existing feature | +0 | -1 | +0.1 |
+2. Generate URL-friendly slug
+3. Check for duplicates
+4. Create GitHub Issue with metadata
+5. Issues prioritized by creation order (first created = first worked on)
 
 **Create GitHub Issue**:
 
@@ -529,13 +512,10 @@ $SOLUTION_DESCRIPTION
 
 $REQUIREMENTS_LIST${ALIGNMENT_NOTE:-}"
 
-# Create issue
+# Create issue (no ICE parameters - prioritized by creation order)
 create_roadmap_issue \
   "$TITLE" \
   "$BODY" \
-  "$IMPACT" \
-  "$EFFORT" \
-  "$CONFIDENCE" \
   "$AREA" \
   "$ROLE" \
   "$SLUG" \
@@ -567,13 +547,10 @@ $solutionDescription
 $requirementsList$(if ($alignmentNote) { $alignmentNote } else { '' })
 "@
 
-# Create issue
+# Create issue (no ICE parameters - prioritized by creation order)
 New-RoadmapIssue `
   -Title $title `
   -Body $body `
-  -Impact $impact `
-  -Effort $effort `
-  -Confidence $confidence `
   -Area $area `
   -Role $role `
   -Slug $slug `
@@ -583,11 +560,6 @@ New-RoadmapIssue `
 **Issue frontmatter** (auto-added by create_roadmap_issue):
 ```yaml
 ---
-ice:
-  impact: 4
-  effort: 2
-  confidence: 0.9
-  score: 1.8
 metadata:
   area: app
   role: student
@@ -609,16 +581,11 @@ Add a progress widget...
 ⚠️  **Alignment Note**: Validated against project vision (overview.md)
 ```
 
-**Priority label auto-applied**:
-- `priority:high` if score >= 1.5
-- `priority:medium` if 0.8 <= score < 1.5
-- `priority:low` if score < 0.8
-
-**Size label auto-applied**:
-- `size:small` if effort 1-2
-- `size:medium` if effort 3
-- `size:large` if effort 4
-- `size:xl` if effort 5
+**Labels auto-applied**:
+- `area:$AREA` (backend, frontend, api, infra, design, marketing)
+- `role:$ROLE` (all, free, student, cfi, school)
+- `type:feature`
+- `status:backlog`
 
 ---
 
@@ -652,10 +619,10 @@ echo "📊 Roadmap Summary:"
 echo "   Backlog: $BACKLOG_COUNT | Next: $NEXT_COUNT | In Progress: $IN_PROGRESS_COUNT | Shipped: $SHIPPED_COUNT"
 echo ""
 
-# Show top 3 in Backlog (by priority)
-echo "Top 3 in Backlog (by priority):"
-gh issue list --repo "$REPO" --label "status:backlog,priority:high" --json number,title,body --limit 3 | \
-  jq -r '.[] | "\(.number). \(.title) (Score: \(.body | capture("score: (?<score>[0-9.]+)").score))"'
+# Show top 3 in Backlog (by creation order - oldest first)
+echo "Top 3 in Backlog (oldest/highest priority):"
+gh issue list --repo "$REPO" --label "status:backlog" --json number,title,createdAt --limit 3 | \
+  jq -r '.[] | "\(.number). \(.title) (Created: \(.createdAt | split("T")[0]))"'
 
 echo ""
 echo "💡 Next: /feature $SLUG"
@@ -664,18 +631,17 @@ echo "💡 Next: /feature $SLUG"
 **Output example**:
 ```
 ✅ Created issue #123: student-progress-widget in Backlog
-   Impact: 4 | Effort: 2 | Confidence: 0.9 | Score: 1.8
-   Priority: high | Area: app | Role: student
+   Area: app | Role: student
 
 📊 Roadmap Summary:
    Backlog: 12 | Next: 3 | In Progress: 2 | Shipped: 45
 
-Top 3 in Backlog (by priority):
-1. #123 student-progress-widget (Score: 1.8)
-2. #98 cfi-batch-export (Score: 1.5)
-3. #87 study-plan-generator (Score: 1.2)
+Top 3 in Backlog (oldest/highest priority):
+1. #98 cfi-batch-export (Created: 2025-11-01)
+2. #87 study-plan-generator (Created: 2025-11-05)
+3. #123 student-progress-widget (Created: 2025-11-13)
 
-💡 Next: /feature student-progress-widget
+💡 Next: /feature cfi-batch-export
 ```
 
 ---
@@ -692,10 +658,10 @@ Top 3 in Backlog (by priority):
 - **Prevention**: Respect Out-of-Scope exclusions in overview.md
 - **Fix**: Update overview.md if scope legitimately changed, don't just override
 
-**3. Missing ICE scores in GitHub Issues**
-- **Symptom**: Priority labels not applied, sorting fails
-- **Prevention**: Always use `create_roadmap_issue()` function (auto-calculates ICE)
-- **Detection**: Check issue body for YAML frontmatter with `ice:` section
+**3. Missing metadata in GitHub Issues**
+- **Symptom**: Area/role labels not applied, cannot filter features
+- **Prevention**: Always use `create_roadmap_issue()` function (auto-adds metadata)
+- **Detection**: Check issue body for YAML frontmatter with `metadata:` section
 
 **4. Duplicate slugs**
 - **Symptom**: Multiple features with same slug
@@ -719,11 +685,10 @@ Top 3 in Backlog (by priority):
 - [ ] **GitHub authentication** verified (gh CLI or token)
 - [ ] **Project documentation** loaded (if exists)
 - [ ] **Vision alignment** validated (out-of-scope check, vision match, target user)
-- [ ] **ICE scores** calculated and applied
+- [ ] **Metadata** extracted (area, role, slug)
 - [ ] **GitHub Issue** created with full metadata (YAML frontmatter)
-- [ ] **Priority labels** auto-applied (high/medium/low)
-- [ ] **Size labels** auto-applied (small/medium/large/xl)
-- [ ] **Roadmap summary** displayed (counts by status, top 3 prioritized)
+- [ ] **Labels** auto-applied (area, role, type, status)
+- [ ] **Roadmap summary** displayed (counts by status, top 3 by creation order)
 - [ ] **Next action** suggested (/feature [slug])
 
 ---
@@ -763,7 +728,7 @@ Top 3 in Backlog (by priority):
 
 **When docs don't exist**:
 - Skip vision validation
-- Proceed with ICE scoring
+- Proceed with issue creation
 - Add informational note: "Run /init-project for vision-aligned roadmap management"
 
 **When docs are outdated**:
@@ -802,4 +767,4 @@ Top 3 in Backlog (by priority):
 
 ---
 
-_This SOP guides vision-aligned roadmap management via GitHub Issues with ICE prioritization._
+_This SOP guides vision-aligned roadmap management via GitHub Issues with creation-order prioritization._

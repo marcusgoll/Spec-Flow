@@ -639,7 +639,7 @@ powershell -File .spec-flow/scripts/powershell/install-wizard.ps1
 3. **Set up your project** (optional but recommended):
    ```bash
    /setup-constitution         # Interactive Q&A for engineering standards
-   /roadmap              # Plan and prioritize features with ICE scoring
+   /roadmap              # Plan and track features (prioritized by creation order)
    /design-inspiration   # Curate visual references for consistency
    ```
 4. **Start building:**
@@ -678,10 +678,11 @@ Run the `/setup-constitution` command in Claude to document the engineering prin
 
 ### 3. Build your roadmap
 
-Use `/roadmap` to manage features via GitHub Issues with ICE scoring (Impact × Confidence / Effort):
+Use `/roadmap` to manage features via GitHub Issues (prioritized by creation order):
 - **Setup**: Authenticate with `gh auth login` or set `GITHUB_TOKEN`, then run `.spec-flow/scripts/bash/setup-github-labels.sh`
-- **Add features**: `/roadmap add "feature description"` creates GitHub issue with priority labels
+- **Add features**: `/roadmap add "feature description"` creates GitHub issue with metadata labels
 - **Brainstorm**: `/roadmap brainstorm [quick|deep]` generates ideas from research
+- **Prioritization**: Features are worked in creation order (earlier = higher priority)
 - **Organize via labels**:
   - `status:backlog` - Ideas to consider
   - `status:next` - Top 5-10 prioritized features
@@ -810,7 +811,7 @@ Every automation script is provided in both PowerShell (`.ps1`) and shell (`.sh`
 
 | Phase | Command | Primary Outputs |
 |-------|---------|-----------------|
-| -1 | `/roadmap` | GitHub Issues with ICE-scored features and priority labels |
+| -1 | `/roadmap` | GitHub Issues with features prioritized by creation order |
 | 0 | `/spec` | `spec.md`, `NOTES.md`, `visuals/README.md` |
 | 0.5 | `/clarify` | Clarification log inside the spec |
 | 1 | `/plan` | `plan.md`, `research.md` |
@@ -893,7 +894,7 @@ specs/001-example-feature/
 
 1. Run `.spec-flow/scripts/bash/check-prerequisites.sh --json` (or the PowerShell variant) to ensure your environment is ready.
 2. **Set up roadmap**: Authenticate with GitHub (`gh auth login`), run `.spec-flow/scripts/bash/setup-github-labels.sh` to create labels.
-3. **Build roadmap**: Use `/roadmap` to add features as GitHub Issues, prioritize with ICE scoring, organize via labels (status:backlog → status:next → status:in-progress → status:shipped).
+3. **Build roadmap**: Use `/roadmap` to add features as GitHub Issues (prioritized by creation order), organize via labels (status:backlog → status:next → status:in-progress → status:shipped).
 4. Select a feature from GitHub Issues and launch `/feature "<feature-slug>"` in Claude to scaffold the spec from the issue.
 5. Progress through `/clarify`, `/plan`, `/tasks`, and `/validate`, addressing blockers as they appear.
 6. Use `calculate-tokens` to watch context budgets and `compact-context` to summarise when approaching thresholds.

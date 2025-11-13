@@ -3,11 +3,11 @@
     GitHub Issues roadmap management functions
 
 .DESCRIPTION
-    Provides functions to manage roadmap via GitHub Issues with ICE scoring.
+    Provides functions to manage roadmap via GitHub Issues.
     Supports both gh CLI and GitHub API authentication.
 
 .NOTES
-    Version: 1.0.0
+    Version: 2.0.0
     Requires: gh CLI OR $env:GITHUB_TOKEN
 #>
 
@@ -72,40 +72,17 @@ function Get-RepositoryInfo {
 }
 
 # ============================================================================
-# ICE SCORING FUNCTIONS
+# METADATA FUNCTIONS
 # ============================================================================
 
-function Get-IceScore {
+function Get-MetadataFromBody {
     <#
     .SYNOPSIS
-        Calculate ICE score from impact, effort, confidence
-    .PARAMETER Impact
-        Impact value (1-5)
-    .PARAMETER Effort
-        Effort value (1-5)
-    .PARAMETER Confidence
-        Confidence value (0-1)
-    .OUTPUTS
-        Double - ICE score
-    #>
-    param(
-        [double]$Impact,
-        [double]$Effort,
-        [double]$Confidence
-    )
-
-    # ICE = (Impact × Confidence) / Effort
-    return [math]::Round(($Impact * $Confidence) / $Effort, 2)
-}
-
-function Get-IceFromBody {
-    <#
-    .SYNOPSIS
-        Parse ICE frontmatter from issue body
+        Parse metadata frontmatter from issue body
     .PARAMETER Body
         Issue body text
     .OUTPUTS
-        PSCustomObject - ICE data
+        PSCustomObject - Metadata
     #>
     param(
         [string]$Body
@@ -115,18 +92,12 @@ function Get-IceFromBody {
     if ($Body -match '(?s)^---\s*\n(.+?)\n---') {
         $frontmatter = $Matches[1]
 
-        # Parse values
-        $impact = if ($frontmatter -match 'impact:\s*(\d+)') { [int]$Matches[1] } else { 3 }
-        $effort = if ($frontmatter -match 'effort:\s*(\d+)') { [int]$Matches[1] } else { 3 }
-        $confidence = if ($frontmatter -match 'confidence:\s*([\d.]+)') { [double]$Matches[1] } else { 0.7 }
+        # Parse metadata values (NO ICE scores)
         $area = if ($frontmatter -match 'area:\s*(\w+)') { $Matches[1] } else { "app" }
         $role = if ($frontmatter -match 'role:\s*(\w+)') { $Matches[1] } else { "all" }
         $slug = if ($frontmatter -match 'slug:\s*(.+)') { $Matches[1].Trim() } else { "unknown" }
 
         return [PSCustomObject]@{
-            Impact = $impact
-            Effort = $effort
-            Confidence = $confidence
             Area = $area
             Role = $role
             Slug = $slug
@@ -134,44 +105,43 @@ function Get-IceFromBody {
     }
 
     return [PSCustomObject]@{
-        Impact = 3
-        Effort = 3
-        Confidence = 0.7
         Area = "app"
         Role = "all"
         Slug = "unknown"
     }
 }
 
-function New-IceFrontmatter {
+function New-MetadataFrontmatter {
     <#
     .SYNOPSIS
-        Generate ICE frontmatter for issue body
+        Generate metadata frontmatter for issue body
     #>
     param(
-        [int]$Impact,
-        [int]$Effort,
-        [double]$Confidence,
         [string]$Area = "app",
         [string]$Role = "all",
-        [string]$Slug
+        [string]$Slug,
+        [string]$Epic,
+        [string]$Sprint
     )
 
-    $score = Get-IceScore -Impact $Impact -Effort $Effort -Confidence $Confidence
-
-    return @"
+    $metadata = @"
 ---
-ice:
-  impact: $Impact
-  effort: $Effort
-  confidence: $Confidence
-  score: $score
 metadata:
   area: $Area
   role: $Role
   slug: $Slug
----
 "@
+
+    if ($Epic) {
+        $metadata += "`n  epic: $Epic"
+    }
+
+    if ($Sprint) {
+        $metadata += "`n  sprint: $Sprint"
+    }
+
+    $metadata += "`n---"
+    return $metadata
 }
 
 # ============================================================================
@@ -181,7 +151,7 @@ metadata:
 function New-RoadmapIssue {
     <#
     .SYNOPSIS
-        Create a roadmap issue with ICE frontmatter
+        Create a roadmap issue with metadata frontmatter
     #>
     param(
         [Parameter(Mandatory=$true)]
@@ -190,22 +160,15 @@ function New-RoadmapIssue {
         [Parameter(Mandatory=$true)]
         [string]$Body,
 
-        [Parameter(Mandatory=$true)]
-        [int]$Impact,
-
-        [Parameter(Mandatory=$true)]
-        [int]$Effort,
-
-        [Parameter(Mandatory=$true)]
-        [double]$Confidence,
-
         [string]$Area = "app",
         [string]$Role = "all",
 
         [Parameter(Mandatory=$true)]
         [string]$Slug,
 
-        [string]$Labels = "type:feature,status:backlog"
+        [string]$Labels = "type:feature,status:backlog",
+        [string]$Epic,
+        [string]$Sprint
     )
 
     $repo = Get-RepositoryInfo
@@ -215,8 +178,8 @@ function New-RoadmapIssue {
         return
     }
 
-    # Generate frontmatter
-    $frontmatter = New-IceFrontmatter -Impact $Impact -Effort $Effort -Confidence $Confidence -Area $Area -Role $Role -Slug $Slug
+    # Generate frontmatter (NO ICE scores)
+    $frontmatter = New-MetadataFrontmatter -Area $Area -Role $Role -Slug $Slug -Epic $Epic -Sprint $Sprint
 
     # Combine frontmatter with body
     $fullBody = "$frontmatter`n`n$Body"
@@ -224,19 +187,14 @@ function New-RoadmapIssue {
     # Build labels
     $allLabels = "$Labels,area:$Area,role:$Role"
 
-    # Add size label
-    $sizeLabel = switch ($Effort) {
-        {$_ -le 2} { "size:small" }
-        3 { "size:medium" }
-        4 { "size:large" }
-        5 { "size:xl" }
+    # Add epic and sprint labels if provided
+    if ($Epic) {
+        $allLabels += ",epic:$Epic"
     }
-    $allLabels += ",$sizeLabel"
 
-    # Add priority label
-    $score = Get-IceScore -Impact $Impact -Effort $Effort -Confidence $Confidence
-    $priorityLabel = if ($score -ge 1.5) { "priority:high" } elseif ($score -lt 0.8) { "priority:low" } else { "priority:medium" }
-    $allLabels += ",$priorityLabel"
+    if ($Sprint) {
+        $allLabels += ",sprint:$Sprint"
+    }
 
     # Create issue
     $authMethod = Test-GitHubAuth
@@ -532,7 +490,7 @@ function Add-DiscoveredFeature {
             $title = $Description
             $body = "## Problem`n`nDiscovered during: $Context`n`n## Proposed Solution`n`nTo be determined`n`n## Requirements`n`n- [ ] To be defined"
 
-            New-RoadmapIssue -Title $title -Body $body -Impact 3 -Effort 3 -Confidence 0.7 `
+            New-RoadmapIssue -Title $title -Body $body `
                 -Area "app" -Role "all" -Slug $slug -Labels "type:feature,status:backlog,needs-clarification"
 
             Write-Host "✅ Created GitHub issue for: $Description" -ForegroundColor Green
@@ -580,9 +538,8 @@ Features discovered during development. Review and create GitHub issues as neede
 Export-ModuleMember -Function @(
     'Test-GitHubAuth',
     'Get-RepositoryInfo',
-    'Get-IceScore',
-    'Get-IceFromBody',
-    'New-IceFrontmatter',
+    'Get-MetadataFromBody',
+    'New-MetadataFrontmatter',
     'New-RoadmapIssue',
     'Get-IssueBySlug',
     'Set-IssueInProgress',
