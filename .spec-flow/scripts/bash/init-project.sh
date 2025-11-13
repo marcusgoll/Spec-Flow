@@ -203,8 +203,6 @@ detect_project_type() {
 
 # Scan brownfield codebase for tech stack
 scan_brownfield() {
-  local answers_file="$1"
-
   info "Scanning existing codebase..."
 
   # Detect database
@@ -269,18 +267,18 @@ run_questionnaire() {
       INIT_NAME="$PROJECT_NAME"
       echo "Q1. Project name: $INIT_NAME (from argument)"
     else
-      read -p "Q1. Project name (e.g., 'FlightPro', 'AcmeApp'): " INIT_NAME
+      read -r -p "Q1. Project name (e.g., 'FlightPro', 'AcmeApp'): " INIT_NAME
     fi
   fi
 
   # Q2: Vision
   if [[ -z "$INIT_VISION" ]]; then
-    read -p "Q2. What does this project do? (1 sentence): " INIT_VISION
+    read -r -p "Q2. What does this project do? (1 sentence): " INIT_VISION
   fi
 
   # Q3: Target Users
   if [[ -z "$INIT_USERS" ]]; then
-    read -p "Q3. Who are the primary users? (e.g., 'Flight instructors'): " INIT_USERS
+    read -r -p "Q3. Who are the primary users? (e.g., 'Flight instructors'): " INIT_USERS
   fi
 
   # Q4: Scale
@@ -291,7 +289,7 @@ run_questionnaire() {
     echo "  2. Small (100-1K users)"
     echo "  3. Medium (1K-10K users)"
     echo "  4. Large (10K+ users)"
-    read -p "Choice (1-4): " scale_choice
+    read -r -p "Choice (1-4): " scale_choice
     case $scale_choice in
       1) INIT_SCALE="micro" ;;
       2) INIT_SCALE="small" ;;
@@ -309,7 +307,7 @@ run_questionnaire() {
     echo "  2. Small (2-5 developers)"
     echo "  3. Medium (5-15 developers)"
     echo "  4. Large (15+ developers)"
-    read -p "Choice (1-4): " team_choice
+    read -r -p "Choice (1-4): " team_choice
     case $team_choice in
       1) INIT_TEAM_SIZE="solo" ;;
       2) INIT_TEAM_SIZE="small" ;;
