@@ -1,3 +1,16 @@
+## [4.8.0] - 2025-11-12
+
+### ✨ New Features
+
+**/finalize Command Enhancement**
+- Added GitHub Release update step to /finalize command
+- Automatically appends production deployment info to release notes
+- Includes deployment URL, date, run ID, and documentation links
+- Idempotent operation with duplicate detection
+- Non-blocking (continues if release doesn't exist)
+
+---
+
 ## [4.7.0] - 2025-11-12
 
 ### ✨ New Features

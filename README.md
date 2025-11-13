@@ -44,6 +44,22 @@
 
 ## 🆕 Recent Updates
 
+### v4.8.0 (November 2025)
+
+**/finalize Command Enhancement**
+
+- **GitHub Release Updates**: Automatically updates GitHub Release with production deployment information
+- **Production Metadata**: Appends deployment URL, date, run ID, and documentation links to release notes
+- **Idempotent Operation**: Checks for existing production info before updating (safe to re-run)
+- **Non-Blocking**: Continues finalization workflow even if release doesn't exist
+- **Full Traceability**: Links deployment logs, CHANGELOG, and help documentation
+
+**Problem Solved**: GitHub Releases lacked production deployment context after /finalize. Users had to manually update releases with deployment URLs and documentation links.
+
+**Impact**: Complete deployment traceability. GitHub Releases now serve as single source of truth for production deployments with automatic linking to all relevant documentation.
+
+---
+
 ### v4.7.0 (November 2025)
 
 **/implement Phase Parallel Execution**
