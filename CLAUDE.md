@@ -528,38 +528,37 @@ Specialist agents are organized in `.claude/agents/` by category:
 
 **Quality Specialists** (`quality/`):
 
-**Code Quality:**
+**Code Quality** (`quality/code-quality/`):
 - `code-reviewer.md` — Code review (KISS/DRY enforcement)
 - `refactor-planner.md` — Refactoring analysis and planning
 - `refactor-surgeon.md` — Safe refactoring with minimal blast radius
 - `type-enforcer.md` — TypeScript strict type safety enforcement
 - `cleanup-janitor.md` — Dead code removal and codebase normalization
 
-**Testing & Validation:**
+**Testing & Validation** (`quality/testing/`):
 - `qa-tester.md` — QA and testing
 - `test-coverage.md` — Test coverage enhancement
 - `api-fuzzer.md` — API contract robustness testing
 - `accessibility-auditor.md` — WCAG 2.1 AA compliance validation
 - `ux-polisher.md` — UI interaction state completeness review
 
-**Security & Performance:**
+**Security & Performance** (`quality/security/`):
 - `security-sentry.md` — Security vulnerability scanning and blocking
 - `performance-profiler.md` — Performance bottleneck identification
 - `error-budget-guardian.md` — SLO impact assessment for hot path changes
 
-**Development Tools:**
+**Development Tools** (`quality/dev-tools/`):
 - `debug.md` — Error triage and debugging
 - `auto-error-resolver.md` — Automatic compilation error fixes
 - `web-research-specialist.md` — Creative search for solutions and debugging
 
-**Operations & Infrastructure:**
+**Operations & Infrastructure** (`quality/operations/`):
 - `dependency-curator.md` — Dependency management and deduplication
 - `data-modeler.md` — Schema design and migration planning
 - `observability-plumber.md` — Production instrumentation and tracing
 - `ci-sentry.md` — CI/CD pipeline optimization and flaky test quarantine
 
-**Deployment Specialists** (`deployment/`):
-
+**Deployment** (`quality/deployment/`):
 - `release.md` — CI/CD and release management
 - `git-steward.md` — Commit organization and PR preparation
 - `docs-scribe.md` — ADR and CHANGELOG generation after merges
