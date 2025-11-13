@@ -48,9 +48,18 @@ analysis-phase (SKILL.md)
   |
   v
 implementation-phase (SKILL.md)
-  |-- Depends on: tdd-enforcer, anti-duplication, hallucination-detector, context-budget-enforcer, parallel-execution-optimizer
+  |-- Depends on: tdd-enforcer, anti-duplication, hallucination-detector, context-budget-enforcer, parallel-execution-optimizer,
+  |               test-architect (TDD test generation - NEW v6.1.0),
+  |               type-enforcer (TypeScript type safety - NEW v6.1.0),
+  |               refactor-surgeon (complex refactorings - NEW v6.1.0),
+  |               security-sentry (security validation - NEW v6.1.0, conditional)
   |-- Reads: tasks.md, plan.md, tech-stack.md
   |-- Outputs: Code files, test files, updated tasks.md
+  |-- NEW Integration Points (v6.1.0):
+      • test-architect: Invoked before implementing complex features (RED phase)
+      • type-enforcer: Runs after task batches (TypeScript projects only)
+      • refactor-surgeon: Handles complex REFACTOR phases (≥5 files affected)
+      • security-sentry: Validates auth/API/file upload implementations (conditional)
   |
   v
 optimization-phase (SKILL.md)

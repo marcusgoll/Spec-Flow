@@ -21,6 +21,22 @@ npm run lint
 npm run type-check  # TypeScript only
 ```
 
+**TypeScript Type Safety Enforcement**:
+
+For TypeScript projects, invoke `type-enforcer` agent after completing a batch of tasks:
+- Eliminates implicit `any` types
+- Enforces null-safety guards (`strictNullChecks`)
+- Validates discriminated unions have exhaustive pattern matching
+- Blocks unsafe type assertions (`as` keyword)
+- Ensures `noImplicitAny` and `strict` mode compliance
+
+**When to use type-enforcer**:
+- ✅ After implementing new modules/functions
+- ✅ After refactoring that changes type signatures
+- ✅ Before committing TypeScript code
+- ✅ When adding external library integrations
+- ❌ Not applicable for JavaScript-only projects
+
 ---
 
 ## Test Types
@@ -34,6 +50,27 @@ npm run type-check  # TypeScript only
 - Test multiple components together
 - Use test database
 - Run after each batch
+
+### Security Validation (Selective)
+- Run after implementing security-sensitive features
+- **Tool**: `security-sentry` agent
+- **Checks**: SQL injection, XSS, CSRF, hardcoded secrets, missing auth
+- **Blocking**: CRITICAL vulnerabilities block deployment
+
+**When to use security-sentry**:
+- ✅ Authentication/authorization flows (login, signup, password reset)
+- ✅ User input handling (forms, API endpoints)
+- ✅ File upload functionality
+- ✅ Payment processing or financial transactions
+- ✅ External API integrations with secrets
+- ❌ Internal utility functions (no security risk)
+
+**Example security checks**:
+- SQL injection: Parameterized queries used?
+- XSS: User input escaped/sanitized?
+- CSRF: CSRF tokens on state-changing endpoints?
+- Secrets: No hardcoded API keys/passwords?
+- Auth: Protected routes require authentication?
 
 ### E2E Tests (Slowest)
 - Test complete user flows

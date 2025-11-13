@@ -35,11 +35,14 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash
 **Core workflow**:
 1. ✅ [Load Tech Stack Constraints](resources/tech-stack-validation.md) - Prevent hallucinated tech choices
 2. ✅ [Review Task Dependencies](resources/task-batching.md) - Identify parallel work opportunities
-3. ✅ [Execute Tasks Using TDD](resources/tdd-workflow.md) - RED → GREEN → REFACTOR
-4. ✅ [Update Task Status](resources/task-tracking.md) - Keep NOTES.md current
-5. ✅ [Run Anti-Duplication Checks](resources/anti-duplication-checks.md) - Search before writing
-6. ✅ [Continuous Testing](resources/continuous-testing.md) - Test after each task triplet
-7. ✅ [Commit Implementation](resources/commit-strategy.md) - Small, frequent commits
+3. ✅ **[Generate Test Suite](resources/tdd-workflow.md#test-architect)** - Use test-architect for complex features (NEW v6.1.0)
+4. ✅ [Execute Tasks Using TDD](resources/tdd-workflow.md) - RED → GREEN → REFACTOR
+5. ✅ [Update Task Status](resources/task-tracking.md) - Keep NOTES.md current
+6. ✅ [Run Anti-Duplication Checks](resources/anti-duplication-checks.md) - Search before writing
+7. ✅ [Continuous Testing](resources/continuous-testing.md) - Test + type-check after each task triplet
+8. ✅ **[Type Safety Validation](resources/continuous-testing.md#type-enforcer)** - Use type-enforcer for TypeScript (NEW v6.1.0)
+9. ✅ **[Security Validation](resources/continuous-testing.md#security-sentry)** - Use security-sentry for auth/API/uploads (NEW v6.1.0)
+10. ✅ [Commit Implementation](resources/commit-strategy.md) - Small, frequent commits
 
 ---
 
