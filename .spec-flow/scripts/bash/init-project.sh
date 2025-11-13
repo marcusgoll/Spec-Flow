@@ -112,19 +112,19 @@ check_prerequisites() {
   local missing=()
 
   # Node.js required for template rendering
-  if ! command -v node &> /dev/null; then
+  if ! command -v node > /dev/null 2>&1; then
     missing+=("node (Node.js)")
   fi
 
   # yq for YAML config parsing
   if [[ -n "$CONFIG_FILE" ]] && [[ "$CONFIG_FILE" == *.yaml || "$CONFIG_FILE" == *.yml ]]; then
-    if ! command -v yq &> /dev/null; then
+    if ! command -v yq > /dev/null 2>&1; then
       missing+=("yq (YAML parser)")
     fi
   fi
 
   # jq for JSON parsing
-  if ! command -v jq &> /dev/null; then
+  if ! command -v jq > /dev/null 2>&1; then
     missing+=("jq (JSON parser)")
   fi
 
@@ -490,7 +490,7 @@ run_quality_gates() {
   echo ""
 
   # Gate 1: Check for [NEEDS CLARIFICATION] tokens
-  if grep -r "NEEDS CLARIFICATION" "$PROJECT_ROOT/docs/project/" &> /dev/null; then
+  if grep -r "NEEDS CLARIFICATION" "$PROJECT_ROOT/docs/project/" > /dev/null 2>&1; then
     warning "Found [NEEDS CLARIFICATION] tokens in documentation"
     warning "Review and fill missing information"
 
@@ -503,9 +503,9 @@ run_quality_gates() {
   fi
 
   # Gate 2: Markdown linting (if markdownlint installed)
-  if command -v markdownlint &> /dev/null; then
+  if command -v markdownlint > /dev/null 2>&1; then
     info "Running markdownlint..."
-    if markdownlint "$PROJECT_ROOT/docs/project/" &> /dev/null; then
+    if markdownlint "$PROJECT_ROOT/docs/project/" > /dev/null 2>&1; then
       success "Markdown linting passed"
     else
       warning "Markdown linting failed (non-blocking)"
@@ -513,9 +513,9 @@ run_quality_gates() {
   fi
 
   # Gate 3: Link checking (if lychee installed)
-  if command -v lychee &> /dev/null; then
+  if command -v lychee > /dev/null 2>&1; then
     info "Running link checker..."
-    if lychee "$PROJECT_ROOT/docs/project/" &> /dev/null; then
+    if lychee "$PROJECT_ROOT/docs/project/" > /dev/null 2>&1; then
       success "Link checking passed"
     else
       warning "Link checking failed (non-blocking)"
@@ -580,7 +580,7 @@ Mode: $MODE
 🤖 Generated with Claude Code
 Co-Authored-By: Claude <noreply@anthropic.com>"
 
-  if git commit -m "$commit_msg" &> /dev/null; then
+  if git commit -m "$commit_msg" > /dev/null 2>&1; then
     success "Documentation committed: $(git rev-parse --short HEAD)"
   else
     warning "No changes to commit (docs may be up to date)"
