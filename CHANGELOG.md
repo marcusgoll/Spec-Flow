@@ -1,3 +1,16 @@
+## [6.2.1] - 2025-11-13
+
+### Changed
+- Reorganized `.claude/agents/` folder structure into 6 logical categories for better discoverability
+- Agent Briefs section in CLAUDE.md updated with categorized folder paths
+
+### Documentation
+- Moved 24 quality agents into categorized subfolders: code-quality/, testing/, security/, dev-tools/, operations/, deployment/
+- Updated all agent path references in CLAUDE.md
+- Improved agent organization and navigation
+
+---
+
 ## [6.2.0] - 2025-11-13
 
 ### Added
