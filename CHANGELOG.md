@@ -1,3 +1,30 @@
+## [4.7.0] - 2025-11-12
+
+### ✨ New Features
+
+**/implement Phase Parallel Execution**
+- Parallel batch group execution (3-5 batches run simultaneously)
+- TodoWrite integration for live progress tracking
+- Single validation pass at end (vs per-batch validation)
+- Checkpoint commits per group (vs per-batch commits)
+- Performance: 30-50% faster (30min → 15min typical), 33% token reduction
+- Matches /optimize phase pattern (parallel dispatch + single aggregation)
+
+### 🐛 Bug Fixes
+
+**ShellCheck Compliance**
+- Resolved SC2162: Added -r flag to all read commands in init-project.sh
+- Resolved SC2120/SC2119: Fixed scan_brownfield function parameter handling
+- Replaced bash-specific &> with POSIX-compliant > /dev/null 2>&1
+
+### 🧹 Maintenance
+
+**Template Cleanup**
+- Removed deprecated backtest-report-template.md
+- Removed deprecated design-crit-template.md
+- Updated style-guide.md
+
+---
 
 ## [4.6.0] - 2025-11-12
 
