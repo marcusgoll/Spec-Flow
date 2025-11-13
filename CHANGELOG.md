@@ -1,3 +1,35 @@
+## [6.1.0] - 2025-11-13
+
+### Added
+- **17 New Specialist Agents**: Comprehensive quality and automation coverage
+  - `test-architect`: TDD test suite generation from acceptance criteria
+  - `type-enforcer`: TypeScript strict type safety enforcement
+  - `refactor-surgeon`: Safe refactoring with minimal blast radius
+  - `performance-profiler`: Performance bottleneck identification and optimization
+  - `security-sentry`: Security vulnerability scanning and blocking
+  - `dependency-curator`: Dependency management and deduplication
+  - `data-modeler`: Schema design and migration planning
+  - `api-fuzzer`: API contract robustness testing
+  - `accessibility-auditor`: WCAG 2.1 AA compliance validation
+  - `ux-polisher`: UI interaction state completeness review
+  - `observability-plumber`: Production instrumentation and tracing
+  - `git-steward`: Commit organization and PR preparation
+  - `ci-sentry`: CI/CD pipeline optimization and flaky test quarantine
+  - `error-budget-guardian`: SLO impact assessment for hot path changes
+  - `docs-scribe`: ADR and CHANGELOG generation after merges
+  - `cleanup-janitor`: Dead code removal and codebase normalization
+  - `release-manager`: Release notes and deployment artifact preparation
+
+### Changed
+- Enhanced `auto-error-resolver` with better compilation error context
+- Improved `code-reviewer` with KISS/DRY enforcement
+- Expanded `qa-tester` capabilities
+- Refined `refactor-planner` integration
+- Enhanced `test-coverage` strategies
+- Updated `web-research-specialist` with better search strategies
+
+---
+
 ## [6.0.0] - 2025-11-13
 
 ### Breaking Changes
