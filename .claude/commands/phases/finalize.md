@@ -1,8 +1,8 @@
 ---
 description: Post-deploy documentation + housekeeping
 internal: true
-version: 2.0
-updated: 2025-11-10
+version: 2.1
+updated: 2025-11-12
 ---
 
 # /finalize — Complete Documentation & Cleanup After Deployment
@@ -71,6 +71,7 @@ TodoWrite({
     { content: "Close current milestone", status: "pending", activeForm: "Closing milestone" },
     { content: "Create next milestone", status: "pending", activeForm: "Creating next milestone" },
     { content: "Update roadmap issue to 'shipped'", status: "pending", activeForm: "Updating roadmap issue" },
+    { content: "Update GitHub Release with production info", status: "pending", activeForm: "Updating GitHub Release" },
     { content: "Commit & push documentation changes", status: "pending", activeForm: "Committing documentation" },
     { content: "Cleanup feature branch (safe)", status: "pending", activeForm: "Cleaning up branch" }
   ]
@@ -313,11 +314,71 @@ fi
 
 **After completion**:
 - **Update TodoWrite**: Mark "Update roadmap issue" as `completed`
+- Mark "Update GitHub Release" as `in_progress`
+
+---
+
+## STEP 7 — Update GitHub Release with Production Info
+
+**Reference**: Uses [gh release](https://cli.github.com/manual/gh_release) commands
+
+```bash
+# Check if release exists for this version
+RELEASE_TAG="v${VERSION}"
+if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+  echo "Updating GitHub Release: ${RELEASE_TAG}"
+
+  # Get existing release body
+  EXISTING_BODY="$(gh release view "$RELEASE_TAG" --json body -q .body)"
+
+  # Prepare production deployment footer
+  PROD_FOOTER="$(cat <<EOF
+
+---
+
+## 🚀 Production Deployment
+
+**Status**: ✅ Deployed
+**URL**: ${PROD_URL:-N/A}
+**Date**: ${DATE}
+**Feature**: ${TITLE}
+
+### Deployment Info
+- **Version**: v${VERSION}
+- **Run ID**: $(yq -r '.deployment.production.run_id // "N/A"' "$STATE")
+- **Deploy Logs**: [View logs](https://github.com/:owner/:repo/actions/runs/$(yq -r '.deployment.production.run_id // ""' "$STATE"))
+
+### Documentation
+- **CHANGELOG**: [View changes](https://github.com/:owner/:repo/blob/main/CHANGELOG.md#v${VERSION//.})
+- **Help Article**: [docs/help/features/${SLUG}.md](https://github.com/:owner/:repo/blob/main/docs/help/features/${SLUG}.md)
+
+🎉 Feature fully deployed and documented!
+EOF
+)"
+
+  # Check if release already has production info (idempotent)
+  if echo "$EXISTING_BODY" | grep -q "## 🚀 Production Deployment"; then
+    echo "ℹ️  GitHub Release already contains production deployment info"
+  else
+    # Append production info to existing release notes
+    NEW_BODY="${EXISTING_BODY}${PROD_FOOTER}"
+
+    gh release edit "$RELEASE_TAG" --notes "$NEW_BODY" >/dev/null 2>&1 \
+      && echo "✅ Updated GitHub Release with production deployment info" \
+      || echo "⚠️  Failed to update GitHub Release (non-blocking)"
+  fi
+else
+  echo "ℹ️  No GitHub Release found for ${RELEASE_TAG} (may not be using release tags)"
+fi
+```
+
+**After completion**:
+- **Update TodoWrite**: Mark "Update GitHub Release" as `completed`
 - Mark "Commit & push documentation" as `in_progress`
 
 ---
 
-## STEP 7 — Commit & Push Docs
+## STEP 8 — Commit & Push Docs
 
 ```bash
 git add CHANGELOG.md README.md docs/ 2>/dev/null || true
@@ -331,6 +392,7 @@ else
 - Update README.md version badge and features list
 - Add help article for ${TITLE}
 - Update API documentation (conditional)
+- Update GitHub Release with production deployment info
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
@@ -346,7 +408,7 @@ fi
 
 ---
 
-## STEP 8 — Branch Cleanup (Safe)
+## STEP 9 — Branch Cleanup (Safe)
 
 ```bash
 # Only delete if merged and not checked out
@@ -378,7 +440,7 @@ fi
 
 ---
 
-## STEP 9 — Summary
+## STEP 10 — Summary
 
 ```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -401,6 +463,7 @@ Date: ${DATE}
 - ✅ Closed milestone: v${CUR_MINOR}.x
 - ✅ Created next milestone: v${NEXT_MINOR} (due: [date])
 - ✅ Updated roadmap issue to "shipped" (if found)
+- ✅ Updated GitHub Release with production deployment info
 
 ### Git
 
