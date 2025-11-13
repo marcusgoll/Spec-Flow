@@ -66,18 +66,21 @@ Use for: choosing implementation approaches, reuse decisions, debugging multi-st
 
 ## Workflow Tracking
 
-Use TodoWrite to track batch execution progress.
+Use TodoWrite to track batch **group** execution progress (parallel execution model).
 
-**Initialize todos**:
+**Initialize todos** (dynamically based on number of batch groups):
 
 ```javascript
+// Calculate groups: Math.ceil(batches.length / 3)
+// Example with 9 batches → 3 groups of 3
+
 TodoWrite({
   todos: [
-    {content:"Validate preflight checks",status:"pending",activeForm:"Preflight"},
-    {content:"Parse tasks and detect batches",status:"pending",activeForm:"Parsing tasks"},
-    {content:"Execute batch 1",status:"pending",activeForm:"Running batch 1"},
-    {content:"Execute batch 2",status:"pending",activeForm:"Running batch 2"},
-    // ... one entry per batch (typically 5-10 batches)
+    {content:"Validate preflight checks",status:"completed",activeForm:"Preflight"},
+    {content:"Parse tasks and detect batches",status:"completed",activeForm:"Parsing tasks"},
+    {content:"Execute batch group 1 (batches 1-3)",status:"pending",activeForm:"Running group 1"},
+    {content:"Execute batch group 2 (batches 4-6)",status:"pending",activeForm:"Running group 2"},
+    {content:"Execute batch group 3 (batches 7-9)",status:"pending",activeForm:"Running group 3"},
     {content:"Verify all implementations",status:"pending",activeForm:"Verifying"},
     {content:"Commit final summary",status:"pending",activeForm:"Committing"}
   ]
@@ -85,9 +88,10 @@ TodoWrite({
 ```
 
 **Rules**:
-- Exactly one batch is `in_progress` at a time (WIP limit reduces context switching)
-- Mark batch `completed` immediately after finishing
-- Update to `failed` if batch encounters critical blocker
+- One batch **group** is `in_progress` at a time (3-5 batches execute in parallel within group)
+- Mark group `completed` immediately after all batches in group finish
+- Update TodoWrite after each group completes
+- Checkpoint commit after each group (atomic group-level commits)
 
 ---
 
@@ -289,52 +293,145 @@ echo "📦 Organized into ${#BATCHES[@]} batches"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# EXECUTE BATCHES
+# INITIALIZE TODO TRACKER
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-batch_num=0
-for batch in "${BATCHES[@]}"; do
-  batch_num=$((batch_num+1))
+echo "📝 Creating implementation progress tracker..."
+
+# Build dynamic TodoWrite list from batches
+# Note: TodoWrite tool call happens in agent context, not bash script
+# This section documents the structure that will be created
+
+TOTAL_STEPS=$((${#BATCHES[@]} + 4))
+echo "✅ Progress tracker ready ($TOTAL_STEPS steps)"
+echo ""
+
+# Expected structure (created by agent):
+# - Validate preflight checks [completed]
+# - Parse tasks and detect batches [completed]
+# - Execute batch group 1 (batches 1-3) [pending]
+# - Execute batch group 2 (batches 4-6) [pending]
+# - ... one per group
+# - Verify all implementations [pending]
+# - Commit final summary [pending]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# EXECUTE BATCHES IN PARALLEL GROUPS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Group batches for parallel execution (3-5 batches per group)
+# - Maximizes specialist diversity (backend + frontend + database)
+# - Respects memory limits (~3 specialist contexts simultaneously)
+# - Checkpoints after each group (atomic commits)
+
+PARALLEL_GROUP_SIZE=3
+group_start=0
+group_num=0
+FAILED_TASKS=()
+
+while [ $group_start -lt ${#BATCHES[@]} ]; do
+  group_num=$((group_num+1))
+  group_end=$((group_start + PARALLEL_GROUP_SIZE))
+  if [ $group_end -gt ${#BATCHES[@]} ]; then
+    group_end=${#BATCHES[@]}
+  fi
+
+  batch_start=$((group_start + 1))
+  batch_end=$group_end
+
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "🚀 Batch $batch_num/${#BATCHES[@]}"
+  echo "🚀 Batch Group $group_num: Batches $batch_start-$batch_end (PARALLEL)"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 
-  IFS='|' read -ra TASKS <<< "$batch"
+  # Display all batches in group
+  for ((i=group_start; i<group_end; i++)); do
+    batch_num=$((i+1))
+    batch="${BATCHES[$i]}"
+    IFS='|' read -ra TASKS <<< "$batch"
 
-  # Display tasks in batch
-  for t in "${TASKS[@]}"; do
-    IFS=':' read -r id dom phase desc <<< "$t"
-    echo "  → $id [$dom $phase]: $desc"
+    echo "Batch $batch_num/${#BATCHES[@]}:"
+    for t in "${TASKS[@]}"; do
+      IFS=':' read -r id dom phase desc <<< "$t"
+      echo "  → $id [$dom $phase]: $desc"
+    done
   done
   echo ""
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # EXECUTE TASKS IN BATCH (Claude Code performs)
+  # EXECUTE ALL BATCHES IN GROUP (Claude Code performs in PARALLEL)
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  # For each task in TASKS array, Claude Code will:
+  # CRITICAL: Agent brief must invoke all Task() calls in SINGLE message
+  # for true parallel execution. See agent brief for implementation.
+  #
+  # For each batch in group, Claude Code will (simultaneously):
   # 1. Read task requirements from tasks.md
   # 2. Check for REUSE markers and read referenced files
-  # 3. Implement according to TDD phase (RED/GREEN/REFACTOR) or general
+  # 3. Implement according to TDD phase or general
   # 4. Run tests and verify acceptance criteria
   # 5. Update task tracker with status
-  # 6. Commit with atomic commit message
+  # 6. Commit with atomic commit message per batch
   #
-  # Claude Code uses appropriate agents based on domain:
+  # Specialist routing based on domain:
   # - backend: backend-dev agent
   # - frontend: frontend-shipper agent
   # - database: database-architect agent
   # - tests: qa-test agent
   # - general: general-purpose agent
   #
-  # Each agent returns: {files_changed, test_results, verification_status}
+  # Each agent returns: {batch_id, files_changed, test_results, status}
 
-  # After batch completes, validate results
+  echo "⏳ Waiting for all batches in group to complete..."
+  echo ""
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # CHECKPOINT COMMIT FOR GROUP
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  # After all batches in group complete, create checkpoint commit
+  git add . 2>/dev/null || true
+
+  if [ -n "$(git status --porcelain)" ]; then
+    git commit -m "feat: implement batch group $group_num (batches $batch_start-$batch_end)
+
+Batch group: $group_num/$((${#BATCHES[@]} / PARALLEL_GROUP_SIZE + 1))
+Batches executed: $batch_start-$batch_end in parallel
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>" 2>/dev/null || true
+
+    echo "✅ Checkpoint commit created for group $group_num"
+  else
+    echo "ℹ️  No changes to commit for group $group_num"
+  fi
+
+  echo ""
+  echo "✅ Batch group $group_num complete"
+  echo ""
+
+  # Update TodoWrite (done by agent) to mark group as completed
+
+  group_start=$group_end
+done
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# VALIDATE ALL IMPLEMENTATIONS (Single Pass)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 Validating all task completions..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+for batch in "${BATCHES[@]}"; do
+  IFS='|' read -ra TASKS <<< "$batch"
+
   for t in "${TASKS[@]}"; do
     IFS=':' read -r id dom phase desc <<< "$t"
 
-    # Use task-tracker to check authoritative status
+    # Check authoritative status once
     if [ -x "$TRACKER" ]; then
       COMPLETED=$("$TRACKER" status -FeatureDir "$FEATURE_DIR" -Json 2>/dev/null | \
         jq -r ".CompletedTasks[] | select(.Id == \"$id\") | .Id" 2>/dev/null || echo "")
@@ -342,8 +439,8 @@ for batch in "${BATCHES[@]}"; do
       if [ "$COMPLETED" = "$id" ]; then
         echo "✅ $id complete"
       else
-        echo "⚠️  $id incomplete - check agent output"
-        "$TRACKER" mark-failed -TaskId "$id" -ErrorMessage "Agent did not complete" -FeatureDir "$FEATURE_DIR" 2>/dev/null || true
+        echo "⚠️  $id incomplete"
+        FAILED_TASKS+=("$id")
       fi
     else
       # Fallback to NOTES.md check
@@ -351,15 +448,25 @@ for batch in "${BATCHES[@]}"; do
         echo "✅ $id complete"
       else
         echo "⚠️  $id incomplete"
-        echo "  ⚠️  $id: Agent did not complete" >> "$ERROR_LOG"
+        FAILED_TASKS+=("$id")
+        echo "  ⚠️  $id: Not completed" >> "$ERROR_LOG"
       fi
     fi
   done
-
-  echo ""
-  echo "✅ Batch $batch_num complete"
-  echo ""
 done
+
+echo ""
+
+# Report failures
+if [ ${#FAILED_TASKS[@]} -gt 0 ]; then
+  echo "❌ ${#FAILED_TASKS[@]} tasks incomplete: ${FAILED_TASKS[*]}"
+  echo ""
+  echo "Review error-log.md for details"
+  exit 2
+fi
+
+echo "✅ All tasks validated successfully"
+echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # WRAP-UP

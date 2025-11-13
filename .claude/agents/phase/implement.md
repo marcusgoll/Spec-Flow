@@ -91,7 +91,11 @@ Batch 4 (final):
 
 n# Start timing for Batch 1
 start_sub_phase_timing "$FEATURE_DIR" "implement" "batch_1"
-### Step 3: Execute Batches with Parallel Task() Calls
+### Step 3: Execute Batch Groups with Parallel Task() Calls
+
+**CRITICAL: Parallel Group Execution Pattern**
+
+Batches are organized into **groups** of 3-5 batches. All batches within a group execute in parallel via a SINGLE message with multiple Task() calls.
 
 **Domain-to-Specialist Routing:**
 Map task domain to appropriate specialist agent:
@@ -119,95 +123,114 @@ function getSpecialist(taskDescription, taskId) {
 }
 ```
 
-**For each batch, launch parallel Task() calls in SINGLE message with specialist routing:**
+**Execute Batch Group 1 (Batches 1-3 in PARALLEL):**
 
 ```javascript
-// CRITICAL: All tasks in a batch MUST be in single message with multiple Task() calls
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// BATCH GROUP 1: Foundation tasks across domains (PARALLEL EXECUTION)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-// Batch 1 execution (mixed domains → different specialists)
+// CRITICAL: All Task() calls in SINGLE message for true parallelism
+// DO NOT split across messages or execution will be sequential!
+
+// Batch 1: Database schema (database-architect)
 Task({
-  subagent_type: "database-architect",  // ← Specialist routing
-  description: "T001: Database schema",
-  prompt: `You are the database-architect specialist. Execute task T001 from ${TASKS_FILE}:
+  subagent_type: "database-architect",
+  description: "Batch 1: Database schema tasks (T001, T004)",
+  prompt: `Execute all tasks in batch 1 from ${TASKS_FILE}:
 
-1. Read full task description and acceptance criteria from ${TASKS_FILE}
-2. Follow your agent brief workflow (.claude/agents/implementation/database.md):
+Tasks: T001 (database schema), T004 (add indexes)
+
+1. Read full task descriptions from ${TASKS_FILE}
+2. Follow database-architect workflow:
    - Reversible migrations (up/down cycle)
    - Data validation scripts
-   - Query profiling if needed
-3. Use task-tracker for atomic updates:
-   bash .spec-flow/scripts/bash/task-tracker.sh complete T001 "Migration created and validated"
+   - Query profiling
+3. Use task-tracker for each task:
+   .spec-flow/scripts/bash/task-tracker.sh complete T001 "Migration created"
+   .spec-flow/scripts/bash/task-tracker.sh complete T004 "Indexes added"
 4. Log errors to ${ERROR_LOG} if any
-5. Return JSON: {task_id: "T001", status: "completed|failed", summary: "...", files_changed: [...], test_results: "..."}
+5. Return JSON: {batch_id: 1, tasks: ["T001", "T004"], status: "completed|failed", summary: "..."}
 `
 })
 
+// Batch 2: API routes (backend-dev) - RUNS IN PARALLEL with Batch 1
 Task({
-  subagent_type: "backend-dev",  // ← Specialist routing
-  description: "T002: API routes setup",
-  prompt: `You are the backend-dev specialist. Execute task T002 from ${TASKS_FILE}:
+  subagent_type: "backend-dev",
+  description: "Batch 2: API setup tasks (T002, T008, T009)",
+  prompt: `Execute all tasks in batch 2 from ${TASKS_FILE}:
 
-1. Read full task description from ${TASKS_FILE}
-2. Follow your agent brief TDD workflow (.claude/agents/implementation/backend.md):
-   - RED: Write failing pytest test
-   - GREEN: Implement minimum code to pass
-   - REFACTOR: Clean up with ruff/mypy validation
-   - Quality gates: ruff, mypy --strict, coverage ≥80%
-3. Use task-tracker for atomic updates:
-   bash .spec-flow/scripts/bash/task-tracker.sh complete T002 "API routes implemented with tests (coverage: 85%)"
-4. Log errors to ${ERROR_LOG} if any
-5. Return JSON: {task_id: "T002", status: "completed|failed", summary: "...", files_changed: [...], test_results: "pytest: 12/12 passing"}
+Tasks: T002 (API routes), T008 (auth middleware), T009 (error handlers)
+
+1. Read full task descriptions from ${TASKS_FILE}
+2. Follow backend-dev TDD workflow:
+   - RED: Write failing pytest tests
+   - GREEN: Implement minimum code
+   - REFACTOR: Clean up with ruff/mypy
+3. Use task-tracker for each task
+4. Return JSON: {batch_id: 2, tasks: ["T002", "T008", "T009"], status: "completed|failed", test_results: "pytest: NN/NN passing"}
 `
 })
 
+// Batch 3: Frontend setup (frontend-shipper) - RUNS IN PARALLEL with Batches 1 & 2
 Task({
-  subagent_type: "frontend-shipper",  // ← Specialist routing
-  description: "T003: Frontend components setup",
-  prompt: `You are the frontend-shipper specialist. Execute task T003 from ${TASKS_FILE}:
+  subagent_type: "frontend-shipper",
+  description: "Batch 3: Frontend setup tasks (T003, T010, T011)",
+  prompt: `Execute all tasks in batch 3 from ${TASKS_FILE}:
 
-1. Read full task description from ${TASKS_FILE}
-2. Follow your agent brief TDD workflow (.claude/agents/implementation/frontend.md):
-   - RED: Write failing Jest/RTL test
-   - GREEN: Implement component to pass tests
-   - REFACTOR: Style with design tokens (style-guide.md, tokens.json)
-   - Quality gates: ESLint, TypeScript, Lighthouse ≥85, WCAG AA
-3. Use task-tracker for atomic updates:
-   bash .spec-flow/scripts/bash/task-tracker.sh complete T003 "Component implemented with a11y (WCAG score: 96)"
-4. Log errors to ${ERROR_LOG} if any
-5. Return JSON: {task_id: "T003", status: "completed|failed", summary: "...", files_changed: [...], test_results: "jest: 8/8 passing"}
+Tasks: T003 (component scaffolding), T010 (routing setup), T011 (state management)
+
+1. Read full task descriptions from ${TASKS_FILE}
+2. Follow frontend-shipper TDD workflow:
+   - RED: Write failing Jest/RTL tests
+   - GREEN: Implement components
+   - REFACTOR: Style with design tokens
+3. Use task-tracker for each task
+4. Return JSON: {batch_id: 3, tasks: ["T003", "T010", "T011"], status: "completed|failed", test_results: "jest: NN/NN passing"}
 `
 })
 
-// Wait for all Batch 1 tasks to complete before proceeding to Batch 2
-// Check completion status of all tasks in batch
-// Verify task-tracker updated tasks.md with ✅ T001, ✅ T002, ✅ T003
+// WAIT: All 3 batches must complete before proceeding
 ```
 
-**After each batch:**
+**After batch group completes:**
 ```bash
-# Verify completion
-BATCH_1_COMPLETE=$(grep -c "✅ T00[123]" "$NOTES_FILE")
-if [ "$BATCH_1_COMPLETE" -ne 3 ]; then
-  echo "❌ Batch 1 incomplete: $BATCH_1_COMPLETE/3 tasks completed"
-  # Log errors and return failure
-n# Complete timing for Batch 1
-complete_sub_phase_timing "$FEATURE_DIR" "implement" "batch_1"
+# Update TodoWrite to mark group as completed
+TodoWrite({
+  todos: [
+    {content:"Validate preflight checks",status:"completed",activeForm:"Preflight"},
+    {content:"Parse tasks and detect batches",status:"completed",activeForm:"Parsing tasks"},
+    {content:"Execute batch group 1 (batches 1-3)",status:"completed",activeForm:"Running group 1"},  // ← UPDATED
+    {content:"Execute batch group 2 (batches 4-6)",status:"in_progress",activeForm:"Running group 2"},  // ← NOW IN PROGRESS
+    {content:"Verify all implementations",status:"pending",activeForm:"Verifying"},
+    {content:"Commit final summary",status:"pending",activeForm:"Committing"}
+  ]
+})
+
+# Verify group completion
+GROUP_1_TASKS=("T001" "T004" "T002" "T008" "T009" "T003" "T010" "T011")
+GROUP_1_COMPLETE=$(grep -c "✅ T00[1-9]" "$NOTES_FILE")
+
+if [ "$GROUP_1_COMPLETE" -ne ${#GROUP_1_TASKS[@]} ]; then
+  echo "❌ Batch group 1 incomplete: $GROUP_1_COMPLETE/${#GROUP_1_TASKS[@]} tasks completed"
+  # Log errors and handle failures
 fi
 
-# Create checkpoint commit
+# Checkpoint commit for entire group (NOT per-batch)
 git add .
-git commit -m "feat: implement batch 1 (schema, routes, components setup)"
+git commit -m "feat: implement batch group 1 (batches 1-3)
 
-n**IMPORTANT**: Repeat the sub-phase timing pattern for each batch:
-```bash
-start_sub_phase_timing "$FEATURE_DIR" "implement" "batch_N"
-# ... execute batch tasks ...
-complete_sub_phase_timing "$FEATURE_DIR" "implement" "batch_N"
-```
-echo "✅ Batch 1 complete (3 tasks)"
+Batch group: 1/3
+Batches executed: 1-3 in parallel
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+echo "✅ Batch group 1 complete (9 tasks across 3 batches)"
 ```
 
-**Repeat for all batches sequentially**
+**Repeat for all batch groups** (Group 2, Group 3, etc.)
 
 ### Step 4: Extract Final Statistics
 
@@ -330,21 +353,77 @@ Max 150,000 tokens:
 
 ## BATCHING STRATEGY
 
-**Optimal batch size:** 2-5 tasks per batch
-- Too small (1 task): No parallelization benefit
+**Parallel Group Execution Model:**
+
+Batches are organized into **groups** for parallel execution:
+- **Group size**: 3-5 batches per group
+- **Execution**: All batches in a group run in parallel (single message with multiple Task() calls)
+- **Checkpoint**: One commit per group after all batches complete
+- **Progress**: TodoWrite tracks group-level progress
+
+**Optimal batch size within group:** 2-5 tasks per batch
+- Too small (1 task): No task-level optimization
 - Too large (10+ tasks): Higher failure risk, harder debugging
 
-**Batch ordering:**
-1. Setup/infrastructure (database, routes, components)
-2. Core logic (models, endpoints, UI logic)
-3. Integration (tests, connecting pieces)
-4. Final (documentation, cleanup)
+**Parallel Group Sizing Rules:**
+
+1. **Maximize specialist diversity** (preferred):
+   ```
+   Group 1:
+     Batch 1: Database tasks (database-architect)
+     Batch 2: API tasks (backend-dev)
+     Batch 3: Frontend tasks (frontend-shipper)
+   → 3 different specialists = maximum parallelism
+   ```
+
+2. **Respect memory limits**:
+   - Max 3-5 specialist contexts simultaneously
+   - Each specialist ~20-30k tokens
+   - Group limit ensures <150k token budget per group
+
+3. **Balance workload**:
+   ```
+   Good:
+     Group 1: 9 tasks across 3 batches (3-3-3 distribution)
+
+   Avoid:
+     Group 1: 12 tasks across 3 batches (8-2-2 distribution)
+   ```
+
+**Batch ordering within groups:**
+1. **Foundation group**: Setup/infrastructure (database, routes, components)
+2. **Core logic group**: Models, endpoints, UI logic
+3. **Integration group**: Tests, connecting pieces
+4. **Final group**: Documentation, cleanup
 
 **Parallelization rules:**
-- ✅ DO parallel: Different domains (DB + API + Frontend)
-- ✅ DO parallel: Same domain, different entities (User model + Post model)
-- ❌ DON'T parallel: Sequential dependencies (Schema → Model → API)
-- ❌ DON'T parallel: Shared resources (same file modifications)
+- ✅ DO group together: Different domains (DB + API + Frontend)
+- ✅ DO group together: Same domain, different entities (User model + Post model)
+- ❌ DON'T group together: Sequential dependencies (Schema → Model → API must be in different groups)
+- ❌ DON'T group together: Shared file modifications (same file edited by multiple batches)
+
+**Example grouping** (9 batches → 3 groups):
+```
+Group 1 (Foundation):
+  Batch 1: T001-T002 Database schema (database-architect)
+  Batch 2: T003-T004 API routes (backend-dev)
+  Batch 3: T005-T006 Frontend setup (frontend-shipper)
+
+Group 2 (Core Logic):
+  Batch 4: T007-T008 Models (backend-dev)
+  Batch 5: T009-T010 API endpoints (backend-dev)
+  Batch 6: T011-T012 UI components (frontend-shipper)
+
+Group 3 (Integration):
+  Batch 7: T013-T014 Integration tests (backend-dev)
+  Batch 8: T015 E2E tests (backend-dev)
+  Batch 9: T016 Documentation (general-purpose)
+```
+
+**Performance improvement**:
+- Sequential (old): 9 batches × 10min avg = **90 minutes**
+- Parallel groups (new): 3 groups × 10min (max batch in group) = **30 minutes**
+- **Speedup: 3x** (66% faster)
 
 ## QUALITY GATES
 Before marking complete, verify:
