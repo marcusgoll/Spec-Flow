@@ -17,10 +17,10 @@ From idea selection through deployment. Pauses only at manual gates or blocking 
 
 ## Mental model
 
-**Architecture: Orchestrator + Phase Agents**
+**Architecture: Orchestrator + Phase Commands + Specialist Agents**
 - **Orchestrator** (`/feature`): moves one phase at a time, updates `workflow-state.yaml`, never invents state.
-- **Phase Agents**: run with fresh context pulled from disk; they return structured JSON.
-- **Implementation**: `implement-phase-agent` batches independent tasks in parallel, then sequences dependent batches.
+- **Phase Commands**: `/spec`, `/plan`, `/tasks`, `/implement`, `/optimize`, `/ship` execute phases
+- **Specialist Agents**: `/implement` directly launches backend-dev, frontend-shipper, database-architect in parallel (no wrapper)
 
 **Benefits**
 - Smaller token budgets per phase; faster execution; quality preserved by the same slash-commands and gates.
@@ -605,30 +605,23 @@ Task subagent_type="phase/validate" description="Phase 3: Validate" prompt="Call
 
 ## Phase 4: Implementation
 
-Use `implement-phase-agent` for dependency analysis and batched parallel execution.
+The `/implement` command now directly orchestrates parallel specialist agents (backend-dev, frontend-shipper, database-architect) without a wrapper agent.
 
 ```bash
 cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 
-Task subagent_type="implement-phase-agent" description="Phase 4: Implement" prompt="$(
-  cat <<PROMPT
-Execute implementation with intelligent batching.
+# /implement parses tasks.md, groups by domain, and launches specialists in parallel
+SlashCommand command="/implement $SLUG"
 
-Context directory: $FEATURE_DIR
-Must: read NOTES.md, tasks.md, workflow-state.yaml
-Return:
-{
-  "status": "...",
-  "summary": "...",
-  "stats": {"total_tasks":N,"completed_tasks":N,"files_changed":N,"error_count":N,"batches_executed":N},
-  "blockers":[],
-  "key_decisions":[]
-}
-PROMPT
-)"
+# The command will:
+# 1. Parse tasks.md and detect batches (grouped by domain)
+# 2. Launch 3-5 specialist agents in parallel per batch group
+# 3. Each specialist executes its tasks with TDD if specified
+# 4. Checkpoint commit after each batch group
+# 5. Validate all tasks completed successfully
 
-# If incomplete or blocked → mark failed and stop
-# Else mark completed and persist stats
+# If incomplete or blocked → update workflow-state.yaml with failed status
+# Else mark phase completed and auto-continue to /optimize
 ```
 
 ---

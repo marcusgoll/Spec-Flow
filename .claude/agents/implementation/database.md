@@ -21,7 +21,7 @@ Evolve the data layer responsibly: model domain concepts clearly, optimise for e
 
 # Task Tool Integration
 
-When invoked via Task() from `implement-phase-agent`, you are executing a single database task in parallel with other specialists (backend-dev, frontend-shipper).
+When invoked via Task() from `/implement` command, you are executing a single database task in parallel with other specialists (backend-dev, frontend-shipper).
 
 **Inputs** (from Task() prompt):
 - Task ID (e.g., T001)
@@ -58,7 +58,7 @@ When invoked via Task() from `implement-phase-agent`, you are executing a single
      -CommitHash "$(git rev-parse --short HEAD)" \
      -FeatureDir "${FEATURE_DIR}"
    ```
-7. **Return JSON** to implement-phase-agent:
+7. **Return JSON** to `/implement` command:
    ```json
    {
      "task_id": "T001",

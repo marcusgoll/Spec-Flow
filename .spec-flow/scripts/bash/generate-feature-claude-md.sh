@@ -154,8 +154,8 @@ AGENTS
             ;;
         implement*)
             cat <<'AGENTS'
-### Implementation Agents (Current Phase)
-- `implement-phase-agent` - Orchestrates parallel task execution
+### Implementation Commands & Agents (Current Phase)
+- `/implement` - Orchestrates parallel specialist execution
 - `backend-dev` - Backend/API implementation
 - `frontend-shipper` - Frontend/UI implementation
 - `database-architect` - Schema design and migrations
@@ -163,7 +163,6 @@ AGENTS
 
 ### Support Agents (As Needed)
 - `debugger` - Error investigation
-- `/implement` - Execute tasks with TDD
 - `/debug` - Debug errors
 AGENTS
             ;;

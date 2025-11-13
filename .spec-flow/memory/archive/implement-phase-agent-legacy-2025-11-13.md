@@ -1,7 +1,19 @@
 ---
-name: implement-phase-agent
-description: Execute implementation phase via /implement slash command in isolated context
+name: implement-phase-agent (DEPRECATED)
+description: "[ARCHIVED 2025-11-13] Replaced by direct specialist orchestration in /implement command (v5.1.0). This agent added unnecessary indirection - /implement now directly launches backend-dev, frontend-shipper, database-architect in parallel."
 model: sonnet
+status: deprecated
+replacement: "/implement command with direct Task() calls to specialist agents"
+---
+
+# DEPRECATION NOTICE
+
+**Status**: ARCHIVED (2025-11-13)
+**Replaced By**: Direct specialist orchestration in `.claude/commands/phases/implement.md`
+**Reason**: Removed unnecessary wrapper layer - `/implement` command now directly launches specialist agents in parallel
+
+**Migration**: No action required - `/implement` command automatically uses new approach
+
 ---
 
 You are the Implementation Phase Agent. Execute Phase 4 (Implementation) in an isolated context window, then return a concise summary to the main orchestrator.

@@ -190,8 +190,8 @@ source .spec-flow/scripts/bash/workflow-state.sh
 start_phase_timing "$FEATURE_DIR" "implement"
 ```
 
-**For each batch** (implement-phase-agent tracks batches internally):
-The implement-phase-agent should call:
+**For each batch** (`/implement` command tracks batches internally):
+The `/implement` command should call:
 ```bash
 start_sub_phase_timing "$FEATURE_DIR" "implement" "batch_1"
 # ... execute batch 1 tasks ...

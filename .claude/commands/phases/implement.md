@@ -316,105 +316,181 @@ echo ""
 # - Commit final summary [pending]
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# EXECUTE BATCHES IN PARALLEL GROUPS
+# EXECUTE BATCHES VIA PARALLEL SPECIALIST AGENTS
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# Group batches for parallel execution (3-5 batches per group)
-# - Maximizes specialist diversity (backend + frontend + database)
-# - Respects memory limits (~3 specialist contexts simultaneously)
-# - Checkpoints after each group (atomic commits)
+# Stop bash script execution - orchestration now happens in Claude Code context
+# The agent will read this script output and execute the following orchestration logic:
 
-PARALLEL_GROUP_SIZE=3
-group_start=0
-group_num=0
-FAILED_TASKS=()
+```
 
-while [ $group_start -lt ${#BATCHES[@]} ]; do
-  group_num=$((group_num+1))
-  group_end=$((group_start + PARALLEL_GROUP_SIZE))
-  if [ $group_end -gt ${#BATCHES[@]} ]; then
-    group_end=${#BATCHES[@]}
-  fi
+</instructions>
 
-  batch_start=$((group_start + 1))
-  batch_end=$group_end
+---
 
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "🚀 Batch Group $group_num: Batches $batch_start-$batch_end (PARALLEL)"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
+## Direct Specialist Orchestration
 
-  # Display all batches in group
-  for ((i=group_start; i<group_end; i++)); do
-    batch_num=$((i+1))
-    batch="${BATCHES[$i]}"
-    IFS='|' read -ra TASKS <<< "$batch"
+After task parsing completes, Claude Code orchestrates specialist agents directly (no implement-phase-agent wrapper).
 
-    echo "Batch $batch_num/${#BATCHES[@]}:"
-    for t in "${TASKS[@]}"; do
-      IFS=':' read -r id dom phase desc <<< "$t"
-      echo "  → $id [$dom $phase]: $desc"
-    done
-  done
-  echo ""
+### Orchestration Logic
 
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # EXECUTE ALL BATCHES IN GROUP (Claude Code performs in PARALLEL)
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**Step 1: Group Batches for Parallel Execution**
 
-  # CRITICAL: Agent brief must invoke all Task() calls in SINGLE message
-  # for true parallel execution. See agent brief for implementation.
-  #
-  # For each batch in group, Claude Code will (simultaneously):
-  # 1. Read task requirements from tasks.md
-  # 2. Check for REUSE markers and read referenced files
-  # 3. Implement according to TDD phase or general
-  # 4. Run tests and verify acceptance criteria
-  # 5. Update task tracker with status
-  # 6. Commit with atomic commit message per batch
-  #
-  # Specialist routing based on domain:
-  # - backend: backend-dev agent
-  # - frontend: frontend-shipper agent
-  # - database: database-architect agent
-  # - tests: qa-test agent
-  # - general: general-purpose agent
-  #
-  # Each agent returns: {batch_id, files_changed, test_results, status}
+```javascript
+// Parse batch output from bash script
+const batches = parseBatchesFromScript(); // Array of {id, domain, phase, tasks[]}
+const PARALLEL_GROUP_SIZE = 3;
+const groups = chunkArray(batches, PARALLEL_GROUP_SIZE);
 
-  echo "⏳ Waiting for all batches in group to complete..."
-  echo ""
+console.log(`📦 ${batches.length} batches organized into ${groups.length} groups`);
+```
 
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # CHECKPOINT COMMIT FOR GROUP
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**Step 2: Execute Each Batch Group in Parallel**
 
-  # After all batches in group complete, create checkpoint commit
-  git add . 2>/dev/null || true
+For each group, launch multiple Task() calls in a **single message** for true parallelism:
 
-  if [ -n "$(git status --porcelain)" ]; then
-    git commit -m "feat: implement batch group $group_num (batches $batch_start-$batch_end)
+```javascript
+for (const [groupNum, group] of groups.entries()) {
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`🚀 Batch Group ${groupNum + 1}: Batches ${group.map(b => b.id).join(', ')} (PARALLEL)`);
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
-Batch group: $group_num/$((${#BATCHES[@]} / PARALLEL_GROUP_SIZE + 1))
-Batches executed: $batch_start-$batch_end in parallel
+  // Display batches in group
+  for (const batch of group) {
+    console.log(`Batch ${batch.id}:`);
+    for (const task of batch.tasks) {
+      console.log(`  → ${task.id} [${task.domain} ${task.phase}]: ${task.desc}`);
+    }
+  }
+
+  // CRITICAL: Launch all Task() calls in SINGLE message for parallelism
+  const taskPromises = group.map(batch => {
+    const specialist = mapDomainToSpecialist(batch.domain);
+    const prompt = buildBatchPrompt(batch, FEATURE_DIR, TASKS_FILE, NOTES_FILE);
+
+    return Task({
+      subagent_type: specialist,
+      description: `Batch ${batch.id}: ${batch.domain} tasks`,
+      prompt: prompt
+    });
+  });
+
+  // Wait for all batches in group to complete
+  console.log(`⏳ Waiting for ${group.length} specialists to complete...`);
+  const results = await Promise.all(taskPromises);
+
+  // Process results
+  const allSuccess = results.every(r => r.status === 'success');
+  if (!allSuccess) {
+    const failed = results.filter(r => r.status !== 'success');
+    console.log(`⚠️  ${failed.length} batches failed, see error-log.md`);
+  }
+
+  // Checkpoint commit for group
+  Bash(`
+    git add . 2>/dev/null || true
+    if [ -n "$(git status --porcelain)" ]; then
+      git commit -m "feat: implement batch group ${groupNum + 1}
+
+Batch group: ${groupNum + 1}/${groups.length}
+Batches: ${group.map(b => b.id).join(', ')}
+Specialists: ${group.map(b => mapDomainToSpecialist(b.domain)).join(', ')}
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>" 2>/dev/null || true
+Co-Authored-By: Claude <noreply@anthropic.com>"
+    fi
+  `);
 
-    echo "✅ Checkpoint commit created for group $group_num"
-  else
-    echo "ℹ️  No changes to commit for group $group_num"
-  fi
+  console.log(`✅ Batch group ${groupNum + 1} complete`);
 
-  echo ""
-  echo "✅ Batch group $group_num complete"
-  echo ""
+  // Update TodoWrite to mark group completed
+  TodoWrite({
+    todos: updateGroupStatus(groupNum, 'completed')
+  });
+}
+```
 
-  # Update TodoWrite (done by agent) to mark group as completed
+**Step 3: Domain to Specialist Mapping**
 
-  group_start=$group_end
-done
+```javascript
+function mapDomainToSpecialist(domain) {
+  const mapping = {
+    'backend': 'backend-dev',
+    'frontend': 'frontend-shipper',
+    'database': 'database-architect',
+    'tests': 'qa-test',
+    'general': 'general-purpose'
+  };
+  return mapping[domain] || 'general-purpose';
+}
+```
+
+**Step 4: Build Batch Prompt for Specialist**
+
+```javascript
+function buildBatchPrompt(batch, featureDir, tasksFile, notesFile) {
+  return `Execute the following tasks in strict TDD order if phases are specified.
+
+**Feature Directory**: ${featureDir}
+**Tasks File**: ${tasksFile}
+**Notes File**: ${notesFile}
+
+**Tasks in This Batch**:
+${batch.tasks.map(t => `- ${t.id} [${t.phase || 'GENERAL'}]: ${t.desc}`).join('\n')}
+
+**Instructions**:
+1. Read ${tasksFile} for full task requirements and acceptance criteria
+2. Check for REUSE markers and read referenced files before implementing
+3. For TDD phases ([RED], [GREEN], [REFACTOR]):
+   - RED: Write failing test first, verify it fails, commit
+   - GREEN: Minimal implementation to pass test, commit when passing
+   - REFACTOR: Clean up code while keeping tests green, commit
+4. For general tasks: Implement, test, commit
+5. Update task status in ${notesFile} with ✅ ${t.id} after completion
+6. Auto-rollback on test failures, log to error-log.md
+
+**Commit Format** (one per task):
+\`\`\`
+${batch.tasks[0].phase === 'RED' ? 'test(red)' : batch.tasks[0].phase === 'GREEN' ? 'feat(green)' : batch.tasks[0].phase === 'REFACTOR' ? 'refactor' : 'feat'}: ${batch.tasks[0].id} <summary>
+
+${batch.tasks[0].phase ? `Phase: ${batch.tasks[0].phase}` : ''}
+Tests: <status>
+Coverage: <percentage>
+\`\`\`
+
+**Return** (JSON):
+{
+  "batch_id": "${batch.id}",
+  "status": "success|failed",
+  "tasks_completed": ["T001", "T002"],
+  "tasks_failed": [],
+  "files_changed": 5,
+  "test_results": "10/10 passing",
+  "coverage": "85% (+5%)"
+}`;
+}
+```
+
+### Parallel Execution Rules
+
+1. **Launch all Task() calls in single message** - This is critical for true parallelism
+2. **Wait for all to complete** - Use Promise.all() to collect results
+3. **Checkpoint commit per group** - Create atomic commit after each group completes
+4. **Update TodoWrite progress** - Mark groups as completed in real-time
+
+### Error Handling
+
+- **Test failures**: Specialist auto-rollbacks, logs to error-log.md, continues
+- **Missing REUSE files**: Specialist fails task, logs error, continues
+- **Git conflicts**: Abort, instruct user to resolve
+- **Verification failures**: Record partial results, do not proceed to next group
+
+---
+
+<instructions>
+
+```bash
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # VALIDATE ALL IMPLEMENTATIONS (Single Pass)

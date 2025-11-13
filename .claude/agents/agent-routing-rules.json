@@ -496,24 +496,6 @@
       "priority": "medium",
       "specificity": 10
     },
-    "implement-phase-agent": {
-      "description": "TDD task execution with anti-duplication checks",
-      "triggers": {
-        "filePaths": [],
-        "keywords": [
-          "implement tasks",
-          "execute tasks",
-          "tdd execution"
-        ],
-        "intentPatterns": [
-          "implement.*tasks",
-          "execute.*implementation"
-        ]
-      },
-      "contextFiles": ["spec.md", "plan.md", "tasks.md"],
-      "priority": "high",
-      "specificity": 10
-    },
     "optimize-phase-agent": {
       "description": "Production readiness validation (performance, security, a11y)",
       "triggers": {
@@ -597,7 +579,6 @@
     "frontend-shipper": ["qa-test"],
     "database-architect": ["backend-dev"],
     "contracts-sdk": ["backend-dev", "frontend-shipper"],
-    "implement-phase-agent": ["qa-test"],
     "refactor-planner": ["senior-code-reviewer"]
   },
   "tieBreaking": {
@@ -613,7 +594,6 @@
       "plan-phase-agent": 10,
       "tasks-phase-agent": 10,
       "analyze-phase-agent": 10,
-      "implement-phase-agent": 10,
       "optimize-phase-agent": 10,
       "ship-staging-phase-agent": 10,
       "ship-prod-phase-agent": 10,

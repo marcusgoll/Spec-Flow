@@ -165,7 +165,7 @@ Do NOT refactor prematurely.
 
 ## Task Tool Integration
 
-When invoked via Task() from `implement-phase-agent`, you are executing a single task in parallel with other specialists (frontend-shipper, database-architect).
+When invoked via Task() from `/implement` command, you are executing a single task in parallel with other specialists (frontend-shipper, database-architect).
 
 **Inputs** (from Task() prompt):
 - Task ID (e.g., T015)
@@ -196,7 +196,7 @@ When invoked via Task() from `implement-phase-agent`, you are executing a single
      -CommitHash "$(git rev-parse --short HEAD)" \
      -FeatureDir "${FEATURE_DIR}"
    ```
-7. **Return JSON** to implement-phase-agent:
+7. **Return JSON** to `/implement` command:
    ```json
    {
      "task_id": "T015",
