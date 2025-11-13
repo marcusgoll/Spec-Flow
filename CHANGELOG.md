@@ -1,3 +1,37 @@
+## [5.0.0] - 2025-11-13
+
+### ⚠️ BREAKING CHANGES
+
+**ICE Score Removal**: Removed ICE (Impact × Confidence / Effort) scoring system in favor of creation-order prioritization.
+
+**What Changed**:
+- Features are now prioritized by GitHub issue creation order (earlier = higher priority)
+- Within sprints: Issues worked S01→S02→S03→S04 in creation order
+- Removed `impact`, `effort`, `confidence` parameters from roadmap functions
+- Priority labels (`priority:high/medium/low`) are now optional manual overrides
+
+**Migration Guide**:
+- Existing priority labels will remain but won't be auto-assigned
+- Create issues in the order you want them worked on
+- Use sprints (`sprint:S01`, `sprint:S02`) for time-boxed iterations
+
+### Changed
+
+- **Roadmap Manager Scripts**: Removed ICE scoring functions, simplified to metadata-only
+- **/feature Command**: Now uses creation order for issue selection
+- **Issue Template**: Removed Impact/Effort/Confidence fields
+- **Documentation**: Updated all references to remove ICE scoring
+
+### Technical Details
+
+- Removed `calculate_ice_score()` function
+- Renamed `parse_ice_from_body()` → `parse_metadata_from_body()`
+- Renamed `generate_ice_frontmatter()` → `generate_metadata_frontmatter()`
+- Removed `update_issue_ice()` function
+- Updated `create_roadmap_issue()` signature (3 fewer parameters)
+
+---
+
 ## [4.8.0] - 2025-11-12
 
 ### ✨ New Features
