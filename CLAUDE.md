@@ -520,21 +520,50 @@ Specialist agents are organized in `.claude/agents/` by category:
 
 **Implementation Specialists** (`implementation/`):
 
-- `backend.md` — Backend implementation
-- `frontend.md` — Frontend implementation
-- `database.md` — Database architecture
+- `backend.md` — Backend/API implementation
+- `frontend.md` — Frontend/UI implementation
+- `database.md` — Database architecture and migrations
 - `api-contracts.md` — API contract management
+- `test-architect.md` — TDD test suite generation from acceptance criteria
 
 **Quality Specialists** (`quality/`):
 
-- `code-reviewer.md` — Code review
+**Code Quality:**
+- `code-reviewer.md` — Code review (KISS/DRY enforcement)
+- `refactor-planner.md` — Refactoring analysis and planning
+- `refactor-surgeon.md` — Safe refactoring with minimal blast radius
+- `type-enforcer.md` — TypeScript strict type safety enforcement
+- `cleanup-janitor.md` — Dead code removal and codebase normalization
+
+**Testing & Validation:**
 - `qa-tester.md` — QA and testing
 - `test-coverage.md` — Test coverage enhancement
+- `api-fuzzer.md` — API contract robustness testing
+- `accessibility-auditor.md` — WCAG 2.1 AA compliance validation
+- `ux-polisher.md` — UI interaction state completeness review
+
+**Security & Performance:**
+- `security-sentry.md` — Security vulnerability scanning and blocking
+- `performance-profiler.md` — Performance bottleneck identification
+- `error-budget-guardian.md` — SLO impact assessment for hot path changes
+
+**Development Tools:**
 - `debug.md` — Error triage and debugging
+- `auto-error-resolver.md` — Automatic compilation error fixes
+- `web-research-specialist.md` — Creative search for solutions and debugging
+
+**Operations & Infrastructure:**
+- `dependency-curator.md` — Dependency management and deduplication
+- `data-modeler.md` — Schema design and migration planning
+- `observability-plumber.md` — Production instrumentation and tracing
+- `ci-sentry.md` — CI/CD pipeline optimization and flaky test quarantine
 
 **Deployment Specialists** (`deployment/`):
 
 - `release.md` — CI/CD and release management
+- `git-steward.md` — Commit organization and PR preparation
+- `docs-scribe.md` — ADR and CHANGELOG generation after merges
+- `release-manager.md` — Release notes and deployment artifact preparation
 
 When working with agents, load the relevant brief for context on capabilities and responsibilities.
 
