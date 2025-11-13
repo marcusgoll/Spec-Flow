@@ -1,3 +1,21 @@
+## [6.0.0] - 2025-11-13
+
+### Breaking Changes
+- **Architecture refactor**: Removed `implement-phase-agent` wrapper - `/implement` command now directly orchestrates specialist agents
+- Direct parallel execution with `backend-dev`, `frontend-shipper`, `database-architect` specialists
+- Migration: No action required - `/implement` command automatically uses new approach
+
+### Changed
+- Simplified architecture by removing unnecessary wrapper layer
+- Added true parallel execution with Promise.all() for faster implementation
+- Updated `/implement` command with direct specialist orchestration logic
+- Updated `/feature` command to reference new `/implement` approach
+- Archived `implement-phase-agent` to legacy with deprecation notice
+- Updated specialist agent briefs (backend, frontend, database)
+- Updated documentation and scripts
+
+---
+
 ## [5.0.0] - 2025-11-13
 
 ### ⚠️ BREAKING CHANGES
