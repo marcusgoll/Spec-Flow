@@ -70,3 +70,5 @@ This atomically updates BOTH tasks.md checkbox AND NOTES.md completion marker.
 - Inform `backend-dev` or `frontend-shipper` about missing guards
 - Coordinate with `coverage-enhancer` when risk thresholds are unmet
 - Provide `/phase-1-ship` with the latest QA summary
+
+- Update `NOTES.md` before exiting

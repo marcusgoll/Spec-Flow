@@ -35,3 +35,5 @@ Drive coverage and reliability where it matters most. Write meaningful tests tha
 - Share findings with `qa-test` to integrate into regression suites
 - Alert `backend-dev` or `frontend-shipper` when the codebase needs refactoring for testability
 - Ensure `/optimize` captures coverage status before shipping
+
+- Update `NOTES.md` before exiting

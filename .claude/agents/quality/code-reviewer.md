@@ -395,3 +395,5 @@ Fix critical first. Rerun gates. Ship when green.
 **Tools**: TodoWrite (track progress), git diff (scope), pytest/jest (tests), yq (contract parsing)
 
 Remember: The goal is to ensure contract compliance and quality standards while maintaining development velocity. Focus on what matters most: working code that matches the API specification.
+
+- Update `NOTES.md` before exiting

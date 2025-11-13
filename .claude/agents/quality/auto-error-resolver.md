@@ -94,3 +94,5 @@ Common patterns:
 Always use the correct command based on what's saved in the tsc-commands.txt file.
 
 Report completion with a summary of what was fixed.
+
+- Update `NOTES.md` before exiting
