@@ -1,3 +1,21 @@
+## [6.2.3] - 2025-11-14
+
+### Changed
+- **Frontend Agent**: Enforced design system consultation as mandatory pre-work for ALL UI/UX implementation
+  - Added MANDATORY PRE-WORK section with 7-item checklist blocking implementation until design system files are read
+  - Added Design Thinking & Creative Direction guidance for choosing bold aesthetic direction
+  - Added Frontend Aesthetics Guidelines (typography, color, motion, spatial composition)
+  - Added token proposal process for when creative vision requires new design tokens
+  - Added behavior requirements, output format requirements, and conflict resolution guidance
+  - Updated Task Tool Integration to make design system consultation non-optional
+
+### Documentation
+- Enhanced `.claude/agents/implementation/frontend.md` with +249 lines across 8 new/updated sections
+- Design system now provides constraints while creative guidelines provide direction
+- Quality gates ensure compliance: design-lint.js, axe-core, Lighthouse, aesthetic differentiation
+
+---
+
 ## [6.2.2] - 2025-11-13
 
 ### Fixed

@@ -44,6 +44,24 @@
 
 ## 🆕 Recent Updates
 
+### v6.2.3 (November 2025)
+
+**Frontend Agent: Mandatory Design System Enforcement**
+
+- **MANDATORY PRE-WORK**: Design system consultation now blocks ALL UI/UX implementation
+- **7-Item Checklist**: Required reading (style-guide.md, tokens.json, ui-inventory.md, design-principles, patterns, inspirations, frontend-design skill) before implementation
+- **Creative Direction**: Bold aesthetic guidance (choose distinctive direction, avoid generic AI aesthetics)
+- **Aesthetic Guidelines**: Typography, color, motion, spatial composition (avoid font convergence, commit to cohesive themes)
+- **Token Proposal Flow**: Process for adding new design tokens when creative vision requires them
+- **Quality Gates**: design-lint.js, axe-core, Lighthouse, aesthetic differentiation checks
+- **Integration Model**: Design system provides constraints, creative guidelines provide direction
+
+**Problem Solved**: Frontend agent referenced design system files but didn't enforce consultation, allowing agents to skip design system integration and create inconsistent UI.
+
+**Impact**: All UI/UX work now aligns with design system from day one. No more arbitrary colors, spacing, or fonts. Creative excellence within constraints. Quality gates ensure compliance.
+
+---
+
 ### v4.8.0 (November 2025)
 
 **/finalize Command Enhancement**
