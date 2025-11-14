@@ -137,9 +137,22 @@ need jq
 
 cd "$(git rev-parse --show-toplevel)"
 
-# Get feature from argument or current branch
+# Parse --ui-first flag and feature slug
+UI_FIRST=false
 if [ -n "$ARGUMENTS" ]; then
-  SLUG="$ARGUMENTS"
+  # Check for --ui-first flag
+  if [[ "$ARGUMENTS" == *"--ui-first"* ]]; then
+    UI_FIRST=true
+    # Remove --ui-first from arguments to get slug
+    SLUG=$(echo "$ARGUMENTS" | sed 's/--ui-first//g' | xargs)
+  else
+    SLUG="$ARGUMENTS"
+  fi
+
+  # If SLUG is empty after removing flag, use current branch
+  if [ -z "$SLUG" ]; then
+    SLUG=$(git branch --show-current)
+  fi
 else
   SLUG=$(git branch --show-current)
 fi
@@ -212,6 +225,50 @@ echo "Loading design artifacts from plan.md..."
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# TOKENS.CSS VALIDATION (for UI-first features)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ "$UI_FIRST" = true ]; then
+  echo "🎨 UI-First Mode: Validating design system..."
+
+  TOKENS_CSS="design/systems/tokens.css"
+  if [ ! -f "$TOKENS_CSS" ]; then
+    echo "❌ ERROR: design/systems/tokens.css not found"
+    echo ""
+    echo "💡 Run /init-brand-tokens to generate tokens.css from tokens.json"
+    echo ""
+    exit 1
+  fi
+
+  # Verify tokens.css has CSS variables
+  if ! grep -q "^[[:space:]]*--" "$TOKENS_CSS"; then
+    echo "⚠️  WARNING: tokens.css exists but contains no CSS variables"
+    echo ""
+    echo "💡 Run /init-brand-tokens to regenerate tokens.css"
+    echo ""
+    exit 1
+  fi
+
+  echo "✅ tokens.css found with CSS variables"
+
+  # Verify style-guide.md exists
+  STYLE_GUIDE="docs/project/style-guide.md"
+  if [ ! -f "$STYLE_GUIDE" ]; then
+    echo "⚠️  WARNING: docs/project/style-guide.md not found"
+    echo "   Mockups will use tokens.css but won't have style guide rules"
+  fi
+
+  # Verify ui-inventory.md exists
+  UI_INVENTORY="design/systems/ui-inventory.md"
+  if [ ! -f "$UI_INVENTORY" ]; then
+    echo "ℹ️  INFO: design/systems/ui-inventory.md not found"
+    echo "   Component reuse suggestions will be limited"
+  fi
+
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # CHECK FOR POLISHED UI DESIGNS
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -222,7 +279,13 @@ if [ -n "$POLISHED_SCREENS" ]; then
   echo "✅ Found $UI_SCREEN_COUNT polished UI designs"
 else
   HAS_UI_DESIGN=false
-  echo "ℹ️  No polished UI designs found (backend/API feature)"
+
+  # If --ui-first flag is set, this is expected (we'll create mockups)
+  if [ "$UI_FIRST" = true ]; then
+    echo "ℹ️  No existing polished UI designs (will generate design mockup tasks)"
+  else
+    echo "ℹ️  No polished UI designs found (backend/API feature)"
+  fi
 fi
 
 echo ""
@@ -296,6 +359,48 @@ echo ""
 #   - From: design-doc.md section
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# DESIGN MOCKUP TASKS (if UI_FIRST=true)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# When --ui-first flag is set, Claude Code should generate design mockup tasks
+# BEFORE implementation tasks. This ensures user approves design before
+# implementation investment.
+#
+# Design task structure:
+#
+# Phase 1: Design Mockups (APPROVAL REQUIRED)
+#
+# - [ ] T001 [DESIGN] Create HTML mockup for [Screen/Component Name]
+#   - **Output**: specs/NNN-slug/mockups/screen-name.html
+#   - **Tokens**: Link to design/systems/tokens.css (relative path ../../../design/systems/tokens.css)
+#   - **Data**: Include inline mock JSON in <script> tag
+#   - **Components**: Check design/systems/ui-inventory.md for reusable patterns
+#   - **Layout**: Follow docs/project/style-guide.md Core 9 Rules
+#   - **Accessibility**: WCAG 2.1 AA (4.5:1 contrast, 24x24px targets)
+#   - **States**: Show loading, error, empty, success states
+#
+# - [ ] T002 [APPROVAL-GATE] Review and approve HTML mockup
+#   - **Preview**: Open specs/NNN-slug/mockups/screen-name.html in browser
+#   - **Checklist**: specs/NNN-slug/mockup-approval-checklist.md
+#   - **Action**: User approves OR requests changes
+#   - **Blocks**: ALL implementation tasks until approved
+#   - **Style Guide Updates**: If user requests changes requiring new tokens,
+#     agent proposes tokens.css updates and waits for approval
+#
+# Phase 2: Implementation (After Mockup Approval)
+#
+# - [ ] T010 [US1] Convert approved mockup to Next.js page.tsx
+#   - **Reference**: specs/NNN-slug/mockups/screen-name.html (approved mockup)
+#   - **Convert**: HTML → React components, CSS vars → Tailwind/CSS modules
+#   - **Wire**: Replace mock JSON with API calls (see contracts/*.yaml)
+#   - **States**: Implement loading/error states with React Query
+#   - **Components**: Extract shared components to components/ui/ or components/shared/
+#   - **Preserve**: All accessibility features from approved mockup
+#
+# Important: Design tasks MUST be in Phase 1, implementation tasks in Phase 2+.
+# The approval gate task blocks all subsequent tasks until user runs /feature continue.
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # UPDATE NOTES.md
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -306,7 +411,42 @@ STORY_TASKS=$(grep -c "\[US[0-9]\]" "$TASKS_FILE" 2>/dev/null || echo 0)
 PARALLEL_TASKS=$(grep -c "\[P\]" "$TASKS_FILE" 2>/dev/null || echo 0)
 
 # Add Phase 2 checkpoint
-cat >> "$FEATURE_DIR/NOTES.md" <<EOF
+if [ "$UI_FIRST" = true ]; then
+  cat >> "$FEATURE_DIR/NOTES.md" <<EOF
+
+## Phase 2: Tasks ($(date '+%Y-%m-%d %H:%M' 2>/dev/null || date))
+
+**Mode**: 🎨 UI-First (Design mockup approval required before implementation)
+
+**Summary**:
+- Total tasks: $TOTAL_TASKS
+- User story tasks: $STORY_TASKS
+- Parallel opportunities: $PARALLEL_TASKS
+- Setup tasks: $SETUP_TASKS
+- Task file: specs/$SLUG/tasks.md
+
+**Design System**:
+- ✅ tokens.css validated with CSS variables
+- ✅ Style guide: ${STYLE_GUIDE:-"Not found"}
+- ✅ UI inventory: ${UI_INVENTORY:-"Not found"}
+
+**Checkpoint**:
+- ✅ Tasks generated: $TOTAL_TASKS
+- ✅ User story organization: Complete
+- ✅ Dependency graph: Created
+- ✅ Design mockup tasks: Phase 1 (with approval gate)
+- ✅ Implementation tasks: Phase 2+ (blocked until mockup approved)
+- 📋 Ready for: /implement (will create HTML mockups first)
+
+**Workflow**:
+1. /implement → Creates HTML mockups in specs/$SLUG/mockups/
+2. Review mockups in browser (open .html files)
+3. Approve or request changes via mockup-approval-checklist.md
+4. /feature continue → Converts approved mockups to Next.js
+
+EOF
+else
+  cat >> "$FEATURE_DIR/NOTES.md" <<EOF
 
 ## Phase 2: Tasks ($(date '+%Y-%m-%d %H:%M' 2>/dev/null || date))
 
@@ -325,6 +465,7 @@ cat >> "$FEATURE_DIR/NOTES.md" <<EOF
 - 📋 Ready for: /validate
 
 EOF
+fi
 
 echo "✅ Updated NOTES.md with Phase 2 checkpoint"
 echo ""
@@ -384,30 +525,64 @@ if [ "$HAS_UI_DESIGN" = true ]; then
   echo "- UI promotion: $UI_SCREEN_COUNT screens to promote"
 fi
 
+if [ "$UI_FIRST" = true ]; then
+  echo "- Mode: 🎨 UI-First (Design mockup approval required)"
+fi
+
 echo ""
-echo "📋 Task organization:"
-echo "- Phase 1 (Setup): Infrastructure and dependencies"
-echo "- Phase 2 (Foundational): Blocking prerequisites"
-echo "- Phase 3+ (User Stories): Story-specific implementation"
-echo "- Phase N (Polish): Cross-cutting concerns"
+
+if [ "$UI_FIRST" = true ]; then
+  echo "📋 Task organization (UI-First Mode):"
+  echo "- Phase 1 (Design Mockups): HTML mockup creation + approval gate"
+  echo "- Phase 2+ (Implementation): Convert approved mockups to Next.js"
+  echo ""
+  echo "🎨 Design System:"
+  echo "- tokens.css: design/systems/tokens.css"
+  echo "- Style guide: ${STYLE_GUIDE:-"Not configured"}"
+  echo "- UI inventory: ${UI_INVENTORY:-"Not configured"}"
+else
+  echo "📋 Task organization:"
+  echo "- Phase 1 (Setup): Infrastructure and dependencies"
+  echo "- Phase 2 (Foundational): Blocking prerequisites"
+  echo "- Phase 3+ (User Stories): Story-specific implementation"
+  echo "- Phase N (Polish): Cross-cutting concerns"
+fi
+
 echo ""
 echo "NOTES.md: Phase 2 checkpoint added"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📋 NEXT: /validate"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "/validate will:"
-echo "1. Read tasks.md (task breakdown)"
-echo "2. Scan codebase for patterns (anti-duplication check)"
-echo "3. Validate architecture decisions (no conflicts)"
-echo "4. Identify risks (complexity, dependencies)"
-echo "5. Generate implementation hints (concrete examples)"
-echo "6. Update error-log.md (potential issues)"
-echo ""
-echo "Output: specs/$SLUG/analysis-report.md"
-echo ""
-echo "Duration: ~5 minutes"
+
+if [ "$UI_FIRST" = true ]; then
+  echo "📋 NEXT: /implement (will create HTML mockups)"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "/implement will:"
+  echo "1. Create HTML mockups in specs/$SLUG/mockups/"
+  echo "2. Link to design/systems/tokens.css (CSS variables)"
+  echo "3. Include inline mock JSON data"
+  echo "4. Wait for approval via mockup-approval-checklist.md"
+  echo "5. Convert approved mockups to Next.js (after /feature continue)"
+  echo ""
+  echo "Mockup Preview: Open specs/$SLUG/mockups/*.html in browser"
+  echo ""
+  echo "Duration: ~10-15 minutes (mockup creation + approval)"
+else
+  echo "📋 NEXT: /validate"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "/validate will:"
+  echo "1. Read tasks.md (task breakdown)"
+  echo "2. Scan codebase for patterns (anti-duplication check)"
+  echo "3. Validate architecture decisions (no conflicts)"
+  echo "4. Identify risks (complexity, dependencies)"
+  echo "5. Generate implementation hints (concrete examples)"
+  echo "6. Update error-log.md (potential issues)"
+  echo ""
+  echo "Output: specs/$SLUG/analysis-report.md"
+  echo ""
+  echo "Duration: ~5 minutes"
+fi
 ```
 
 ## TASK ORGANIZATION RULES

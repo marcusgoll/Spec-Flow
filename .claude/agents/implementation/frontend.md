@@ -147,6 +147,522 @@ Focus on creating distinctive, production-grade interfaces that avoid generic "A
 
 **Remember**: Claude is capable of extraordinary creative work. Don't hold back - show what can truly be created when thinking outside the box and committing fully to a distinctive vision. Interpret creatively and make unexpected choices that feel genuinely designed for the context. No design should be the same.
 
+## HTML Mockup Creation Workflow
+
+**When**: Task type is `[DESIGN]` (before implementation, during UI-first workflow)
+**Output**: Standalone HTML file in `specs/NNN-slug/mockups/`
+**Purpose**: Create browser-previewable mockup for user approval BEFORE implementation investment
+
+### Mockup Structure
+
+Create standalone HTML files that link to the project's `tokens.css` for easy preview:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{Screen/Component Name} - Mockup</title>
+
+  <!-- Link to project's tokens.css (relative path from specs/NNN-slug/mockups/) -->
+  <link rel="stylesheet" href="../../../design/systems/tokens.css">
+
+  <!-- Tailwind CDN for utility classes -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* Additional mockup-specific styles using tokens.css variables */
+    body {
+      background: var(--neutral-50);
+      color: var(--neutral-950);
+      font-family: var(--font-family-body);
+    }
+
+    .btn-primary {
+      background: var(--brand-primary);
+      color: var(--brand-primary-contrast);
+      padding: var(--space-3) var(--space-6);
+      border-radius: var(--radius-md);
+      font-weight: var(--font-weight-semibold);
+      transition: all 150ms ease;
+    }
+
+    .btn-primary:hover {
+      background: var(--brand-primary-hover);
+      box-shadow: var(--shadow-md);
+    }
+
+    .card {
+      background: var(--neutral-100);
+      padding: var(--space-6);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--neutral-200);
+      box-shadow: var(--shadow-sm);
+    }
+  </style>
+</head>
+<body>
+  <!-- HTML structure using tokens.css variables and Tailwind classes -->
+  <div id="app"></div>
+
+  <script>
+    // Mock JSON data - MUST include ALL states
+    const mockData = {
+      // Normal state data
+      users: [
+        { id: 1, name: "Alice Johnson", email: "alice@example.com", role: "Admin", status: "active" },
+        { id: 2, name: "Bob Smith", email: "bob@example.com", role: "User", status: "active" },
+        { id: 3, name: "Carol Williams", email: "carol@example.com", role: "User", status: "inactive" }
+      ],
+
+      // Loading state flag
+      isLoading: false,
+
+      // Error state data
+      error: null, // Set to { message: "Failed to load users" } to show error
+
+      // Empty state flag
+      isEmpty: false, // Set to true to show empty state
+
+      // Current user for context
+      currentUser: { id: 1, name: "Alice Johnson", role: "Admin" }
+    };
+
+    // Render function - shows ALL states
+    function renderView(data) {
+      // LOADING STATE
+      if (data.isLoading) {
+        return `
+          <div style="
+            padding: var(--space-8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+          ">
+            <div style="text-align: center;">
+              <div class="spinner" style="
+                width: 48px;
+                height: 48px;
+                border: 4px solid var(--neutral-200);
+                border-top-color: var(--brand-primary);
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+              "></div>
+              <p style="
+                margin-top: var(--space-4);
+                color: var(--neutral-600);
+                font-size: var(--text-sm);
+              ">Loading users...</p>
+            </div>
+          </div>
+        `;
+      }
+
+      // ERROR STATE
+      if (data.error) {
+        return `
+          <div style="padding: var(--space-8);">
+            <div style="
+              background: var(--semantic-error-bg);
+              border: 1px solid var(--semantic-error-border);
+              padding: var(--space-4);
+              border-radius: var(--radius-md);
+              display: flex;
+              gap: var(--space-3);
+              align-items: start;
+            ">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="flex-shrink: 0; margin-top: 2px;">
+                <path d="M10 2C5.58 2 2 5.58 2 10s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm1 13H9v-2h2v2zm0-4H9V6h2v5z" fill="var(--semantic-error)"/>
+              </svg>
+              <div>
+                <h3 style="
+                  font-weight: var(--font-weight-semibold);
+                  color: var(--semantic-error);
+                  margin-bottom: var(--space-1);
+                ">Error Loading Users</h3>
+                <p style="
+                  color: var(--semantic-error);
+                  font-size: var(--text-sm);
+                ">${data.error.message}</p>
+                <button class="btn-primary" style="margin-top: var(--space-3);" onclick="location.reload()">
+                  Try Again
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // EMPTY STATE
+      if (data.isEmpty || data.users.length === 0) {
+        return `
+          <div style="
+            padding: var(--space-8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+          ">
+            <div style="text-align: center; max-width: 400px;">
+              <svg width="64" height="64" viewBox="0 0 64 64" fill="none" style="margin: 0 auto;">
+                <circle cx="32" cy="32" r="30" fill="var(--neutral-100)" stroke="var(--neutral-200)" stroke-width="2"/>
+                <path d="M32 20v16m0 4h.01" stroke="var(--neutral-400)" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <h3 style="
+                font-size: var(--text-xl);
+                font-weight: var(--font-weight-semibold);
+                color: var(--neutral-900);
+                margin-top: var(--space-4);
+              ">No Users Found</h3>
+              <p style="
+                color: var(--neutral-600);
+                font-size: var(--text-sm);
+                margin-top: var(--space-2);
+              ">Get started by creating your first user account.</p>
+              <button class="btn-primary" style="margin-top: var(--space-6);">
+                Create User
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      // SUCCESS STATE (normal data)
+      return `
+        <div style="padding: var(--space-8); max-width: 1200px; margin: 0 auto;">
+          <div style="margin-bottom: var(--space-6);">
+            <h1 style="
+              font-size: var(--text-4xl);
+              font-weight: var(--font-weight-bold);
+              color: var(--brand-primary);
+              margin-bottom: var(--space-2);
+            ">
+              User Management
+            </h1>
+            <p style="
+              color: var(--neutral-600);
+              font-size: var(--text-base);
+            ">
+              Manage user accounts and permissions
+            </p>
+          </div>
+
+          <div style="display: grid; gap: var(--space-4);">
+            ${data.users.map(user => `
+              <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                  <div>
+                    <h3 style="
+                      font-weight: var(--font-weight-semibold);
+                      font-size: var(--text-lg);
+                      color: var(--neutral-900);
+                    ">
+                      ${user.name}
+                    </h3>
+                    <p style="
+                      color: var(--neutral-600);
+                      font-size: var(--text-sm);
+                      margin-top: var(--space-1);
+                    ">${user.email}</p>
+                    <div style="
+                      display: inline-flex;
+                      align-items: center;
+                      gap: var(--space-2);
+                      margin-top: var(--space-3);
+                    ">
+                      <span style="
+                        background: var(--brand-primary);
+                        color: var(--brand-primary-contrast);
+                        padding: var(--space-1) var(--space-2);
+                        border-radius: var(--radius-sm);
+                        font-size: var(--text-xs);
+                        font-weight: var(--font-weight-medium);
+                      ">${user.role}</span>
+                      <span style="
+                        background: ${user.status === 'active' ? 'var(--semantic-success-bg)' : 'var(--neutral-100)'};
+                        color: ${user.status === 'active' ? 'var(--semantic-success)' : 'var(--neutral-600)'};
+                        padding: var(--space-1) var(--space-2);
+                        border-radius: var(--radius-sm);
+                        font-size: var(--text-xs);
+                        font-weight: var(--font-weight-medium);
+                      ">${user.status}</span>
+                    </div>
+                  </div>
+                  <button class="btn-primary">Edit</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <style>
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        </style>
+      `;
+    }
+
+    // Initial render
+    document.getElementById('app').innerHTML = renderView(mockData);
+
+    // Demo: Toggle states (for testing - remove in production)
+    let stateIndex = 0;
+    const states = [
+      { ...mockData },
+      { ...mockData, isLoading: true },
+      { ...mockData, error: { message: "Failed to load users" } },
+      { ...mockData, users: [], isEmpty: true }
+    ];
+
+    // Press 'S' key to cycle through states (for demo purposes)
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 's' || e.key === 'S') {
+        stateIndex = (stateIndex + 1) % states.length;
+        document.getElementById('app').innerHTML = renderView(states[stateIndex]);
+        console.log('State:', ['Success', 'Loading', 'Error', 'Empty'][stateIndex]);
+      }
+    });
+  </script>
+</body>
+</html>
+```
+
+### Mockup Requirements (Mandatory)
+
+1. **MUST link to `design/systems/tokens.css`** (use relative path from mockup location)
+   - ✅ Correct: `<link rel="stylesheet" href="../../../design/systems/tokens.css">`
+   - ❌ Wrong: Inline CSS variables (tokens.css may be updated by user)
+
+2. **Use CSS variables from tokens.css**:
+   - Colors: `var(--brand-primary)`, `var(--neutral-50)`, `var(--semantic-error)`, etc.
+   - Spacing: `var(--space-1)` through `var(--space-64)` (8pt grid)
+   - Typography: `var(--text-xs)` through `var(--text-9xl)`, `var(--font-weight-*)`, `var(--line-height-*)`
+   - Shadows: `var(--shadow-sm)`, `var(--shadow-md)`, `var(--shadow-lg)`, etc.
+   - Radius: `var(--radius-sm)`, `var(--radius-md)`, `var(--radius-lg)`, etc.
+   - Motion: `var(--duration-fast)`, `var(--easing-ease-out)`, etc.
+
+3. **Follow `docs/project/style-guide.md` Core 9 Rules**
+
+4. **Check `design/systems/ui-inventory.md`** - Reuse component patterns where applicable
+
+5. **Include mock JSON for ALL dynamic data**:
+   - Normal state data (users, posts, products, etc.)
+   - Loading state flag (`isLoading`)
+   - Error state data (`error: { message: "..." }`)
+   - Empty state flag (`isEmpty`)
+
+6. **Show ALL states**:
+   - ✅ Loading: Skeleton screens or spinners
+   - ✅ Error: Error message with retry button
+   - ✅ Empty: Empty state illustration with CTA
+   - ✅ Success: Normal data display
+
+7. **WCAG 2.1 AA compliant**:
+   - Color contrast ≥4.5:1 (normal text), ≥3:1 (large text)
+   - Interactive elements ≥24x24px touch targets
+   - Keyboard navigation works (Tab, Enter, Escape)
+   - Screen reader labels present (aria-label, aria-describedby)
+   - Focus indicators visible (2px outline, 3:1 contrast per WCAG 2.2)
+
+8. **NEVER use hardcoded hex/rgb/hsl colors** - always use tokens.css variables
+
+9. **Add state toggle for demo** (press 'S' key to cycle through states)
+
+### Tokens.css Variable Reference
+
+Before creating mockup, read `design/systems/tokens.css` to see all available variables:
+
+**Color tokens**:
+- `--brand-primary`, `--brand-secondary`, `--brand-accent`
+- `--neutral-50` through `--neutral-950` (light to dark)
+- `--semantic-success`, `--semantic-error`, `--semantic-warning`, `--semantic-info`
+- `--semantic-*-bg`, `--semantic-*-border` (background and border variants)
+
+**Spacing tokens** (8pt grid):
+- `--space-0` (0px), `--space-1` (0.25rem / 4px), `--space-2` (0.5rem / 8px)
+- `--space-3` (0.75rem / 12px), `--space-4` (1rem / 16px), `--space-6` (1.5rem / 24px)
+- `--space-8` (2rem / 32px), `--space-12` (3rem / 48px), `--space-16` (4rem / 64px)
+- `--space-24` (6rem / 96px), `--space-32` (8rem / 128px)
+
+**Typography tokens**:
+- `--text-xs`, `--text-sm`, `--text-base`, `--text-lg`, `--text-xl`
+- `--text-2xl`, `--text-3xl`, `--text-4xl`, `--text-5xl`, `--text-6xl`
+- `--font-weight-normal`, `--font-weight-medium`, `--font-weight-semibold`, `--font-weight-bold`
+- `--line-height-tight`, `--line-height-normal`, `--line-height-relaxed`
+- `--font-family-body`, `--font-family-heading`, `--font-family-mono`
+
+**Shadow tokens**:
+- `--shadow-xs`, `--shadow-sm`, `--shadow-md`, `--shadow-lg`, `--shadow-xl`
+
+**Radius tokens**:
+- `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-xl`, `--radius-full`
+
+**Elevation tokens** (z-index):
+- `--elevation-z-0` through `--elevation-z-5`
+
+## Converting Approved HTML Mockup to Next.js
+
+**When**: After mockup approval (user runs `/feature continue`)
+**Input**: `specs/NNN-slug/mockups/screen-name.html` (approved mockup)
+**Output**: `apps/web/app/[slug]/page.tsx` (production Next.js page)
+**Purpose**: Convert approved standalone HTML mockup to production Next.js implementation
+
+### Conversion Steps
+
+1. **Extract component structure**:
+   - Parse HTML, identify reusable components (cards, buttons, forms, etc.)
+   - Group related elements into logical components
+   - Identify shared components that should go to `components/ui/` or `components/shared/`
+   - Keep page-specific components in `components/[slug]/`
+
+2. **Convert to React**:
+   - `<div style="...">` → `<div className="...">` or `<div style={{...}}>`
+   - Inline event handlers → React event handlers (`onclick` → `onClick`)
+   - String template interpolation → JSX expressions (`${user.name}` → `{user.name}`)
+   - Mock data object → `useState` hooks or React Query
+
+3. **Map tokens.css variables to Tailwind** (or keep as CSS modules):
+   - **Option A: Tailwind config** (if `tailwind.config.ts` imports tokens.css):
+     - `var(--brand-primary)` → `bg-brand-primary`
+     - `var(--space-4)` → `p-4` or `gap-4`
+     - `var(--text-xl)` → `text-xl`
+   - **Option B: CSS Modules** (for custom values not in Tailwind):
+     - Keep CSS variables in `.module.css` file
+     - Import styles: `import styles from './UserCard.module.css'`
+     - Use: `<div className={styles.card}>`
+
+4. **Wire API calls**:
+   - Replace mock JSON with API endpoints (from `contracts/*.yaml`)
+   - Use React Query for data fetching:
+     ```tsx
+     const { data, isLoading, error } = useQuery({
+       queryKey: ['users'],
+       queryFn: () => fetch('/api/users').then(r => r.json())
+     })
+     ```
+   - Map loading/error/empty states from mockup to React Query states
+
+5. **Preserve accessibility**:
+   - Keep ARIA labels (`aria-label`, `aria-describedby`, `aria-live`)
+   - Keep semantic HTML (`<nav>`, `<main>`, `<article>`, `<section>`)
+   - Keep keyboard event handlers (`onKeyDown` for Enter/Escape)
+   - Keep focus management (focus indicators, focus trap in modals)
+
+6. **Component extraction**:
+   - **Shared components** → `components/ui/` or `components/shared/`
+     - Example: Button, Card, Input, Select (if not in shadcn/ui)
+   - **Page-specific components** → `components/[slug]/`
+     - Example: UserCard, UserList, UserFilters
+
+### Example Conversion
+
+**HTML Mockup** (using tokens.css):
+
+```html
+<link rel="stylesheet" href="../../../design/systems/tokens.css">
+
+<div style="
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-6);
+">
+  <button style="
+    background: var(--brand-primary);
+    color: var(--brand-primary-contrast);
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-md);
+  " onclick="handleClick()">
+    Click Me
+  </button>
+</div>
+
+<script>
+  const mockData = { count: 5 };
+
+  function handleClick() {
+    alert('Clicked!');
+  }
+</script>
+```
+
+**Next.js page.tsx** (production):
+
+```tsx
+'use client'
+
+import { useQuery } from '@tanstack/react-query'
+import { Button } from '@/components/ui/button'
+
+export default function Page() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['count'],
+    queryFn: () => fetch('/api/count').then(r => r.json())
+  })
+
+  const handleClick = () => {
+    alert('Clicked!')
+  }
+
+  if (isLoading) return <div>Loading...</div>
+  if (error) return <div>Error: {error.message}</div>
+
+  return (
+    <div className="flex gap-4 p-6">
+      <Button
+        className="bg-brand-primary text-brand-primary-contrast"
+        onClick={handleClick}
+      >
+        Click Me
+      </Button>
+      <p>Count: {data?.count}</p>
+    </div>
+  )
+}
+```
+
+**Note**: Ensure `tailwind.config.ts` imports tokens.css variables or defines them in `theme.extend`:
+
+```ts
+// tailwind.config.ts
+import type { Config } from 'tailwindcss'
+
+const config: Config = {
+  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        'brand-primary': 'var(--brand-primary)',
+        'brand-primary-contrast': 'var(--brand-primary-contrast)',
+        // ... more colors
+      },
+      spacing: {
+        // Already have 4, 6, 8, etc. - tokens.css values match Tailwind defaults
+      }
+    }
+  }
+}
+
+export default config
+```
+
+### Conversion Checklist
+
+- [ ] Extract reusable components (check for duplication with existing components)
+- [ ] Convert HTML to JSX (className, camelCase events, JSX expressions)
+- [ ] Map CSS variables to Tailwind classes (or keep as CSS modules)
+- [ ] Wire mock JSON to API endpoints (React Query + contracts/*.yaml)
+- [ ] Preserve all accessibility features (ARIA labels, semantic HTML, keyboard handlers)
+- [ ] Show loading/error/empty states (map from mockup to React Query)
+- [ ] Extract shared components to components/ui/ or components/shared/
+- [ ] Extract page-specific components to components/[slug]/
+- [ ] Test in browser (verify all states, interactions, accessibility)
+- [ ] Run design-lint.js (verify token compliance)
+- [ ] Run axe-core (verify WCAG 2.1 AA compliance)
+- [ ] Run Lighthouse (verify ≥85 Performance, ≥95 Accessibility)
+
 ## Design System Integration
 
 **All UI implementations must follow the comprehensive style guide.**
@@ -371,9 +887,74 @@ NEW FONT PROPOSAL:
 - User may reject and ask for alternative using existing tokens
 
 **4. Update design system files after approval**:
-- Add to `design/systems/tokens.json`
+- Add to `design/systems/tokens.json` (source of truth)
+- Add to `design/systems/tokens.css` (CSS variables for HTML mockups)
 - Document in `docs/project/style-guide.md` (when to use, pairings, accessibility notes)
 - Run design-lint.js to verify no conflicts with existing tokens
+- **If mockup approval context**: Ask user to refresh mockup HTML in browser (tokens.css changes apply immediately)
+
+### Style Guide Update Flow (During Mockup Approval)
+
+**Trigger**: User requests design changes to approved mockup that require new design tokens
+**Example**: "Make the primary color more vibrant", "Use a bolder font for headings"
+
+**Agent Response Format**:
+
+```
+🎨 STYLE GUIDE UPDATE PROPOSAL
+
+**User Feedback**: "{Exact user quote}"
+
+**Current Token** (in design/systems/tokens.css):
+```css
+--brand-primary: oklch(68% 0.19 260); /* Moderate blue */
+--brand-primary-contrast: oklch(100% 0 0); /* White text on primary */
+```
+
+**Proposed Token**:
+```css
+--brand-primary: oklch(68% 0.28 260); /* Vibrant blue */
+--brand-primary-contrast: oklch(100% 0 0); /* White text on primary */
+```
+
+**Changes**:
+- Increase chroma from 0.19 → 0.28 for more vibrant appearance
+- Maintains same lightness (68%) and hue (260°) for brand consistency
+
+**Accessibility**:
+- Current contrast: 4.6:1 on neutral-950 background (AA)
+- Proposed contrast: 4.8:1 on neutral-950 background (AA maintained)
+- Verified with Color.js OKLCH calculator
+
+**Impact**:
+- Affects all current and future features using --brand-primary
+- HTML mockup will update immediately on browser refresh (tokens.css is linked)
+- Production implementations will inherit updated value
+
+**Files to Update**:
+1. design/systems/tokens.css (CSS variable, line 15)
+2. design/systems/tokens.json (JSON source, line 18 - keep in sync)
+3. docs/project/style-guide.md (color section, if documented)
+
+**Action Required**:
+- [ ] Approve token update (I will update design system + regenerate mockup)
+- [ ] Reject and keep current token (I will find alternative solution)
+
+**If approved**:
+1. I will update design/systems/tokens.css
+2. I will update design/systems/tokens.json (keep in sync)
+3. You refresh mockup HTML in browser (changes apply immediately)
+4. We verify the updated design matches your vision
+```
+
+**Wait for user approval before updating design system files**
+
+**After approval**:
+1. Update `design/systems/tokens.css` with proposed value
+2. Update `design/systems/tokens.json` with same value (keep in sync)
+3. Update `docs/project/style-guide.md` if color/spacing/typography section needs documentation
+4. Instruct user: "Refresh mockup HTML in your browser to see updated design"
+5. Wait for user feedback on updated mockup
 
 ### Design Quality Gates
 
