@@ -186,6 +186,74 @@ if [ -d "$FEATURE_DIR/checklists" ]; then
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# MOCKUP APPROVAL CHECK (UI-first features)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Check if feature has HTML mockups requiring approval
+MOCKUPS=$(find "$FEATURE_DIR/mockups" -name "*.html" 2>/dev/null || echo "")
+if [ -n "$MOCKUPS" ]; then
+  MOCKUP_COUNT=$(echo "$MOCKUPS" | wc -l)
+  echo "🎨 Found $MOCKUP_COUNT HTML mockup(s) - checking approval status..."
+
+  # Check workflow-state.yaml for mockup approval status
+  if [ -f "$FEATURE_DIR/workflow-state.yaml" ]; then
+    APPROVAL_STATUS=$(grep -A 5 "mockup_approval:" "$FEATURE_DIR/workflow-state.yaml" | grep "status:" | awk '{print $2}' || echo "")
+
+    if [ "$APPROVAL_STATUS" != "approved" ]; then
+      echo ""
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "❌ BLOCKED: Mockup approval required"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+      echo "📋 Mockup Location: $FEATURE_DIR/mockups/"
+      echo "📝 Checklist: $FEATURE_DIR/mockup-approval-checklist.md"
+      echo ""
+      echo "📖 Review Process:"
+      echo "1. Open HTML mockups in your browser:"
+      echo "   $(echo "$MOCKUPS" | head -3 | sed 's/^/   - /')"
+      if [ "$MOCKUP_COUNT" -gt 3 ]; then
+        echo "   ... and $((MOCKUP_COUNT - 3)) more"
+      fi
+      echo ""
+      echo "2. Press 'S' key in browser to cycle through states:"
+      echo "   - Success (normal data)"
+      echo "   - Loading (spinner/skeleton)"
+      echo "   - Error (error message)"
+      echo "   - Empty (no data)"
+      echo ""
+      echo "3. Review against checklist:"
+      echo "   - Visual (layout, spacing, colors, tokens.css compliance)"
+      echo "   - Interaction (all states visible)"
+      echo "   - Accessibility (WCAG 2.1 AA)"
+      echo "   - Component reuse (ui-inventory.md)"
+      echo ""
+      echo "4. Approve or request changes in checklist"
+      echo ""
+      echo "5. Update workflow-state.yaml:"
+      echo "   workflow:"
+      echo "     manual_gates:"
+      echo "       mockup_approval:"
+      echo "         status: approved"
+      echo "         approved_at: $(date '+%Y-%m-%d %H:%M:%S')"
+      echo ""
+      echo "6. Run: /feature continue"
+      echo ""
+      echo "💡 Tip: If requesting changes, agent can propose tokens.css updates"
+      echo "        (e.g., 'make primary color more vibrant')"
+      echo ""
+      exit 1
+    fi
+
+    echo "✅ Mockup approved - proceeding with implementation"
+    echo ""
+  else
+    echo "⚠️  WARNING: No workflow-state.yaml found - cannot verify mockup approval"
+    echo "   Continuing anyway (assuming brownfield project or manual approval)"
+    echo ""
+  fi
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # PARSE TASKS AND DETECT BATCHES
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

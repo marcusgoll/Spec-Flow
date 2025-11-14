@@ -186,6 +186,113 @@ wip_limits.max_per_agent: <positive integer>
 **When epic state = ContractsLocked**:
 - `contracts_locked_at` (required)
 
+### Manual Gates (Optional)
+
+Manual gates pause workflow progression until user approval is granted.
+
+**Location**: Root level field `manual_gates`
+
+**Structure**:
+
+```yaml
+manual_gates:
+  mockup_approval:
+    status: "pending"  # pending | approved | rejected | not_applicable
+    mockup_path: "specs/NNN-slug/mockups/screen-name.html"
+    tokens_css_linked: true
+    approved_at: null
+    approved_by: null
+    requested_changes: null
+    style_guide_updates: null
+  preview:
+    status: "pending"  # pending | approved | skipped | not_applicable
+    previewed_at: null
+    previewed_by: null
+    issues_found: null
+  staging_validation:
+    status: "pending"  # pending | approved | failed | not_applicable
+    staging_url: null
+    validated_at: null
+    validated_by: null
+    rollback_tested: false
+```
+
+**Gate Definitions**:
+
+**mockup_approval** (UI-first features only):
+- **Trigger**: After `/tasks --ui-first` creates HTML mockups
+- **Blocks**: `/implement` execution until status = "approved"
+- **Required Fields**: `mockup_path`, `tokens_css_linked`
+- **Optional Fields**: `requested_changes` (user feedback), `style_guide_updates` (proposed tokens.css changes)
+- **Approval Flow**:
+  1. User opens HTML mockup in browser
+  2. User reviews against mockup-approval-checklist.md
+  3. User updates `status: "approved"` in workflow-state.yaml
+  4. User runs `/feature continue` to proceed
+
+**preview** (all features):
+- **Trigger**: After `/optimize` completes
+- **Blocks**: `/ship` execution until status = "approved" or "skipped"
+- **Purpose**: Manual UI/UX testing on local dev server
+- **Approval Flow**:
+  1. User tests feature locally
+  2. User updates `status: "approved"` in workflow-state.yaml
+  3. User runs `/ship continue` to proceed
+
+**staging_validation** (staging-prod model only):
+- **Trigger**: After `/ship-staging` deploys to staging
+- **Blocks**: `/ship-prod` execution until status = "approved"
+- **Purpose**: Manual testing in staging environment
+- **Approval Flow**:
+  1. User tests feature in staging
+  2. Rollback test executed automatically
+  3. User updates `status: "approved"` in workflow-state.yaml
+  4. User runs `/ship continue` to proceed
+
+**Example (UI-first feature)**:
+
+```yaml
+version: 2.0.0
+phase: implement
+status: in_progress
+current_feature: 001-user-dashboard
+started: 2025-11-14T10:00:00Z
+manual_gates:
+  mockup_approval:
+    status: approved
+    mockup_path: specs/001-user-dashboard/mockups/dashboard.html
+    tokens_css_linked: true
+    approved_at: 2025-11-14T11:30:00Z
+    approved_by: Marcus Gollahon
+    requested_changes: "Increase spacing between cards"
+    style_guide_updates:
+      - file: design/systems/tokens.css
+        token: --space-card-gap
+        from: var(--space-4)
+        to: var(--space-6)
+  preview:
+    status: pending
+  staging_validation:
+    status: not_applicable
+```
+
+**Example (non-UI feature)**:
+
+```yaml
+version: 2.0.0
+phase: implement
+status: in_progress
+current_feature: 002-api-caching
+started: 2025-11-14T12:00:00Z
+manual_gates:
+  mockup_approval:
+    status: not_applicable
+  preview:
+    status: pending
+  staging_validation:
+    status: not_applicable
+```
+
 ## State Transitions
 
 ### Epic State Machine

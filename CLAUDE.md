@@ -72,6 +72,29 @@ Model-specific workflow:
 - Context-aware: different output based on whether you're in a feature, at a manual gate, or blocked
 - Run `/help verbose` for detailed state information (quality gates, deployments, artifacts)
 
+**UI-First Workflow** (for features with screens/components):
+
+```
+/feature → /clarify → /plan → /tasks --ui-first
+  ↓
+Creates HTML mockups in specs/NNN-slug/mockups/
+  ↓
+[MANUAL GATE: Mockup Approval]
+  ↓
+/implement (converts HTML → Next.js)
+  ↓
+/ship (deployment workflow)
+```
+
+**Benefits**:
+- Approve design before implementation investment
+- Live design iteration (tokens.css updates refresh in browser)
+- Component reuse enforced (checks ui-inventory.md)
+- Accessibility validated early (WCAG 2.1 AA)
+- All states demonstrated (loading, error, empty, success)
+
+**Usage**: Add `--ui-first` flag to `/tasks` command for features requiring UI design
+
 ## Project Design Workflow
 
 **When to use**: Before building any features, run `/init-project` to create comprehensive project-level design documentation.
@@ -372,7 +395,7 @@ Each command produces structured outputs:
 | ------------------- | ----------------------------------------------------------------- |
 | `/feature`          | `spec.md`, `NOTES.md`, `visuals/README.md`, `workflow-state.yaml` |
 | `/plan`             | `plan.md`, `research.md`                                          |
-| `/tasks`            | `tasks.md` (20-30 tasks with acceptance criteria)                 |
+| `/tasks`            | `tasks.md` (20-30 tasks), `mockup-approval-checklist.md` (UI-first) |
 | `/validate`         | `analysis-report.md`                                              |
 | `/implement`        | Implementation checklist + task completion                        |
 | `/ship`             | `ship-summary.md`, state updates, deployment orchestration        |
@@ -454,8 +477,24 @@ The workflow automatically detects and adapts to three deployment models:
 
 ### Manual Gates (Pause for approval)
 
+- **Mockup Approval**: HTML mockup review before implementation (UI-first features only)
 - **Preview**: Manual UI/UX testing on local dev server
 - **Staging Validation**: Manual testing in staging environment (staging-prod only)
+
+**Mockup Approval Gate** (UI-first features):
+- **Trigger**: After `/tasks --ui-first` generates HTML mockups
+- **Location**: `specs/NNN-slug/mockups/*.html`
+- **Review Checklist**: `specs/NNN-slug/mockup-approval-checklist.md`
+- **Blocks**: `/implement` execution until approved
+- **Workflow**:
+  1. Open HTML mockup in browser (links to `design/systems/tokens.css`)
+  2. Press 'S' key to cycle through states (Success/Loading/Error/Empty)
+  3. Review visual design, interactions, accessibility, tokens.css compliance
+  4. Request changes if needed (agent proposes tokens.css updates)
+  5. Update `workflow-state.yaml`: `manual_gates.mockup_approval.status: approved`
+  6. Run `/feature continue` to proceed with implementation
+
+**Preview & Staging Gates**:
 
 **Requires `/ship continue` to proceed**
 

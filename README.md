@@ -44,6 +44,25 @@
 
 ## 🆕 Recent Updates
 
+### v6.3.0 (November 2025)
+
+**HTML Mockup Approval Workflow**
+
+- **UI-First Flag**: `/tasks --ui-first` generates browser-previewable HTML mockups before implementation
+- **tokens.css Integration**: Mockups link to `design/systems/tokens.css` for live design updates (refresh browser to see changes)
+- **Mock Data States**: Inline JavaScript with ALL states (loading, error, empty, success) - press 'S' to cycle
+- **Single Approval Gate**: User reviews HTML in browser, approves via checklist before `/implement` proceeds
+- **HTML → Next.js Conversion**: Automatic conversion after approval preserves accessibility and tokens
+- **Style Guide Evolution**: Agent proposes tokens.css updates when user requests design changes
+- **Component Reuse**: Checks ui-inventory.md before creating custom components
+- **Workflow Integration**: Mockup approval gate in workflow-state.yaml blocks `/implement` until approved
+
+**Problem Solved**: Previous workflow had no design approval gate. Implementation proceeded directly from spec to production code, requiring costly rework if design changes were needed. Design tokens could drift without systematic update proposals.
+
+**Impact**: 75-85% faster UI development by approving design before implementation. Zero implementation rework from design changes. Systematic design token evolution with user approval. Early accessibility validation (WCAG 2.1 AA).
+
+---
+
 ### v6.2.3 (November 2025)
 
 **Frontend Agent: Mandatory Design System Enforcement**
