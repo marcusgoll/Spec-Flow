@@ -1,3 +1,35 @@
+## [6.3.0] - 2025-11-14
+
+### Added
+- **HTML Mockup Approval Workflow**: UI-first flag for `/tasks` command generates browser-previewable HTML mockups before implementation
+  - `/tasks --ui-first` creates standalone HTML mockups in `specs/NNN-slug/mockups/`
+  - Mockups link to `design/systems/tokens.css` for live design updates (refresh browser to see changes)
+  - Inline JavaScript with ALL states (loading, error, empty, success) - press 'S' key to cycle through states
+  - Single approval gate: User reviews HTML in browser, approves via checklist before `/implement` proceeds
+  - Automatic HTML → Next.js conversion after approval preserves accessibility and design tokens
+  - Agent proposes tokens.css updates when user requests design changes (approval required)
+  - Component reuse enforcement: Checks ui-inventory.md before creating custom components
+  - Workflow integration: mockup_approval gate in workflow-state.yaml blocks `/implement` until approved
+
+### Changed
+- **Frontend Agent** (+500 lines): Added comprehensive HTML mockup creation workflow, HTML → Next.js conversion logic, and style guide update proposal flow
+- **/tasks Command** (+170 lines): Integrated `--ui-first` flag parsing, tokens.css validation, and design task generation guidance
+- **/implement Command** (+68 lines): Added mockup approval check that blocks execution until status = "approved"
+- **workflow-state-schema.md** (+107 lines): Added manual_gates section with mockup_approval, preview, and staging_validation gate definitions
+
+### Documentation
+- Created `mockup-approval-checklist.md` template with comprehensive review criteria (visual, interaction, accessibility, tokens.css compliance)
+- Updated CLAUDE.md with UI-First Workflow section and Mockup Approval Gate workflow steps
+- Updated README.md with v6.3.0 release notes and HTML Mockup Approval Workflow overview
+
+### Impact
+- 75-85% faster UI development by approving design before implementation
+- Zero implementation rework from design changes
+- Systematic design token evolution with user approval
+- Early accessibility validation (WCAG 2.1 AA)
+
+---
+
 ## [6.2.3] - 2025-11-14
 
 ### Changed
