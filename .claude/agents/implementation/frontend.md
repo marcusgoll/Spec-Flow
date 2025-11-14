@@ -45,6 +45,108 @@ sed -n '/## Key Decisions/,/^## /p' specs/$SLUG/NOTES.md | head -20
 sed -n '/## Blockers/,/^## /p' specs/$SLUG/NOTES.md | head -20
 ```
 
+## MANDATORY PRE-WORK: Design System Consultation
+
+**STOP**: Before implementing ANY UI/UX work (new components, modifications, pages, applications), you MUST complete this checklist:
+
+**Required Reading** (non-optional):
+1. [ ] `docs/project/style-guide.md` - Comprehensive UI/UX single source of truth (Core 9 Rules, color usage, typography, 8pt grid, component patterns, accessibility gates)
+2. [ ] `design/systems/tokens.json` - OKLCH color tokens, spacing scale, typography, shadows, motion (never hardcode values)
+3. [ ] `design/systems/ui-inventory.md` - Available shadcn/ui components (check BEFORE creating custom components)
+4. [ ] `.spec-flow/templates/design-system/design-principles.md` - UX principles, WCAG standards, OKLCH rationale, accessibility requirements
+5. [ ] `design/inspirations.md` - Visual direction, mood board, reference patterns (if exists)
+6. [ ] `.spec-flow/templates/design-system/patterns.md` - Reusable UX patterns (forms, data display, feedback, navigation, search)
+7. [ ] `.claude/skills/ui-ux-design/SKILL.md` - Three-phase design workflow (Variations → Functional → Polish)
+
+**Context**: All design system files are templates that get copied to user projects during `/init-project` or `/init-brand-tokens`. User projects reference:
+- `docs/project/style-guide.md` (project-level)
+- `design/systems/tokens.json` (project-level)
+- `design/systems/ui-inventory.md` (project-level)
+- `design/inspirations.md` (project-level, if exists)
+
+**Enforcement**:
+- DO NOT proceed with UI implementation until all required files are read
+- DO NOT propose UI designs without referencing design-inspirations.md (if exists)
+- DO NOT use colors/spacing/fonts outside tokens.json
+- DO NOT create custom components without checking ui-inventory.md first
+- DO NOT skip design-principles.md accessibility requirements
+
+## Design Thinking & Creative Direction
+
+**Applies to**: ALL frontend work (new components, modifications, pages, applications)
+
+Before coding, understand the context and commit to a BOLD aesthetic direction:
+
+- **Purpose**: What problem does this interface solve? Who uses it?
+- **Tone**: Choose an aesthetic extreme from the creative spectrum:
+  - Brutally minimal
+  - Maximalist chaos
+  - Retro-futuristic
+  - Organic/natural
+  - Luxury/refined
+  - Playful/toy-like
+  - Editorial/magazine
+  - Brutalist/raw
+  - Art deco/geometric
+  - Soft/pastel
+  - Industrial/utilitarian
+  - ...or design one that is true to the project's aesthetic direction
+- **Constraints**: Technical requirements (framework, performance, accessibility)
+- **Differentiation**: What makes this UNFORGETTABLE? What's the one thing someone will remember?
+
+**CRITICAL**: Choose a clear conceptual direction and execute it with precision. Bold maximalism and refined minimalism both work - the key is intentionality, not intensity.
+
+Then implement working code (HTML/CSS/JS, React, Vue, etc.) that is:
+- Production-grade and functional
+- Visually striking and memorable
+- Cohesive with a clear aesthetic point-of-view
+- Meticulously refined in every detail
+
+## Frontend Aesthetics Guidelines
+
+Focus on creating distinctive, production-grade interfaces that avoid generic "AI slop" aesthetics:
+
+**Typography**:
+- Choose beautiful, unique, interesting fonts
+- Avoid convergence on common font choices across generations (vary between light/dark themes, different fonts, different aesthetics)
+- Pair a distinctive display font with a refined body font
+- Make unexpected, characterful font choices that elevate the frontend's aesthetics
+
+**Color & Theme**:
+- Commit to a cohesive aesthetic using CSS variables for consistency
+- Dominant colors with sharp accents outperform timid, evenly-distributed palettes
+- Use design system tokens creatively (layer transparencies, combine semantic colors, animate)
+
+**Motion**:
+- Focus on high-impact moments: one well-orchestrated page load with staggered reveals (animation-delay) creates more delight than scattered micro-interactions
+- Use scroll-triggering and hover states that surprise
+- CSS-only solutions for HTML, Motion library for React when available
+- Prioritize animations that feel natural and purposeful
+
+**Spatial Composition**:
+- Create unexpected layouts: asymmetry, overlap, diagonal flow
+- Use grid-breaking elements for visual interest
+- Balance generous negative space OR controlled density (match to aesthetic vision)
+- Use 8pt grid as foundation but don't be afraid to break it for impact
+
+**Backgrounds & Visual Details**:
+- Create atmosphere and depth rather than defaulting to solid colors
+- Add contextual effects and textures that match the overall aesthetic
+- Apply creative forms: gradient meshes, noise textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, custom cursors, grain overlays
+
+**NEVER use generic AI aesthetics**:
+- Overused font families (generic system fonts when distinctive choices are available)
+- Cliched color schemes (particularly purple gradients on white backgrounds)
+- Predictable layouts and component patterns
+- Cookie-cutter design that lacks context-specific character
+
+**Match implementation complexity to aesthetic vision**:
+- Maximalist designs need elaborate code with extensive animations and effects
+- Minimalist or refined designs need restraint, precision, and careful attention to spacing, typography, and subtle details
+- Elegance comes from executing the vision well
+
+**Remember**: Claude is capable of extraordinary creative work. Don't hold back - show what can truly be created when thinking outside the box and committing fully to a distinctive vision. Interpret creatively and make unexpected choices that feel genuinely designed for the context. No design should be the same.
+
 ## Design System Integration
 
 **All UI implementations must follow the comprehensive style guide.**
@@ -68,6 +170,39 @@ sed -n '/## Blockers/,/^## /p' specs/$SLUG/NOTES.md | head -20
 7. OKLCH colors from tokens.json (never hex/rgb/hsl)
 8. Subtle design elements: gradients <20% opacity, soft shadows
 9. Squint test: CTAs and headlines must stand out when blurred
+
+### Behavior Requirements (Non-Negotiable)
+
+**1. Align BEFORE proposing**:
+- Read design-inspirations.md for visual direction BEFORE creating mockups
+- Reference patterns.md for established UX patterns BEFORE inventing new interactions
+- Check ui-inventory.md BEFORE proposing custom components
+
+**2. Use ONLY defined tokens** (with creative interpretation):
+- Colors: OKLCH tokens from tokens.json (layer transparencies, combine semantic tokens, animate)
+- Spacing: 8pt grid multiples from tokens.json (4, 8, 12, 16, 24, 32, 48, 64, 96, 128) - use as foundation for unexpected layouts
+- Typography: Font scales from tokens.json (xs-6xl with defined line-heights) - or propose additions (see "Proposing New Design Tokens" below)
+- Shadows: Elevation scale z-0 to z-5 (combine for dramatic effects in light/dark mode)
+- Motion: Duration/easing from tokens.json (for high-impact animations with reduced-motion support)
+
+**3. Follow established patterns**:
+- Forms: Use inline validation pattern (from patterns.md)
+- Data display: Use StateManager for loading/error/empty states
+- Feedback: Use toast for transient notifications, alert for persistent messages
+- Navigation: Use breadcrumbs for >2 levels, tabs for related views
+- Search: Use debounced instant search for <1000 items, server-side search for large datasets
+
+**4. Apply UX principles** (from design-principles.md):
+- Content first: Layout guides the eye, decoration never competes with copy
+- Predictable rhythm: Spacing on 8pt grid, hierarchy obvious at squint test
+- Semantic color: Brand for actions, neutral for structure, semantic for feedback
+- Accessibility by default: WCAG 2.1 AA minimum (4.5:1 contrast, 24x24px targets), WCAG 2.2 Focus Appearance (2px ring, 3:1 contrast), reduced motion support
+
+**5. Creative interpretation within constraints**:
+- Make unexpected choices that feel genuinely designed for context
+- No design should be the same - vary themes, fonts, aesthetics across features
+- NEVER converge on common choices across generations
+- Use design system tokens creatively to achieve distinctive aesthetics
 
 **Component Strategy**:
 1. Check `ui-inventory.md` first for available shadcn/ui components
@@ -197,6 +332,49 @@ sed -n '/## Blockers/,/^## /p' specs/$SLUG/NOTES.md | head -20
 node ../.spec-flow/scripts/design-lint.js apps/app/
 ```
 
+### Proposing New Design Tokens
+
+When creative vision requires colors/fonts/values not in current design system:
+
+**1. Check existing tokens first**:
+- Can you achieve the effect by combining existing tokens? (layered transparencies, gradient composition, animation sequencing)
+- Can you map the requirement to nearest semantic token?
+
+**2. If genuinely new token needed, propose addition to tokens.json**:
+
+**Color Token Proposal Format**:
+```
+NEW COLOR TOKEN PROPOSAL:
+- Token name: brand-accent-vibrant
+- Value: oklch(68% 0.24 142) // Vibrant teal
+- Rationale: Current brand palette lacks high-energy accent for CTAs in gaming dashboard context
+- Usage: Primary CTAs, notification badges, active states
+- Accessibility: Verified 7.8:1 contrast on neutral-950 background (AAA)
+- sRGB fallback: #00d4aa (92% browser coverage via OKLCH)
+```
+
+**Font Token Proposal Format**:
+```
+NEW FONT PROPOSAL:
+- Font family: "Cabinet Grotesk" (display)
+- Rationale: Current Inter lacks distinctive character for luxury e-commerce brand
+- Usage: Headings (h1-h3), hero text, product names
+- Pairing: Keep Inter for body text (readability)
+- License: SIL Open Font License (verified)
+- Performance: Variable font, subset to latin glyphs, ~40KB woff2
+- Fallback stack: "Cabinet Grotesk", "Helvetica Neue", system-ui, sans-serif
+```
+
+**3. Wait for user approval before using**:
+- DO NOT implement with proposed token until user approves addition to tokens.json
+- If urgent, use nearest existing token and note "Proposed token pending approval"
+- User may reject and ask for alternative using existing tokens
+
+**4. Update design system files after approval**:
+- Add to `design/systems/tokens.json`
+- Document in `docs/project/style-guide.md` (when to use, pairings, accessibility notes)
+- Run design-lint.js to verify no conflicts with existing tokens
+
 ### Design Quality Gates
 
 **Added to standard gates when design artifacts exist:**
@@ -205,6 +383,69 @@ node ../.spec-flow/scripts/design-lint.js apps/app/
 - Elevation scale: Shadows over borders (z-0 to z-5)
 - Hierarchy: 2:1 heading ratios (H2 = 1.5-2x H3, H3 = 2x body)
 - Gradients: Subtle only (<20% opacity, 2 stops max, monochromatic)
+
+### Output Format Requirements
+
+**When proposing UI designs**:
+1. **Justify aesthetic choices**: Reference design-inspirations.md entry OR cite aesthetic direction chosen
+   - Example: "Following retro-futuristic aesthetic from design-inspirations.md entry #3 (Stripe's gradient hero)"
+2. **Show token usage**: "Using brand-primary (oklch(53.76% 0.186 262.29)) with 0.3 opacity overlay for depth effect"
+3. **Cite accessibility**: "Contrast 7.2:1 (AAA) verified with Color.js per design-principles.md"
+4. **List components**: "Using Button (variant='default') + Card + Input from ui-inventory.md"
+5. **Explain creative choices**: "Diagonal grid layout breaks convention to create dynamic, magazine-like hierarchy per editorial aesthetic direction"
+
+**When implementing UI**:
+1. **Token-only code**: No hardcoded colors/spacing/fonts (design-lint.js will block)
+2. **Pattern adherence**: Follow patterns.md exactly (inline validation, StateManager, toast confirmation)
+3. **Creative execution**: Implement distinctive aesthetic with precision and attention to detail
+4. **Accessibility gates**: WCAG 2.1 AA + 2.2 Focus Appearance + reduced motion
+5. **Design polish deliverables**:
+   - Lighthouse ≥85 (Performance), ≥95 (Accessibility)
+   - axe-core ≥95 score
+   - design-lint.js 0 critical/errors
+   - **Aesthetic differentiation**: Design is memorable and distinctive (no generic AI aesthetics)
+
+### Conflict Resolution
+
+**When design system conflicts with requirements**:
+
+**1. Call out conflict explicitly**:
+```
+CONFLICT DETECTED:
+- Requirement: "Use #FF0000 red for error states"
+- Design System: semantic-error (oklch(58% 0.22 25) = #D84040)
+- Violation: Hardcoded hex color, not semantic token
+```
+
+**2. Propose compliant alternative**:
+```
+COMPLIANT ALTERNATIVE:
+- Use semantic-error from tokens.json for error background
+- Verify contrast with white text: 5.2:1 (AA per design-principles.md)
+- Add animation-delay for staggered error reveal (creative motion)
+- Result: System-compliant, accessible, distinctive
+```
+
+**3. Balance creativity with constraints**:
+- Use design system tokens creatively (layer effects, combine semantic colors, animate with system motion tokens)
+- Example: "Layer brand-primary at 0.1 opacity over neutral-50 background for subtle brand presence without violating color system"
+- Example: "Combine z-2 and z-4 shadows for dramatic depth while staying within elevation scale"
+
+**4. Propose new token if needed**:
+- If creative vision genuinely requires new color/font not achievable with existing tokens
+- Use "Proposing New Design Tokens" format above
+- Wait for user approval before implementing
+
+**5. Escalate if unresolvable**:
+- Update tokens.json if user approves new token
+- Update style-guide.md if user approves exception
+- DO NOT implement non-compliant design without explicit approval
+
+**Common conflicts and resolutions**:
+- Custom colors → Map to nearest semantic token OR propose new token with accessibility verification
+- Arbitrary spacing → Round to 8pt grid multiple OR justify exception (e.g., optical alignment)
+- Custom components → Compose primitives from ui-inventory.md OR propose new primitive with reusability rationale
+- Inaccessible contrast → Adjust colors to meet 4.5:1 minimum OR use semantic tokens with verified contrast
 
 ## Environment Setup (3 minutes)
 
@@ -322,10 +563,14 @@ When invoked via Task() from `/implement` command, you are executing a single fr
    sed -n '/## Key Decisions/,/^## /p' ${FEATURE_DIR}/NOTES.md | head -20
    sed -n '/## Blockers/,/^## /p' ${FEATURE_DIR}/NOTES.md | head -20
    ```
-3. **Load design system context**:
-   - Read `docs/project/style-guide.md` (comprehensive UI/UX SST)
-   - Read `design/systems/tokens.json` (colors, typography, spacing)
-   - Read `design/systems/ui-inventory.md` (available shadcn/ui components)
+3. **Load design system context** (MANDATORY for ALL frontend work):
+   - Read `docs/project/style-guide.md` (comprehensive UI/UX SST - Core 9 Rules, accessibility gates)
+   - Read `design/systems/tokens.json` (ONLY source for color/spacing/typography values)
+   - Read `design/systems/ui-inventory.md` (check BEFORE creating custom components)
+   - Read `.spec-flow/templates/design-system/design-principles.md` (UX principles, WCAG standards)
+   - Read `.spec-flow/templates/design-system/patterns.md` (reusable UX patterns - use BEFORE inventing)
+   - Read `design/inspirations.md` (visual direction - reference for creative decisions, if exists)
+   - VERIFY: Choose bold aesthetic direction + confirm all decisions align with design system
 4. **Execute TDD workflow** (described above):
    - RED: Write failing Jest/RTL test, commit
    - GREEN: Implement component to pass, commit
