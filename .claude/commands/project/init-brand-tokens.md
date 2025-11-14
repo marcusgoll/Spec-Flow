@@ -460,6 +460,16 @@ export default {
   --color-error-border: oklch(85% 0.08 27);
   --color-error-icon: oklch(40% 0.20 27);
 
+  --color-warning-bg: oklch(95% 0.02 90);
+  --color-warning-fg: oklch(35% 0.15 90);
+  --color-warning-border: oklch(85% 0.08 90);
+  --color-warning-icon: oklch(45% 0.16 90);
+
+  --color-info-bg: oklch(95% 0.02 240);
+  --color-info-fg: oklch(30% 0.12 240);
+  --color-info-border: oklch(85% 0.05 240);
+  --color-info-icon: oklch(40% 0.14 240);
+
   /* Neutral palette */
   --color-neutral-50: oklch(98% 0 0);
   --color-neutral-100: oklch(96% 0 0);
@@ -473,22 +483,67 @@ export default {
   --color-neutral-900: oklch(15% 0 0);
   --color-neutral-950: oklch(11% 0 0);
 
-  /* Typography */
+  /* Typography - Families */
   --font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: Fira Code, Menlo, Monaco, Consolas, monospace;
   --font-serif: Georgia, Cambria, 'Times New Roman', Times, serif;
+
+  /* Typography - Sizes */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+
+  /* Typography - Weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Typography - Line Heights */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* Typography - Letter Spacing */
+  --letter-spacing-display: -0.025em;
+  --letter-spacing-body: 0em;
+  --letter-spacing-cta: 0.025em;
+
+  /* Spacing scale (4px grid) */
+  --spacing-0: 0px;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+  --spacing-20: 80px;
+  --spacing-24: 96px;
 
   /* Shadows - Light mode */
   --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.05);
   --shadow-md: 0 4px 6px oklch(0% 0 0 / 0.07), 0 2px 4px oklch(0% 0 0 / 0.06);
   --shadow-lg: 0 10px 15px oklch(0% 0 0 / 0.10), 0 4px 6px oklch(0% 0 0 / 0.05);
 
-  /* Motion */
+  /* Motion - Duration */
   --motion-duration-fast: 150ms;
   --motion-duration-base: 200ms;
   --motion-duration-slow: 300ms;
+  --motion-duration-slower: 500ms;
+
+  /* Motion - Easing */
   --motion-easing-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
   --motion-easing-decelerate: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --motion-easing-accelerate: cubic-bezier(0.4, 0.0, 1.0, 1.0);
 
   /* Data visualization - Okabe-Ito (color-blind-safe) */
   --dataviz-okabe-ito-orange: oklch(68.29% 0.151 58.43);
@@ -499,6 +554,26 @@ export default {
   --dataviz-okabe-ito-vermillion: oklch(57.50% 0.199 37.70);
   --dataviz-okabe-ito-reddish-purple: oklch(50.27% 0.159 328.36);
   --dataviz-okabe-ito-black: oklch(0% 0 0);
+
+  /* Data visualization - Sequential scales */
+  --dataviz-sequential-blue-1: oklch(95% 0.02 240);
+  --dataviz-sequential-blue-2: oklch(75% 0.08 240);
+  --dataviz-sequential-blue-3: oklch(55% 0.12 240);
+  --dataviz-sequential-blue-4: oklch(35% 0.14 240);
+  --dataviz-sequential-blue-5: oklch(25% 0.16 240);
+
+  --dataviz-sequential-green-1: oklch(95% 0.02 145);
+  --dataviz-sequential-green-2: oklch(75% 0.08 145);
+  --dataviz-sequential-green-3: oklch(55% 0.12 145);
+  --dataviz-sequential-green-4: oklch(35% 0.14 145);
+  --dataviz-sequential-green-5: oklch(25% 0.16 145);
+
+  /* Data visualization - Diverging scales */
+  --dataviz-diverging-red-blue-1: oklch(95% 0.02 27);
+  --dataviz-diverging-red-blue-2: oklch(75% 0.08 27);
+  --dataviz-diverging-red-blue-3: oklch(90% 0 0);
+  --dataviz-diverging-red-blue-4: oklch(75% 0.08 240);
+  --dataviz-diverging-red-blue-5: oklch(95% 0.02 240);
 }
 
 /* Dark mode shadows (4-6x opacity increase) */
@@ -516,7 +591,10 @@ export default {
     --motion-duration-fast: 0ms;
     --motion-duration-base: 0ms;
     --motion-duration-slow: 0ms;
+    --motion-duration-slower: 0ms;
     --motion-easing-standard: linear;
+    --motion-easing-decelerate: linear;
+    --motion-easing-accelerate: linear;
   }
 }
 
