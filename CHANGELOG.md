@@ -1,3 +1,14 @@
+## [6.2.2] - 2025-11-13
+
+### Fixed
+- init-brand-tokens: Complete tokens.css to match tokens.json structure
+
+### Documentation
+- Added emit module for token conversion and validation
+- Added comprehensive tests for emit module
+
+---
+
 ## [6.2.1] - 2025-11-13
 
 ### Changed
