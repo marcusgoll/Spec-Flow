@@ -5,6 +5,7 @@ Thumbs.db
 # Editor settings
 .vscode/
 .idea/
+.cursor/
 
 # Local agent overrides
 .claude/settings.local.json
