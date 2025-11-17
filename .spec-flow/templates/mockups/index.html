@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[FEATURE_NAME] - Screen Navigation</title>
+  <link rel="stylesheet" href="../../../design/systems/tokens.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-family-base, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+      background: var(--color-background-page, #f9fafb);
+      color: var(--color-text-primary, #111827);
+      padding: var(--space-8, 32px);
+      line-height: 1.6;
+    }
+
+    .header {
+      max-width: 1200px;
+      margin: 0 auto var(--space-8, 32px);
+      padding-bottom: var(--space-6, 24px);
+      border-bottom: 2px solid var(--color-border-subtle, #e5e7eb);
+    }
+
+    .header h1 {
+      font-size: var(--text-3xl, 30px);
+      font-weight: 700;
+      margin-bottom: var(--space-2, 8px);
+      color: var(--color-text-heading, #111827);
+    }
+
+    .header p {
+      font-size: var(--text-base, 16px);
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .help-banner {
+      background: var(--color-background-info, #eff6ff);
+      border: 1px solid var(--color-border-info, #3b82f6);
+      border-radius: var(--radius-md, 8px);
+      padding: var(--space-4, 16px);
+      margin-bottom: var(--space-8, 32px);
+    }
+
+    .help-banner h2 {
+      font-size: var(--text-lg, 18px);
+      font-weight: 600;
+      margin-bottom: var(--space-2, 8px);
+      color: var(--color-semantic-info, #3b82f6);
+    }
+
+    .help-banner ul {
+      list-style: none;
+      padding-left: var(--space-4, 16px);
+    }
+
+    .help-banner li {
+      margin-bottom: var(--space-1, 4px);
+      font-size: var(--text-sm, 14px);
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    .help-banner kbd {
+      background: var(--color-background-surface, white);
+      border: 1px solid var(--color-border-default, #d1d5db);
+      border-radius: var(--radius-sm, 4px);
+      padding: 2px 6px;
+      font-family: monospace;
+      font-size: var(--text-xs, 12px);
+      font-weight: 600;
+      color: var(--color-text-primary, #111827);
+    }
+
+    .screens-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: var(--space-6, 24px);
+      margin-bottom: var(--space-8, 32px);
+    }
+
+    .screen-card {
+      background: var(--color-background-surface, white);
+      border: 1px solid var(--color-border-default, #d1d5db);
+      border-radius: var(--radius-lg, 12px);
+      padding: var(--space-6, 24px);
+      transition: all var(--duration-normal, 200ms) ease;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4, 16px);
+    }
+
+    .screen-card:hover {
+      border-color: var(--color-brand-primary, #3b82f6);
+      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+      transform: translateY(-2px);
+    }
+
+    .screen-card:focus {
+      outline: 2px solid var(--color-brand-primary, #3b82f6);
+      outline-offset: 2px;
+    }
+
+    .screen-card h3 {
+      font-size: var(--text-xl, 20px);
+      font-weight: 600;
+      color: var(--color-text-heading, #111827);
+    }
+
+    .screen-card p {
+      font-size: var(--text-sm, 14px);
+      color: var(--color-text-secondary, #6b7280);
+      flex: 1;
+    }
+
+    .screen-card .meta {
+      display: flex;
+      gap: var(--space-3, 12px);
+      font-size: var(--text-xs, 12px);
+      color: var(--color-text-tertiary, #9ca3af);
+    }
+
+    .screen-card .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: var(--color-background-accent, #f3f4f6);
+      border-radius: var(--radius-full, 9999px);
+      font-weight: 500;
+      font-size: var(--text-xs, 12px);
+    }
+
+    .screen-card .badge.primary {
+      background: var(--color-brand-primary-subtle, #dbeafe);
+      color: var(--color-brand-primary, #3b82f6);
+    }
+
+    .screen-card .badge.authenticated {
+      background: var(--color-semantic-success-subtle, #d1fae5);
+      color: var(--color-semantic-success, #10b981);
+    }
+
+    .screen-card .badge.public {
+      background: var(--color-background-accent, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    .flow-section {
+      margin-bottom: var(--space-8, 32px);
+    }
+
+    .flow-section h2 {
+      font-size: var(--text-2xl, 24px);
+      font-weight: 700;
+      margin-bottom: var(--space-4, 16px);
+      color: var(--color-text-heading, #111827);
+    }
+
+    .flow-diagram {
+      background: var(--color-background-surface, white);
+      border: 1px solid var(--color-border-default, #d1d5db);
+      border-radius: var(--radius-lg, 12px);
+      padding: var(--space-6, 24px);
+      margin-bottom: var(--space-6, 24px);
+      font-family: monospace;
+      font-size: var(--text-sm, 14px);
+      color: var(--color-text-secondary, #6b7280);
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    .footer {
+      max-width: 1200px;
+      margin: var(--space-8, 32px) auto 0;
+      padding-top: var(--space-6, 24px);
+      border-top: 1px solid var(--color-border-subtle, #e5e7eb);
+      text-align: center;
+      font-size: var(--text-sm, 14px);
+      color: var(--color-text-tertiary, #9ca3af);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .screen-card {
+        transition: none;
+      }
+      .screen-card:hover {
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>[FEATURE_NAME]</h1>
+    <p>Interactive mockup navigation hub - Press number keys or click to navigate</p>
+  </div>
+
+  <div class="container">
+    <!-- Help Banner -->
+    <div class="help-banner" role="region" aria-label="Keyboard shortcuts">
+      <h2>⌨️ Keyboard Navigation</h2>
+      <ul>
+        <li><kbd>1</kbd>-<kbd>9</kbd> - Jump to screen by number</li>
+        <li><kbd>S</kbd> - Cycle state (Success → Loading → Error → Empty)</li>
+        <li><kbd>H</kbd> - Return to this hub from any screen</li>
+        <li><kbd>Esc</kbd> - Close modals/dialogs (when viewing screens)</li>
+      </ul>
+    </div>
+
+    <!-- User Flow Section -->
+    <div class="flow-section">
+      <h2>User Flow</h2>
+      <div class="flow-diagram" role="img" aria-label="User flow diagram">
+[FLOW_DIAGRAM]
+<!-- Example:
+Login → Dashboard → Profile Settings → Save Changes → Success
+  ↓         ↓
+Error    Create Item → Form → Submit → Loading → Success/Error
+-->
+      </div>
+    </div>
+
+    <!-- Screens Grid -->
+    <div class="screens-grid" role="list">
+      <!-- Screen cards will be inserted here by tasks.md agent -->
+      <!-- Template for each screen:
+      <a href="[SCREEN_FILE].html" class="screen-card" role="listitem" data-screen="1" tabindex="0">
+        <div>
+          <h3>[SCREEN_TITLE]</h3>
+          <p>[SCREEN_DESCRIPTION]</p>
+        </div>
+        <div class="meta">
+          <span class="badge [primary|authenticated|public]">[Access Level]</span>
+          <span>[States: Success, Loading, Error, Empty]</span>
+        </div>
+      </a>
+      -->
+
+      <!-- Example screens (replace with actual screens) -->
+      <a href="screen-01-login.html" class="screen-card" role="listitem" data-screen="1" tabindex="0">
+        <div>
+          <h3>01. Login</h3>
+          <p>User authentication screen with email/password form and error handling</p>
+        </div>
+        <div class="meta">
+          <span class="badge public">Public</span>
+          <span>States: Success, Loading, Error</span>
+        </div>
+      </a>
+
+      <a href="screen-02-dashboard.html" class="screen-card" role="listitem" data-screen="2" tabindex="0">
+        <div>
+          <h3>02. Dashboard</h3>
+          <p>Main application dashboard with navigation and data overview</p>
+        </div>
+        <div class="meta">
+          <span class="badge authenticated">Authenticated</span>
+          <span>States: Success, Loading, Error, Empty</span>
+        </div>
+      </a>
+
+      <!-- Add more screen cards here -->
+    </div>
+
+    <!-- Approval Section -->
+    <div class="flow-section">
+      <h2>Approval Checklist</h2>
+      <div class="help-banner">
+        <p>Before approving mockups, verify:</p>
+        <ul>
+          <li>✅ All screens accessible via keyboard navigation</li>
+          <li>✅ All states demonstrated (Success, Loading, Error, Empty)</li>
+          <li>✅ Multi-screen flow matches user journey in spec.md</li>
+          <li>✅ Design tokens used consistently (no hardcoded colors/spacing)</li>
+          <li>✅ WCAG 2.1 AA contrast ratios met (run design-lint)</li>
+          <li>✅ Touch targets ≥24x24px (mobile-first)</li>
+          <li>✅ Component reuse follows ui-inventory.md</li>
+        </ul>
+        <p style="margin-top: var(--space-4, 16px); font-weight: 600;">
+          See <code>mockup-approval-checklist.md</code> for detailed review criteria
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>Generated by Spec-Flow Workflow Kit · Press <kbd>1</kbd>-<kbd>9</kbd> to navigate screens</p>
+  </div>
+
+  <!-- Keyboard Navigation Script -->
+  <script src="_shared/navigation.js"></script>
+  <script>
+    // Hub-specific keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      // Number keys 1-9 navigate to screens
+      if (e.key >= '1' && e.key <= '9') {
+        const screenNumber = parseInt(e.key, 10);
+        const screenCard = document.querySelector(`[data-screen="${screenNumber}"]`);
+        if (screenCard) {
+          screenCard.click();
+        }
+        return;
+      }
+
+      // 'H' returns to hub (no-op on hub page, but consistent with screen pages)
+      if (e.key.toLowerCase() === 'h') {
+        // Already on hub, do nothing
+        return;
+      }
+    });
+
+    // Add accessible click behavior (Enter/Space on focused cards)
+    document.querySelectorAll('.screen-card').forEach(card => {
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          card.click();
+        }
+      });
+    });
+  </script>
+</body>
+</html>

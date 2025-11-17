@@ -4,17 +4,28 @@ description: Create feature specification from natural language (planning is 80%
 
 Create specification for: $ARGUMENTS
 
+**Flags:**
+- `--interactive` : Force wait for user confirmation (no auto-proceed timeout)
+- `--yes` : Skip all HITL gates (clarification + confirmation) and auto-commit (full automation)
+- `--skip-clarify` : Skip upfront clarification gate only (still show confirmation before commit)
+- Environment: `SPEC_FLOW_INTERACTIVE=true` for global interactive mode
+
 <context>
 ## MENTAL MODEL
 
-Single-pass, non-interactive pipeline:
+Pipeline with human-in-the-loop gates:
 
-`spec-flow → classify → research → artifacts → validate → commit → auto-progress`
+`[CLARIFICATION GATE] → spec-flow → classify → research → artifacts → [CONFIRMATION GATE] → commit → [DECISION TREE]`
 
-- **Deterministic**: slug generation, zero blocking prompts
-- **Guardrails**: prevent speculation, cite sources
+- **Deterministic**: slug generation, predictable workflows
+- **Guardrails**: prevent speculation, cite sources, human confirmation before commit
 - **User-value**: success criteria are measurable, tech-agnostic
 - **Conditional**: UI/metrics/deployment sections enabled by flags
+- **HITL gates (3 total)**:
+  1. **Clarification** (upfront): Detects ambiguous input, asks targeted questions (max 3)
+  2. **Confirmation** (before commit): Shows quality summary, 10s timeout
+  3. **Decision tree** (after commit): Executable next-step commands
+- **Automation-friendly**: `--yes` skips all gates, `--skip-clarify` skips only gate #1, `/feature continue` skips all
 - **Clarify output**: use `[NEEDS CLARIFICATION]` only for **blocking** questions in `spec.md` (max 3); all other questions go into `clarify.md`
 
 Clarification behavior:
@@ -82,6 +93,149 @@ The specification workflow is implemented as a Python CLI script that **must be 
 
 ---
 
+### 0.5. Clarification Gate (Upfront - HITL)
+
+**Before invoking the CLI**, analyze `$ARGUMENTS` for ambiguity and ask targeted questions if needed.
+
+**Check for --skip-clarify flag:**
+
+```python
+skip_clarify = "--skip-clarify" in args or "--no-clarify" in args
+auto_yes = "--yes" in args
+
+if skip_clarify or auto_yes:
+    print("Skipping clarification gate (--skip-clarify or --yes flag)")
+    # Proceed directly to CLI invocation
+```
+
+**Analyze user input for ambiguity:**
+
+```python
+# Extract $ARGUMENTS
+user_input = "$ARGUMENTS"
+
+# Ambiguity detection (Claude Code implements with reasoning)
+ambiguities = []
+
+# 1. Check for vague scope
+if matches_pattern(user_input, ["dashboard", "feature", "system", "tool", "app"]):
+    if not has_specificity(user_input):
+        ambiguities.append({
+            "category": "SCOPE",
+            "question": "What specific type of [X] are you building?",
+            "why": "Generic terms like 'dashboard' can mean many things",
+            "examples": ["Admin dashboard vs user-facing analytics", "Internal tool vs customer feature"]
+        })
+
+# 2. Check for missing target user
+if not contains(user_input, ["user", "admin", "developer", "customer", "for"]):
+    ambiguities.append({
+        "category": "TARGET_USER",
+        "question": "Who is the primary user of this feature?",
+        "why": "User type affects requirements and success criteria",
+        "examples": ["End users", "Administrators", "Developers", "External customers"]
+    })
+
+# 3. Check for missing success criteria
+if not contains(user_input, ["so that", "in order to", "goal", "improve", "enable", "reduce"]):
+    ambiguities.append({
+        "category": "SUCCESS",
+        "question": "What's the measurable outcome you want to achieve?",
+        "why": "Success criteria define when the feature is complete",
+        "examples": ["Reduce support tickets by 30%", "Enable users to self-serve", "Improve conversion by 15%"]
+    })
+
+# 4. Check for missing context (only if not greenfield)
+if has_existing_codebase() and not contains(user_input, ["like", "similar to", "extends", "integrates with"]):
+    ambiguities.append({
+        "category": "CONTEXT",
+        "question": "Does this extend an existing feature or integrate with existing code?",
+        "why": "Understanding integration points prevents architectural conflicts",
+        "examples": ["Extends user profiles", "Integrates with billing system", "New standalone feature"]
+    })
+
+# 5. Check for vague adjectives without metrics
+vague_terms = ["fast", "slow", "easy", "simple", "robust", "scalable", "performant"]
+if any(term in user_input.lower() for term in vague_terms):
+    ambiguities.append({
+        "category": "METRICS",
+        "question": "What specific metrics define 'fast' / 'scalable' / 'robust' for this feature?",
+        "why": "Vague quality terms need measurable targets",
+        "examples": ["Response time <500ms", "Handle 10k concurrent users", "99.9% uptime"]
+    })
+```
+
+**Present clarification questions if detected:**
+
+```
+<if len(ambiguities) >= 2>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 Clarification Needed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+I'll create a specification for: "$ARGUMENTS"
+
+Before proceeding, let me clarify a few things to ensure a high-quality spec:
+
+<for each ambiguity in ambiguities[:3]>
+### Q{index}: {ambiguity.category}
+
+**Why I'm asking:** {ambiguity.why}
+
+**Question:** {ambiguity.question}
+
+**Examples:** {', '.join(ambiguity.examples)}
+
+**Your answer:** [type here or say 'skip']
+
+</for>
+
+You can answer any/all, or type 'continue' to proceed with current description.
+```
+
+**Handle clarification responses:**
+
+```python
+# Use AskUserQuestion tool for interactive clarification
+responses = []
+
+for ambiguity in ambiguities[:3]:  # Max 3 questions
+    answer = AskUserQuestion(
+        questions=[{
+            "question": ambiguity["question"],
+            "header": ambiguity["category"],
+            "multiSelect": False,
+            "options": [
+                {"label": ex, "description": f"This feature targets {ex}"}
+                for ex in ambiguity["examples"]
+            ]
+        }]
+    )
+
+    if answer != "skip" and answer != "":
+        responses.append(answer)
+
+# Enrich $ARGUMENTS with clarifications
+if len(responses) > 0:
+    enriched_input = f"{user_input}\n\n[CLARIFICATIONS]:\n"
+    for i, response in enumerate(responses):
+        enriched_input += f"- {ambiguities[i]['category']}: {response}\n"
+
+    print(f"\n✅ Enriched description with {len(responses)} clarifications")
+    print(f"\nProceeding with: {enriched_input}")
+
+    # Use enriched input for CLI invocation
+    ARGUMENTS_ENRICHED = enriched_input
+else:
+    print("\n→ Proceeding with original description")
+    ARGUMENTS_ENRICHED = user_input
+```
+
+**Automation mode:** When invoked by `/feature continue` or with `--skip-clarify` flag, skip this gate entirely.
+
+---
+
 ### 1. Mandatory execution flow
 
 When this command runs, follow this exact sequence:
@@ -89,7 +243,7 @@ When this command runs, follow this exact sequence:
 1. **Determine execution context**
 
    - Use the repo root as working directory.
-   - Treat `$ARGUMENTS` as the single source of truth for the feature description.
+   - Treat `$ARGUMENTS` (or `$ARGUMENTS_ENRICHED` if clarifications added) as the single source of truth for the feature description.
    - You do **not** guess slugs yourself; the CLI owns slug generation.
 
 2. **Always invoke the spec CLI first**
@@ -274,28 +428,335 @@ You do **not** bypass the CLI step. All your file reads and writes assume the di
 
 ---
 
-### 3. Readiness & next steps (contract with later commands)
+### 2.5. Confirmation Gate (HITL - Before Commit)
 
-Based on the final spec state:
+After filling all artifacts but **before committing**, show a summary and request confirmation.
 
-* If **any** blocking `[NEEDS CLARIFICATION]` markers remain in `spec.md`:
+**Extract spec metrics:**
 
-  * Explicitly mark the feature as **not ready for planning**.
-  * Next recommended step: `/clarify` to resolve blockers before `/plan`.
+```python
+# Read generated artifacts
+spec_content = read_file(f"specs/{slug}/spec.md")
+checklist_content = read_file(f"specs/{slug}/checklists/requirements.md")
 
-* If there are **no blocking clarifications**, but the checklist is **incomplete**:
+# Count elements
+fr_count = count_matches(r"^FR-\d+:", spec_content)
+nfr_count = count_matches(r"^NFR-\d+:", spec_content)
+scenario_count = count_matches(r"^Scenario:", spec_content)
+blocking_count = count_matches(r"\[NEEDS CLARIFICATION\]", spec_content)
 
-  * State that `/plan` is **not allowed** until checklist items are addressed.
-  * The spec may exist, but it is not yet considered “ready.”
+# Checklist completion
+total_items = count_matches(r"^- \[[ x]\]", checklist_content)
+completed_items = count_matches(r"^- \[x\]", checklist_content)
+completion_pct = (completed_items / total_items * 100) if total_items > 0 else 0
 
-* Only when:
+# Determine readiness
+ready_for_planning = (blocking_count == 0 and completion_pct == 100)
+```
 
-  * `spec.md` has **0 blocking clarifications**, and
-  * `checklists/requirements.md` is fully checked (`[x]` everywhere that matters)
+**Display confirmation prompt:**
 
-  you mark the spec as **ready for planning** and recommend:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Specification Generated
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  * Next: `/plan`
-  * Optional: `/feature continue` for automated plan → tasks → implement → ship.
+Feature: <slug>
+Location: specs/<slug>/
 
-This enforcement makes the `/spec` command repeatable and predictable: every run calls the same CLI, uses the same directory structure, obeys the same gating rules, and refuses to proceed when the spec is still fuzzy. </instructions>
+**Generated Artifacts:**
+✓ spec.md (<line_count> lines)
+✓ NOTES.md (research findings)
+<if HAS_UI>
+✓ design/screens.yaml (<screen_count> screens)
+✓ design/copy.md
+</if>
+<if HAS_METRICS>
+✓ design/heart-metrics.md
+</if>
+<if visuals exist>
+✓ visuals/README.md
+</if>
+✓ checklists/requirements.md
+
+**Specification Quality:**
+- Functional requirements: <fr_count>
+- Non-functional requirements: <nfr_count>
+- User scenarios: <scenario_count>
+- Blocking clarifications: <blocking_count>
+- Checklist completion: <completed_items>/<total_items> (<completion_pct>%)
+- Ready for planning: <Yes | No>
+
+Should I commit this specification?
+
+1. Commit and continue [RECOMMENDED]
+   Proceeds to decision tree for next steps
+
+2. Let me review first
+   Pauses to allow manual review of generated files
+
+3. Adjust specification
+   Allows edits before committing
+
+4. Cancel
+   Exits without committing
+
+<if not --interactive flag>
+Auto-proceeding in 10 seconds... (press any key to choose manually)
+</if>
+
+Choose (1-4):
+```
+
+**Handle user choice:**
+
+```python
+# Check for flags
+interactive_mode = "--interactive" in args or os.getenv("SPEC_FLOW_INTERACTIVE") == "true"
+auto_yes = "--yes" in args or "--no-confirm" in args
+
+if auto_yes:
+    choice = "1"
+    print("Auto-confirming (--yes flag detected)")
+elif not interactive_mode:
+    # Show 10s countdown, allow interrupt
+    choice = wait_with_timeout(10, default="1")
+else:
+    # Force wait for user input
+    choice = input("Your choice: ")
+
+if choice == "1":
+    # Proceed to commit
+    print("Committing specification...")
+    # Continue to commit step below
+
+elif choice == "2":
+    print(f"\n📂 Review these files:")
+    print(f"  - specs/{slug}/spec.md")
+    print(f"  - specs/{slug}/NOTES.md")
+    if HAS_UI:
+        print(f"  - specs/{slug}/design/screens.yaml")
+        print(f"  - specs/{slug}/design/copy.md")
+    print(f"  - specs/{slug}/checklists/requirements.md")
+    print(f"\nWhen ready, type 'commit' to proceed:")
+
+    confirm = input().strip().lower()
+    if confirm == "commit":
+        print("Committing specification...")
+        # Continue to commit step below
+    else:
+        print("Cancelled. Run /spec again when ready.")
+        exit(0)
+
+elif choice == "3":
+    adjustment = AskUserQuestion(
+        questions=[{
+            "question": "What would you like to adjust?",
+            "header": "Adjustment",
+            "multiSelect": False,
+            "options": [
+                {
+                    "label": "Problem scope",
+                    "description": "Refine the problem statement or goals"
+                },
+                {
+                    "label": "Requirements",
+                    "description": "Add/remove/modify functional or non-functional requirements"
+                },
+                {
+                    "label": "Success criteria",
+                    "description": "Adjust measurable outcomes or HEART metrics"
+                },
+                {
+                    "label": "UI design",
+                    "description": "Modify screens, states, or copy"
+                }
+            ]
+        }]
+    )
+
+    # Apply adjustment (re-run specific spec generation section)
+    print(f"Please edit the files manually, then run /spec again to regenerate.")
+    exit(0)
+
+elif choice == "4":
+    print("Cancelled. Specification not committed.")
+    print("Files remain in: specs/{slug}/ (uncommitted)")
+    exit(0)
+```
+
+**Commit artifacts after confirmation:**
+
+```bash
+# Stage all spec artifacts
+git add specs/<slug>/
+
+# Create detailed commit message
+COMMIT_MSG="spec: complete specification for <slug>
+
+[SPECIFICATION SUMMARY]
+- Functional requirements: <fr_count>
+- Non-functional requirements: <nfr_count>
+- User scenarios: <scenario_count>
+- Blocking clarifications: <blocking_count>
+- Checklist completion: <completion_pct>%
+
+[ARTIFACTS]
+- spec.md (<line_count> lines)
+- NOTES.md (research findings)
+<list other artifacts>
+
+<if blocking_count > 0>
+⚠️  <blocking_count> ambiguities remain - recommend /clarify before /plan
+</if>
+
+<if ready_for_planning>
+✓ Ready for /plan
+</if>
+
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# Commit
+git commit -m "$COMMIT_MSG"
+
+# Verify commit succeeded
+COMMIT_HASH=$(git rev-parse --short HEAD)
+echo "✅ Specification committed: $COMMIT_HASH"
+```
+
+**Automation mode:** When invoked by `/feature continue` or with `--yes` flag, skip confirmation gate and auto-commit.
+
+---
+
+### 3. Readiness & Decision Tree (HITL Gate)
+
+After committing the specification, present an **executable decision tree** based on the spec state.
+
+**Determine spec readiness:**
+
+```python
+# Count blocking clarifications
+blocking_count = count("[NEEDS CLARIFICATION]" in spec.md)
+
+# Check checklist completion
+checklist_complete = all items in checklists/requirements.md are [x]
+
+# Determine readiness state
+if blocking_count > 0:
+    state = "BLOCKED_CLARIFICATIONS"
+elif not checklist_complete:
+    state = "BLOCKED_CHECKLIST"
+else:
+    state = "READY"
+```
+
+**Present decision tree:**
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Specification Complete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Feature: <slug>
+Spec: specs/<slug>/spec.md
+
+**Status:**
+- Functional requirements: <count>
+- User scenarios: <count>
+- Blocking clarifications: <blocking_count>
+- Checklist completion: <completed>/<total>
+- Ready for planning: <Yes | No>
+
+What's next?
+
+<if state == "BLOCKED_CLARIFICATIONS">
+**⚠️  Spec has ambiguities that need resolution**
+
+1. Resolve ambiguities first (/clarify) [RECOMMENDED]
+   Duration: ~5-10 min
+   Impact: Prevents rework in planning phase
+
+2. Proceed to planning anyway (/plan)
+   ⚠️  May require plan revisions when ambiguities clarified
+
+3. Review spec.md manually
+   Location: specs/<slug>/spec.md
+
+4. Continue automated workflow (/feature continue)
+   Will attempt /clarify → /plan → /tasks → /implement
+
+Choose (1-4):
+</if>
+
+<if state == "BLOCKED_CHECKLIST">
+**⚠️  Quality checklist incomplete**
+
+1. Review checklist and complete items
+   Location: specs/<slug>/checklists/requirements.md
+
+2. Proceed to planning anyway (/plan)
+   ⚠️  May not meet quality standards
+
+3. Continue automated workflow (/feature continue)
+
+Choose (1-3):
+</if>
+
+<if state == "READY">
+**✅ Spec is ready for planning**
+
+1. Generate implementation plan (/plan) [RECOMMENDED]
+   Duration: ~10-15 min
+   Output: Architecture decisions, component reuse analysis
+
+2. Continue automated workflow (/feature continue)
+   Executes: /plan → /tasks → /implement → /optimize → /ship
+   Duration: ~60-90 min (full feature delivery)
+
+3. Review spec.md first
+   Location: specs/<slug>/spec.md
+
+Choose (1-3):
+</if>
+```
+
+**Execute user choice via SlashCommand tool:**
+
+```python
+if choice == 1:
+    if state == "BLOCKED_CLARIFICATIONS":
+        SlashCommand(f"/clarify {slug}")
+    elif state == "BLOCKED_CHECKLIST":
+        # Open checklist for review, then wait
+        print(f"Review and update: specs/{slug}/checklists/requirements.md")
+        print("Run /plan when ready")
+    else:  # READY
+        SlashCommand(f"/plan {slug}")
+
+elif choice == 2:
+    if state in ["BLOCKED_CLARIFICATIONS", "BLOCKED_CHECKLIST"]:
+        confirm = AskUserQuestion(
+            "⚠️  Proceeding with blockers may require rework. Continue? (yes/no)"
+        )
+        if confirm == "yes":
+            SlashCommand(f"/plan {slug}")
+    else:  # READY
+        SlashCommand(f"/feature continue {slug}")
+
+elif choice == 3:
+    if state in ["BLOCKED_CLARIFICATIONS", "BLOCKED_CHECKLIST"]:
+        print(f"Review complete. Run /clarify or /plan when ready.")
+    else:  # READY
+        print(f"Review complete. Run /plan when ready.")
+
+elif choice == 4 and state == "BLOCKED_CLARIFICATIONS":
+    SlashCommand(f"/feature continue {slug}")
+```
+
+**Automation mode:** When invoked by `/feature continue`, skip decision tree and auto-proceed based on state:
+- `BLOCKED_CLARIFICATIONS` → auto-run `/clarify`
+- `BLOCKED_CHECKLIST` → auto-run `/plan` (log warning)
+- `READY` → auto-run `/plan`
+
+This enforcement makes the `/spec` command repeatable and predictable: every run calls the same CLI, uses the same directory structure, obeys the same gating rules, presents clear next steps, and executes commands on user request. </instructions>

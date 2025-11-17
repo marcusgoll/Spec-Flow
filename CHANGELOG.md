@@ -1,6 +1,23 @@
 ## [Unreleased]
 
+---
+
+## [6.4.0] - 2025-11-17
+
 ### Added
+- **CLI Integration Expansion**: Integrated 15 new commands into spec-cli.py (total: 39 commands)
+  - Living Documentation: `generate-feature-claude`, `generate-project-claude`, `update-living-docs`, `health-check-docs`
+  - Project Management: `init-project`, `roadmap`, `design-health`
+  - Epic & Sprint: `epic`, `sprint`
+  - Feature Management: `flag`, `schedule`
+  - Quality & Metrics: `gate`, `metrics`
+  - Utilities: `version`, `deps`
+- **Design System Integration**: Complete design system workflow with component reuse enforcement
+  - Created `design-scout` agent (574 lines) - Analyzes design system before mockup creation to enforce 85%+ component reuse
+  - Created `design-lint` agent (462 lines) - Automated quality inspector for HTML mockups (color contrast, touch targets, token compliance, accessibility)
+  - Created multi-screen mockup infrastructure with keyboard navigation (H=hub, 1-9=screens, S=state cycling, Esc=close)
+  - Added `design-health-check.sh` (298 lines) - 7 health checks monitoring design system staleness and sync
+  - Created approved-patterns.md template for documenting reusable layout patterns
 - **Infrastructure Command Integration**: Completed bash script implementation and spec-cli.py integration for infrastructure/metrics/scheduling commands
   - Created `.spec-flow/scripts/bash/metrics-track.sh` (450 lines) - HEART metrics calculation from local data sources
   - Created `.spec-flow/scripts/bash/dora-calculate.sh` (107 lines) - DORA metrics calculation placeholder

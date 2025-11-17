@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[SCREEN_TITLE] - [FEATURE_NAME]</title>
+  <link rel="stylesheet" href="../../../design/systems/tokens.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-family-base, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+      background: var(--color-background-page, #f9fafb);
+      color: var(--color-text-primary, #111827);
+      line-height: 1.6;
+    }
+
+    /* Screen Container */
+    .screen-container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* State Indicator Banner */
+    .state-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: var(--color-background-surface, white);
+      border-bottom: 2px solid var(--color-border-default, #d1d5db);
+      padding: var(--space-3, 12px) var(--space-6, 24px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+    }
+
+    .state-banner .left {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4, 16px);
+    }
+
+    .state-banner .breadcrumb {
+      font-size: var(--text-sm, 14px);
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    .state-banner .breadcrumb a {
+      color: var(--color-brand-primary, #3b82f6);
+      text-decoration: none;
+    }
+
+    .state-banner .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+
+    .state-banner .state-indicator {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2, 8px);
+      font-size: var(--text-sm, 14px);
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: var(--radius-full, 9999px);
+      border: 1px solid;
+    }
+
+    .state-banner .state-indicator.success {
+      background: var(--color-semantic-success-subtle, #d1fae5);
+      color: var(--color-semantic-success, #10b981);
+      border-color: var(--color-semantic-success, #10b981);
+    }
+
+    .state-banner .state-indicator.loading {
+      background: var(--color-semantic-warning-subtle, #fef3c7);
+      color: var(--color-semantic-warning, #f59e0b);
+      border-color: var(--color-semantic-warning, #f59e0b);
+    }
+
+    .state-banner .state-indicator.error {
+      background: var(--color-semantic-error-subtle, #fee2e2);
+      color: var(--color-semantic-error, #ef4444);
+      border-color: var(--color-semantic-error, #ef4444);
+    }
+
+    .state-banner .state-indicator.empty {
+      background: var(--color-background-accent, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+      border-color: var(--color-border-default, #d1d5db);
+    }
+
+    .state-banner .help {
+      font-size: var(--text-xs, 12px);
+      color: var(--color-text-tertiary, #9ca3af);
+    }
+
+    .state-banner kbd {
+      background: var(--color-background-surface, white);
+      border: 1px solid var(--color-border-default, #d1d5db);
+      border-radius: var(--radius-sm, 4px);
+      padding: 2px 6px;
+      font-family: monospace;
+      font-size: var(--text-xs, 12px);
+      font-weight: 600;
+      color: var(--color-text-primary, #111827);
+    }
+
+    /* Main Content Area */
+    .main-content {
+      margin-top: 60px; /* Account for fixed state banner */
+      flex: 1;
+      padding: var(--space-8, 32px);
+    }
+
+    /* State-specific visibility classes */
+    .show-on-success { display: none; }
+    .show-on-loading { display: none; }
+    .show-on-error { display: none; }
+    .show-on-empty { display: none; }
+
+    body[data-state="success"] .show-on-success { display: block; }
+    body[data-state="loading"] .show-on-loading { display: block; }
+    body[data-state="error"] .show-on-error { display: block; }
+    body[data-state="empty"] .show-on-empty { display: block; }
+
+    /* Default to success state if not specified */
+    body:not([data-state]) .show-on-success { display: block; }
+
+    /* Loading Spinner Component */
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid var(--color-border-subtle, #e5e7eb);
+      border-top-color: var(--color-brand-primary, #3b82f6);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Common Component Styles */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--color-background-surface, white);
+      border: 1px solid var(--color-border-default, #d1d5db);
+      border-radius: var(--radius-lg, 12px);
+      padding: var(--space-6, 24px);
+      box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2, 8px);
+      padding: var(--space-3, 12px) var(--space-4, 16px);
+      font-size: var(--text-base, 16px);
+      font-weight: 500;
+      border: 1px solid transparent;
+      border-radius: var(--radius-md, 8px);
+      cursor: pointer;
+      transition: all var(--duration-fast, 150ms) ease;
+      min-height: 44px; /* WCAG AA touch target */
+      min-width: 44px;
+    }
+
+    .button:focus {
+      outline: 2px solid var(--color-brand-primary, #3b82f6);
+      outline-offset: 2px;
+    }
+
+    .button.primary {
+      background: var(--color-brand-primary, #3b82f6);
+      color: white;
+    }
+
+    .button.primary:hover:not(:disabled) {
+      background: var(--color-brand-primary-hover, #2563eb);
+    }
+
+    .button.secondary {
+      background: var(--color-background-surface, white);
+      border-color: var(--color-border-default, #d1d5db);
+      color: var(--color-text-primary, #111827);
+    }
+
+    .button.secondary:hover:not(:disabled) {
+      background: var(--color-background-accent, #f3f4f6);
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .alert {
+      padding: var(--space-4, 16px);
+      border-radius: var(--radius-md, 8px);
+      border: 1px solid;
+      display: flex;
+      align-items: start;
+      gap: var(--space-3, 12px);
+    }
+
+    .alert.error {
+      background: var(--color-semantic-error-subtle, #fee2e2);
+      color: var(--color-semantic-error, #ef4444);
+      border-color: var(--color-semantic-error, #ef4444);
+    }
+
+    .alert.success {
+      background: var(--color-semantic-success-subtle, #d1fae5);
+      color: var(--color-semantic-success, #10b981);
+      border-color: var(--color-semantic-success, #10b981);
+    }
+
+    .alert.info {
+      background: var(--color-background-info, #eff6ff);
+      color: var(--color-semantic-info, #3b82f6);
+      border-color: var(--color-border-info, #3b82f6);
+    }
+
+    .form-group {
+      margin-bottom: var(--space-4, 16px);
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: var(--space-2, 8px);
+      font-size: var(--text-sm, 14px);
+      font-weight: 500;
+      color: var(--color-text-primary, #111827);
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: var(--space-3, 12px);
+      font-size: var(--text-base, 16px);
+      border: 1px solid var(--color-border-default, #d1d5db);
+      border-radius: var(--radius-md, 8px);
+      background: var(--color-background-surface, white);
+      color: var(--color-text-primary, #111827);
+      transition: border-color var(--duration-fast, 150ms) ease;
+      min-height: 44px; /* WCAG AA touch target */
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: 2px solid var(--color-brand-primary, #3b82f6);
+      outline-offset: 0;
+      border-color: var(--color-brand-primary, #3b82f6);
+    }
+
+    .form-group .error-message {
+      margin-top: var(--space-2, 8px);
+      font-size: var(--text-sm, 14px);
+      color: var(--color-semantic-error, #ef4444);
+    }
+
+    /* Empty State Component */
+    .empty-state {
+      text-align: center;
+      padding: var(--space-16, 64px) var(--space-8, 32px);
+    }
+
+    .empty-state svg {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto var(--space-4, 16px);
+      color: var(--color-text-tertiary, #9ca3af);
+    }
+
+    .empty-state h3 {
+      font-size: var(--text-xl, 20px);
+      font-weight: 600;
+      margin-bottom: var(--space-2, 8px);
+      color: var(--color-text-heading, #111827);
+    }
+
+    .empty-state p {
+      font-size: var(--text-base, 16px);
+      color: var(--color-text-secondary, #6b7280);
+      margin-bottom: var(--space-6, 24px);
+    }
+
+    /* Accessibility */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body data-state="success">
+  <!-- State Banner (Fixed Header) -->
+  <div class="state-banner" role="banner">
+    <div class="left">
+      <div class="breadcrumb">
+        <a href="index.html" tabindex="0">← Hub</a> / [SCREEN_TITLE]
+      </div>
+      <div class="state-indicator success" id="state-indicator">
+        <span id="state-label">Success</span>
+      </div>
+    </div>
+    <div class="help">
+      Press <kbd>S</kbd> to cycle states · <kbd>H</kbd> to return to hub
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="main-content" role="main">
+    <!-- SUCCESS STATE -->
+    <div class="show-on-success">
+      <div class="container">
+        <h1>[SCREEN_TITLE]</h1>
+
+        <!-- Add your success state UI here -->
+        <div class="card">
+          <p>Success state content goes here.</p>
+          <p>Replace this with your actual screen design using design tokens from tokens.css</p>
+        </div>
+
+        <!-- Example: Form -->
+        <!--
+        <form class="card">
+          <h2>Example Form</h2>
+
+          <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" placeholder="Enter your name">
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="Enter your email">
+          </div>
+
+          <button type="submit" class="button primary">Submit</button>
+          <button type="button" class="button secondary">Cancel</button>
+        </form>
+        -->
+      </div>
+    </div>
+
+    <!-- LOADING STATE -->
+    <div class="show-on-loading">
+      <div class="container">
+        <h1>[SCREEN_TITLE]</h1>
+
+        <div class="card" style="text-align: center; padding: var(--space-16, 64px);">
+          <div class="loading-spinner" style="width: 48px; height: 48px; margin: 0 auto var(--space-4, 16px);"></div>
+          <p style="color: var(--color-text-secondary, #6b7280);">Loading...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ERROR STATE -->
+    <div class="show-on-error">
+      <div class="container">
+        <h1>[SCREEN_TITLE]</h1>
+
+        <div class="alert error" role="alert">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <div>
+            <strong>Error</strong>
+            <p>Something went wrong. Please try again later.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <p>Add error-specific UI here (e.g., retry button, alternative actions)</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div class="show-on-empty">
+      <div class="container">
+        <h1>[SCREEN_TITLE]</h1>
+
+        <div class="card">
+          <div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            </svg>
+            <h3>No data yet</h3>
+            <p>Get started by creating your first item.</p>
+            <button class="button primary">Create New</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script src="_shared/navigation.js"></script>
+  <script src="_shared/state-switcher.js"></script>
+  <script>
+    // Initialize state switcher
+    initStateSwitcher(['success', 'loading', 'error', 'empty']);
+
+    // Screen-specific interactions can go here
+    // Example: Form submission
+    /*
+    document.querySelector('form')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      console.log('Form submitted');
+    });
+    */
+  </script>
+</body>
+</html>

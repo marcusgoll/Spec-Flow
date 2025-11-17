@@ -1,6 +1,10 @@
 ---
 description: Generate concrete TDD tasks from design artifacts (no generic placeholders)
+version: 2.0
+updated: 2025-11-17
 ---
+
+# /tasks — Task Generation from Design
 
 Create tasks from: specs/$SLUG/plan.md
 
@@ -56,826 +60,560 @@ Create tasks from: specs/$SLUG/plan.md
    - Check plan.md for intended sequence
 
 **Why this matters**: Hallucinated tasks create impossible work. Tasks referencing non-existent code waste implementation time. Clear, verified tasks reduce implementation errors by 50-60%.
-
-## REASONING APPROACH
-
-For complex task breakdown decisions, show your step-by-step reasoning:
-
-<thinking>
-Let me analyze this task structure:
-1. What does plan.md specify? [Quote implementation steps]
-2. How can I break this into atomic tasks? [List potential tasks]
-3. What are the dependencies? [Identify blocking relationships]
-4. What can run in parallel? [Group independent tasks]
-5. Are tasks testable? [Verify each has clear acceptance criteria]
-6. Conclusion: [Task breakdown with justification]
-</thinking>
-
-<answer>
-[Task breakdown based on reasoning]
-</answer>
-
-**When to use structured thinking:**
-- Breaking down large features into 20-30 atomic tasks
-- Determining task dependencies (what blocks what)
-- Deciding task granularity (too small vs too large)
-- Writing testable acceptance criteria
-- Grouping tasks for parallel execution
-
-**Benefits**: Explicit reasoning reduces task rework by 30-40% and improves execution parallelism.
 </constraints>
 
 <instructions>
-## UNIFIED TASK GENERATION SCRIPT
+## USER INPUT
 
-**Execute complete task generation workflow in one unified script:**
+```text
+$ARGUMENTS
+```
+
+You **MUST** consider the user input before proceeding (if not empty).
+
+## Execute Task Generation Workflow
+
+Run the centralized spec-cli tool:
 
 ```bash
-#!/usr/bin/env bash
-set -Eeuo pipefail
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# ERROR TRAP
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-on_error() {
-  echo "⚠️  Error in /tasks. Cleaning up."
-  exit 1
-}
-trap on_error ERR
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TOOL PREFLIGHT CHECKS
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-need() {
-  command -v "$1" >/dev/null 2>&1 || {
-    echo "❌ Missing required tool: $1"
-    echo ""
-    case "$1" in
-      git)
-        echo "Install: https://git-scm.com/downloads"
-        ;;
-      jq)
-        echo "Install: brew install jq (macOS) or apt install jq (Linux)"
-        echo "         https://stedolan.github.io/jq/download/"
-        ;;
-      *)
-        echo "Check documentation for installation"
-        ;;
-    esac
-    exit 1
-  }
-}
-
-need git
-need jq
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# SETUP - Deterministic repo root
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-cd "$(git rev-parse --show-toplevel)"
-
-# Parse --ui-first flag and feature slug
-UI_FIRST=false
-if [ -n "$ARGUMENTS" ]; then
-  # Check for --ui-first flag
-  if [[ "$ARGUMENTS" == *"--ui-first"* ]]; then
-    UI_FIRST=true
-    # Remove --ui-first from arguments to get slug
-    SLUG=$(echo "$ARGUMENTS" | sed 's/--ui-first//g' | xargs)
-  else
-    SLUG="$ARGUMENTS"
-  fi
-
-  # If SLUG is empty after removing flag, use current branch
-  if [ -z "$SLUG" ]; then
-    SLUG=$(git branch --show-current)
-  fi
-else
-  SLUG=$(git branch --show-current)
-fi
-
-FEATURE_DIR="specs/$SLUG"
-PLAN_FILE="$FEATURE_DIR/plan.md"
-SPEC_FILE="$FEATURE_DIR/spec.md"
-TASKS_FILE="$FEATURE_DIR/tasks.md"
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# VALIDATE FEATURE EXISTS
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-if [ ! -d "$FEATURE_DIR" ]; then
-  echo "❌ Feature not found: $FEATURE_DIR"
-  echo ""
-  echo "Fix: Run /spec to create feature first"
-  echo "     Or provide correct feature slug: /tasks <slug>"
-  exit 1
-fi
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# VALIDATE REQUIRED FILES
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-if [ ! -f "$PLAN_FILE" ]; then
-  echo "❌ Missing: $PLAN_FILE"
-  echo ""
-  echo "Fix: Run /plan first to generate implementation plan"
-  exit 1
-fi
-
-if [ ! -f "$SPEC_FILE" ]; then
-  echo "❌ Missing: $SPEC_FILE"
-  echo ""
-  echo "Fix: Run /spec first to create feature specification"
-  exit 1
-fi
-
-echo "Feature: $SLUG"
-echo "Plan: $PLAN_FILE"
-echo "Spec: $SPEC_FILE"
-echo ""
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# LOAD DESIGN ARTIFACTS
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-# Optional files
-DATA_MODEL="$FEATURE_DIR/data-model.md"
-CONTRACTS_DIR="$FEATURE_DIR/contracts"
-RESEARCH="$FEATURE_DIR/research.md"
-VISUALS="$FEATURE_DIR/visuals/README.md"
-ERROR_LOG="$FEATURE_DIR/error-log.md"
-
-# Extract sections from plan.md
-echo "Loading design artifacts from plan.md..."
-
-# Claude Code extracts key sections here:
-# ARCHITECTURE=$(sed -n '/## \[ARCHITECTURE DECISIONS\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-# EXISTING_REUSE=$(sed -n '/## \[EXISTING INFRASTRUCTURE - REUSE\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-# NEW_CREATE=$(sed -n '/## \[NEW INFRASTRUCTURE - CREATE\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-# SCHEMA=$(sed -n '/## \[SCHEMA\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-# CI_CD_IMPACT=$(sed -n '/## \[CI\/CD IMPACT\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-# DEPLOYMENT=$(sed -n '/## \[DEPLOYMENT ACCEPTANCE\]/,/## \[/p' "$PLAN_FILE" | head -n -1)
-
-# Extract user stories from spec.md
-# USER_STORIES=$(grep -E "^(As a|As an)" "$SPEC_FILE" | sed 's/\[P\([0-9]\)\]/@PRIORITY:\1/')
-
-echo ""
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TOKENS.CSS VALIDATION (for UI-first features)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-if [ "$UI_FIRST" = true ]; then
-  echo "🎨 UI-First Mode: Validating design system..."
-
-  TOKENS_CSS="design/systems/tokens.css"
-  if [ ! -f "$TOKENS_CSS" ]; then
-    echo "❌ ERROR: design/systems/tokens.css not found"
-    echo ""
-    echo "💡 Run /init-brand-tokens to generate tokens.css from tokens.json"
-    echo ""
-    exit 1
-  fi
-
-  # Verify tokens.css has CSS variables
-  if ! grep -q "^[[:space:]]*--" "$TOKENS_CSS"; then
-    echo "⚠️  WARNING: tokens.css exists but contains no CSS variables"
-    echo ""
-    echo "💡 Run /init-brand-tokens to regenerate tokens.css"
-    echo ""
-    exit 1
-  fi
-
-  echo "✅ tokens.css found with CSS variables"
-
-  # Verify style-guide.md exists
-  STYLE_GUIDE="docs/project/style-guide.md"
-  if [ ! -f "$STYLE_GUIDE" ]; then
-    echo "⚠️  WARNING: docs/project/style-guide.md not found"
-    echo "   Mockups will use tokens.css but won't have style guide rules"
-  fi
-
-  # Verify ui-inventory.md exists
-  UI_INVENTORY="design/systems/ui-inventory.md"
-  if [ ! -f "$UI_INVENTORY" ]; then
-    echo "ℹ️  INFO: design/systems/ui-inventory.md not found"
-    echo "   Component reuse suggestions will be limited"
-  fi
-
-  echo ""
-fi
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# CHECK FOR POLISHED UI DESIGNS
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-POLISHED_SCREENS=$(find apps/web/mock/$SLUG -path "*/polished/page.tsx" 2>/dev/null || echo "")
-if [ -n "$POLISHED_SCREENS" ]; then
-  HAS_UI_DESIGN=true
-  UI_SCREEN_COUNT=$(echo "$POLISHED_SCREENS" | wc -l)
-  echo "✅ Found $UI_SCREEN_COUNT polished UI designs"
-else
-  HAS_UI_DESIGN=false
-
-  # If --ui-first flag is set, this is expected (we'll create mockups)
-  if [ "$UI_FIRST" = true ]; then
-    echo "ℹ️  No existing polished UI designs (will generate design mockup tasks)"
-  else
-    echo "ℹ️  No polished UI designs found (backend/API feature)"
-  fi
-fi
-
-echo ""
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# SCAN CODEBASE FOR REUSE
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-echo "🔍 Scanning codebase for reuse patterns..."
-
-# Scan for models
-EXISTING_MODELS=$(find . -path "*/models/*.py" -o -path "*/models/*.ts" 2>/dev/null | head -20 || echo "")
-
-# Scan for services
-EXISTING_SERVICES=$(find . -path "*/services/*.py" -o -path "*/services/*.ts" 2>/dev/null | head -20 || echo "")
-
-# Scan for endpoints
-EXISTING_ENDPOINTS=$(find . -path "*/routes/*.py" -o -path "*/api/*.ts" 2>/dev/null | head -20 || echo "")
-
-# Scan for UI components
-EXISTING_COMPONENTS=$(find . -path "*/components/*.tsx" -o -path "*/components/*.jsx" 2>/dev/null | head -20 || echo "")
-
-echo "✅ Codebase scan complete"
-echo ""
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TASK GENERATION (Claude Code performs here)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-# Claude Code generates tasks.md based on:
-# 1. Analyze User Stories (from spec.md)
-#    - Extract user stories with priorities (P1, P2, P3...)
-#    - Map entities, endpoints, UI components → stories they serve
-#    - Identify story dependencies
-#    - Generate independent test criteria per story
-#
-# 2. Map Components to Stories
-#    - From data-model.md: Map entities → user stories
-#    - From contracts/: Map endpoints → user stories
-#    - From plan.md: Shared infrastructure → Setup phase
-#
-# 3. Generate Dependency Graph
-#    - Story completion order
-#    - Identify blocking prerequisites
-#
-# 4. Identify Parallel Opportunities
-#    - Tasks that can run in parallel (different files, no deps)
-#
-# 5. Define MVP Strategy
-#    - MVP Scope: Phase 3 (US1) only
-#    - Incremental delivery: US1 → staging → US2 → US3
-#
-# Output structure:
-# - [CODEBASE REUSE ANALYSIS]
-# - [DEPENDENCY GRAPH]
-# - [PARALLEL EXECUTION OPPORTUNITIES]
-# - [IMPLEMENTATION STRATEGY]
-# - Phase 1: Setup
-# - Phase 2: Foundational (blocking prerequisites)
-# - Phase 3+: User Stories (one per story)
-# - Phase N: Polish & Cross-Cutting Concerns
-# - [TEST GUARDRAILS] (if tests requested)
-
-echo "Generating tasks.md..."
-echo ""
-
-# Claude Code writes tasks.md with format:
-# - [ ] [TID] [P?] [Story?] Description with file path
-#   - REUSE: ExistingService (path/to/service.py)
-#   - Pattern: path/to/similar/file.py
-#   - From: design-doc.md section
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# DESIGN MOCKUP TASKS (if UI_FIRST=true)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-# When --ui-first flag is set, Claude Code should generate design mockup tasks
-# BEFORE implementation tasks. This ensures user approves design before
-# implementation investment.
-#
-# Design task structure:
-#
-# Phase 1: Design Mockups (APPROVAL REQUIRED)
-#
-# - [ ] T001 [DESIGN] Create HTML mockup for [Screen/Component Name]
-#   - **Output**: specs/NNN-slug/mockups/screen-name.html
-#   - **Tokens**: Link to design/systems/tokens.css (relative path ../../../design/systems/tokens.css)
-#   - **Data**: Include inline mock JSON in <script> tag
-#   - **Components**: Check design/systems/ui-inventory.md for reusable patterns
-#   - **Layout**: Follow docs/project/style-guide.md Core 9 Rules
-#   - **Accessibility**: WCAG 2.1 AA (4.5:1 contrast, 24x24px targets)
-#   - **States**: Show loading, error, empty, success states
-#
-# - [ ] T002 [APPROVAL-GATE] Review and approve HTML mockup
-#   - **Preview**: Open specs/NNN-slug/mockups/screen-name.html in browser
-#   - **Checklist**: specs/NNN-slug/mockup-approval-checklist.md
-#   - **Action**: User approves OR requests changes
-#   - **Blocks**: ALL implementation tasks until approved
-#   - **Style Guide Updates**: If user requests changes requiring new tokens,
-#     agent proposes tokens.css updates and waits for approval
-#
-# Phase 2: Implementation (After Mockup Approval)
-#
-# - [ ] T010 [US1] Convert approved mockup to Next.js page.tsx
-#   - **Reference**: specs/NNN-slug/mockups/screen-name.html (approved mockup)
-#   - **Convert**: HTML → React components, CSS vars → Tailwind/CSS modules
-#   - **Wire**: Replace mock JSON with API calls (see contracts/*.yaml)
-#   - **States**: Implement loading/error states with React Query
-#   - **Components**: Extract shared components to components/ui/ or components/shared/
-#   - **Preserve**: All accessibility features from approved mockup
-#
-# Important: Design tasks MUST be in Phase 1, implementation tasks in Phase 2+.
-# The approval gate task blocks all subsequent tasks until user runs /feature continue.
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# UPDATE NOTES.md
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-# Count tasks
-TOTAL_TASKS=$(grep -c "^- \[ \] T[0-9]" "$TASKS_FILE" 2>/dev/null || echo 0)
-SETUP_TASKS=$(grep -c "^- \[ \] T[0-9].*Phase 1" "$TASKS_FILE" 2>/dev/null || echo 0)
-STORY_TASKS=$(grep -c "\[US[0-9]\]" "$TASKS_FILE" 2>/dev/null || echo 0)
-PARALLEL_TASKS=$(grep -c "\[P\]" "$TASKS_FILE" 2>/dev/null || echo 0)
-
-# Add Phase 2 checkpoint
-if [ "$UI_FIRST" = true ]; then
-  cat >> "$FEATURE_DIR/NOTES.md" <<EOF
-
-## Phase 2: Tasks ($(date '+%Y-%m-%d %H:%M' 2>/dev/null || date))
-
-**Mode**: 🎨 UI-First (Design mockup approval required before implementation)
-
-**Summary**:
-- Total tasks: $TOTAL_TASKS
-- User story tasks: $STORY_TASKS
-- Parallel opportunities: $PARALLEL_TASKS
-- Setup tasks: $SETUP_TASKS
-- Task file: specs/$SLUG/tasks.md
-
-**Design System**:
-- ✅ tokens.css validated with CSS variables
-- ✅ Style guide: ${STYLE_GUIDE:-"Not found"}
-- ✅ UI inventory: ${UI_INVENTORY:-"Not found"}
-
-**Checkpoint**:
-- ✅ Tasks generated: $TOTAL_TASKS
-- ✅ User story organization: Complete
-- ✅ Dependency graph: Created
-- ✅ Design mockup tasks: Phase 1 (with approval gate)
-- ✅ Implementation tasks: Phase 2+ (blocked until mockup approved)
-- 📋 Ready for: /implement (will create HTML mockups first)
-
-**Workflow**:
-1. /implement → Creates HTML mockups in specs/$SLUG/mockups/
-2. Review mockups in browser (open .html files)
-3. Approve or request changes via mockup-approval-checklist.md
-4. /feature continue → Converts approved mockups to Next.js
-
-EOF
-else
-  cat >> "$FEATURE_DIR/NOTES.md" <<EOF
-
-## Phase 2: Tasks ($(date '+%Y-%m-%d %H:%M' 2>/dev/null || date))
-
-**Summary**:
-- Total tasks: $TOTAL_TASKS
-- User story tasks: $STORY_TASKS
-- Parallel opportunities: $PARALLEL_TASKS
-- Setup tasks: $SETUP_TASKS
-- Task file: specs/$SLUG/tasks.md
-
-**Checkpoint**:
-- ✅ Tasks generated: $TOTAL_TASKS
-- ✅ User story organization: Complete
-- ✅ Dependency graph: Created
-- ✅ MVP strategy: Defined (US1 only)
-- 📋 Ready for: /validate
-
-EOF
-fi
-
-echo "✅ Updated NOTES.md with Phase 2 checkpoint"
-echo ""
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# GIT COMMIT
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-git add specs/${SLUG}/tasks.md specs/${SLUG}/NOTES.md
-
-git commit -m "$(cat <<COMMITMSG
-design:tasks: generate $TOTAL_TASKS concrete tasks organized by user story
-
-- $TOTAL_TASKS tasks (setup, foundational, US1-USN, polish)
-- $STORY_TASKS user story tasks
-- $PARALLEL_TASKS parallel opportunities
-- REUSE markers for existing modules
-- Dependency graph + parallel opportunities
-- MVP strategy (US1 only for first release)
-
-Artifacts:
-- specs/$SLUG/tasks.md ($TOTAL_TASKS tasks)
-- specs/$SLUG/NOTES.md (Phase 2 checkpoint)
-
-Next: /validate
-
-🤖 Generated with Claude Code
-Co-Authored-By: Claude <noreply@anthropic.com>
-COMMITMSG
-)"
-
-# Verify commit succeeded
-COMMIT_HASH=$(git rev-parse --short HEAD)
-echo ""
-echo "✅ Tasks committed: $COMMIT_HASH"
-echo ""
-git log -1 --oneline
-echo ""
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# RETURN - Summary and next steps
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ TASKS GENERATED"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "File: specs/$SLUG/tasks.md"
-echo ""
-echo "📊 Summary:"
-echo "- Total: $TOTAL_TASKS tasks"
-echo "- User story tasks: $STORY_TASKS (organized by priority)"
-echo "- Parallel opportunities: $PARALLEL_TASKS tasks marked [P]"
-echo "- Setup tasks: $SETUP_TASKS"
-
-if [ "$HAS_UI_DESIGN" = true ]; then
-  echo "- UI promotion: $UI_SCREEN_COUNT screens to promote"
-fi
-
-if [ "$UI_FIRST" = true ]; then
-  echo "- Mode: 🎨 UI-First (Design mockup approval required)"
-fi
-
-echo ""
-
-if [ "$UI_FIRST" = true ]; then
-  echo "📋 Task organization (UI-First Mode):"
-  echo "- Phase 1 (Design Mockups): HTML mockup creation + approval gate"
-  echo "- Phase 2+ (Implementation): Convert approved mockups to Next.js"
-  echo ""
-  echo "🎨 Design System:"
-  echo "- tokens.css: design/systems/tokens.css"
-  echo "- Style guide: ${STYLE_GUIDE:-"Not configured"}"
-  echo "- UI inventory: ${UI_INVENTORY:-"Not configured"}"
-else
-  echo "📋 Task organization:"
-  echo "- Phase 1 (Setup): Infrastructure and dependencies"
-  echo "- Phase 2 (Foundational): Blocking prerequisites"
-  echo "- Phase 3+ (User Stories): Story-specific implementation"
-  echo "- Phase N (Polish): Cross-cutting concerns"
-fi
-
-echo ""
-echo "NOTES.md: Phase 2 checkpoint added"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-if [ "$UI_FIRST" = true ]; then
-  echo "📋 NEXT: /implement (will create HTML mockups)"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "/implement will:"
-  echo "1. Create HTML mockups in specs/$SLUG/mockups/"
-  echo "2. Link to design/systems/tokens.css (CSS variables)"
-  echo "3. Include inline mock JSON data"
-  echo "4. Wait for approval via mockup-approval-checklist.md"
-  echo "5. Convert approved mockups to Next.js (after /feature continue)"
-  echo ""
-  echo "Mockup Preview: Open specs/$SLUG/mockups/*.html in browser"
-  echo ""
-  echo "Duration: ~10-15 minutes (mockup creation + approval)"
-else
-  echo "📋 NEXT: /validate"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "/validate will:"
-  echo "1. Read tasks.md (task breakdown)"
-  echo "2. Scan codebase for patterns (anti-duplication check)"
-  echo "3. Validate architecture decisions (no conflicts)"
-  echo "4. Identify risks (complexity, dependencies)"
-  echo "5. Generate implementation hints (concrete examples)"
-  echo "6. Update error-log.md (potential issues)"
-  echo ""
-  echo "Output: specs/$SLUG/analysis-report.md"
-  echo ""
-  echo "Duration: ~5 minutes"
-fi
+python .spec-flow/scripts/spec-cli.py tasks "$ARGUMENTS"
 ```
 
-## TASK ORGANIZATION RULES
+**What the script does:**
 
-**Format (GitHub-compatible checkboxes):**
+1. **Preflight checks** — Validates git, jq installed
+2. **Setup** — Discovers feature paths via check-prerequisites
+3. **Load artifacts** — Reads spec.md, plan.md, research.md
+4. **Extract user stories** — Parses spec.md for story sections
+5. **Generate task IDs** — Creates deterministic IDs (T001, T002, ...)
+6. **Map tasks to stories** — Groups tasks by user story priority
+7. **UI-first mode** — If --ui-first flag, generates HTML mockup tasks first
+8. **TDD sequence** — Orders tasks: spec → test → impl → refactor
+9. **Parallel batching** — Detects independent tasks for parallel execution
+10. **Git commit** — Commits tasks.md with 20-30 atomic tasks
+
+**UI-first mode (--ui-first flag):**
+- Generates HTML mockup tasks before implementation
+- Creates multi-screen navigation hub (index.html) if ≥3 screens
+- Creates individual screen mockups with state switching (S key)
+- Creates mockup-approval-checklist.md with multi-screen flow criteria
+- Sets manual gate in workflow-state.yaml
+- Blocks /implement until mockups approved
+
+**After script completes, you (LLM) must:**
+
+## 1) Read Generated Tasks
+
+**Load task file:**
+- `specs/*/tasks.md` (generated by script)
+
+**Verify structure:**
+- 20-30 tasks organized by user story
+- Each task has: ID, Title, Depends On, Acceptance Criteria, Source
+- Parallel batches identified for independent tasks
+- TDD sequence followed within each task
+
+## 2) Present to User
+
+**Summary format:**
+
 ```
-- [ ] [TID] [P?] [Story?] Description with file path
-  - REUSE: ExistingService (path/to/service.py)
-  - Pattern: path/to/similar/file.py
-  - From: design-doc.md section
-```
+Task Generation Complete
 
-**Components:**
-1. **Checkbox**: `- [ ]` (GitHub-trackable)
-2. **Task ID**: Sequential (T001, T002, T003...)
-3. **[P] marker**: Parallelizable (different files, no blocking deps)
-4. **[Story] label**: [US1], [US2], [US3] for user story tasks
-5. **Description**: Concrete action + exact file path
-6. **REUSE**: What existing code to use
-7. **Pattern**: Similar file to follow
-8. **From**: Which design doc section
+Feature: {slug}
+Total tasks: {count}
+User stories: {count}
+Parallel batches: {count}
 
-**Examples:**
-- ✅ `- [ ] T001 Create project structure per implementation plan`
-- ✅ `- [ ] T005 [P] Implement authentication middleware in src/middleware/auth.py`
-  - REUSE: JWTService (src/services/jwt_service.py)
-  - Pattern: src/middleware/rate_limit.py
-- ✅ `- [ ] T012 [P] [US1] Create User model in api/src/models/user.py`
-  - Fields: id (UUID), email (unique), password_hash, created_at
-  - REUSE: BaseModel (api/src/models/base.py)
-  - Pattern: api/src/models/notification.py
-  - From: data-model.md User entity
+Task breakdown:
+  Story 1 ({title}): {task_count} tasks
+  Story 2 ({title}): {task_count} tasks
+  Story 3 ({title}): {task_count} tasks
 
-**NO generic placeholders:**
-- ❌ `Create [Entity] model in src/models/[entity].py`
-- ✅ `Create Message model in api/src/modules/chat/models/message.py`
+TDD coverage:
+  Test tasks: {count}
+  Implementation tasks: {count}
+  Refactoring tasks: {count}
 
-## OUTPUT STRUCTURE (tasks.md)
-
-### Header Sections
-
-```markdown
-# Tasks: [Feature Name]
-
-## [CODEBASE REUSE ANALYSIS]
-Scanned: api/src/**/*.py, apps/**/*.tsx
-
-[EXISTING - REUSE]
-- ✅ DatabaseService (api/src/services/database_service.py)
-- ✅ BaseModel (api/src/models/base.py)
-
-[NEW - CREATE]
-- 🆕 MessageService (no existing pattern)
-
-## [DEPENDENCY GRAPH]
-Story completion order:
-1. Phase 2: Foundational (blocks all stories)
-2. Phase 3: US1 [P1] - User registration (independent)
-3. Phase 4: US2 [P2] - User login (depends on US1 User model)
-
-## [PARALLEL EXECUTION OPPORTUNITIES]
-- US1: T010, T011, T012 (different files, no dependencies)
-- US2: T020, T021 (after US1 models created)
-
-## [IMPLEMENTATION STRATEGY]
-**MVP Scope**: Phase 3 (US1) only
-**Incremental delivery**: US1 → staging validation → US2 → US3
-**Testing approach**: [TDD required|Optional - integration only|E2E only]
+Next: /validate (recommended) or /implement
 ```
 
-### Phase 1: Setup
+## 3) Suggest Next Action
 
-```markdown
-## Phase 1: Setup
+```
+✅ Tasks generated successfully!
 
-- [ ] T001 Create project structure per plan.md tech stack
-  - Files: src/, tests/, config/
-  - Pattern: existing-feature/ structure
-  - From: plan.md [PROJECT STRUCTURE]
-
-- [ ] T002 [P] Install dependencies from plan.md
-  - Files: package.json, requirements.txt
-  - Libraries: [list from plan.md]
-  - From: plan.md [ARCHITECTURE DECISIONS]
+Recommended next steps:
+  1. /validate - Check artifact consistency before implementation (recommended)
+  2. /implement - Start task execution immediately
 ```
 
-### Phase 2: Foundational
-
-```markdown
-## Phase 2: Foundational (blocking prerequisites)
-
-**Goal**: Infrastructure that blocks all user stories
-
-- [ ] T005 [P] Implement authentication middleware in src/middleware/auth.py
-  - REUSE: JWTService (src/services/jwt_service.py)
-  - Pattern: src/middleware/rate_limit.py
-  - From: plan.md [EXISTING INFRASTRUCTURE - REUSE]
-
-- [ ] T006 [P] Create database connection pool in src/db/connection.py
-  - REUSE: DatabaseService (src/services/database_service.py)
-  - Pattern: src/db/postgres_pool.py
-  - From: plan.md [SCHEMA]
+**If UI-first mode:**
 ```
+✅ HTML mockup tasks generated!
 
-### Phase 3+: User Stories (one per story)
-
-```markdown
-## Phase 3: User Story 1 [P1] - User can register account
-
-**Story Goal**: New users create accounts with email/password
-
-**Independent Test Criteria**:
-- [ ] User submits valid registration → account created in DB
-- [ ] User submits duplicate email → 400 error with message
-- [ ] Registration confirmed via email link → account activated
-
-### Setup (if story-specific infrastructure needed)
-
-- [ ] T010 [P] [US1] Create User table migration in api/alembic/versions/xxx_create_user.py
-  - Fields: id (UUID PK), email (unique), password_hash, created_at
-  - Indexes: email (unique), created_at
-  - Pattern: api/alembic/versions/existing_migration.py
-  - From: plan.md [SCHEMA]
-
-### Tests (if explicitly requested in spec.md)
-
-- [ ] T011 [P] [US1] Write test: User model validates email format
-  - File: tests/unit/models/test_user.py
-  - Given-When-Then structure
-  - Pattern: tests/unit/models/test_notification.py
-  - Coverage: ≥80% (new code must be 100%)
-
-- [ ] T012 [P] [US1] Write test: UserService creates account with valid data
-  - File: tests/integration/services/test_user_service.py
-  - Real database (test DB)
-  - Pattern: tests/integration/services/test_notification_service.py
-
-### Implementation
-
-- [ ] T015 [US1] Create User model in api/src/models/user.py
-  - Fields: id, email, password_hash, created_at
-  - Methods: validate_email(), set_password()
-  - REUSE: BaseModel (api/src/models/base.py)
-  - Pattern: api/src/models/notification.py
-  - From: data-model.md User entity
-
-- [ ] T016 [US1] Create UserService in api/src/services/user_service.py
-  - Methods: create_user(), validate_email(), hash_password()
-  - REUSE: DatabaseService (api/src/services/database_service.py)
-  - Pattern: api/src/services/notification_service.py
-  - From: plan.md [NEW INFRASTRUCTURE - CREATE]
-
-- [ ] T017 [US1] Create POST /api/users endpoint in api/src/routes/users.py
-  - Request: { email, password }
-  - Response: { user_id, email, created_at }
-  - Validation: Email format, password strength
-  - REUSE: AuthMiddleware (src/middleware/auth.py)
-  - Pattern: api/src/routes/notifications.py
-  - From: contracts/user-registration.yaml
-
-### Integration
-
-- [ ] T020 [US1] Write E2E test for registration flow
-  - File: tests/e2e/test_user_registration.spec.ts
-  - Test: Complete user journey (form → API → DB → email)
-  - Real data: Actual API, real database
-  - Pattern: tests/e2e/test_notification_flow.spec.ts
-  - Coverage: ≥90% critical path
-```
-
-### Phase N: Polish & Cross-Cutting Concerns
-
-```markdown
-## Phase N: Polish & Cross-Cutting Concerns
-
-### Error Handling & Resilience
-
-- [ ] T080 Add global error handler in src/middleware/error_handler.py
-  - Returns 500 with error_id for tracking
-  - Logs to Sentry + error-log.md
-  - REUSE: ErrorTracker (src/services/error_tracker.py)
-  - Pattern: src/middleware/request_logger.py
-
-- [ ] T081 [P] Add retry logic with exponential backoff
-  - Decorator: @retry(max_attempts=3, backoff_factor=2)
-  - Pattern: src/utils/retry_decorator.py
-  - From: plan.md [DEPLOYMENT ACCEPTANCE]
-
-### Deployment Preparation
-
-- [ ] T085 Document rollback procedure in NOTES.md
-  - Command: Standard 3-command rollback (see docs/ROLLBACK_RUNBOOK.md)
-  - Feature flag: Kill switch (NEXT_PUBLIC_FEATURE_ENABLED=0)
-  - Database: Reversible migration (downgrade script)
-  - From: plan.md [DEPLOYMENT ACCEPTANCE]
-
-- [ ] T086 [P] Add health check endpoint in src/routes/health.py
-  - Endpoint: /api/health/[feature]
-  - Check: Database connection, service available
-  - Return: { status: "ok", dependencies: {...} }
-  - Pattern: src/routes/health_checks.py
-  - From: plan.md [CI/CD IMPACT]
-
-- [ ] T087 [P] Add smoke tests to CI pipeline
-  - File: tests/smoke/test_[feature].py
-  - Tests: Critical path only (<90s total)
-  - Pattern: tests/smoke/test_existing_feature.py
-  - From: plan.md [CI/CD IMPACT]
-
-### UI Promotion (if HAS_UI_DESIGN = true)
-
-- [ ] T090 [US1] Promote polished mockup to production in apps/app/[slug]/page.tsx
-  - **Reference mockup**: apps/web/mock/[slug]/polished/page.tsx
-  - **Design**: Copy layout, components, tokens, a11y from mockup
-  - **Backend**: Wire to API endpoints (see contracts/*.yaml)
-  - **State**: Add loading, success, error states (React Query)
-  - **Analytics**: Track events from design/analytics.md
-  - **Validation**: Client-side + server-side error handling
-  - Pattern: apps/app/existing-feature/page.tsx
-  - From: spec.md User Scenarios
-
-- [ ] T091 [US1] Add analytics instrumentation
-  - **Events**: From design/analytics.md (page_view, action, completed, error)
-  - **PostHog**: posthog.capture(event, properties)
-  - **Logs**: logger.info({ event, ...properties, timestamp })
-  - **DB**: POST /api/metrics ({ feature, variant, outcome, value })
-  - Pattern: Triple instrumentation for HEART metrics
-
-- [ ] T092 [US1] Add feature flag wrapper
-  - **Flag**: NEXT_PUBLIC_${SLUG^^}_ENABLED
-  - **Component**: apps/app/[slug]/layout.tsx
-  - **Logic**: Hash-based rollout (0% → 5% → 25% → 50% → 100%)
-  - **Override**: Team always enabled (TEAM_USER_IDS)
-  - From: plan.md [CI/CD IMPACT]
-```
-
-## TEST GUARDRAILS (if tests requested)
-
-**Only include this section if spec.md requests tests or TDD approach**
-
-```markdown
-## [TEST GUARDRAILS]
-
-**Speed Requirements:**
-- Unit tests: <2s each
-- Integration tests: <10s each
-- E2E tests: <30s each
-- Full suite: <6 min total
-
-**Coverage Requirements:**
-- New code: 100% coverage (no untested lines in new features)
-- Unit tests: ≥80% line coverage
-- Integration tests: ≥60% line coverage
-- E2E tests: ≥90% critical path coverage
-- Modified code: Coverage cannot decrease
-
-**Measurement:**
-- Python: `pytest --cov=api --cov-report=term-missing`
-- TypeScript: `jest --coverage`
-- E2E: Playwright trace for failed scenarios
-
-**Quality Gates:**
-- All tests must pass before merge
-- Coverage thresholds enforced in CI
-- No skipped tests without JIRA ticket
-
-**Clarity Requirements:**
-- One behavior per test
-- Descriptive names: `test_anonymous_user_cannot_save_message_without_auth()`
-- Given-When-Then structure in test body
-
-**Anti-Patterns:**
-- ❌ NO UI snapshots (brittle, break on CSS changes)
-- ❌ NO "prop-mirror" tests (test behavior, not implementation)
-- ✅ USE role/text queries (accessible, resilient)
-- ✅ USE data-testid for dynamic content only
-
-**Examples:**
-```typescript
-// ❌ Bad: Prop-mirror test (tests implementation)
-expect(component.props.isOpen).toBe(true)
-
-// ✅ Good: Behavior test (tests user outcome)
-expect(screen.getByRole('dialog')).toBeVisible()
-
-// ❌ Bad: Snapshot (fragile)
-expect(wrapper).toMatchSnapshot()
-
-// ✅ Good: Semantic assertion (resilient)
-expect(screen.getByText('Message sent')).toBeInTheDocument()
-```
-
-**Reference**: `.spec-flow/templates/test-patterns.md` for copy-paste templates
+Next steps:
+  1. /implement - Generate mockups
+  2. Review mockups in browser (specs/{slug}/mockups/*.html)
+  3. Update mockup-approval-checklist.md
+  4. Approve in workflow-state.yaml
+  5. /implement --continue - Convert mockups to production code
 ```
 
 </instructions>
+
+---
+
+## TASK STRUCTURE
+
+**Each task includes:**
+- **ID**: T001, T002, ... (deterministic, sequential)
+- **Title**: Clear, actionable description
+- **Depends On**: T000 (or specific task IDs)
+- **Acceptance Criteria**: Copied from spec.md or derived from plan.md
+- **Source**: plan.md:45-60 (exact line numbers)
+
+**Example task:**
+```markdown
+### T001: Create User Entity Schema
+
+**Depends On**: T000
+**Source**: plan.md:145-160
+
+**Acceptance Criteria**:
+- [ ] User table created with id, email, name, created_at
+- [ ] Email unique constraint enforced
+- [ ] Migration file generated
+- [ ] Alembic upgrade/downgrade tested
+
+**Implementation Notes**:
+- Follow plan.md data model (SQLAlchemy ORM)
+- Reuse existing migration template from api/migrations/
+```
+
+## PARALLEL BATCHING
+
+**Independent tasks grouped for parallel execution:**
+- Batch 1: Frontend tasks (no backend dependencies)
+- Batch 2: Backend tasks (no frontend dependencies)
+- Batch 3: Integration tasks (requires both frontend + backend)
+
+**Dependencies respected:**
+- Test tasks depend on implementation tasks
+- Integration tasks depend on both frontend and backend
+- Refactoring tasks depend on working implementation
+
+---
+
+## MULTI-SCREEN MOCKUP WORKFLOW
+
+**When to use multi-screen mockups** (auto-detected by script):
+- Feature has ≥3 distinct screens/pages
+- Screens have navigation relationships (flow between screens)
+- User journey involves multiple steps (onboarding, checkout, settings)
+
+**Script auto-detection logic:**
+1. Counts screen mentions in spec.md user stories (e.g., "login screen", "dashboard page")
+2. Detects navigation keywords ("navigate to", "redirects to", "shows modal")
+3. Identifies multi-step flows ("wizard", "onboarding", "checkout process")
+4. If ≥3 screens detected → Enable multi-screen mode
+
+### Generated Mockup Structure
+
+**For features with ≥3 screens:**
+
+```
+specs/NNN-slug/mockups/
+├── index.html                   # Navigation hub (entry point)
+├── screen-01-[name].html        # Individual screen with state switching
+├── screen-02-[name].html
+├── screen-03-[name].html
+├── _shared/
+│   ├── navigation.js            # Keyboard shortcuts (H=hub, 1-9=screens)
+│   └── state-switcher.js        # State cycling (S key)
+└── mockup-approval-checklist.md # Review criteria
+```
+
+**For features with 1-2 screens:**
+
+```
+specs/NNN-slug/mockups/
+├── [screen-name].html           # Single screen with state switching
+└── mockup-approval-checklist.md # Review criteria
+```
+
+### LLM Responsibilities (After script generates task list)
+
+When /implement executes mockup generation tasks, you (LLM) must:
+
+**1. Read Templates:**
+- `.spec-flow/templates/mockups/index.html` (navigation hub)
+- `.spec-flow/templates/mockups/screen.html` (individual screen)
+- `.spec-flow/templates/mockups/_shared/*.js` (already complete, copy as-is)
+
+**2. Detect Multi-Screen Mode:**
+- Read `plan.md` section "Design System Constraints" for screen list
+- Count screens in user stories from `spec.md`
+- If ≥3 screens → Create navigation hub + individual screens
+- If 1-2 screens → Create individual screens only (no hub)
+
+**3. Generate Navigation Hub (if multi-screen):**
+
+Copy `.spec-flow/templates/mockups/index.html` and customize:
+
+**Replace placeholders:**
+- `[FEATURE_NAME]` → Feature title from spec.md
+- `[FLOW_DIAGRAM]` → ASCII art user flow from plan.md
+- `[SCREEN_FILE]`, `[SCREEN_TITLE]`, `[SCREEN_DESCRIPTION]` → For each screen
+- Badge colors: `primary` (main screens), `authenticated` (requires login), `public` (no auth)
+
+**Example screen card:**
+```html
+<a href="screen-02-dashboard.html" class="screen-card" role="listitem" data-screen="2" tabindex="0">
+  <div>
+    <h3>02. Dashboard</h3>
+    <p>Main application dashboard with navigation and data overview</p>
+  </div>
+  <div class="meta">
+    <span class="badge authenticated">Authenticated</span>
+    <span>States: Success, Loading, Error, Empty</span>
+  </div>
+</a>
+```
+
+**4. Generate Individual Screen Mockups:**
+
+For each screen, copy `.spec-flow/templates/mockups/screen.html` and customize:
+
+**Replace placeholders:**
+- `[SCREEN_TITLE]` → Screen name (e.g., "Login", "Dashboard", "Settings")
+- `[FEATURE_NAME]` → Feature title
+- Implement all 4 states (Success, Loading, Error, Empty)
+
+**State implementation checklist:**
+- ✅ Success state: Happy path with data populated
+- ✅ Loading state: Spinner + "Loading..." text
+- ✅ Error state: Alert component with error message + retry action
+- ✅ Empty state: Empty state component + CTA button
+
+**Use design tokens from tokens.css:**
+- Colors: `--color-brand-primary`, `--color-semantic-error`, etc.
+- Spacing: `--space-4`, `--space-6`, `--space-8` (16px, 24px, 32px)
+- Typography: `--text-sm`, `--text-base`, `--text-lg`
+- Shadows: `--shadow-sm`, `--shadow-md`, `--shadow-lg`
+- Border radius: `--radius-sm`, `--radius-md`, `--radius-lg`
+
+**Reuse components from ui-inventory.md:**
+- Check plan.md "Design System Constraints" section for component reuse suggestions
+- Use existing components before creating new ones
+- Follow approved patterns from previous features
+
+**5. Wire Multi-Screen Navigation:**
+
+**In index.html:**
+- Each screen card has `data-screen` attribute (1-9)
+- Number keys 1-9 navigate to respective screens
+
+**In screen-NN-[name].html:**
+- Breadcrumb links back to hub: `<a href="index.html">← Hub</a>`
+- Interactive elements (buttons, links) navigate to other screens
+- Example: Login success → Dashboard screen
+
+**Navigation patterns:**
+```html
+<!-- Button navigates to next screen -->
+<button class="button primary" onclick="window.location.href='screen-02-dashboard.html'">
+  Continue to Dashboard
+</button>
+
+<!-- Link returns to hub -->
+<a href="index.html" class="button secondary">Back to Hub</a>
+```
+
+**6. Copy Shared Scripts:**
+
+Copy without modification:
+```bash
+cp .spec-flow/templates/mockups/_shared/navigation.js specs/NNN-slug/mockups/_shared/
+cp .spec-flow/templates/mockups/_shared/state-switcher.js specs/NNN-slug/mockups/_shared/
+```
+
+These scripts are complete and require no customization.
+
+### Keyboard Shortcuts (Automatic)
+
+**Provided by navigation.js:**
+- `H` key → Return to hub (index.html)
+- `1`-`9` keys → Jump to screen by number
+- `Esc` → Close modals/dialogs
+
+**Provided by state-switcher.js:**
+- `S` key → Cycle state (Success → Loading → Error → Empty → Success)
+- State persists in sessionStorage during review
+
+### Mockup Approval Process
+
+**After mockup generation:**
+
+1. **Run automated design lint** (recommended):
+
+   **Use Task tool to launch design-lint agent:**
+   ```
+   Task tool with subagent_type="design-lint"
+   Prompt: "Scan mockups in specs/NNN-slug/mockups/ for design violations.
+
+   Check:
+   1. Color contrast (WCAG 2.1 AA)
+   2. Touch target sizes (≥24x24px)
+   3. Design token usage (hardcoded values)
+   4. Component reuse (vs ui-inventory.md)
+   5. Accessibility baseline (semantic HTML, ARIA labels)
+   6. 8pt grid compliance
+
+   Generate design-lint-report.md with critical issues, warnings, and quick fixes."
+   ```
+
+   **Agent generates:** `specs/NNN-slug/design-lint-report.md`
+
+   **If critical issues found:**
+   - ❌ Block approval
+   - Show quick fixes in report
+   - Fix issues and re-run lint
+
+   **If warnings only:**
+   - ⚠️ Allow approval with justification
+   - Document warnings in mockup-approval-checklist.md
+
+   **If all pass:**
+   - ✅ Proceed to manual review
+
+2. **Open navigation hub** in browser:
+   ```bash
+   open specs/NNN-slug/mockups/index.html
+   ```
+
+3. **Review each screen** (manual validation):
+   - Press number keys 1-9 to navigate
+   - Press S to cycle through all states
+   - Verify design token usage (check against lint report)
+   - Check component reuse (matches ui-inventory.md)
+   - Validate accessibility (contrast, touch targets, keyboard nav)
+
+4. **Complete approval checklist:**
+   - Fill out `mockup-approval-checklist.md`
+   - Include design-lint-report.md results
+   - Mark each screen as approved
+   - Note any changes needed
+
+5. **Update workflow state:**
+   ```yaml
+   # In specs/NNN-slug/workflow-state.yaml
+   manual_gates:
+     mockup_approval:
+       status: approved  # or needs_changes
+       approved_at: "2025-11-17T14:30:00Z"
+       approved_by: "user@example.com"
+       critical_issues: 0
+       warnings: [N]
+       component_reuse_rate: "[X]%"
+       token_compliance: "[X]%"
+   ```
+
+6. **Continue implementation:**
+   ```bash
+   /feature continue
+   # or
+   /implement
+   ```
+
+### Quality Gates for Mockups
+
+**Before mockup approval, verify:**
+
+✅ **Automated design lint** (design-lint agent):
+- **Color contrast**: ≥4.5:1 for normal text, ≥3:1 for large text (WCAG 2.1 AA)
+- **Touch targets**: ≥24x24px for all interactive elements
+- **Token compliance**: 95%+ (minimal hardcoded colors, spacing, shadows)
+- **Component reuse**: 85%+ (existing components used where applicable)
+- **Accessibility score**: 100% (semantic HTML, ARIA labels, alt text)
+- **8pt grid**: All spacing divisible by 4px or 8px
+
+**Automated checks generate:** `design-lint-report.md`
+**Critical issues = 0** (blocking), **Warnings < 5 per screen** (non-blocking)
+
+✅ **Multi-screen flow** (manual review):
+- All screens accessible via keyboard shortcuts (1-9)
+- Navigation wiring matches user flow diagram
+- Breadcrumbs link back to hub
+
+✅ **State completeness** (manual review):
+- All 4 states implemented (Success, Loading, Error, Empty)
+- S key cycles through states correctly
+- Loading spinners use CSS animations (no GIFs)
+
+✅ **Design system compliance** (verified by lint + manual):
+- All colors from tokens.css (no hardcoded hex codes)
+- All spacing from 8pt grid (multiples of 4px or 8px)
+- Typography uses scale (text-sm, text-base, text-lg)
+- Shadows use scale (shadow-sm, shadow-md, shadow-lg)
+
+✅ **Component reuse** (verified by lint + manual):
+- Suggested components from plan.md used where applicable
+- New components justified in Design System Constraints section
+- Components match ui-inventory.md patterns
+- No duplicate implementations detected
+
+✅ **Accessibility baseline** (verified by lint + manual):
+- Touch targets ≥24x24px (44x44px preferred)
+- Color contrast ≥4.5:1 for text (lint verified)
+- Focus indicators visible (2px outline, 4.5:1 contrast)
+- Semantic HTML (<button> not <div onclick>)
+- ARIA labels on icon-only buttons
+- Form labels associated with inputs (for/id)
+- Keyboard navigation works (Tab, Enter, Esc)
+
+✅ **Consistency** (manual review):
+- Matches approved patterns from previous features
+- No deviations without justification
+- Card padding, form layouts, header styles consistent
+
+### Example Task Breakdown (Multi-Screen Feature)
+
+**Feature: User Onboarding (4 screens)**
+
+```markdown
+## Phase 1: Mockup Generation
+
+### T001: Create mockup navigation hub
+**Depends On**: T000
+**Source**: plan.md:120-135
+
+**Acceptance Criteria**:
+- [ ] index.html created from template
+- [ ] 4 screen cards with descriptions
+- [ ] User flow diagram includes: Welcome → Sign Up → Profile Setup → Dashboard
+- [ ] Keyboard shortcuts documented (1-4 navigate, H returns to hub)
+
+### T002: Create welcome screen mockup
+**Depends On**: T001
+**Source**: spec.md:45-52 (User Story 1)
+
+**Acceptance Criteria**:
+- [ ] screen-01-welcome.html created from template
+- [ ] Success state: Hero section + CTA button
+- [ ] Loading state: Skeleton loader for hero
+- [ ] Empty state: N/A (welcome always has content)
+- [ ] Error state: N/A (static welcome page)
+- [ ] Breadcrumb links to hub
+- [ ] CTA button navigates to screen-02-signup.html
+
+### T003: Create signup screen mockup
+**Depends On**: T001
+**Source**: spec.md:53-60 (User Story 2)
+
+**Acceptance Criteria**:
+- [ ] screen-02-signup.html created from template
+- [ ] Success state: Form (email, password, name) + submit button
+- [ ] Loading state: Form disabled + spinner in submit button
+- [ ] Error state: Alert with validation errors + retry
+- [ ] Success submission navigates to screen-03-profile-setup.html
+- [ ] Uses Form, Input, Label, Button components (from ui-inventory.md)
+
+### T004: Create profile setup screen mockup
+**Depends On**: T001
+**Source**: spec.md:61-68 (User Story 3)
+
+**Acceptance Criteria**:
+- [ ] screen-03-profile-setup.html created from template
+- [ ] Success state: Avatar upload + bio textarea + interests checkboxes
+- [ ] Loading state: Skeleton for avatar + disabled form
+- [ ] Error state: Alert with upload error + retry
+- [ ] Empty state: N/A (optional fields)
+- [ ] Submit navigates to screen-04-dashboard.html
+
+### T005: Create dashboard screen mockup
+**Depends On**: T001
+**Source**: spec.md:69-76 (User Story 4)
+
+**Acceptance Criteria**:
+- [ ] screen-04-dashboard.html created from template
+- [ ] Success state: Welcome message + onboarding progress + next steps
+- [ ] Loading state: Skeleton cards for dashboard widgets
+- [ ] Error state: Alert for data fetch failure + retry
+- [ ] Empty state: "Complete your profile" prompt
+- [ ] Sidebar navigation with active state indicator
+
+### T006: Wire multi-screen navigation
+**Depends On**: T002, T003, T004, T005
+**Source**: plan.md:160-170
+
+**Acceptance Criteria**:
+- [ ] All screen links functional (welcome → signup → profile → dashboard)
+- [ ] Keyboard shortcuts work (1=welcome, 2=signup, 3=profile, 4=dashboard, H=hub)
+- [ ] Breadcrumbs on all screens link to hub
+- [ ] User flow matches diagram in index.html
+
+### T007: Complete mockup approval checklist
+**Depends On**: T006
+**Source**: mockup-approval-checklist.md
+
+**Acceptance Criteria**:
+- [ ] All screens reviewed in browser
+- [ ] All states tested (S key cycles correctly)
+- [ ] Design tokens verified (no hardcoded colors)
+- [ ] Component reuse verified (matches ui-inventory.md)
+- [ ] WCAG 2.1 AA contrast checked
+- [ ] Touch targets measured (≥24x24px)
+- [ ] Checklist submitted in specs/NNN-onboarding/mockup-approval-checklist.md
+- [ ] workflow-state.yaml updated: manual_gates.mockup_approval.status = approved
+
+## Phase 2: Implementation (Blocked until T007 approved)
+
+### T008: Convert welcome screen to Next.js component
+[Implementation tasks follow after mockup approval...]
+```
+
+### Anti-Patterns to Avoid
+
+❌ **Don't create mockups without reading templates first**
+- Templates contain accessibility features, token usage, keyboard shortcuts
+- Copying templates ensures consistency
+
+❌ **Don't hardcode colors or spacing**
+```html
+<!-- BAD -->
+<div style="padding: 20px; color: #3b82f6;">
+
+<!-- GOOD -->
+<div style="padding: var(--space-5); color: var(--color-brand-primary);">
+```
+
+❌ **Don't skip states**
+```html
+<!-- BAD - only success state -->
+<div class="show-on-success">...</div>
+
+<!-- GOOD - all 4 states -->
+<div class="show-on-success">...</div>
+<div class="show-on-loading">...</div>
+<div class="show-on-error">...</div>
+<div class="show-on-empty">...</div>
+```
+
+❌ **Don't create new components without checking ui-inventory.md**
+- Always check Design System Constraints in plan.md first
+- Reuse existing components before creating new ones
+
+❌ **Don't wire navigation without testing keyboard shortcuts**
+- Press 1-9 to verify screen navigation
+- Press H to verify hub return
+- Press S to verify state cycling
+
+### Success Metrics
+
+**Target outcomes for multi-screen mockups:**
+- 100% screen coverage (all screens from spec.md have mockups)
+- 100% state coverage (all screens show 4 states)
+- 95%+ token compliance (minimal hardcoded values)
+- 90%+ component reuse (few new components)
+- <10 minutes mockup review time (efficient keyboard navigation)

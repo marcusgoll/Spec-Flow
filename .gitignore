@@ -16,6 +16,7 @@ Thumbs.db
 # Logs and scratch files
 *.log
 *.tmp
+*.backup
 
 # Token cache or context compaction output
 .spec-flow/**/*.bak

@@ -1,5 +1,7 @@
 ---
 description: Execute tasks with TDD, anti-duplication checks, pattern following (parallel execution)
+version: 2.0
+updated: 2025-11-17
 ---
 
 # /implement — Parallel Task Execution with TDD
@@ -78,759 +80,401 @@ TodoWrite({
   todos: [
     {content:"Validate preflight checks",status:"completed",activeForm:"Preflight"},
     {content:"Parse tasks and detect batches",status:"completed",activeForm:"Parsing tasks"},
-    {content:"Execute batch group 1 (batches 1-3)",status:"pending",activeForm:"Running group 1"},
-    {content:"Execute batch group 2 (batches 4-6)",status:"pending",activeForm:"Running group 2"},
-    {content:"Execute batch group 3 (batches 7-9)",status:"pending",activeForm:"Running group 3"},
-    {content:"Verify all implementations",status:"pending",activeForm:"Verifying"},
-    {content:"Commit final summary",status:"pending",activeForm:"Committing"}
+    {content:"Execute batch group 1 (tasks 1-3)",status:"in_progress",activeForm:"Executing batch group 1"},
+    {content:"Execute batch group 2 (tasks 4-6)",status:"pending",activeForm:"Executing batch group 2"},
+    {content:"Execute batch group 3 (tasks 7-9)",status:"pending",activeForm:"Executing batch group 3"},
+    {content:"Run full test suite and commit",status:"pending",activeForm:"Wrapping up"}
   ]
-})
+});
 ```
 
-**Rules**:
-- One batch **group** is `in_progress` at a time (3-5 batches execute in parallel within group)
-- Mark group `completed` immediately after all batches in group finish
-- Update TodoWrite after each group completes
-- Checkpoint commit after each group (atomic group-level commits)
+**Update after each batch group completes** (mark completed, move in_progress forward).
 
 ---
 
-## Implementation Workflow
-
 <instructions>
+## USER INPUT
+
+```text
+$ARGUMENTS
+```
+
+You **MUST** consider the user input before proceeding (if not empty).
+
+## Execute Implementation Workflow
+
+Run the centralized spec-cli tool:
 
 ```bash
-#!/usr/bin/env bash
-set -Eeuo pipefail
+python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
+```
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# ERROR TRAP
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**What the script does:**
 
-on_error() {
-  echo "⚠️  Error in /implement. Check error-log.md for details."
-  exit 1
-}
-trap on_error ERR
+1. **Preflight checks** — Validates git, jq, test runner installed
+2. **Load tasks** — Parses tasks.md for all pending tasks
+3. **Detect batches** — Groups independent tasks for parallel execution
+4. **UI-first gate** — Checks mockup approval if --ui-first mode
+5. **Execute batches** — Runs tasks in parallel groups (TDD: red → green → refactor)
+6. **Anti-duplication** — Scans for existing implementations before creating new code
+7. **Pattern following** — Applies plan.md recommended patterns consistently
+8. **Auto-rollback** — Reverts changes on test failure
+9. **Atomic commits** — Commits each task individually with descriptive message
+10. **Full test suite** — Runs complete test suite after all tasks
+11. **Git commit** — Final commit with implementation summary
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TOOL PREFLIGHT CHECKS
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**TDD workflow per task:**
+1. **Red**: Write failing test (verify it fails)
+2. **Green**: Implement minimal code to pass test
+3. **Refactor**: Improve code quality without changing behavior
+4. **Commit**: Atomic commit for this task
 
-need() {
-  command -v "$1" >/dev/null 2>&1 || {
-    echo "❌ Missing required tool: $1"
-    echo ""
-    case "$1" in
-      git)
-        echo "Install: https://git-scm.com/downloads"
-        ;;
-      jq)
-        echo "Install: brew install jq (macOS) or apt install jq (Linux)"
-        echo "         https://stedolan.github.io/jq/download/"
-        ;;
-      *)
-        echo "Check documentation for installation"
-        ;;
-    esac
-    exit 1
-  }
-}
+**After script completes, you (LLM) must:**
 
-need git
-need jq
+## 1) Review Implementation Progress
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# SETUP - Deterministic repo root
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**Check task completion:**
+- Read updated tasks.md to see completed tasks
+- Verify all tasks marked as completed (✅)
+- Check for any blocked or failed tasks
 
-cd "$(git rev-parse --show-toplevel)"
+**Review generated code:**
+- Scan created/modified files
+- Verify pattern consistency with plan.md
+- Check for code duplication
 
-SLUG="${ARGUMENTS:-$(git branch --show-current)}"
-FEATURE_DIR="specs/$SLUG"
-TASKS_FILE="$FEATURE_DIR/tasks.md"
-NOTES_FILE="$FEATURE_DIR/NOTES.md"
-ERROR_LOG="$FEATURE_DIR/error-log.md"
-TRACKER=".spec-flow/scripts/bash/task-tracker.sh"
+## 2) Update Living Documentation
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# VALIDATE FEATURE EXISTS
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**When UI components were created during implementation:**
 
-if [ ! -d "$FEATURE_DIR" ]; then
-  echo "❌ Feature not found: $FEATURE_DIR"
-  echo ""
-  echo "Fix: Run /spec to create feature first"
-  echo "     Or provide correct feature slug: /implement <slug>"
-  exit 1
-fi
+### a) Update ui-inventory.md
 
-if [ ! -f "$TASKS_FILE" ]; then
-  echo "❌ Missing: $TASKS_FILE"
-  echo ""
-  echo "Fix: Run /tasks first to generate task breakdown"
-  exit 1
-fi
+**For each new reusable component created in `components/ui/`:**
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# PREFLIGHT VALIDATION
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **Scan for new component files:**
+   ```bash
+   # Check what components were created
+   git diff HEAD~1 --name-only | grep "components/ui/"
+   ```
 
-# Checklist validation (non-blocking warning)
-if [ -d "$FEATURE_DIR/checklists" ]; then
-  INCOMPLETE=$(grep -c "^- \[ \]" "$FEATURE_DIR"/checklists/*.md 2>/dev/null || echo 0)
-  if [ "$INCOMPLETE" -gt 0 ]; then
-    echo "⚠️  Checklists have $INCOMPLETE incomplete item(s) (continuing anyway)"
-    echo ""
-  fi
-fi
+2. **Document each component** in `design/systems/ui-inventory.md`:
+   ```markdown
+   ### {ComponentName}
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# MOCKUP APPROVAL CHECK (UI-first features)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   **Source**: {file_path}
+   **Type**: {shadcn/ui primitive | custom component}
+   **Props**: {key props with types}
+   **States**: {default, hover, focus, disabled, loading, error}
+   **Accessibility**: {ARIA labels, keyboard navigation features}
+   **Usage**:
+   ```tsx
+   import { {ComponentName} } from '@/components/ui/{component-name}'
 
-# Check if feature has HTML mockups requiring approval
-MOCKUPS=$(find "$FEATURE_DIR/mockups" -name "*.html" 2>/dev/null || echo "")
-if [ -n "$MOCKUPS" ]; then
-  MOCKUP_COUNT=$(echo "$MOCKUPS" | wc -l)
-  echo "🎨 Found $MOCKUP_COUNT HTML mockup(s) - checking approval status..."
+   <{ComponentName} {prop}="{value}" />
+   ```
 
-  # Check workflow-state.yaml for mockup approval status
-  if [ -f "$FEATURE_DIR/workflow-state.yaml" ]; then
-    APPROVAL_STATUS=$(grep -A 5 "mockup_approval:" "$FEATURE_DIR/workflow-state.yaml" | grep "status:" | awk '{print $2}' || echo "")
+   **Examples**:
+   - {Usage in current feature}: {file_path}:{line}
 
-    if [ "$APPROVAL_STATUS" != "approved" ]; then
-      echo ""
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "❌ BLOCKED: Mockup approval required"
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo ""
-      echo "📋 Mockup Location: $FEATURE_DIR/mockups/"
-      echo "📝 Checklist: $FEATURE_DIR/mockup-approval-checklist.md"
-      echo ""
-      echo "📖 Review Process:"
-      echo "1. Open HTML mockups in your browser:"
-      echo "   $(echo "$MOCKUPS" | head -3 | sed 's/^/   - /')"
-      if [ "$MOCKUP_COUNT" -gt 3 ]; then
-        echo "   ... and $((MOCKUP_COUNT - 3)) more"
-      fi
-      echo ""
-      echo "2. Press 'S' key in browser to cycle through states:"
-      echo "   - Success (normal data)"
-      echo "   - Loading (spinner/skeleton)"
-      echo "   - Error (error message)"
-      echo "   - Empty (no data)"
-      echo ""
-      echo "3. Review against checklist:"
-      echo "   - Visual (layout, spacing, colors, tokens.css compliance)"
-      echo "   - Interaction (all states visible)"
-      echo "   - Accessibility (WCAG 2.1 AA)"
-      echo "   - Component reuse (ui-inventory.md)"
-      echo ""
-      echo "4. Approve or request changes in checklist"
-      echo ""
-      echo "5. Update workflow-state.yaml:"
-      echo "   workflow:"
-      echo "     manual_gates:"
-      echo "       mockup_approval:"
-      echo "         status: approved"
-      echo "         approved_at: $(date '+%Y-%m-%d %H:%M:%S')"
-      echo ""
-      echo "6. Run: /feature continue"
-      echo ""
-      echo "💡 Tip: If requesting changes, agent can propose tokens.css updates"
-      echo "        (e.g., 'make primary color more vibrant')"
-      echo ""
-      exit 1
-    fi
+   **Related Components**: {List related components}
+   ```
 
-    echo "✅ Mockup approved - proceeding with implementation"
-    echo ""
-  else
-    echo "⚠️  WARNING: No workflow-state.yaml found - cannot verify mockup approval"
-    echo "   Continuing anyway (assuming brownfield project or manual approval)"
-    echo ""
-  fi
-fi
+3. **Commit documentation update:**
+   ```bash
+   git add design/systems/ui-inventory.md
+   git commit -m "docs: add {ComponentName} to ui-inventory
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# PARSE TASKS AND DETECT BATCHES
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Component: {ComponentName} ({type})
+   Features: {brief feature list}
+   Location: {file_path}"
+   ```
 
-# Collect tasks not yet marked ✅ in NOTES.md
-mapfile -t ALL < <(grep "^T[0-9]\{3\}" "$TASKS_FILE" || true)
-PENDING=()
+**Skip if:**
+- Component is feature-specific (in app/ not components/ui/)
+- Component is a one-off layout wrapper
+- Component already documented in inventory
 
-for task in "${ALL[@]}"; do
-  id=$(echo "$task" | grep -o "^T[0-9]\{3\}" || true)
-  if [ -n "$id" ]; then
-    if ! grep -q "✅ $id" "$NOTES_FILE" 2>/dev/null; then
-      PENDING+=("$task")
-    fi
-  fi
-done
+### b) Extract Approved Patterns
 
-if [ ${#PENDING[@]} -eq 0 ]; then
-  echo "✅ All tasks already completed"
-  echo ""
-  echo "Next: /optimize (auto-continues from /feature)"
-  exit 0
-fi
+**If mockups were approved and converted to production code:**
 
-echo "📋 ${#PENDING[@]} tasks to execute"
-echo ""
+1. **Identify reusable layout patterns** (used in 2+ screens):
+   - Form layouts
+   - Navigation structures
+   - Data display patterns (tables, cards, lists)
+   - Modal/dialog patterns
 
-# Detect TDD phase and domain for batching
-tag_phase() {
-  local line="$1"
-  if [[ "$line" =~ \[RED\] ]]; then
-    echo "RED"
-  elif [[ "$line" =~ \[GREEN\] ]]; then
-    echo "GREEN"
-  elif [[ "$line" =~ \[REFACTOR\] ]]; then
-    echo "REFACTOR"
-  else
-    echo "NA"
-  fi
-}
+2. **Document pattern** in `design/systems/approved-patterns.md`:
+   ```markdown
+   ## Pattern: {Pattern Name}
 
-tag_domain() {
-  local line="$1"
-  if [[ "$line" =~ api/|backend|\.py|endpoint ]]; then
-    echo "backend"
-  elif [[ "$line" =~ apps/|frontend|\.tsx|component|page ]]; then
-    echo "frontend"
-  elif [[ "$line" =~ migration|schema|alembic|sql ]]; then
-    echo "database"
-  elif [[ "$line" =~ test.|\.test\.|\.spec\.|tests/ ]]; then
-    echo "tests"
-  else
-    echo "general"
-  fi
-}
+   **Used in**: {feature-001, feature-003} ({N} features)
+   **Category**: {Form | Navigation | Data Display | Modal}
 
-# Build batches: TDD phases run alone; others grouped by domain (max 4 per batch)
-BATCHES=()
-batch=""
-last_dom=""
-count=0
+   ### Structure
 
-for row in "${PENDING[@]}"; do
-  id=$(echo "$row" | grep -o "^T[0-9]\{3\}" || echo "")
-  if [ -z "$id" ]; then
-    continue
-  fi
+   ```html
+   {Simplified HTML structure showing pattern}
+   ```
 
-  phase=$(tag_phase "$row")
-  dom=$(tag_domain "$row")
-  desc=$(echo "$row" | sed -E 's/^T[0-9]{3}(\s*\[[^]]+\])*\s*//')
+   ### Design Tokens
 
-  item="$id:$dom:$phase:$desc"
+   - **Spacing**: {tokens used}
+   - **Colors**: {tokens used}
+   - **Typography**: {tokens used}
 
-  # TDD phases run as single-task batches (sequential dependency)
-  if [[ "$phase" =~ ^(RED|GREEN|REFACTOR)$ ]]; then
-    if [ -n "$batch" ]; then
-      BATCHES+=("$batch")
-      batch=""
-      last_dom=""
-      count=0
-    fi
-    BATCHES+=("$item")
-    continue
-  fi
+   ### When to Use
 
-  # Group parallel tasks by domain (max 4 per batch for clarity)
-  if [[ "$dom" != "$last_dom" || $count -ge 4 ]]; then
-    if [ -n "$batch" ]; then
-      BATCHES+=("$batch")
-    fi
-    batch=""
-    count=0
-  fi
+   {Description of appropriate use cases}
 
-  batch="${batch}${batch:+|}$item"
-  last_dom="$dom"
-  count=$((count+1))
-done
+   ### Examples
 
-if [ -n "$batch" ]; then
-  BATCHES+=("$batch")
-fi
+   - {Feature name}: `{file_path}:{line}`
+   - {Feature name}: `{file_path}:{line}`
 
-echo "📦 Organized into ${#BATCHES[@]} batches"
-echo ""
+   ### Accessibility
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# INITIALIZE TODO TRACKER
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   - {Key accessibility features}
+   - {Keyboard navigation support}
+   - {ARIA attributes used}
+   ```
 
-echo "📝 Creating implementation progress tracker..."
+3. **Commit pattern documentation:**
+   ```bash
+   git add design/systems/approved-patterns.md
+   git commit -m "docs: extract {PatternName} approved pattern
 
-# Build dynamic TodoWrite list from batches
-# Note: TodoWrite tool call happens in agent context, not bash script
-# This section documents the structure that will be created
+   Pattern: {Pattern Name}
+   Used in: {N} features
+   Category: {category}"
+   ```
 
-TOTAL_STEPS=$((${#BATCHES[@]} + 4))
-echo "✅ Progress tracker ready ($TOTAL_STEPS steps)"
-echo ""
+**Extract patterns proactively:**
+- Don't wait for duplication to occur
+- Document patterns immediately after approval
+- Include real code examples from the feature
 
-# Expected structure (created by agent):
-# - Validate preflight checks [completed]
-# - Parse tasks and detect batches [completed]
-# - Execute batch group 1 (batches 1-3) [pending]
-# - Execute batch group 2 (batches 4-6) [pending]
-# - ... one per group
-# - Verify all implementations [pending]
-# - Commit final summary [pending]
+### c) Update Feature CLAUDE.md
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# EXECUTE BATCHES VIA PARALLEL SPECIALIST AGENTS
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**Trigger living documentation update for the feature:**
 
-# Stop bash script execution - orchestration now happens in Claude Code context
-# The agent will read this script output and execute the following orchestration logic:
+```bash
+# Update specs/{NNN-slug}/CLAUDE.md with:
+# - Last 3 completed tasks
+# - Velocity metrics
+# - Next steps
 
+cat >> specs/{NNN-slug}/CLAUDE.md <<EOF
+
+## Implementation Progress ($(date +%Y-%m-%d))
+
+**Last 3 Tasks Completed**:
+- {T###}: {task title} ({timestamp})
+- {T###}: {task title} ({timestamp})
+- {T###}: {task title} ({timestamp})
+
+**Velocity**:
+- Tasks completed: {completed} / {total} ({percent}%)
+- Average time: {avg} min/task
+- ETA: {estimated completion date}
+
+**New Components Created**:
+- {ComponentName} (components/ui/{file})
+- {ComponentName} (components/ui/{file})
+
+**Patterns Extracted**:
+- {Pattern Name} (approved-patterns.md)
+
+**Next Phase**: /optimize
+EOF
+
+git add specs/{NNN-slug}/CLAUDE.md
+git commit -m "docs: update feature CLAUDE.md with implementation progress"
+```
+
+### d) Health Check (Optional)
+
+**Run design health check** to verify documentation freshness:
+
+```bash
+.spec-flow/scripts/bash/design-health-check.sh --verbose
+```
+
+**Target metrics after implementation:**
+- ui-inventory.md: <24 hours lag
+- approved-patterns.md: Documented if pattern reused
+- Feature CLAUDE.md: Updated with last 3 tasks
+- Health score: ≥90%
+
+## 3) Run Full Test Suite
+
+**Execute test suite:**
+```bash
+# Backend tests
+cd api && pytest
+
+# Frontend tests
+cd apps/app && pnpm test
+
+# Integration tests
+pnpm test:e2e
+```
+
+**Verify:**
+- All tests passing
+- No regressions introduced
+- Code coverage maintained/improved
+
+## 3) Present Results to User
+
+**Summary format:**
+
+```
+Implementation Complete
+
+Feature: {slug}
+Tasks completed: {completed} / {total}
+Test suite: {PASS|FAIL}
+
+Code changes:
+  Files created: {count}
+  Files modified: {count}
+  Lines added: {count}
+  Lines removed: {count}
+
+Commits:
+  {List recent commits with hash and message}
+
+Next: /optimize (recommended)
+```
+
+## 4) Suggest Next Action
+
+**If all tests pass:**
+```
+✅ Implementation complete! All tests passing.
+
+Recommended next steps:
+  1. /optimize - Production readiness validation (performance, security, accessibility)
+  2. /preview - Manual UI/UX testing before shipping
+```
+
+**If tests fail:**
+```
+❌ Test suite failing
+
+Failed tests:
+  {List failed tests}
+
+Next: /debug to investigate and fix failures
+```
+
+**If tasks blocked:**
+```
+⚠️  {count} tasks blocked
+
+Blocked tasks:
+  {List blocked tasks with reason}
+
+Resolution:
+  1. Fix blockers (missing files, dependencies)
+  2. Re-run /implement to continue
 ```
 
 </instructions>
 
 ---
 
-## Direct Specialist Orchestration
+## PARALLEL EXECUTION
 
-After task parsing completes, Claude Code orchestrates specialist agents directly (no implement-phase-agent wrapper).
+**Batch groups:**
+- Group 1: Independent frontend tasks
+- Group 2: Independent backend tasks
+- Group 3: Integration tasks (depends on Group 1 + 2)
 
-### Orchestration Logic
+**Within each group:**
+- Tasks execute in parallel (up to 3 concurrent tasks)
+- TDD phases remain sequential per task
+- Failures in one task don't block others (rollback only that task)
 
-**Step 1: Group Batches for Parallel Execution**
-
-```javascript
-// Parse batch output from bash script
-const batches = parseBatchesFromScript(); // Array of {id, domain, phase, tasks[]}
-const PARALLEL_GROUP_SIZE = 3;
-const groups = chunkArray(batches, PARALLEL_GROUP_SIZE);
-
-console.log(`📦 ${batches.length} batches organized into ${groups.length} groups`);
-```
-
-**Step 2: Execute Each Batch Group in Parallel**
-
-For each group, launch multiple Task() calls in a **single message** for true parallelism:
-
-```javascript
-for (const [groupNum, group] of groups.entries()) {
-  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  console.log(`🚀 Batch Group ${groupNum + 1}: Batches ${group.map(b => b.id).join(', ')} (PARALLEL)`);
-  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-
-  // Display batches in group
-  for (const batch of group) {
-    console.log(`Batch ${batch.id}:`);
-    for (const task of batch.tasks) {
-      console.log(`  → ${task.id} [${task.domain} ${task.phase}]: ${task.desc}`);
-    }
-  }
-
-  // CRITICAL: Launch all Task() calls in SINGLE message for parallelism
-  const taskPromises = group.map(batch => {
-    const specialist = mapDomainToSpecialist(batch.domain);
-    const prompt = buildBatchPrompt(batch, FEATURE_DIR, TASKS_FILE, NOTES_FILE);
-
-    return Task({
-      subagent_type: specialist,
-      description: `Batch ${batch.id}: ${batch.domain} tasks`,
-      prompt: prompt
-    });
-  });
-
-  // Wait for all batches in group to complete
-  console.log(`⏳ Waiting for ${group.length} specialists to complete...`);
-  const results = await Promise.all(taskPromises);
-
-  // Process results
-  const allSuccess = results.every(r => r.status === 'success');
-  if (!allSuccess) {
-    const failed = results.filter(r => r.status !== 'success');
-    console.log(`⚠️  ${failed.length} batches failed, see error-log.md`);
-  }
-
-  // Checkpoint commit for group
-  Bash(`
-    git add . 2>/dev/null || true
-    if [ -n "$(git status --porcelain)" ]; then
-      git commit -m "feat: implement batch group ${groupNum + 1}
-
-Batch group: ${groupNum + 1}/${groups.length}
-Batches: ${group.map(b => b.id).join(', ')}
-Specialists: ${group.map(b => mapDomainToSpecialist(b.domain)).join(', ')}
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-    fi
-  `);
-
-  console.log(`✅ Batch group ${groupNum + 1} complete`);
-
-  // Update TodoWrite to mark group completed
-  TodoWrite({
-    todos: updateGroupStatus(groupNum, 'completed')
-  });
-}
-```
-
-**Step 3: Domain to Specialist Mapping**
-
-```javascript
-function mapDomainToSpecialist(domain) {
-  const mapping = {
-    'backend': 'backend-dev',
-    'frontend': 'frontend-shipper',
-    'database': 'database-architect',
-    'tests': 'qa-test',
-    'general': 'general-purpose'
-  };
-  return mapping[domain] || 'general-purpose';
-}
-```
-
-**Step 4: Build Batch Prompt for Specialist**
-
-```javascript
-function buildBatchPrompt(batch, featureDir, tasksFile, notesFile) {
-  return `Execute the following tasks in strict TDD order if phases are specified.
-
-**Feature Directory**: ${featureDir}
-**Tasks File**: ${tasksFile}
-**Notes File**: ${notesFile}
-
-**Tasks in This Batch**:
-${batch.tasks.map(t => `- ${t.id} [${t.phase || 'GENERAL'}]: ${t.desc}`).join('\n')}
-
-**Instructions**:
-1. Read ${tasksFile} for full task requirements and acceptance criteria
-2. Check for REUSE markers and read referenced files before implementing
-3. For TDD phases ([RED], [GREEN], [REFACTOR]):
-   - RED: Write failing test first, verify it fails, commit
-   - GREEN: Minimal implementation to pass test, commit when passing
-   - REFACTOR: Clean up code while keeping tests green, commit
-4. For general tasks: Implement, test, commit
-5. Update task status in ${notesFile} with ✅ ${t.id} after completion
-6. Auto-rollback on test failures, log to error-log.md
-
-**Commit Format** (one per task):
-\`\`\`
-${batch.tasks[0].phase === 'RED' ? 'test(red)' : batch.tasks[0].phase === 'GREEN' ? 'feat(green)' : batch.tasks[0].phase === 'REFACTOR' ? 'refactor' : 'feat'}: ${batch.tasks[0].id} <summary>
-
-${batch.tasks[0].phase ? `Phase: ${batch.tasks[0].phase}` : ''}
-Tests: <status>
-Coverage: <percentage>
-\`\`\`
-
-**Return** (JSON):
-{
-  "batch_id": "${batch.id}",
-  "status": "success|failed",
-  "tasks_completed": ["T001", "T002"],
-  "tasks_failed": [],
-  "files_changed": 5,
-  "test_results": "10/10 passing",
-  "coverage": "85% (+5%)"
-}`;
-}
-```
-
-### Parallel Execution Rules
-
-1. **Launch all Task() calls in single message** - This is critical for true parallelism
-2. **Wait for all to complete** - Use Promise.all() to collect results
-3. **Checkpoint commit per group** - Create atomic commit after each group completes
-4. **Update TodoWrite progress** - Mark groups as completed in real-time
-
-### Error Handling
-
-- **Test failures**: Specialist auto-rollbacks, logs to error-log.md, continues
-- **Missing REUSE files**: Specialist fails task, logs error, continues
-- **Git conflicts**: Abort, instruct user to resolve
-- **Verification failures**: Record partial results, do not proceed to next group
+**Performance:**
+- Expected speedup: 2-3x for features with high parallelism
+- Bottleneck: Integration tasks (require both frontend + backend)
 
 ---
 
-<instructions>
+## ERROR HANDLING
 
-```bash
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# VALIDATE ALL IMPLEMENTATIONS (Single Pass)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🔍 Validating all task completions..."
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-for batch in "${BATCHES[@]}"; do
-  IFS='|' read -ra TASKS <<< "$batch"
-
-  for t in "${TASKS[@]}"; do
-    IFS=':' read -r id dom phase desc <<< "$t"
-
-    # Check authoritative status once
-    if [ -x "$TRACKER" ]; then
-      COMPLETED=$("$TRACKER" status -FeatureDir "$FEATURE_DIR" -Json 2>/dev/null | \
-        jq -r ".CompletedTasks[] | select(.Id == \"$id\") | .Id" 2>/dev/null || echo "")
-
-      if [ "$COMPLETED" = "$id" ]; then
-        echo "✅ $id complete"
-      else
-        echo "⚠️  $id incomplete"
-        FAILED_TASKS+=("$id")
-      fi
-    else
-      # Fallback to NOTES.md check
-      if grep -q "✅ $id" "$NOTES_FILE" 2>/dev/null; then
-        echo "✅ $id complete"
-      else
-        echo "⚠️  $id incomplete"
-        FAILED_TASKS+=("$id")
-        echo "  ⚠️  $id: Not completed" >> "$ERROR_LOG"
-      fi
-    fi
-  done
-done
-
-echo ""
-
-# Report failures
-if [ ${#FAILED_TASKS[@]} -gt 0 ]; then
-  echo "❌ ${#FAILED_TASKS[@]} tasks incomplete: ${FAILED_TASKS[*]}"
-  echo ""
-  echo "Review error-log.md for details"
-  exit 2
-fi
-
-echo "✅ All tasks validated successfully"
-echo ""
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# WRAP-UP
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-# Calculate completion statistics
-TOTAL=$(grep -c "^T[0-9]\{3\}" "$TASKS_FILE" 2>/dev/null || echo "0")
-COMPLETED=$(grep -c "^✅ T[0-9]\{3\}" "$NOTES_FILE" 2>/dev/null || echo "0")
-FILES_CHANGED=$(git diff --name-only main 2>/dev/null | wc -l || echo "0")
-ERROR_COUNT=$(grep -c "❌\|⚠️" "$ERROR_LOG" 2>/dev/null || echo "0")
-
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ All batches complete"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Summary:"
-echo "  Tasks: $COMPLETED/$TOTAL completed"
-echo "  Files changed: $FILES_CHANGED"
-echo "  Errors logged: $ERROR_COUNT"
-echo ""
-
-# Update workflow state
-if [ -f .spec-flow/scripts/bash/workflow-state.sh ]; then
-  source .spec-flow/scripts/bash/workflow-state.sh
-  update_workflow_phase "$FEATURE_DIR" "implement" "completed" 2>/dev/null || true
-fi
-
-echo "Next: /optimize (auto-continues from /feature)"
-echo ""
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# INFRASTRUCTURE RECOMMENDATIONS
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-if [ -f .spec-flow/scripts/bash/detect-infrastructure-needs.sh ]; then
-  INFRA_NEEDS=$(.spec-flow/scripts/bash/detect-infrastructure-needs.sh all 2>/dev/null || echo '{}')
-
-  # Check for feature flag needs (branch age >18h)
-  FLAG_NEEDED=$(echo "$INFRA_NEEDS" | jq -r '.flag_needed.needed // false')
-  if [ "$FLAG_NEEDED" = "true" ]; then
-    BRANCH_AGE=$(echo "$INFRA_NEEDS" | jq -r '.flag_needed.branch_age_hours')
-    SLUG=$(echo "$INFRA_NEEDS" | jq -r '.flag_needed.slug')
-
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "⚠️  BRANCH AGE WARNING: ${BRANCH_AGE}h (24h limit)"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "Consider adding a feature flag to merge daily:"
-    echo "  /flag-add ${SLUG}_enabled --reason \"Large feature - daily merges\""
-    echo ""
-    echo "This allows merging incomplete work behind a flag."
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-  fi
-
-  # Check for contract bump needs (API changes)
-  CONTRACT_BUMP_NEEDED=$(echo "$INFRA_NEEDS" | jq -r '.contract_bump.needed // false')
-  if [ "$CONTRACT_BUMP_NEEDED" = "true" ]; then
-    CHANGED_COUNT=$(echo "$INFRA_NEEDS" | jq -r '.contract_bump.changed_files | length')
-
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "🔌 API CHANGES DETECTED ($CHANGED_COUNT files)"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "Consider updating API contracts:"
-    echo ""
-    echo "  1. If breaking change:"
-    echo "     /contract-bump major --reason \"Breaking change description\""
-    echo ""
-    echo "  2. If backward-compatible:"
-    echo "     /contract-bump minor --reason \"New endpoint added\""
-    echo ""
-    echo "  3. Verify all consumers still work:"
-    echo "     /contract-verify"
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-  fi
-
-  # Check for fixture refresh needs (migrations)
-  FIXTURE_REFRESH_NEEDED=$(echo "$INFRA_NEEDS" | jq -r '.fixture_refresh.needed // false')
-  if [ "$FIXTURE_REFRESH_NEEDED" = "true" ]; then
-    MIGRATION_COUNT=$(echo "$INFRA_NEEDS" | jq -r '.fixture_refresh.migration_files | length')
-
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "🗄️  DATABASE MIGRATIONS DETECTED ($MIGRATION_COUNT files)"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "Consider refreshing test fixtures:"
-    echo "  /fixture-refresh --env production --anonymize"
-    echo ""
-    echo "This ensures tests use realistic, up-to-date data."
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-  fi
-fi
-
+**Auto-rollback on failure:**
+```
+Task T005 failed at Green phase (test still failing)
+→ Rollback T005 changes (git restore)
+→ Mark T005 as blocked in tasks.md
+→ Continue with next independent task
+→ Log error to specs/{slug}/error-log.md
 ```
 
-</instructions>
+**Manual intervention required:**
+- Repository-wide test suite failure (affects all tasks)
+- Git conflicts (merge required)
+- Missing external dependencies (API keys, services)
+
+**Resume after fixing:**
+```bash
+python .spec-flow/scripts/spec-cli.py implement "$SLUG" --continue
+```
 
 ---
 
-## Agent Execution Rules
+## ANTI-DUPLICATION
 
-The bash script above delegates to Claude Code for actual task execution. Claude Code invokes appropriate agents via the Task tool based on task domain.
+**Before creating new code:**
+1. Search for existing implementations (Grep, Glob)
+2. Check plan.md REUSABLE_COMPONENTS section
+3. Prefer importing existing code over duplication
 
-### TDD Phases (strict sequential order)
-
-**RED Phase `[RED]`**:
-- Write failing test first
-- Test must fail for right reason
-- Provide test output as evidence
-- Auto-rollback if test passes (wrong!)
-- Commit immediately:
-  ```bash
-  git add .
-  git commit -m "test(red): TXXX write failing test
-
-  Test: $TEST_NAME
-  Expected: FAILED (ImportError/NotImplementedError)
-  Evidence: $(pytest output showing failure)"
-  ```
-
-**GREEN Phase `[GREEN→TXXX]`**:
-- Minimal implementation to pass RED test
-- Run tests, must pass
-- Auto-rollback on failure → log to error-log.md
-- Commit when tests pass:
-  ```bash
-  git add .
-  git commit -m "feat(green): TXXX implement to pass test
-
-  Implementation: $SUMMARY
-  Tests: All passing ($PASS/$TOTAL)
-  Coverage: $COV% (+$DELTA%)"
-  ```
-
-**REFACTOR Phase `[REFACTOR]`**:
-- Clean up code (DRY, KISS)
-- Tests must stay green
-- Auto-rollback if tests break
-- Commit after refactoring:
-  ```bash
-  git add .
-  git commit -m "refactor: TXXX clean up implementation
-
-  Improvements: $IMPROVEMENTS
-  Tests: Still passing ($PASS/$TOTAL)
-  Coverage: Maintained at $COV%"
-  ```
-
-### Auto-Rollback (no prompts)
-
-On failure:
-```bash
-git restore .
-echo "⚠️  TXXX: Auto-rolled back (test failure)" >> error-log.md
-# Continue to next task
+**Example:**
 ```
-
-### REUSE Enforcement
+Task T007: Create email validation function
 
 Before implementing:
-1. Check REUSE markers in tasks.md
-2. Read referenced files
-3. Import/extend existing code
-4. Flag if claimed REUSE but no import
-
-### Task Status Updates (mandatory)
-
-After successful task completion:
-```bash
-.spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
-  -TaskId "TXXX" \
-  -Notes "Implementation summary (1-2 sentences)" \
-  -Evidence "pytest: NN/NN passing" or "jest: NN/NN passing, a11y: 0 violations" \
-  -Coverage "NN% line, NN% branch (+ΔΔ%)" \
-  -CommitHash "$(git rev-parse --short HEAD)" \
-  -FeatureDir "$FEATURE_DIR"
-```
-
-On task failure:
-```bash
-.spec-flow/scripts/bash/task-tracker.sh mark-failed \
-  -TaskId "TXXX" \
-  -ErrorMessage "Detailed error description" \
-  -FeatureDir "$FEATURE_DIR"
+  → Grep for "validateEmail" in codebase
+  → Found: utils/validators.ts:45 exports validateEmail
+  → Decision: Import existing function instead of creating new one
+  → Update imports, skip implementation
 ```
 
 ---
 
-## Error Handling
+## COMMIT STRATEGY
 
-- **Test failures**: Auto-rollback, log to error-log.md, continue to next task
-- **Missing REUSE files**: Fail task, log error, continue
-- **Git conflicts**: Abort commit, instruct user to resolve, exit
-- **Verification failures**: Record partial results, do not proceed
+**Atomic commits per task:**
+```
+feat(T005): implement user profile edit form
 
----
+- Add ProfileEditForm component with validation
+- Add PATCH /api/users/:id endpoint
+- Add test coverage for edit flow
 
-## References
+Implements: specs/001-user-profile/tasks.md T005
+Source: plan.md:145-160
 
-- TDD red-green-refactor: https://martinfowler.com/bliki/TestDrivenDevelopment.html
-- Atomic commits per task: https://sethrobertson.github.io/GitBestPractices
-- WIP limits reduce context switching: https://en.wikipedia.org/wiki/Kanban_(development)#Work-in-progress_limits
-- Parallel speedup (Amdahl's Law): https://en.wikipedia.org/wiki/Amdahl%27s_law
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
 
----
+**Final implementation commit:**
+```
+feat(001-user-profile): complete implementation
 
-## Philosophy
+Tasks completed: 25/25
+Files created: 12
+Files modified: 8
 
-**Parallel execution with sequential safety**: Group independent tasks by domain; run TDD phases sequentially to respect dependencies.
+All tests passing (125 tests, 0 failures)
 
-**Atomic commits per task**: One commit per task with clear message and test evidence. Makes bisect/rollback sane.
+Next: /optimize
 
-**Auto-rollback on failure**: No prompts; log failures and continue. Speed over ceremony.
-
-**REUSE enforcement**: Verify imports before claiming reuse. Fail task if pattern file missing.
-
-**WIP limits**: One batch `in_progress` at a time reduces context switching and improves throughput.
-
-**Fail fast, fail loud**: Record failures in error-log.md; never pretend success. Exit with meaningful codes: 0 (success), 1 (error), 2 (verification failed).
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>
+```

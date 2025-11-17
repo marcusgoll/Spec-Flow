@@ -44,6 +44,28 @@
 
 ## 🆕 Recent Updates
 
+### v6.4.0 (November 2025)
+
+**CLI Integration & Design System Expansion**
+
+- **39 Total Commands**: Integrated 15 new commands into spec-cli.py for comprehensive workflow coverage
+  - Living Documentation: Auto-generate CLAUDE.md files, health checks for stale docs
+  - Project Management: `init-project`, `roadmap`, `design-health`
+  - Epic & Sprint: Epic groupings and sprint cycle management
+  - Quality & Metrics: Quality gates and HEART/DORA metrics tracking
+- **Design System Intelligence**: Component reuse enforcement with automated quality checks
+  - `design-scout` agent: Analyzes existing components before mockup creation (85%+ reuse target)
+  - `design-lint` agent: Automated mockup quality inspector (WCAG 2.1 AA, color contrast, touch targets)
+  - Multi-screen mockup navigation: Keyboard shortcuts (H=hub, 1-9=screens, S=states, Esc=close)
+  - Health monitoring: 7 automated checks for design system staleness and documentation sync
+- **Infrastructure Commands**: Scheduler (epic assignment with WIP limits), fixture refresh, DORA metrics
+
+**Problem Solved**: Fragmented command interfaces and no systematic design system health monitoring. Component duplication occurred without reuse enforcement. Manual quality checks were inconsistent.
+
+**Impact**: Single CLI entry point for all 39 workflow commands. Automated design quality validation catches issues before implementation. 85%+ component reuse enforced via design-scout analysis.
+
+---
+
 ### v6.3.0 (November 2025)
 
 **HTML Mockup Approval Workflow**

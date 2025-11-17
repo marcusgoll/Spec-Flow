@@ -1638,6 +1638,100 @@ git restore .
 - Provide coverage delta (e.g., "+6%" means coverage increased by 6%)
 - Log failures with enough detail for debugging
 
+5. **Update living documentation** (if new components created):
+
+**When you create new UI components** (shadcn/ui primitives or custom components):
+- Automatically update `design/systems/ui-inventory.md`
+- Document component name, props, usage examples
+- Include accessibility features (WCAG 2.1 AA compliance)
+- Add link to component file location
+
+**UI Inventory Update Template:**
+
+```markdown
+### {ComponentName}
+
+**Source**: {file_path}
+**Type**: {shadcn/ui primitive | custom component}
+**Props**: {key props list}
+**States**: {default, hover, focus, disabled, loading, error}
+**Accessibility**: {ARIA labels, keyboard navigation, screen reader support}
+**Usage**:
+```tsx
+import { {ComponentName} } from '@/components/ui/{component-name}'
+
+<{ComponentName} {prop}="{value}" />
+```
+
+**Examples**:
+- {Example 1 description}: {file_path}:{line_number}
+- {Example 2 description}: {file_path}:{line_number}
+
+**Related Components**: {List related components from inventory}
+```
+
+**Auto-update process:**
+
+```bash
+# After creating new component in components/ui/button.tsx
+# Append to ui-inventory.md
+
+cat >> design/systems/ui-inventory.md <<'EOF'
+
+### Button
+
+**Source**: components/ui/button.tsx
+**Type**: shadcn/ui primitive
+**Props**: variant (default|destructive|outline|secondary|ghost|link), size (default|sm|lg|icon), asChild
+**States**: default, hover, focus, disabled, loading
+**Accessibility**: Semantic <button> element, keyboard accessible (Enter/Space), focus indicator visible
+**Usage**:
+```tsx
+import { Button } from '@/components/ui/button'
+
+<Button variant="default">Click me</Button>
+<Button variant="outline" size="sm">Small</Button>
+<Button disabled>Disabled</Button>
+```
+
+**Examples**:
+- Primary CTA: app/components/LoginForm.tsx:45
+- Secondary action: app/components/SettingsPage.tsx:89
+
+**Related Components**: Link, IconButton
+EOF
+
+# Commit documentation update
+git add design/systems/ui-inventory.md
+git commit -m "docs: add Button component to ui-inventory
+
+Component: Button (shadcn/ui primitive)
+Features: 5 variants, 4 sizes, accessible
+Location: components/ui/button.tsx"
+```
+
+**Living documentation principles:**
+- Update inventory **immediately** after component creation (same commit or next)
+- Include **real usage examples** from actual feature files
+- Document **accessibility features** explicitly (ARIA, keyboard nav, focus)
+- Link **related components** to encourage composition over duplication
+- Keep inventory **fresh** (<24 hours lag between creation and documentation)
+
+**Skip documentation if:**
+- Component is a one-off (not reusable across features)
+- Component is private to a single feature (in app/ not components/ui/)
+- Component is a layout wrapper (Grid, Container, Stack - too generic)
+
+**Component Reuse Enforcement:**
+- Before creating new component → Check ui-inventory.md first
+- If similar component exists → Extend it instead of duplicating
+- If truly novel → Document in inventory for future reuse
+
+**Metrics tracked:**
+- Component reuse rate: 85%+ target
+- Inventory freshness: <24 hours lag
+- Documentation coverage: 100% of reusable components
+
 ## Git Workflow (MANDATORY)
 
 **Every meaningful change MUST be committed for rollback safety.**
