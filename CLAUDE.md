@@ -96,6 +96,123 @@ Creates HTML mockups in specs/NNN-slug/mockups/
 
 **Usage**: Add `--ui-first` flag to `/tasks` command for features requiring UI design
 
+## Advanced Workflow Commands
+
+**When to use**: For parallel epic development, contract-first API design, feature flags, metrics tracking, and WIP management.
+
+**Philosophy**: These commands enable trunk-based development, parallel workstreams, and data-driven decision making introduced in v4.3.0+ Epic & Sprint Roadmap System.
+
+### Infrastructure Commands (Contract & Feature Flags)
+
+**Contract Management** (API-first development):
+- `/contract.bump` - Bump API contract version (semver: major/minor/patch)
+- `/contract.verify` - Verify consumer-driven contracts don't break (CDC testing)
+- `/fixture.refresh` - Regenerate golden test fixtures from OpenAPI schemas
+
+**Feature Flags** (trunk-based development):
+- `/flag.add <name>` - Add feature flag for incomplete work merged to main
+- `/flag.list` - List active and expired feature flags
+- `/flag.cleanup` - Remove feature flags when features complete
+
+**Use Cases**:
+- Bypass 24-hour branch limit by merging incomplete work behind flags
+- Enable parallel epic development without merge conflicts
+- Contract-first API design with automated compatibility verification
+- Test fixture generation from OpenAPI specifications
+
+**Example Workflow**:
+```bash
+# 1. Design API contract first
+vim contracts/api/v1.2.0/openapi.yaml
+
+# 2. Add feature flag for incomplete implementation
+/flag.add auth_v2 "New OAuth 2.1 authentication"
+
+# 3. Merge incomplete work to main (behind flag)
+git commit -m "feat: add OAuth 2.1 auth (flag: auth_v2)"
+
+# 4. Verify contract compatibility
+/contract.verify --baseline v1.1.0
+
+# 5. When feature complete, remove flag
+/flag.cleanup
+```
+
+### Metrics Commands (Product & Velocity Analytics)
+
+**HEART Metrics** (product success):
+- `/metrics` - Measure Happiness, Engagement, Adoption, Retention, Task Success
+  - Happiness: NPS score from user surveys
+  - Engagement: DAU/MAU ratio from analytics
+  - Adoption: New user signups from database
+  - Retention: Cohort retention from user lifecycle
+  - Task Success: Completion rate from telemetry
+
+**DORA Metrics** (delivery velocity):
+- `/metrics.dora` - Calculate Deployment Frequency, Lead Time, Change Failure Rate, MTTR
+  - Deployment Frequency: Deploys per day/week from git tags
+  - Lead Time: Commit to deploy time from git history
+  - Change Failure Rate: Failed deploys / total deploys
+  - MTTR: Mean time to recovery from incident logs
+  - Classification: Elite/High/Medium/Low performer
+
+**Use Cases**:
+- Track product success metrics against targets
+- Measure engineering velocity and quality
+- Identify bottlenecks in delivery pipeline
+- Compare performance against industry benchmarks
+
+**Example Workflow**:
+```bash
+# 1. Measure product metrics after feature release
+/metrics
+# Output: metrics-report.md with current vs target values
+
+# 2. Calculate DORA metrics for sprint
+/metrics.dora --since 2025-11-01
+# Output: dora-report.md with Elite/High/Medium/Low classification
+
+# 3. Review metrics with team
+cat .spec-flow/reports/metrics-report.md
+cat .spec-flow/reports/dora-report.md
+```
+
+### Scheduling Commands (Parallel Epic Coordination)
+
+**Epic Assignment** (WIP enforcement):
+- `/scheduler.assign <epic> <agent>` - Assign epic to agent (max 1 per agent)
+- `/scheduler.list` - List all epics with state and WIP utilization
+- `/scheduler.park <epic> <reason>` - Park blocked epic, release WIP slot
+
+**Use Cases**:
+- Coordinate parallel development across multiple epics
+- Enforce WIP limits (1 epic per agent maximum)
+- Park blocked epics to free capacity for others
+- Monitor epic progress and bottlenecks
+
+**Example Workflow**:
+```bash
+# 1. List available epics
+/scheduler.list
+# Output:
+#   epic-auth-api: ContractsLocked, waiting for WIP slot
+#   epic-auth-ui: Implementing, agent=frontend-agent
+#   epic-payment: Parked (blocked by Stripe API keys)
+
+# 2. Assign epic to agent
+/scheduler.assign epic-auth-api backend-agent
+# Result: epic-auth-api → Implementing, WIP: 2/2 occupied
+
+# 3. Park blocked epic
+/scheduler.park epic-payment "Waiting for Stripe API keys from DevOps"
+# Result: epic-payment → Parked, WIP slot released
+```
+
+**References**:
+- Infrastructure commands documented in `docs/contract-governance.md`
+- Scheduling commands documented in `docs/parallel-epic-workflow.md` (87 examples)
+- See `.claude/commands/infrastructure/`, `/metrics/`, `/scheduling/` for full specifications
+
 ## Project Design Workflow
 
 **When to use**: Before building any features, run `/init-project` to create comprehensive project-level design documentation.

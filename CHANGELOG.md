@@ -1,3 +1,37 @@
+## [Unreleased]
+
+### Added
+- **Infrastructure Command Integration**: Completed bash script implementation and spec-cli.py integration for infrastructure/metrics/scheduling commands
+  - Created `.spec-flow/scripts/bash/metrics-track.sh` (450 lines) - HEART metrics calculation from local data sources
+  - Created `.spec-flow/scripts/bash/dora-calculate.sh` (107 lines) - DORA metrics calculation placeholder
+  - Added 5 command handlers to spec-cli.py: `fixture-refresh`, `scheduler-assign`, `scheduler-list`, `scheduler-park`, `metrics-dora`
+  - Added argument parsers for all 5 new commands with proper help text and parameter validation
+  - Registered all commands in handlers dictionary for CLI routing
+
+### Changed
+- **CLAUDE.md** (+116 lines): Added comprehensive "Advanced Workflow Commands" section documenting:
+  - Infrastructure commands (contract management, feature flags, test fixtures)
+  - Metrics commands (HEART and DORA metrics with tier classification)
+  - Scheduling commands (epic assignment, WIP enforcement, parking)
+  - Example workflows for each category
+- **spec-cli.py** (+85 lines): Integrated 11 infrastructure/metrics/scheduling commands into CLI
+  - Command handlers: `cmd_fixture_refresh`, `cmd_scheduler_assign`, `cmd_scheduler_list`, `cmd_scheduler_park`, `cmd_metrics_dora`
+  - Parsers with full argument support (--contract, --output, --json, --since, etc.)
+  - JSON output support for programmatic consumption
+
+### Documentation
+- HEART Metrics: Happiness (NPS), Engagement (DAU/MAU), Adoption, Retention, Task Success
+- DORA Metrics: Deployment Frequency, Lead Time, Change Failure Rate, MTTR with Elite/High/Medium/Low classification
+- Data sources documented: surveys.json, analytics.log, DATABASE_URL, telemetry.log, capacity-planning.md
+
+### Technical Details
+- metrics-track.sh: Calculates 5 HEART metrics, compares against targets from capacity-planning.md, generates markdown report
+- dora-calculate.sh: Placeholder for git tag analysis, commit-to-deploy time calculation, incident log parsing
+- Scheduler commands: Support epic-to-agent assignment with WIP limit enforcement (max 1 epic per agent)
+- Contract/fixture commands: Enable contract-first API design with automated CDC testing and golden fixture generation
+
+---
+
 ## [6.3.0] - 2025-11-14
 
 ### Added

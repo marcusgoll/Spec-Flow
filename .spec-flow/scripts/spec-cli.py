@@ -5,21 +5,58 @@ Spec-Flow Workflow CLI - Centralized command dispatcher
 Usage:
     python spec-cli.py <command> [options]
 
-Commands:
+Workflow Commands:
     clarify <feature>           - Interactive clarification workflow
+    plan <feature>              - Generate implementation plan from spec
+    tasks <feature>             - Generate concrete TDD tasks
+    validate <feature>          - Cross-artifact consistency analysis
+    implement <feature>         - Execute tasks with TDD
+    debug <feature>             - Debug errors and update error-log.md
+    optimize <feature>          - Production-readiness validation
+    preview <feature>           - Manual UI/UX testing
+    feature <args>              - Orchestrate full feature workflow
+
+Living Documentation:
+    generate-feature-claude     - Generate feature-level CLAUDE.md
+    generate-project-claude     - Generate project-level CLAUDE.md
+    update-living-docs          - Trigger living documentation update
+    health-check-docs           - Scan for stale documentation
+
+Project Management:
+    init-project                - Initialize project with 8-document generation
+    roadmap <action>            - Manage product roadmap via GitHub Issues
+    design-health               - Monitor design system health
+
+Epic & Sprint:
+    epic <action>               - Manage epic groupings
+    sprint <action>             - Manage sprint cycles
+
+Quality & Metrics:
+    gate <type>                 - Manage quality gates
+    metrics <type>              - Track HEART metrics
+
+Utilities:
     compact <feature>           - Compact context for phase
     create-feature <name>       - Create new feature directory
     calculate-tokens <dir>      - Calculate token budget
-    check-prereqs              - Validate environment
+    check-prereqs               - Validate environment
     detect-infra <feature>      - Detect infrastructure needs
-    enable-auto-merge          - Enable auto-merge for PR
-    branch-enforce             - Enforce branch naming
+    enable-auto-merge           - Enable auto-merge for PR
+    branch-enforce              - Enforce branch naming
+    flag <action>               - Manage feature flags
+    schedule <action>           - Manage release schedules
+    version <type>              - Manage version bumps
+    deps <action>               - Manage dependency updates
+    contract-bump <type>        - Bump API contract version
+    contract-verify             - Verify API contract compatibility
 
 Examples:
     python spec-cli.py clarify my-feature
     python spec-cli.py check-prereqs --json
     python spec-cli.py create-feature "User Authentication"
     python spec-cli.py calculate-tokens --feature-dir specs/001-auth
+    python spec-cli.py health-check-docs --json
+    python spec-cli.py roadmap brainstorm
 """
 
 import sys
@@ -84,6 +121,11 @@ def cmd_clarify(args):
     script_args = []
     if args.feature:
         script_args.append(args.feature)
+    if hasattr(args, 'json') and args.json:
+        script_args.append('--json')
+        stdout, code = run_script('clarify-workflow', script_args, capture=True)
+        print(stdout, end='')
+        return code
     return run_script('clarify-workflow', script_args)
 
 def cmd_plan(args):
@@ -97,6 +139,11 @@ def cmd_plan(args):
         script_args.append('--yes')
     if args.skip_clarify:
         script_args.append('--skip-clarify')
+    if hasattr(args, 'json') and args.json:
+        script_args.append('--json')
+        stdout, code = run_script('plan-workflow', script_args, capture=True)
+        print(stdout, end='')
+        return code
     return run_script('plan-workflow', script_args)
 
 def cmd_preview(args):
@@ -104,6 +151,11 @@ def cmd_preview(args):
     script_args = []
     if args.feature:
         script_args.append(args.feature)
+    if hasattr(args, 'json') and args.json:
+        script_args.append('--json')
+        stdout, code = run_script('preview-workflow', script_args, capture=True)
+        print(stdout, end='')
+        return code
     return run_script('preview-workflow', script_args)
 
 def cmd_validate(args):
@@ -111,6 +163,11 @@ def cmd_validate(args):
     script_args = []
     if args.feature:
         script_args.append(args.feature)
+    if hasattr(args, 'json') and args.json:
+        script_args.append('--json')
+        stdout, code = run_script('validate-workflow', script_args, capture=True)
+        print(stdout, end='')
+        return code
     return run_script('validate-workflow', script_args)
 
 def cmd_tasks(args):
@@ -120,6 +177,11 @@ def cmd_tasks(args):
         script_args.append(args.feature)
     if args.ui_first:
         script_args.append('--ui-first')
+    if hasattr(args, 'json') and args.json:
+        script_args.append('--json')
+        stdout, code = run_script('tasks-workflow', script_args, capture=True)
+        print(stdout, end='')
+        return code
     return run_script('tasks-workflow', script_args)
 
 def cmd_implement(args):
@@ -127,6 +189,11 @@ def cmd_implement(args):
     script_args = []
     if args.feature:
         script_args.append(args.feature)
+    if hasattr(args, 'json') and args.json:
+        script_args.append('--json')
+        stdout, code = run_script('implement-workflow', script_args, capture=True)
+        print(stdout, end='')
+        return code
     return run_script('implement-workflow', script_args)
 
 def cmd_debug(args):
@@ -136,6 +203,11 @@ def cmd_debug(args):
         script_args.append(args.feature)
     if args.error:
         script_args.extend(['--error', args.error])
+    if hasattr(args, 'json') and args.json:
+        script_args.append('--json')
+        stdout, code = run_script('debug-workflow', script_args, capture=True)
+        print(stdout, end='')
+        return code
     return run_script('debug-workflow', script_args)
 
 def cmd_optimize(args):
@@ -143,6 +215,11 @@ def cmd_optimize(args):
     script_args = []
     if args.feature:
         script_args.append(args.feature)
+    if hasattr(args, 'json') and args.json:
+        script_args.append('--json')
+        stdout, code = run_script('optimize-workflow', script_args, capture=True)
+        print(stdout, end='')
+        return code
     return run_script('optimize-workflow', script_args)
 
 def cmd_feature(args):
@@ -226,6 +303,252 @@ def cmd_contract_verify(args):
         script_args.extend(['--baseline', args.baseline])
     return run_script('contract-verify', script_args)
 
+def cmd_fixture_refresh(args):
+    """Regenerate golden test fixtures from OpenAPI schemas"""
+    script_args = []
+    if args.contract:
+        script_args.extend(['--contract', args.contract])
+    if args.output:
+        script_args.extend(['--output', args.output])
+    return run_script('fixture-refresh', script_args)
+
+# Living Documentation Commands
+
+def cmd_generate_feature_claude(args):
+    """Generate feature-level CLAUDE.md file"""
+    script_args = []
+    if args.feature:
+        script_args.append(args.feature)
+    if args.force:
+        script_args.append('--force')
+    return run_script('generate-feature-claude', script_args)
+
+def cmd_generate_project_claude(args):
+    """Generate project-level CLAUDE.md file"""
+    script_args = []
+    if args.force:
+        script_args.append('--force')
+    return run_script('generate-project-claude', script_args)
+
+def cmd_update_living_docs(args):
+    """Trigger living documentation update"""
+    script_args = []
+    if args.feature:
+        script_args.append(args.feature)
+    if args.scope:
+        script_args.extend(['--scope', args.scope])
+    return run_script('update-living-docs', script_args)
+
+def cmd_health_check_docs(args):
+    """Scan for stale documentation"""
+    script_args = []
+    if args.json:
+        script_args.append('--json')
+    if args.threshold:
+        script_args.extend(['--threshold', str(args.threshold)])
+
+    if args.json:
+        stdout, code = run_script('health-check-docs', script_args, capture=True)
+        print(stdout, end='')
+        return code
+    else:
+        return run_script('health-check-docs', script_args)
+
+# Project Initialization
+
+def cmd_init_project(args):
+    """Initialize project with 8-document generation"""
+    script_args = []
+    if args.project_type:
+        script_args.extend(['--type', args.project_type])
+    if args.yes:
+        script_args.append('--yes')
+    return run_script('init-project', script_args)
+
+# Roadmap Management
+
+def cmd_roadmap(args):
+    """Manage product roadmap via GitHub Issues"""
+    script_args = []
+    if args.action:
+        script_args.append(args.action)
+    if args.feature:
+        script_args.extend(['--feature', args.feature])
+    if args.priority:
+        script_args.extend(['--priority', args.priority])
+    if args.json:
+        script_args.append('--json')
+
+    if args.json:
+        stdout, code = run_script('roadmap', script_args, capture=True)
+        print(stdout, end='')
+        return code
+    else:
+        return run_script('roadmap', script_args)
+
+# Design System Health
+
+def cmd_design_health(args):
+    """Monitor design system health and staleness"""
+    script_args = []
+    if args.verbose:
+        script_args.append('--verbose')
+    if args.json:
+        script_args.append('--json')
+
+    if args.json:
+        stdout, code = run_script('design-health-check', script_args, capture=True)
+        print(stdout, end='')
+        return code
+    else:
+        return run_script('design-health-check', script_args)
+
+# Epic & Sprint Management
+
+def cmd_epic(args):
+    """Manage epic groupings"""
+    script_args = []
+    if args.action:
+        script_args.append(args.action)
+    if args.epic_name:
+        script_args.extend(['--name', args.epic_name])
+    if args.description:
+        script_args.extend(['--description', args.description])
+    return run_script('epic-manage', script_args)
+
+def cmd_sprint(args):
+    """Manage sprint cycles"""
+    script_args = []
+    if args.action:
+        script_args.append(args.action)
+    if args.sprint_num:
+        script_args.extend(['--sprint', str(args.sprint_num)])
+    if args.features:
+        script_args.extend(['--features', args.features])
+    return run_script('sprint-manage', script_args)
+
+# Feature Flags & Scheduling
+
+def cmd_flag(args):
+    """Manage feature flags"""
+    script_args = []
+    if args.action:
+        script_args.append(args.action)
+    if args.flag_name:
+        script_args.extend(['--flag', args.flag_name])
+    if args.enabled is not None:
+        script_args.extend(['--enabled', str(args.enabled).lower()])
+    return run_script('flag-manage', script_args)
+
+def cmd_schedule(args):
+    """Manage release schedules"""
+    script_args = []
+    if args.action:
+        script_args.append(args.action)
+    if args.release_date:
+        script_args.extend(['--date', args.release_date])
+    if args.features:
+        script_args.extend(['--features', args.features])
+    return run_script('schedule-manage', script_args)
+
+def cmd_scheduler_assign(args):
+    """Assign epic to agent (max 1 epic per agent)"""
+    script_args = [args.epic, args.agent]
+    return run_script('scheduler-assign', script_args)
+
+def cmd_scheduler_list(args):
+    """List all epics with state and WIP utilization"""
+    script_args = []
+    if args.json:
+        script_args.append('--json')
+
+    if args.json:
+        stdout, code = run_script('scheduler-list', script_args, capture=True)
+        print(stdout, end='')
+        return code
+    else:
+        return run_script('scheduler-list', script_args)
+
+def cmd_scheduler_park(args):
+    """Park blocked epic and release WIP slot"""
+    script_args = [args.epic, args.reason]
+    return run_script('scheduler-park', script_args)
+
+# Quality Gates & Metrics
+
+def cmd_gate(args):
+    """Manage quality gates"""
+    script_args = []
+    if args.gate_type:
+        script_args.append(args.gate_type)
+    if args.action:
+        script_args.extend(['--action', args.action])
+    if args.json:
+        script_args.append('--json')
+
+    if args.json:
+        stdout, code = run_script('gate-check', script_args, capture=True)
+        print(stdout, end='')
+        return code
+    else:
+        return run_script('gate-check', script_args)
+
+def cmd_metrics(args):
+    """Track HEART metrics"""
+    script_args = []
+    if args.metric_type:
+        script_args.append(args.metric_type)
+    if args.period:
+        script_args.extend(['--period', args.period])
+    if args.json:
+        script_args.append('--json')
+
+    if args.json:
+        stdout, code = run_script('metrics-track', script_args, capture=True)
+        print(stdout, end='')
+        return code
+    else:
+        return run_script('metrics-track', script_args)
+
+def cmd_metrics_dora(args):
+    """Calculate DORA metrics (Deployment Frequency, Lead Time, CFR, MTTR)"""
+    script_args = []
+    if args.since:
+        script_args.extend(['--since', args.since])
+    if args.output:
+        script_args.extend(['--output', args.output])
+    if args.json:
+        script_args.append('--json')
+
+    if args.json:
+        stdout, code = run_script('dora-calculate', script_args, capture=True)
+        print(stdout, end='')
+        return code
+    else:
+        return run_script('dora-calculate', script_args)
+
+# Version & Dependency Management
+
+def cmd_version(args):
+    """Manage version bumps"""
+    script_args = []
+    if args.bump_type:
+        script_args.append(args.bump_type)
+    if args.message:
+        script_args.extend(['--message', args.message])
+    return run_script('version-bump', script_args)
+
+def cmd_deps(args):
+    """Manage dependency updates"""
+    script_args = []
+    if args.action:
+        script_args.append(args.action)
+    if args.package:
+        script_args.extend(['--package', args.package])
+    if args.security_only:
+        script_args.append('--security-only')
+    return run_script('deps-manage', script_args)
+
 def main():
     parser = argparse.ArgumentParser(
         description='Spec-Flow Workflow CLI',
@@ -243,6 +566,7 @@ Examples:
     # clarify
     clarify_parser = subparsers.add_parser('clarify', help='Interactive clarification workflow')
     clarify_parser.add_argument('feature', nargs='?', help='Feature slug (optional, auto-detected if in feature dir)')
+    clarify_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # plan
     plan_parser = subparsers.add_parser('plan', help='Generate implementation plan from spec')
@@ -250,32 +574,39 @@ Examples:
     plan_parser.add_argument('--interactive', action='store_true', help='Force wait for user confirmation')
     plan_parser.add_argument('--yes', action='store_true', help='Skip all HITL gates and auto-commit')
     plan_parser.add_argument('--skip-clarify', action='store_true', help='Skip spec ambiguity gate only')
+    plan_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # preview
     preview_parser = subparsers.add_parser('preview', help='Manual UI/UX testing and backend validation')
     preview_parser.add_argument('feature', nargs='?', help='Feature slug (optional, auto-detected if in feature dir)')
+    preview_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # validate
     validate_parser = subparsers.add_parser('validate', help='Cross-artifact consistency analysis')
     validate_parser.add_argument('feature', nargs='?', help='Feature slug (optional, auto-detected if in feature dir)')
+    validate_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # tasks
     tasks_parser = subparsers.add_parser('tasks', help='Generate concrete TDD tasks from design artifacts')
     tasks_parser.add_argument('feature', nargs='?', help='Feature slug (optional, auto-detected if in feature dir)')
     tasks_parser.add_argument('--ui-first', action='store_true', help='Generate HTML mockups before implementation')
+    tasks_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # implement
     implement_parser = subparsers.add_parser('implement', help='Execute tasks with TDD and parallel execution')
     implement_parser.add_argument('feature', nargs='?', help='Feature slug (optional, auto-detected if in feature dir)')
+    implement_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # debug
     debug_parser = subparsers.add_parser('debug', help='Debug errors and update error-log.md')
     debug_parser.add_argument('feature', nargs='?', help='Feature slug (optional, auto-detected if in feature dir)')
     debug_parser.add_argument('--error', help='Error message or description')
+    debug_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # optimize
     optimize_parser = subparsers.add_parser('optimize', help='Production-readiness validation')
     optimize_parser.add_argument('feature', nargs='?', help='Feature slug (optional, auto-detected if in feature dir)')
+    optimize_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # feature
     feature_parser = subparsers.add_parser('feature', help='Orchestrate full feature workflow')
@@ -329,6 +660,130 @@ Examples:
     verify_parser = subparsers.add_parser('contract-verify', help='Verify API contract compatibility')
     verify_parser.add_argument('--baseline', help='Baseline contract version')
 
+    # fixture-refresh
+    fixture_parser = subparsers.add_parser('fixture-refresh', help='Regenerate golden test fixtures from OpenAPI schemas')
+    fixture_parser.add_argument('--contract', help='Contract version to use')
+    fixture_parser.add_argument('--output', help='Output directory for fixtures')
+
+    # Living Documentation Commands
+
+    # generate-feature-claude
+    gen_feature_parser = subparsers.add_parser('generate-feature-claude', help='Generate feature-level CLAUDE.md')
+    gen_feature_parser.add_argument('feature', nargs='?', help='Feature slug (optional, auto-detected if in feature dir)')
+    gen_feature_parser.add_argument('--force', action='store_true', help='Force regeneration even if file exists')
+
+    # generate-project-claude
+    gen_project_parser = subparsers.add_parser('generate-project-claude', help='Generate project-level CLAUDE.md')
+    gen_project_parser.add_argument('--force', action='store_true', help='Force regeneration even if file exists')
+
+    # update-living-docs
+    update_docs_parser = subparsers.add_parser('update-living-docs', help='Trigger living documentation update')
+    update_docs_parser.add_argument('feature', nargs='?', help='Feature slug (optional, updates all if not specified)')
+    update_docs_parser.add_argument('--scope', choices=['feature', 'project', 'all'], help='Update scope')
+
+    # health-check-docs
+    health_docs_parser = subparsers.add_parser('health-check-docs', help='Scan for stale documentation')
+    health_docs_parser.add_argument('--json', action='store_true', help='Output as JSON')
+    health_docs_parser.add_argument('--threshold', type=int, default=7, help='Staleness threshold in days (default: 7)')
+
+    # Project Initialization
+
+    # init-project
+    init_project_parser = subparsers.add_parser('init-project', help='Initialize project with 8-document generation')
+    init_project_parser.add_argument('--type', dest='project_type', choices=['greenfield', 'brownfield'], help='Project type')
+    init_project_parser.add_argument('--yes', action='store_true', help='Skip interactive prompts (use defaults)')
+
+    # Roadmap Management
+
+    # roadmap
+    roadmap_parser = subparsers.add_parser('roadmap', help='Manage product roadmap via GitHub Issues')
+    roadmap_parser.add_argument('action', nargs='?', choices=['brainstorm', 'prioritize', 'track'], help='Roadmap action')
+    roadmap_parser.add_argument('--feature', help='Feature name or ID')
+    roadmap_parser.add_argument('--priority', choices=['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], help='Feature priority')
+    roadmap_parser.add_argument('--json', action='store_true', help='Output as JSON')
+
+    # Design System Health
+
+    # design-health
+    design_health_parser = subparsers.add_parser('design-health', help='Monitor design system health and staleness')
+    design_health_parser.add_argument('--verbose', action='store_true', help='Show detailed output')
+    design_health_parser.add_argument('--json', action='store_true', help='Output as JSON')
+
+    # Epic & Sprint Management
+
+    # epic
+    epic_parser = subparsers.add_parser('epic', help='Manage epic groupings')
+    epic_parser.add_argument('action', nargs='?', choices=['create', 'list', 'close'], help='Epic action')
+    epic_parser.add_argument('--name', dest='epic_name', help='Epic name')
+    epic_parser.add_argument('--description', help='Epic description')
+
+    # sprint
+    sprint_parser = subparsers.add_parser('sprint', help='Manage sprint cycles')
+    sprint_parser.add_argument('action', nargs='?', choices=['start', 'plan', 'close'], help='Sprint action')
+    sprint_parser.add_argument('--sprint', dest='sprint_num', type=int, help='Sprint number')
+    sprint_parser.add_argument('--features', help='Comma-separated feature slugs')
+
+    # Feature Flags & Scheduling
+
+    # flag
+    flag_parser = subparsers.add_parser('flag', help='Manage feature flags')
+    flag_parser.add_argument('action', nargs='?', choices=['create', 'toggle', 'list'], help='Flag action')
+    flag_parser.add_argument('--flag', dest='flag_name', help='Flag name')
+    flag_parser.add_argument('--enabled', type=bool, help='Enable/disable flag')
+
+    # schedule
+    schedule_parser = subparsers.add_parser('schedule', help='Manage release schedules')
+    schedule_parser.add_argument('action', nargs='?', choices=['plan', 'update', 'list'], help='Schedule action')
+    schedule_parser.add_argument('--date', dest='release_date', help='Release date (YYYY-MM-DD)')
+    schedule_parser.add_argument('--features', help='Comma-separated feature slugs')
+
+    # scheduler-assign
+    scheduler_assign_parser = subparsers.add_parser('scheduler-assign', help='Assign epic to agent (max 1 epic per agent)')
+    scheduler_assign_parser.add_argument('epic', help='Epic ID or slug')
+    scheduler_assign_parser.add_argument('agent', help='Agent name (backend/frontend/database/etc)')
+
+    # scheduler-list
+    scheduler_list_parser = subparsers.add_parser('scheduler-list', help='List all epics with state and WIP utilization')
+    scheduler_list_parser.add_argument('--json', action='store_true', help='Output as JSON')
+
+    # scheduler-park
+    scheduler_park_parser = subparsers.add_parser('scheduler-park', help='Park blocked epic and release WIP slot')
+    scheduler_park_parser.add_argument('epic', help='Epic ID or slug')
+    scheduler_park_parser.add_argument('reason', help='Reason for parking (e.g., "blocked by infrastructure")')
+
+    # Quality Gates & Metrics
+
+    # gate
+    gate_parser = subparsers.add_parser('gate', help='Manage quality gates')
+    gate_parser.add_argument('gate_type', nargs='?', choices=['preflight', 'code-review', 'rollback'], help='Gate type')
+    gate_parser.add_argument('--action', choices=['check', 'override'], help='Gate action')
+    gate_parser.add_argument('--json', action='store_true', help='Output as JSON')
+
+    # metrics
+    metrics_parser = subparsers.add_parser('metrics', help='Track HEART metrics')
+    metrics_parser.add_argument('metric_type', nargs='?', choices=['happiness', 'engagement', 'adoption', 'retention', 'task-success'], help='Metric type')
+    metrics_parser.add_argument('--period', choices=['daily', 'weekly', 'monthly'], help='Time period')
+    metrics_parser.add_argument('--json', action='store_true', help='Output as JSON')
+
+    # metrics-dora
+    dora_parser = subparsers.add_parser('metrics-dora', help='Calculate DORA metrics (Deployment Frequency, Lead Time, CFR, MTTR)')
+    dora_parser.add_argument('--since', help='Start date for analysis (YYYY-MM-DD, default: 90 days ago)')
+    dora_parser.add_argument('--output', help='Output file path (default: .spec-flow/reports/dora-report.md)')
+    dora_parser.add_argument('--json', action='store_true', help='Output as JSON')
+
+    # Version & Dependency Management
+
+    # version
+    version_parser = subparsers.add_parser('version', help='Manage version bumps')
+    version_parser.add_argument('bump_type', nargs='?', choices=['major', 'minor', 'patch'], help='Version bump type')
+    version_parser.add_argument('--message', help='Version message')
+
+    # deps
+    deps_parser = subparsers.add_parser('deps', help='Manage dependency updates')
+    deps_parser.add_argument('action', nargs='?', choices=['update', 'audit', 'outdated'], help='Dependency action')
+    deps_parser.add_argument('--package', help='Specific package name')
+    deps_parser.add_argument('--security-only', action='store_true', help='Only security updates')
+
     args = parser.parse_args()
 
     if not args.command:
@@ -357,6 +812,34 @@ Examples:
         'branch-enforce': cmd_branch_enforce,
         'contract-bump': cmd_contract_bump,
         'contract-verify': cmd_contract_verify,
+        'fixture-refresh': cmd_fixture_refresh,
+        # Living Documentation
+        'generate-feature-claude': cmd_generate_feature_claude,
+        'generate-project-claude': cmd_generate_project_claude,
+        'update-living-docs': cmd_update_living_docs,
+        'health-check-docs': cmd_health_check_docs,
+        # Project Initialization
+        'init-project': cmd_init_project,
+        # Roadmap Management
+        'roadmap': cmd_roadmap,
+        # Design System Health
+        'design-health': cmd_design_health,
+        # Epic & Sprint Management
+        'epic': cmd_epic,
+        'sprint': cmd_sprint,
+        # Feature Flags & Scheduling
+        'flag': cmd_flag,
+        'schedule': cmd_schedule,
+        'scheduler-assign': cmd_scheduler_assign,
+        'scheduler-list': cmd_scheduler_list,
+        'scheduler-park': cmd_scheduler_park,
+        # Quality Gates & Metrics
+        'gate': cmd_gate,
+        'metrics': cmd_metrics,
+        'metrics-dora': cmd_metrics_dora,
+        # Version & Dependency Management
+        'version': cmd_version,
+        'deps': cmd_deps,
     }
 
     handler = handlers.get(args.command)
