@@ -1,0 +1,212 @@
+name: Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on semantic version tags (v1.2.3)
+
+jobs:
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required for creating releases
+      deployments: write  # Required for deployment status
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for release notes
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Remove 'v' prefix from tag
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VERSION"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'  # or 'pnpm' / 'yarn' if used
+
+      - name: Install dependencies
+        run: npm ci  # or pnpm install --frozen-lockfile / yarn install --frozen-lockfile
+
+      - name: Build production artifacts
+        run: npm run build  # or pnpm build / yarn build
+        env:
+          NODE_ENV: production
+
+      - name: Run production tests
+        run: npm run test:production || npm test  # Fallback to regular tests if no prod tests
+        continue-on-error: false
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # DEPLOYMENT SECTION - Customize for your platform
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      # Option 1: Vercel Deployment
+      - name: Deploy to Vercel Production
+        if: env.DEPLOY_PLATFORM == 'vercel'
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: ./
+
+      # Option 2: Railway Deployment
+      - name: Deploy to Railway Production
+        if: env.DEPLOY_PLATFORM == 'railway'
+        uses: bervProject/railway-deploy@main
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          service: ${{ secrets.RAILWAY_SERVICE }}
+          environment: production
+
+      # Option 3: Netlify Deployment
+      - name: Deploy to Netlify Production
+        if: env.DEPLOY_PLATFORM == 'netlify'
+        uses: nwtgck/actions-netlify@v2
+        with:
+          publish-dir: './dist'  # or './build' / './.next'
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy v${{ steps.version.outputs.version }}"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+      # Option 4: Custom deployment script
+      - name: Deploy to Production (Custom)
+        if: env.DEPLOY_PLATFORM == 'custom'
+        run: |
+          # Add your custom deployment commands here
+          echo "Deploying version ${{ steps.version.outputs.version }}"
+          # Example: ./scripts/deploy-prod.sh
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # POST-DEPLOYMENT VERIFICATION
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Wait for deployment to be live
+        run: sleep 30  # Give deployment time to propagate
+
+      - name: Smoke test production
+        run: |
+          # Replace with your production URL
+          PROD_URL="${{ secrets.PRODUCTION_URL || 'https://example.com' }}"
+
+          echo "Testing production deployment at: $PROD_URL"
+
+          # HTTP status check
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL")
+
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Production smoke test failed! HTTP $STATUS"
+            exit 1
+          fi
+
+          echo "✅ Production smoke test passed (HTTP $STATUS)"
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # GITHUB RELEASE CREATION
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          if [ -f "CHANGELOG.md" ]; then
+            # Extract changes for this version from CHANGELOG.md
+            VERSION="${{ steps.version.outputs.version }}"
+
+            # Find section between this version and next version
+            CHANGES=$(awk "/^## \[?v?$VERSION/,/^## \[?v?[0-9]/" CHANGELOG.md | sed '1d;$d')
+
+            if [ -z "$CHANGES" ]; then
+              CHANGES="See CHANGELOG.md for details."
+            fi
+
+            # Write to file (handle multiline)
+            echo "$CHANGES" > /tmp/changelog-excerpt.md
+            echo "changelog_file=/tmp/changelog-excerpt.md" >> $GITHUB_OUTPUT
+          else
+            echo "No CHANGELOG.md found" > /tmp/changelog-excerpt.md
+            echo "changelog_file=/tmp/changelog-excerpt.md" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.tag }}
+          body_path: ${{ steps.changelog.outputs.changelog_file }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # NOTIFICATIONS
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "🚀 Successfully deployed v${{ steps.version.outputs.version }} to production"
+          echo "GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}"
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Production deployment failed for v${{ steps.version.outputs.version }}"
+          echo "Check workflow logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CONFIGURATION NOTES
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Required Secrets (add in GitHub repo settings → Secrets and variables → Actions):
+#
+# Common:
+#   - PRODUCTION_URL: Your production URL for smoke tests
+#
+# Vercel:
+#   - VERCEL_TOKEN: Vercel authentication token
+#   - VERCEL_ORG_ID: Vercel organization ID
+#   - VERCEL_PROJECT_ID: Vercel project ID
+#
+# Railway:
+#   - RAILWAY_TOKEN: Railway API token
+#   - RAILWAY_SERVICE: Service name in Railway
+#
+# Netlify:
+#   - NETLIFY_AUTH_TOKEN: Netlify personal access token
+#   - NETLIFY_SITE_ID: Netlify site ID
+#
+# Custom:
+#   - Add any secrets required by your custom deployment script
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# USAGE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# This workflow is triggered automatically when a semantic version tag is pushed:
+#
+#   git tag -a v1.2.3 -m "Release v1.2.3"
+#   git push origin v1.2.3
+#
+# The /ship-prod command handles this automatically:
+#   - Extracts version from CHANGELOG.md
+#   - Creates annotated git tag
+#   - Pushes tag to trigger this workflow
+#   - Waits for deployment to complete
+#   - Verifies production is live
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -1,42 +1,174 @@
 ---
 description: Orchestrate full feature workflow with isolated phase contexts (optimized)
+version: 2.0
+updated: 2025-11-17
 ---
 
 # /feature — Phase-Isolated Feature Orchestration
 
-**Purpose**
-Deterministically deliver a feature through isolated phase agents with strict state tracking, explicit gates, and zero assumption drift.
+**Purpose**: Deterministically deliver a feature through isolated phase agents with strict state tracking, explicit gates, and zero assumption drift.
 
-**Command**
-`/feature [feature description | slug | continue | next]`
+**Command**: `/feature [feature description | slug | continue | next | epic:<name> | epic:<name>:sprint:<num> | sprint:<num>]`
 
-**When to use**
-From idea selection through deployment. Pauses only at manual gates or blocking failures.
+**When to use**: From idea selection through deployment. Pauses only at manual gates or blocking failures.
 
 ---
 
 ## Mental model
 
 **Architecture: Orchestrator + Phase Commands + Specialist Agents**
-- **Orchestrator** (`/feature`): moves one phase at a time, updates `workflow-state.yaml`, never invents state.
+- **Orchestrator** (`/feature`): moves one phase at a time, updates `workflow-state.yaml`, never invents state
 - **Phase Commands**: `/spec`, `/plan`, `/tasks`, `/implement`, `/optimize`, `/ship` execute phases
 - **Specialist Agents**: `/implement` directly launches backend-dev, frontend-shipper, database-architect in parallel (no wrapper)
 
-**Benefits**
-- Smaller token budgets per phase; faster execution; quality preserved by the same slash-commands and gates.
+**Benefits**: Smaller token budgets per phase; faster execution; quality preserved by the same slash-commands and gates.
 
 ---
 
-## Workflow tracking
+<instructions>
+## USER INPUT
 
-> All steps read/write `specs/<NNN-slug>/workflow-state.yaml`.
+```text
+$ARGUMENTS
+```
 
-**Initialize todos (example, staging-prod model)**
+You **MUST** consider the user input before proceeding (if not empty).
+
+## Execute Feature Workflow
+
+Run the centralized spec-cli tool:
+
+```bash
+python .spec-flow/scripts/spec-cli.py feature "$ARGUMENTS"
+```
+
+**What the script does:**
+
+1. **Parse arguments** — Determines mode: next, continue, lookup, epic, sprint
+2. **GitHub issue selection** (if applicable):
+   - `next` mode: Selects highest-priority issue from status:next or status:backlog
+   - `epic:name` mode: Auto-detects incomplete sprint and selects next issue
+   - `epic:name:sprint:num` mode: Selects next issue from specific epic+sprint
+   - `sprint:num` mode: Selects next issue from any sprint
+   - `lookup` mode: Searches by slug or title
+3. **Feature slug generation** — Auto-generates from issue title or description
+4. **Project type detection** — Identifies project technology (fullstack, backend, frontend, etc.)
+5. **Branch management** — Creates feature branch or uses existing branch
+6. **Initialize workflow state** — Creates specs/NNN-slug/ directory and workflow-state.yaml
+7. **Generate feature CLAUDE.md** — Creates AI context navigation file
+
+**After script completes, you (LLM) must:**
+
+## 1) Verify Feature Initialization
+
+**Read initialization results:**
+- Feature number and slug
+- Branch name
+- Feature directory path
+- GitHub issue number (if applicable)
+
+## 2) Execute Workflow Phases
+
+**Follow the phase sequence based on workflow state:**
+
+**Phase 0: Specification**
+```bash
+/spec
+```
+
+**Phase 0.5: Clarification** (conditional):
+```bash
+/clarify
+```
+
+**Phase 1: Planning**:
+```bash
+/plan
+```
+
+**Phase 2: Task Breakdown**:
+```bash
+/tasks
+```
+
+**Phase 2a-2c: Design Workflow** (UI features only):
+```bash
+/design-variations
+/design-functional
+/design-polish
+```
+
+**Phase 3: Cross-Artifact Analysis**:
+```bash
+/analyze
+```
+
+**Phase 4: Implementation**:
+```bash
+/implement
+```
+
+**Phase 5: Optimization**:
+```bash
+/optimize
+```
+
+**Phase 6-8: Deployment & Finalization**:
+```bash
+/ship
+```
+(Automatically runs /finalize after deployment)
+
+## 3) Handle Continue Mode
+
+**When resuming with `/feature continue`:**
+- Read `workflow-state.yaml` to find current phase
+- Find first phase with status `in_progress` or `failed`
+- Resume from that phase
+- If manual gate was pending, proceed past it
+
+## 4) Handle Manual Gates
+
+**Preview gate:**
+- Dev server starts
+- User tests UI/UX, accessibility, performance
+- Run `/ship continue` when approved
+
+**Staging validation gate** (staging-prod model only):
+- Staging deployment complete
+- User tests in staging environment
+- Run `/ship continue` when approved
+
+## 5) Error Handling
+
+**If any phase fails:**
+- Read error details from workflow-state.yaml
+- Check relevant log files in specs/NNN-slug/
+- Present clear error message with file paths
+- Suggest fixes based on error type
+- Tell user to fix and run `/feature continue`
+
+**Common failure modes:**
+- Spec ambiguity → run `/clarify`
+- Planning failures → check plan.md for missing context
+- Implementation errors → check error-log.md
+- Quality gate failures → check optimization-*.md reports
+- Deployment failures → check deployment logs
+
+</instructions>
+
+---
+
+## Workflow Tracking
+
+All steps read/write `specs/<NNN-slug>/workflow-state.yaml`.
+
+**Todo list example (staging-prod model):**
 
 ```javascript
 TodoWrite({
   todos: [
-    {content:"Parse args, initialize state",status:"pending",activeForm:"Init"},
+    {content:"Parse args, initialize state",status:"completed",activeForm:"Initialized"},
     {content:"Phase 0: Specification",status:"pending",activeForm:"Creating spec"},
     {content:"Phase 0.5: Clarification (conditional)",status:"pending",activeForm:"Resolving clarifications"},
     {content:"Phase 1: Planning",status:"pending",activeForm:"Creating plan"},
@@ -49,20 +181,19 @@ TodoWrite({
     {content:"Phase 6: Ship to staging",status:"pending",activeForm:"Deploying to staging"},
     {content:"Manual gate: Staging validation",status:"pending",activeForm:"Awaiting staging approval"},
     {content:"Phase 7: Ship to production",status:"pending",activeForm:"Deploying to production"},
-    {content:"Phase 7.5: Finalize docs",status:"pending",activeForm:"Finalizing documentation"}
+    {content:"Phase 8: Finalize documentation (automatic)",status:"pending",activeForm:"Finalizing documentation"}
   ]
 })
 ```
 
-**Rules**
-
-* Exactly one phase is `in_progress`.
-* Manual gates remain `pending` until explicitly continued.
-* Deployment phases adapt to model: `staging-prod`, `direct-prod`, or `local-only`.
+**Rules**:
+- Exactly one phase is `in_progress`
+- Manual gates remain `pending` until explicitly continued
+- Deployment phases adapt to model: `staging-prod`, `direct-prod`, or `local-only`
 
 ---
 
-## Anti-hallucination rules
+## Anti-Hallucination Rules
 
 1. **Never claim phase completion without quoting `workflow-state.yaml`**
    Always `Read` the file and print the actual recorded status.
@@ -79,12 +210,13 @@ TodoWrite({
 5. **No fabricated summaries**
    If an agent errors, show the error; don't invent success.
 
-**Why**
-This prevents silent quality gaps and makes the workflow auditable against real artifacts.
+**Why**: This prevents silent quality gaps and makes the workflow auditable against real artifacts.
 
 ---
 
-## Reasoning template (use when making orchestration decisions)
+## Reasoning Template
+
+Use when making orchestration decisions:
 
 ```text
 <thinking>
@@ -103,582 +235,32 @@ Use this template for: skipping clarify, choosing deployment path, retry logic, 
 
 ---
 
-## Parse arguments
+## Usage Examples
 
+**Start next priority feature:**
 ```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-if [ -z "$ARGUMENTS" ]; then
-  echo "Usage: /feature [slug | \"feature description\" | continue | next | epic:<name> | epic:<name>:sprint:<num> | sprint:<num>]"
-  echo ""
-  echo "Examples:"
-  echo "  /feature next                    - Next priority issue"
-  echo "  /feature epic:aktr               - Next issue from epic (auto-selects incomplete sprint)"
-  echo "  /feature epic:aktr:sprint:S02    - Specific sprint in epic"
-  echo "  /feature sprint:S01              - Next issue from any sprint S01"
-  echo "  /feature continue                - Resume last feature"
-  exit 1
-fi
-
-MODE=""
-SEARCH_TERM=""
-CONTINUE_MODE=false
-NEXT_MODE=false
-EPIC_FILTER=""
-SPRINT_FILTER=""
-
-case "$ARGUMENTS" in
-  continue)
-    CONTINUE_MODE=true
-    MODE="continue"
-    ;;
-  next)
-    NEXT_MODE=true
-    MODE="next"
-    ;;
-  epic:*:sprint:*)
-    # Extract epic and sprint from epic:aktr:sprint:S02
-    EPIC_FILTER=$(echo "$ARGUMENTS" | sed -n 's/^epic:\([^:]*\):sprint:.*/\1/p')
-    SPRINT_FILTER=$(echo "$ARGUMENTS" | sed -n 's/^epic:[^:]*:sprint:\(.*\)/\1/p')
-    MODE="epic-sprint"
-    ;;
-  epic:*)
-    # Extract epic from epic:aktr
-    EPIC_FILTER="${ARGUMENTS#epic:}"
-    MODE="epic"
-    ;;
-  sprint:*)
-    # Extract sprint from sprint:S01
-    SPRINT_FILTER="${ARGUMENTS#sprint:}"
-    MODE="sprint"
-    ;;
-  *)
-    SEARCH_TERM="$ARGUMENTS"
-    MODE="lookup"
-    ;;
-esac
+/feature next
 ```
 
----
-
-## Fetch next feature (when `MODE=next`)
-
-Select highest-priority issue in `status:next` (fallback to `status:backlog`), claim it immediately, and extract `slug` from frontmatter or synthesize from title.
-
+**Start feature from epic:**
 ```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-if [ "$NEXT_MODE" = true ]; then
-  gh auth status >/dev/null || { echo "❌ gh not authenticated. Run: gh auth login"; exit 1; }
-  REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner) || { echo "❌ Not in a GitHub repo"; exit 1; }
-
-  JSON=$(gh issue list --repo "$REPO" --label "status:next,type:feature" --json number,title,body,labels --limit 50)
-  if [ -z "$JSON" ] || [ "$JSON" = "[]" ]; then
-    JSON=$(gh issue list --repo "$REPO" --label "status:backlog,type:feature" --json number,title,body,labels --limit 50)
-  fi
-  [ -z "$JSON" ] && { echo "❌ No next/backlog items"; exit 1; }
-
-  # Pick first issue (GitHub returns in creation order)
-  ISSUE=$(echo "$JSON" | jq -r 'first')
-
-  ISSUE_NUMBER=$(echo "$ISSUE" | jq -r .number)
-  ISSUE_TITLE=$(echo "$ISSUE" | jq -r .title)
-  ISSUE_BODY=$(echo "$ISSUE" | jq -r '.body // ""')
-
-  # Claim immediately to avoid race conditions
-  gh issue edit "$ISSUE_NUMBER" --remove-label "status:next" --remove-label "status:backlog" --add-label "status:in-progress" --repo "$REPO" >/dev/null || true
-
-  SLUG=$(echo "$ISSUE_BODY" | grep -oP '^slug:\s*"\K[^"]+' | head -1)
-  if [ -z "$SLUG" ]; then
-    SLUG=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g;s/--*/-/g;s/^-//;s/-$//' | cut -c1-20)
-  fi
-
-  FEATURE_DESCRIPTION="$ISSUE_TITLE"
-fi
+/feature epic:aktr
 ```
 
-> Uses GitHub CLI official flows; see `gh` manual for commands and auth.
-
----
-
-## Lookup feature (when `MODE=lookup`)
-
-Search roadmap by exact `slug:` in frontmatter or fuzzy title match. If not found, offer to create a non-roadmap feature.
-
+**Start specific sprint in epic:**
 ```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-if [ "$MODE" = "lookup" ] && [ -n "$SEARCH_TERM" ]; then
-  gh auth status >/dev/null || { echo "❌ gh not authenticated"; exit 1; }
-  REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner) || { echo "❌ Not in a GitHub repo"; exit 1; }
-
-  MATCH=$(gh issue list --repo "$REPO" --label "type:feature" --json number,title,body,labels --limit 100 |
-    jq -r --arg term "$SEARCH_TERM" '
-      map(select((.body | test("slug:\\s*\"" + $term + "\"")) or (.title | ascii_downcase | contains($term | ascii_downcase)))) | first')
-
-  if [ -n "$MATCH" ] && [ "$MATCH" != "null" ]; then
-    ISSUE_NUMBER=$(echo "$MATCH" | jq -r .number)
-    ISSUE_TITLE=$(echo "$MATCH" | jq -r .title)
-    ISSUE_BODY=$(echo "$MATCH" | jq -r '.body // ""')
-    gh issue edit "$ISSUE_NUMBER" --remove-label "status:next" --remove-label "status:backlog" --add-label "status:in-progress" --repo "$REPO" >/dev/null || true
-    SLUG=$(echo "$ISSUE_BODY" | grep -oP '^slug:\s*"\K[^"]+' | head -1)
-    [ -z "$SLUG" ] && SLUG=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g;s/--*/-/g;s/^-//;s/-$//' | cut -c1-30)
-    FEATURE_DESCRIPTION="$ISSUE_TITLE"
-  else
-    echo "No roadmap item found for: \"$SEARCH_TERM\". Create now or add to roadmap first."
-    exit 1
-  fi
-fi
+/feature epic:aktr:sprint:S02
 ```
 
----
-
-## Epic/Sprint Selection (when `MODE=epic`, `epic-sprint`, or `sprint`)
-
-Select next issue from epic/sprint based on ICE scores and sprint progress. Auto-creates sprint:S01 if no sprints exist.
-
+**Resume interrupted feature:**
 ```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-if [[ "$MODE" == "epic" || "$MODE" == "epic-sprint" || "$MODE" == "sprint" ]]; then
-  gh auth status >/dev/null || { echo "❌ gh not authenticated. Run: gh auth login"; exit 1; }
-  REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner) || { echo "❌ Not in a GitHub repo"; exit 1; }
-
-  # Build label filter based on mode
-  LABEL_FILTER="type:feature"
-
-  if [ -n "$EPIC_FILTER" ]; then
-    LABEL_FILTER="$LABEL_FILTER,epic:$EPIC_FILTER"
-  fi
-
-  if [ "$MODE" = "epic-sprint" ] && [ -n "$SPRINT_FILTER" ]; then
-    LABEL_FILTER="$LABEL_FILTER,sprint:$SPRINT_FILTER"
-  fi
-
-  if [ "$MODE" = "sprint" ] && [ -n "$SPRINT_FILTER" ]; then
-    LABEL_FILTER="$LABEL_FILTER,sprint:$SPRINT_FILTER"
-  fi
-
-  echo "🔍 Searching for issues with labels: $LABEL_FILTER"
-  echo ""
-
-  # Fetch issues
-  JSON=$(gh issue list --repo "$REPO" --label "$LABEL_FILTER" --json number,title,body,labels,state --limit 100)
-
-  if [ -z "$JSON" ] || [ "$JSON" = "[]" ]; then
-    if [ "$MODE" = "epic" ]; then
-      # Check if epic has any issues (without sprint filter)
-      EPIC_JSON=$(gh issue list --repo "$REPO" --label "type:feature,epic:$EPIC_FILTER" --json number,labels --limit 100)
-
-      if [ -z "$EPIC_JSON" ] || [ "$EPIC_JSON" = "[]" ]; then
-        echo "❌ No issues found with label epic:$EPIC_FILTER"
-        echo "   Create epic label: gh label create \"epic:$EPIC_FILTER\" --description \"Epic: $EPIC_FILTER\" --color \"5319e7\""
-        exit 1
-      fi
-
-      # Epic exists but no sprint labels - auto-create sprint:S01
-      echo "✨ No sprints found in epic:$EPIC_FILTER - auto-creating sprint:S01"
-
-      # Get all issue numbers in epic
-      ISSUE_NUMBERS=$(echo "$EPIC_JSON" | jq -r '.[].number')
-
-      # Bulk-assign to sprint:S01
-      for ISSUE_NUM in $ISSUE_NUMBERS; do
-        gh issue edit "$ISSUE_NUM" --add-label "sprint:S01" --repo "$REPO" >/dev/null 2>&1 || true
-      done
-
-      echo "✅ Assigned $(echo "$ISSUE_NUMBERS" | wc -w) issues to sprint:S01"
-      echo ""
-
-      # Re-fetch with sprint filter
-      SPRINT_FILTER="S01"
-      LABEL_FILTER="type:feature,epic:$EPIC_FILTER,sprint:S01"
-      JSON=$(gh issue list --repo "$REPO" --label "$LABEL_FILTER" --json number,title,body,labels,state --limit 100)
-    else
-      echo "❌ No issues found with labels: $LABEL_FILTER"
-      exit 1
-    fi
-  fi
-
-  # Auto-detect next incomplete sprint if MODE=epic (no explicit sprint specified)
-  if [ "$MODE" = "epic" ] && [ -z "$SPRINT_FILTER" ]; then
-    # Extract unique sprint labels from all epic issues
-    ALL_EPIC_ISSUES=$(gh issue list --repo "$REPO" --label "type:feature,epic:$EPIC_FILTER" --json labels --limit 100)
-    SPRINTS=$(echo "$ALL_EPIC_ISSUES" | jq -r '.[].labels[] | select(.name | startswith("sprint:")) | .name' | sort -u)
-
-    # Find first incomplete sprint
-    FOUND_SPRINT=false
-    for SPRINT_LABEL in $SPRINTS; do
-      SPRINT_NUM="${SPRINT_LABEL#sprint:}"
-
-      # Get all issues in this sprint
-      SPRINT_ISSUES=$(echo "$JSON" | jq -r --arg sprint "$SPRINT_LABEL" '
-        map(select(.labels[] | .name == $sprint))
-      ')
-
-      # Count incomplete issues (not shipped and not blocked)
-      INCOMPLETE_COUNT=$(echo "$SPRINT_ISSUES" | jq -r '
-        map(select(
-          (.labels[] | .name != "status:shipped") and
-          (.labels[] | .name != "status:blocked")
-        )) | length
-      ')
-
-      TOTAL_COUNT=$(echo "$SPRINT_ISSUES" | jq -r 'length')
-
-      if [ "$INCOMPLETE_COUNT" -gt 0 ]; then
-        echo "✅ Found incomplete sprint: $SPRINT_NUM ($INCOMPLETE_COUNT/$TOTAL_COUNT remaining)"
-        SPRINT_FILTER="$SPRINT_NUM"
-        FOUND_SPRINT=true
-        break
-      else
-        echo "   Sprint $SPRINT_NUM: $TOTAL_COUNT/$TOTAL_COUNT complete ✅"
-      fi
-    done
-    echo ""
-
-    if [ "$FOUND_SPRINT" = false ]; then
-      echo "🎉 All sprints in epic:$EPIC_FILTER are complete!"
-      echo ""
-      echo "Create next sprint with:"
-      echo "  /roadmap add \"Feature name\" --epic $EPIC_FILTER --sprint SXX"
-      exit 0
-    fi
-
-    # Re-filter by discovered sprint
-    LABEL_FILTER="type:feature,epic:$EPIC_FILTER,sprint:$SPRINT_FILTER"
-    JSON=$(gh issue list --repo "$REPO" --label "$LABEL_FILTER" --json number,title,body,labels,state --limit 100)
-  fi
-
-  # Filter to only issues that are available (status:next or status:backlog)
-  AVAILABLE_JSON=$(echo "$JSON" | jq -r '
-    map(select(
-      (.labels[] | .name == "status:next") or
-      (.labels[] | .name == "status:backlog")
-    ))
-  ')
-
-  # Sort by epic name (alphabetical) if multiple epics, then by creation order
-  # GitHub returns issues in creation order by default
-  ISSUE=$(echo "$AVAILABLE_JSON" | jq -r '
-    sort_by(
-      [.labels[] | select(.name | startswith("epic:")) | .name] | .[0] // "zzz"
-    ) | first
-  ')
-
-  if [ -z "$ISSUE" ] || [ "$ISSUE" = "null" ]; then
-    echo "❌ No available issues in $LABEL_FILTER"
-    echo "   (All issues may be in-progress, shipped, or blocked)"
-    exit 1
-  fi
-
-  ISSUE_NUMBER=$(echo "$ISSUE" | jq -r .number)
-  ISSUE_TITLE=$(echo "$ISSUE" | jq -r .title)
-  ISSUE_BODY=$(echo "$ISSUE" | jq -r '.body // ""')
-
-  # Claim immediately
-  gh issue edit "$ISSUE_NUMBER" \
-    --remove-label "status:next" --remove-label "status:backlog" \
-    --add-label "status:in-progress" \
-    --repo "$REPO" >/dev/null || true
-
-  # Extract slug
-  SLUG=$(echo "$ISSUE_BODY" | grep -oP '^slug:\s*"\K[^"]+' | head -1)
-  if [ -z "$SLUG" ]; then
-    SLUG=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g;s/--*/-/g;s/^-//;s/-$//' | cut -c1-20)
-  fi
-
-  FEATURE_DESCRIPTION="$ISSUE_TITLE"
-
-  # Display selection summary
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "📋 Selected Issue from Epic/Sprint"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  [ -n "$EPIC_FILTER" ] && echo "  Epic: $EPIC_FILTER"
-  [ -n "$SPRINT_FILTER" ] && echo "  Sprint: $SPRINT_FILTER"
-  echo "  Issue: #$ISSUE_NUMBER"
-  echo "  Title: $ISSUE_TITLE"
-  echo "  Slug: $SLUG"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-fi
+/feature continue
 ```
 
----
-
-## Generate feature slug (if not provided)
-
+**Lookup specific feature:**
 ```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-if [ -z "$SLUG" ]; then
-  [ -z "$FEATURE_DESCRIPTION" ] && { echo "❌ Provide a description or use /feature next"; exit 1; }
-  SLUG=$(echo "$FEATURE_DESCRIPTION" | tr '[:upper:]' '[:lower:]' | sed 's/\b\(we want to\|i want to\|with\|for the\|to a\)\b//g' | sed 's/[^a-z0-9-]/-/g;s/--*/-/g;s/^-//;s/-$//' | cut -c1-20)
-fi
-
-[[ "$SLUG" == *".."* || "$SLUG" == *"/"* ]] && { echo "❌ Invalid slug"; exit 1; }
+/feature "user authentication"
 ```
-
----
-
-## Detect project type
-
-```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-if command -v bash >/dev/null 2>&1; then
-  PROJECT_TYPE=$(bash .spec-flow/scripts/bash/detect-project-type.sh)
-else
-  PROJECT_TYPE=$(pwsh -File .spec-flow/scripts/powershell/detect-project-type.ps1)
-fi
-
-echo "Project type: $PROJECT_TYPE"
-```
-
----
-
-## Branch management
-
-```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  BRANCH_NAME="local"
-  MAX_NUM=$(find specs -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sed -n 's#specs/\([0-9]\{3\}\)-.*#\1#p' | sort -n | tail -1)
-  FEATURE_NUM=$(printf '%03d' $((10#${MAX_NUM:-0} + 1)))
-else
-  if ! git diff --quiet || ! git diff --cached --quiet; then
-    echo "❌ Dirty worktree. Commit/stash or reset before proceeding."
-    exit 1
-  fi
-
-  CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-
-  MAX_NUM=$(find specs -maxdepth 1 -mindepth 1 -type d | sed -n 's#specs/\([0-9]\{3\}\)-.*#\1#p' | sort -n | tail -1)
-  FEATURE_NUM=$(printf '%03d' $((10#${MAX_NUM:-0} + 1)))
-
-  if [[ "$CURRENT_BRANCH" =~ ^(main|master)$ ]]; then
-    BASE="feature/$FEATURE_NUM-$SLUG"
-    BRANCH_NAME="$BASE"
-    i=2; while git rev-parse --verify --quiet "$BRANCH_NAME" >/dev/null 2>&1; do BRANCH_NAME="$BASE-$i"; i=$((i+1)); done
-    git checkout -b "$BRANCH_NAME"
-  else
-    BRANCH_NAME="$CURRENT_BRANCH"
-  fi
-fi
-```
-
----
-
-## Initialize workflow state
-
-```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-FEATURE_DIR="specs/$FEATURE_NUM-$SLUG"
-mkdir -p "$FEATURE_DIR"
-
-# Source helpers (bash or PowerShell variant)
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-  source .spec-flow/scripts/bash/workflow-state.sh 2>/dev/null || true
-else
-  source .spec-flow/scripts/bash/workflow-state.sh
-fi
-
-initialize_workflow_state "$FEATURE_DIR" "$SLUG" "${FEATURE_DESCRIPTION:-$SLUG}" "$BRANCH_NAME"
-start_phase_timing "$FEATURE_DIR" "spec-flow"
-
-[ -n "$ISSUE_NUMBER" ] && yq -i ".feature.github_issue = $ISSUE_NUMBER" "$FEATURE_DIR/workflow-state.yaml" || true
-
-# Optional: generate feature CLAUDE.md
-.spec-flow/scripts/bash/generate-feature-claude-md.sh "$FEATURE_DIR" 2>/dev/null || true
-```
-
----
-
-## Phase 0: Specification
-
-Invoke `phase/spec` agent; store results; set next phase based on clarifications.
-
-```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-Task subagent_type="phase/spec" description="Phase 0: Specification" prompt="$(
-  cat <<PROMPT
-Execute Phase 0 in isolated context.
-
-Feature: $SLUG
-Number: $FEATURE_NUM
-Branch: $BRANCH_NAME
-ProjectType: $PROJECT_TYPE
-
-1) export SLUG="$SLUG"
-2) export FEATURE_NUM="$FEATURE_NUM"
-3) Call /specify
-4) Return JSON: {status, summary, needs_clarification, key_decisions}
-PROMPT
-)"
-
-# Validate, then:
-complete_phase_timing "$FEATURE_DIR" "spec-flow"
-update_workflow_phase "$FEATURE_DIR" "spec-flow" "completed"
-
-# Choose next:
-if jq -e '.needs_clarification==true' /tmp/phase-spec.json >/dev/null 2>&1; then
-  update_workflow_phase "$FEATURE_DIR" "clarify" "in_progress"
-else
-  update_workflow_phase "$FEATURE_DIR" "plan" "in_progress"
-fi
-```
-
----
-
-## Phase 0.5: Clarification (conditional)
-
-```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-if [ "$(yq '.workflow.phases.clarify.status' "$FEATURE_DIR/workflow-state.yaml")" = "in_progress" ]; then
-  Task subagent_type="phase/clarify" description="Phase 0.5: Clarify" prompt="Call /clarify and return JSON {status, summary, answers}"
-  update_workflow_phase "$FEATURE_DIR" "clarify" "completed"
-  update_workflow_phase "$FEATURE_DIR" "plan" "in_progress"
-fi
-```
-
----
-
-## Phase 1: Planning
-
-```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-Task subagent_type="phase/plan" description="Phase 1: Plan" prompt="Call /plan; return {status, summary, reuse, decisions}"
-update_workflow_phase "$FEATURE_DIR" "plan" "completed"
-update_workflow_phase "$FEATURE_DIR" "tasks" "in_progress"
-```
-
----
-
-## Phase 2: Task breakdown
-
-```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-Task subagent_type="phase/tasks" description="Phase 2: Tasks" prompt="Call /tasks; return {status, summary, task_count, groups}"
-update_workflow_phase "$FEATURE_DIR" "tasks" "completed"
-```
-
-### Phase 2a–2c: Design workflow (UI only)
-
-* 2a `/design-variations` → grayscale variants
-* 2b `/design-functional` → merged functional prototype + a11y/tests
-* 2c `/design-polish` → brand tokens + perf polish
-
-Resume with `/feature continue` after each human checkpoint.
-
-```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-HAS_UI=$(grep -E "^- UI screens:\s*(true|false)" "$FEATURE_DIR/NOTES.md" | awk '{print $4}')
-if [ "$HAS_UI" = "true" ]; then
-  yq -i '.design_workflow.enabled = true' "$FEATURE_DIR/workflow-state.yaml"
-  /design-variations "$SLUG";  yq -i '.design_workflow.phases.variations="completed"' "$FEATURE_DIR/workflow-state.yaml"; exit 0
-  # After continue:
-  /design-functional "$SLUG";  yq -i '.design_workflow.phases.functional="completed"' "$FEATURE_DIR/workflow-state.yaml"; exit 0
-  # After continue:
-  /design-polish "$SLUG";      yq -i '.design_workflow.phases.polish="completed"' "$FEATURE_DIR/workflow-state.yaml"
-fi
-```
-
----
-
-## Phase 3: Cross-artifact analysis
-
-```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-Task subagent_type="phase/validate" description="Phase 3: Validate" prompt="Call /analyze; return {status, summary, issues}"
-# If status != completed → mark failed and stop
-```
-
----
-
-## Phase 4: Implementation
-
-The `/implement` command now directly orchestrates parallel specialist agents (backend-dev, frontend-shipper, database-architect) without a wrapper agent.
-
-```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-# /implement parses tasks.md, groups by domain, and launches specialists in parallel
-SlashCommand command="/implement $SLUG"
-
-# The command will:
-# 1. Parse tasks.md and detect batches (grouped by domain)
-# 2. Launch 3-5 specialist agents in parallel per batch group
-# 3. Each specialist executes its tasks with TDD if specified
-# 4. Checkpoint commit after each batch group
-# 5. Validate all tasks completed successfully
-
-# If incomplete or blocked → update workflow-state.yaml with failed status
-# Else mark phase completed and auto-continue to /optimize
-```
-
----
-
-## Auto-continue to Phase 5 (Optimization)
-
-```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-echo "→ Running /optimize"
-/optimize || { echo "❌ Optimization failed"; exit 1; }
-
-# Optional: count criticals in code-review.md and stop if any
-```
-
----
-
-## Auto-continue to Phase 6–7 (Ship)
-
-```bash
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-
-echo "→ Running /ship"
-/ship || { echo "❌ Ship failed"; exit 1; }
-
-# On success, display timing summary and artifacts
-```
-
-> Prefer short-lived branches and frequent integration; this aligns with trunk-based development guidance and generally supports better outcomes on DORA's throughput and stability metrics. (https://dora.dev/research/2018/dora-report/2018-dora-accelerate-state-of-devops-report.pdf)
-
----
-
-## Resume semantics
-
-`/feature continue`
-
-* Loads most recent `specs/*/workflow-state.yaml`
-* Finds the first `in_progress` or last `failed` phase
-* Resumes that phase; if a manual gate was pending, proceeds past it
-
----
-
-## Error handling
-
-* Any phase with `status=blocked|failed` is written to state with summary and blockers.
-* No reproduction: record "attempted steps" and exit.
-* Verification failures: record partial results; do not proceed.
-* Git conflicts: abort commit and instruct to resolve; never auto-resolve.
-
----
-
-## References
-
-* GitHub CLI manual (commands, auth, issues): https://cli.github.com/manual
-* Trunk-Based Development: short-lived branches, frequent merges: https://trunkbaseddevelopment.com
-* DORA research on throughput and stability (four key metrics): https://dora.dev/research/2018/dora-report/2018-dora-accelerate-state-of-devops-report.pdf
-* OpenTelemetry signals (traces, metrics, logs) for lightweight phase breadcrumbs: https://opentelemetry.io/docs/concepts/signals
 
 ---
 
@@ -701,3 +283,12 @@ Detect `staging-prod`, `direct-prod`, or `local-only` from actual repo structure
 
 **Fail fast, fail loud**
 Record failures in state; never pretend success. Exit with meaningful codes: 0 (success), 1 (error), 2 (verification failed).
+
+---
+
+## References
+
+- [GitHub CLI manual](https://cli.github.com/manual) - Commands, auth, issues
+- [Trunk-Based Development](https://trunkbaseddevelopment.com) - Short-lived branches, frequent merges
+- [DORA Metrics](https://dora.dev/research/2018/dora-report/2018-dora-accelerate-state-of-devops-report.pdf) - Throughput and stability metrics
+- [OpenTelemetry Signals](https://opentelemetry.io/docs/concepts/signals) - Traces, metrics, logs

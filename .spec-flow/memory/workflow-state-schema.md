@@ -67,6 +67,67 @@ wip_limits:
   current_utilization: string  # Format: "N/M" (N occupied of M total)
 ```
 
+### Deployment Object
+
+Tracks deployment status, version information, and finalization progress.
+
+```yaml
+deployment:
+  model: string                 # Deployment model: staging-prod | direct-prod | local-only
+  version: string               # Semantic version (e.g., "1.2.3" without 'v' prefix)
+
+  staging:
+    url: string                 # Staging deployment URL
+    deployed_at: ISO8601        # Staging deployment timestamp
+    deployment_id: string       # Platform-specific deployment ID (Vercel/Railway/etc)
+    validated: boolean          # True if /validate-staging passed
+    validated_at: ISO8601       # Staging validation timestamp
+
+  production:
+    url: string                 # Production deployment URL
+    deployed_at: ISO8601        # Production deployment timestamp
+    deployment_id: string       # Platform-specific deployment ID
+    tag: string                 # Git tag used for deployment (e.g., "v1.2.3")
+    tag_created_at: ISO8601     # Tag creation timestamp
+    github_release_url: string  # GitHub release URL for this version
+
+  finalization:
+    essential_complete: boolean        # True if roadmap updated + branch cleaned
+    essential_completed_at: ISO8601    # Essential finalization timestamp
+    full_complete: boolean             # True if CHANGELOG, README, docs updated
+    full_completed_at: ISO8601         # Full finalization timestamp
+    changelog_updated: boolean         # CHANGELOG.md versioned
+    readme_updated: boolean            # README.md updated
+    help_docs_updated: boolean         # User documentation updated
+    milestone_closed: boolean          # GitHub milestone closed
+    release_created: boolean           # GitHub release created
+```
+
+**Deployment Model Detection**:
+- **staging-prod**: Git remote + staging branch + `.github/workflows/deploy-staging.yml`
+- **direct-prod**: Git remote + no staging branch/workflow
+- **local-only**: No git remote configured
+
+**Tagged Promotion** (staging-prod model):
+- Version extracted from CHANGELOG.md
+- User selects patch/minor/major bump
+- Git tag created: `v{version}`
+- Tag pushed to trigger `.github/workflows/deploy-production.yml`
+- GitHub Actions deploys to production
+- GitHub Release created with changelog excerpt
+
+**Finalization Phases**:
+1. **Essential** (automatic via `/ship`):
+   - Update roadmap issue to 'shipped'
+   - Clean up feature branch (local + remote)
+   - Check for infrastructure cleanup needs
+2. **Full** (automatic via `/ship` → `/finalize`):
+   - Update CHANGELOG.md with versioned release
+   - Update README.md with new features
+   - Update help documentation
+   - Close GitHub milestone
+   - Create GitHub release (if tagged promotion)
+
 ## Example: Single Feature (v1.0.0)
 
 ```yaml

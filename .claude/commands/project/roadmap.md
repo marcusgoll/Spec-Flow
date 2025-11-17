@@ -1,235 +1,458 @@
-// utils/index.js
-const fs = require('fs-extra');
-const path = require('path');
+---
+description: "Standard Operating Procedure for /roadmap usage. Manage product roadmap via GitHub Issues (brainstorm, prioritize, track). Auto-validates features against project vision (from overview.md) before adding to roadmap. Triggers when user runs /roadmap or mentions 'roadmap', 'add feature', 'brainstorm ideas', or 'prioritize features'. (project)"
+version: 2.0
+updated: 2025-11-17
+---
 
-/**
- * Try to use Chalk if available; otherwise no-op styling.
- * Note: Chalk v5 is ESM-only. If you're on CJS, either pin chalk@4
- * or let these no-ops keep your output readable instead of crashing.
- */
-let _chalk;
-try {
-  // Works if using chalk@4 or a CJS-friendly wrapper
-  _chalk = require('chalk');
-} catch {
-  _chalk = null;
+# /roadmap — Product Feature Management
+
+**Purpose**: Brainstorm features, validate against project vision, track shipped features (prioritized by creation order).
+
+**When to use**: Add features to roadmap, brainstorm ideas, move features between states, search roadmap.
+
+**Workflow integration**: Roadmap → `/feature` → spec → plan → implement → ship
+
+---
+
+## Mental Model
+
+You are managing a **product roadmap** via GitHub Issues with **vision alignment validation**.
+
+**Key concepts**:
+- **GitHub Issues** = roadmap backend (label-based state management)
+- **Vision validation** = automatic check against `docs/project/overview.md`
+- **Creation order** = priority (first created = first worked on)
+- **State management** = Backlog → Next → In Progress → Shipped
+
+---
+
+## Execution
+
+### Step 1: Parse User Intent
+
+**Identify action type from natural language:**
+
+```bash
+INTENT="${ARGUMENTS:-}"
+
+# Parse action
+case "$INTENT" in
+  add|create|new*)
+    ACTION="add"
+    DESCRIPTION="${INTENT#add }"
+    ;;
+  brainstorm|ideas|suggest*)
+    ACTION="brainstorm"
+    TOPIC="${INTENT#brainstorm }"
+    ;;
+  move|update*)
+    ACTION="move"
+    SLUG=$(echo "$INTENT" | awk '{print $2}')
+    TARGET=$(echo "$INTENT" | awk '{print $4}')
+    ;;
+  delete|remove*)
+    ACTION="delete"
+    SLUG=$(echo "$INTENT" | awk '{print $2}')
+    ;;
+  search|find*)
+    ACTION="search"
+    QUERY="${INTENT#search }"
+    ;;
+  prioritize|list*)
+    ACTION="list"
+    ;;
+  *)
+    ACTION="list"
+    ;;
+esac
+```
+
+**Action types**:
+- `add` — Add new feature with vision validation
+- `brainstorm` — Generate feature ideas via web research
+- `move` — Change feature status (Backlog → Next → In Progress)
+- `delete` — Remove feature from roadmap
+- `search` — Find features by keyword/area/role
+- `list` — Show roadmap summary
+
+---
+
+### Step 2: Execute Action via Scripts
+
+**Use existing roadmap management scripts:**
+
+**Bash (macOS/Linux):**
+```bash
+# Source roadmap manager
+source .spec-flow/scripts/bash/github-roadmap-manager.sh
+
+# Check GitHub authentication
+AUTH_METHOD=$(check_github_auth)
+
+if [ "$AUTH_METHOD" = "none" ]; then
+  echo "❌ GitHub authentication required"
+  echo ""
+  echo "Options:"
+  echo "  A) GitHub CLI: gh auth login"
+  echo "  B) API Token: export GITHUB_TOKEN=ghp_your_token"
+  exit 1
+fi
+
+REPO=$(get_repo_info)
+
+echo "✅ GitHub authenticated ($AUTH_METHOD)"
+echo "✅ Repository: $REPO"
+echo ""
+
+# Execute action
+case "$ACTION" in
+  add)
+    # Load project docs for vision validation (if exists)
+    if [ -f "docs/project/overview.md" ]; then
+      HAS_PROJECT_DOCS=true
+      # Claude Code: Read docs/project/overview.md
+      # Extract: Vision, Out-of-Scope, Target Users
+    fi
+
+    # Vision alignment validation
+    if [ "$HAS_PROJECT_DOCS" = true ]; then
+      # Claude Code: Validate feature against vision
+      # Check 1: Out-of-scope exclusions
+      # Check 2: Vision alignment (semantic)
+      # Check 3: Target user validation
+    fi
+
+    # Create GitHub Issue
+    create_roadmap_issue "$TITLE" "$BODY" "$AREA" "$ROLE" "$SLUG" "type:feature,status:backlog"
+    ;;
+
+  brainstorm)
+    # Claude Code: Web research for feature ideas related to $TOPIC
+    # Generate 5-10 feature proposals
+    # For each: validate vision alignment, create issue
+    ;;
+
+  move)
+    move_issue_to_section "$SLUG" "$TARGET"
+    ;;
+
+  delete)
+    delete_roadmap_issue "$SLUG"
+    ;;
+
+  search)
+    search_roadmap "$QUERY"
+    ;;
+
+  list)
+    show_roadmap_summary
+    ;;
+esac
+```
+
+**PowerShell (Windows):**
+```powershell
+# Import roadmap manager
+. .\.spec-flow\scripts\powershell\github-roadmap-manager.ps1
+
+# Check authentication
+$authMethod = Test-GitHubAuth
+
+if ($authMethod -eq "none") {
+  Write-Host "❌ GitHub authentication required" -ForegroundColor Red
+  Write-Host ""
+  Write-Host "Options:"
+  Write-Host "  A) GitHub CLI: gh auth login"
+  Write-Host "  B) API Token: `$env:GITHUB_TOKEN = 'ghp_your_token'"
+  exit 1
 }
-const style = (chain) => {
-  if (!_chalk) return (s) => s;
-  return chain.split('.').reduce((acc, k) => (acc && acc[k]) ? acc[k] : (x) => x, _chalk);
-};
 
-const sHeader = style('cyan.bold');
-const sStep = style('yellow');
-const sSuccess = style('green');
-const sError = style('red');
-const sWarn = style('yellow');
+$repo = Get-RepositoryInfo
 
-/**
- * Get package root directory
- */
-function getPackageRoot() {
-  return path.resolve(__dirname, '..');
-}
+Write-Host "✅ GitHub authenticated ($authMethod)" -ForegroundColor Green
+Write-Host "✅ Repository: $repo" -ForegroundColor Green
+Write-Host ""
 
-/**
- * Create ISO timestamp for backups
- */
-function getISOTimestamp() {
-  const now = new Date();
-  return now.toISOString().replace(/:/g, '-').replace(/\..+/, '');
-}
-
-/**
- * Should a path be excluded based on directory basenames anywhere in the path.
- * Example: excludeDirectories = ['node_modules', '.git', 'memory']
- */
-function shouldExclude(srcPath, excludeDirectories = [], preserveMemory = false) {
-  const parts = srcPath.split(path.sep);
-  for (const name of excludeDirectories) {
-    if (parts.includes(name)) return { exclude: true, reason: `${name} (user data - excluded)` };
-  }
-  if (preserveMemory && parts.includes('memory')) {
-    return { exclude: true, reason: 'memory (preserved)' };
-  }
-  return { exclude: false, reason: '' };
-}
-
-/**
- * Copy directory recursively with progress and conflict strategy
- * Strategies:
- *  - 'force'  : overwrite everything
- *  - 'skip'   : never overwrite existing files
- *  - 'merge'  : create new files, do not overwrite existing files
- *
- * Notes:
- *  - 'merge' and 'skip' behave the same for files (don’t overwrite),
- *    but both will still descend into subdirectories so new files appear.
- *
- * @param {string} src
- * @param {string} dest
- * @param {Object} options
- * @param {boolean} options.preserveMemory
- * @param {string}  options.conflictStrategy
- * @param {Array<string>} options.excludeDirectories
- * @param {Function} options.onProgress
- */
-async function copyDirectory(src, dest, options = {}) {
-  const {
-    preserveMemory = false,
-    conflictStrategy = 'force',
-    excludeDirectories = [],
-    onProgress
-  } = options;
-
-  await fs.ensureDir(dest);
-  const entries = await fs.readdir(src, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-
-    // Skip excludes and preserved memory anywhere in the path
-    const { exclude, reason } = shouldExclude(srcPath, excludeDirectories, preserveMemory);
-    if (exclude) {
-      if (onProgress) onProgress(`Skipping ${entry.name} (${reason})`);
-      continue;
+# Execute action
+switch ($ACTION) {
+  "add" {
+    # Load project docs
+    if (Test-Path "docs/project/overview.md") {
+      $hasProjectDocs = $true
+      # Claude Code: Read docs/project/overview.md
     }
 
-    if (entry.isDirectory()) {
-      await copyDirectory(srcPath, destPath, options);
-      continue;
+    # Vision validation
+    if ($hasProjectDocs) {
+      # Claude Code: Validate feature alignment
     }
 
-    // Files: decide overwrite behavior
-    const exists = await fs.pathExists(destPath);
-    const overwrite = conflictStrategy === 'force' ? true : false;
+    # Create issue
+    New-RoadmapIssue -Title $title -Body $body -Area $area -Role $role -Slug $slug -Labels "type:feature,status:backlog"
+  }
 
-    if ((conflictStrategy === 'skip' || conflictStrategy === 'merge') && exists) {
-      if (onProgress) onProgress(`Skipped ${entry.name} (already exists)`);
-      continue;
-    }
+  "brainstorm" {
+    # Claude Code: Generate feature ideas
+  }
 
-    await fs.copy(srcPath, destPath, {
-      overwrite,
-      errorOnExist: !overwrite,
-      preserveTimestamps: true
-    });
+  "move" {
+    Move-IssueToSection -Slug $slug -Target $target
+  }
 
-    if (onProgress) onProgress(`Copied ${entry.name}`);
+  "delete" {
+    Remove-RoadmapIssue -Slug $slug
+  }
+
+  "search" {
+    Search-Roadmap -Query $query
+  }
+
+  "list" {
+    Show-RoadmapSummary
   }
 }
+```
 
-/**
- * Create backup of directory with ISO timestamp
- * @param {string} dir
- * @returns {string|null} backup path or null
- */
-async function createBackup(dir) {
-  if (!(await fs.pathExists(dir))) return null;
+---
 
-  const parent = path.dirname(dir);
-  const basename = path.basename(dir);
-  const timestamp = getISOTimestamp();
-  const backupDir = path.join(parent, `${basename}-backup-${timestamp}`);
+## After Script Completes, You (LLM) Must:
 
-  // fs-extra's copy options; 'recursive' is NOT a valid option here.
-  await fs.copy(dir, backupDir, { overwrite: true, preserveTimestamps: true });
-  return backupDir;
-}
+### 1) Vision Alignment Validation (ADD/BRAINSTORM actions)
 
-/**
- * Restore from backup directory to target directory
- * @param {string} backupDir
- * @param {string} targetDir
- */
-async function restoreBackup(backupDir, targetDir) {
-  if (!(await fs.pathExists(backupDir))) {
-    throw new Error(`Backup not found: ${backupDir}`);
-  }
-  await fs.remove(targetDir);
-  await fs.copy(backupDir, targetDir, { overwrite: true, preserveTimestamps: true });
-}
+**If `docs/project/overview.md` exists:**
 
-/**
- * Check if directory is writable
- * @param {string} dir
- * @returns {Promise<boolean>}
- */
-async function isWritable(dir) {
-  try {
-    await fs.access(dir, fs.constants.W_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
+```
+Read overview.md and extract:
+- Vision (1 paragraph)
+- Out-of-Scope exclusions (bullet list)
+- Target Users (bullet list)
 
-/**
- * Format file size for display
- * @param {number} bytes
- * @returns {string}
- */
-function formatSize(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-}
+For each proposed feature:
+1. Check if feature is in Out-of-Scope list
+   → If YES: Prompt user (Skip / Update overview / Override)
 
-/**
- * Print styled header
- * @param {string} text
- */
-function printHeader(text) {
-  console.log(sHeader('\n═══════════════════════════════════════════════════════════════════'));
-  console.log(sHeader(` ${text}`));
-  console.log(sHeader('═══════════════════════════════════════════════════════════════════\n'));
-}
+2. Check if feature supports Vision
+   → If NO: Prompt user (Add anyway / Revise / Skip)
 
-/**
- * Print step message
- * @param {string} text
- */
-function printStep(text) {
-  console.log(sStep(`  ${text}`));
-}
+3. Confirm primary target user
+   → Store as role label
 
-/**
- * Print success message
- * @param {string} text
- */
-function printSuccess(text) {
-  console.log(sSuccess(`✓ ${text}`));
-}
+Only create GitHub Issue after validation passes or user overrides
+```
 
-/**
- * Print error message
- * @param {string} text
- */
-function printError(text) {
-  console.error(sError(`✗ ${text}`));
-}
+**Example validation output:**
 
-/**
- * Print warning message
- * @param {string} text
- */
-function printWarning(text) {
-  console.log(sWarn(`⚠ ${text}`));
-}
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 VISION ALIGNMENT CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-module.exports = {
-  getPackageRoot,
-  getISOTimestamp,
-  copyDirectory,
-  createBackup,
-  restoreBackup,
-  isWritable,
-  formatSize,
-  printHeader,
-  printStep,
-  printSuccess,
-  printError,
-  printWarning
-};
+Project Vision:
+AKTR helps flight instructors track student progress against ACS standards.
+
+Proposed Feature:
+  Add student progress widget showing mastery by ACS area
+
+✅ Feature aligns with project vision
+
+Target User Check:
+Primary user: Flight students
+
+✅ Vision alignment complete
+```
+
+---
+
+### 2) GitHub Issue Creation
+
+**Format issue with metadata:**
+
+```markdown
+---
+metadata:
+  area: app
+  role: student
+  slug: student-progress-widget
+---
+
+## Problem
+
+Students struggle to visualize their mastery progress across different ACS areas.
+
+## Proposed Solution
+
+Add a dashboard widget showing mastery percentage grouped by ACS area (e.g., Preflight, Maneuvers, Navigation).
+
+## Requirements
+
+- [ ] Display mastery percentage for each ACS area
+- [ ] Color-coded progress bars (red <50%, yellow 50-80%, green >80%)
+- [ ] Click area to drill down into specific tasks
+- [ ] Mobile-responsive design
+```
+
+**Labels auto-applied:**
+- `area:app` (or backend, frontend, api, infra, design, marketing)
+- `role:student` (or all, free, cfi, school)
+- `type:feature`
+- `status:backlog`
+
+---
+
+### 3) Return Roadmap Summary
+
+**Show current state:**
+
+```
+✅ Created issue #123: student-progress-widget in Backlog
+   Area: app | Role: student
+
+📊 Roadmap Summary:
+   Backlog: 12 | Next: 3 | In Progress: 2 | Shipped: 45
+
+Top 3 in Backlog (oldest/highest priority):
+1. #98 cfi-batch-export (Created: 2025-11-01)
+2. #87 study-plan-generator (Created: 2025-11-05)
+3. #123 student-progress-widget (Created: 2025-11-13)
+
+💡 Next: /feature cfi-batch-export
+```
+
+---
+
+### 4) Handle Brainstorm Action
+
+**For brainstorming:**
+
+1. **Web research** — Search for feature ideas related to topic
+2. **Generate proposals** — Create 5-10 feature ideas
+3. **Vision validation** — Check each against project vision
+4. **Create issues** — Add aligned features to roadmap
+5. **Summary** — Show added features and rejection reasons
+
+**Example brainstorm output:**
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 BRAINSTORM: CFI Tools
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Generated 8 feature ideas from research:
+
+✅ Added to roadmap (6):
+1. #124 cfi-batch-export — Export multiple student reports
+2. #125 lesson-plan-templates — Reusable lesson structures
+3. #126 endorsement-generator — Auto-fill logbook endorsements
+4. #127 student-analytics — Progress trends and insights
+5. #128 flight-debrief-forms — Post-flight feedback templates
+6. #129 currency-tracker — Track instructor currency requirements
+
+❌ Rejected (2):
+- Flight scheduling system — Out of scope (overview.md:45)
+- Social media integration — Doesn't support vision
+
+📊 Roadmap Summary:
+   Backlog: 18 | Next: 3 | In Progress: 2 | Shipped: 45
+
+💡 Next: /roadmap prioritize backlog
+```
+
+---
+
+## Quality Gates
+
+**Blocking validations (ADD/BRAINSTORM only):**
+
+1. **Out-of-Scope Gate** — Feature not in explicit exclusion list
+   - Override: User provides justification, adds ALIGNMENT_NOTE
+
+2. **Vision Alignment Gate** — Feature supports project vision
+   - Override: User revises feature or adds ALIGNMENT_NOTE
+
+**Non-blocking warnings:**
+
+1. **Missing Project Docs** — overview.md not found
+   - Warning: "Run /init-project for vision-aligned roadmap"
+   - Impact: Vision validation skipped
+
+2. **Large Feature** — >30 requirements
+   - Warning: "Consider splitting before /feature"
+   - Impact: `size:xl` label added
+
+---
+
+## Error Handling
+
+**GitHub authentication missing:**
+```
+❌ GitHub authentication required
+
+Options:
+  A) GitHub CLI: gh auth login
+  B) API Token: export GITHUB_TOKEN=ghp_your_token
+
+See: docs/github-roadmap-migration.md
+```
+
+**Feature out of scope:**
+```
+❌ OUT-OF-SCOPE DETECTED
+
+This feature matches an explicit exclusion:
+  "Flight scheduling or aircraft management" (overview.md:45)
+
+Options:
+  A) Skip (reject out-of-scope feature)
+  B) Update overview.md (remove exclusion if scope changed)
+  C) Add anyway (override with justification)
+```
+
+**Vision misalignment:**
+```
+⚠️  Potential misalignment detected
+
+Concerns:
+  - Feature focuses on social networking, not ACS tracking
+  - No clear connection to competency demonstration
+
+Options:
+  A) Add anyway (alignment override)
+  B) Revise feature to align
+  C) Skip (not aligned with vision)
+```
+
+---
+
+## Notes
+
+**Prioritization:**
+- Features prioritized by **creation order** (first created = highest priority)
+- No manual priority scoring (removed ICE framework)
+- Move features to "Next" to promote them
+
+**Roadmap states:**
+- **Backlog** — Ideas waiting to be worked on
+- **Next** — Up next (promoted from Backlog)
+- **In Progress** — Currently being implemented
+- **Shipped** — Completed and deployed
+
+**Vision validation:**
+- Only runs if `docs/project/overview.md` exists
+- Can be overridden by user with justification
+- Adds ALIGNMENT_NOTE to issue body if overridden
+
+**Integration:**
+- `/roadmap add` → creates issue in Backlog
+- `/feature next` → claims oldest "Next" issue
+- `/feature [slug]` → claims specific issue
+- `/ship` → marks issue as Shipped
+
+---
+
+## References
+
+- **Skill**: `.claude/skills/roadmap-integration/SKILL.md` (full SOP)
+- **Scripts**:
+  - `.spec-flow/scripts/bash/github-roadmap-manager.sh`
+  - `.spec-flow/scripts/powershell/github-roadmap-manager.ps1`
+- **Project docs**: `docs/project/overview.md` (vision, scope, users)

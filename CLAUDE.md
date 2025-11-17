@@ -52,15 +52,16 @@ Features progress through fixed phases with automatic state tracking:
 /ship (unified deployment orchestrator)
   ↓
 Model-specific workflow:
-  • staging-prod: /optimize → /preview → /ship-staging → /validate-staging → /ship-prod
-  • direct-prod: /optimize → /preview → /deploy-prod
-  • local-only: /optimize → /preview → /build-local
+  • staging-prod: /optimize → /preview → /ship-staging → /validate-staging → /ship-prod → /finalize
+  • direct-prod: /optimize → /preview → /deploy-prod → /finalize
+  • local-only: /optimize → /preview → /build-local → /finalize
 ```
 
 **Unified Deployment**:
 
 - Use `/ship` after `/implement` to automatically execute the appropriate deployment workflow
 - Deployment model is auto-detected (staging-prod, direct-prod, or local-only)
+- `/finalize` runs automatically after deployment completes (CHANGELOG, README, docs, GitHub release)
 - Use `/ship continue` to resume after manual gates or failures
 - Use `/ship status` to check current progress
 - Commands are defined in `.claude/commands/`
@@ -122,7 +123,118 @@ Creates HTML mockups in specs/NNN-slug/mockups/
 - Git workflow: GitHub Flow / Git Flow / Trunk-Based
 - Budget constraints and privacy requirements
 
-### Generated Documentation (8 Files)
+### Design System Mode (--with-design)
+
+**When to use**: For projects with UI components that need consistent visual design and brand identity.
+
+**Philosophy**: "Design drift kills products." — Freeze design decisions upfront to prevent inconsistent UX every sprint.
+
+```bash
+/init-project --with-design "ProjectName"
+```
+
+**Extended Questionnaire** (48 questions total, ~20-30 minutes):
+- **Core**: All 15 project questions (above)
+- **Brand Personality** (8 questions): Brand archetype, emotional response, keywords, competitive differentiation, primary color, visual style, typography, density
+- **Visual Language** (12 questions): Color palette size, neutrals approach, semantic colors, surface colors, type scale, font weights, line-height system, heading style, border radius, shadows, icons, illustrations
+- **Accessibility** (6 questions): WCAG compliance level, motion preferences, contrast requirements, focus indicators, screen reader priority, keyboard navigation
+- **Layout & Interaction** (7 questions): Spacing scale, breakpoint strategy, grid system, component states, animation defaults, hover intent, loading patterns
+
+**Generated Design Documentation** (4 additional files in `docs/design/`):
+
+1. **brand-guidelines.md** — Brand personality, voice, emotional goals, competitive differentiation, brand keywords
+2. **visual-language.md** — Color system, typography, spacing, border radius, shadows, icons, illustrations
+3. **accessibility-standards.md** — WCAG compliance level, contrast requirements, motion preferences, keyboard navigation, ARIA patterns
+4. **component-governance.md** — Component state requirements, animation defaults, loading patterns, interaction standards
+
+**Auto-Generated Design Tokens** (`design/systems/`):
+
+- **tokens.css** — Complete design token system
+  - Color scales (primary, neutral, semantic) using OKLCH color space
+  - Spacing scale (based on density preference: compact=4px, comfortable=6px, spacious=8px)
+  - Typography (font families, sizes, weights, line-heights)
+  - Border radius, shadows, breakpoints
+  - Multi-surface tokens (UI, emails, PDFs, CLI, charts, docs)
+  - **WCAG AA compliant** (4.5:1 contrast ratios auto-fixed)
+  - **Perceptually uniform** (OKLCH color space for accurate contrast)
+
+- **tokens.json** — JSON reference for programmatic access
+
+**Brownfield Scanning** (existing design systems):
+- Scans existing `tokens.css` for color palettes, spacing, typography
+- Identifies WCAG violations (contrast < 4.5:1)
+- Generates consolidation report showing conflicts between existing and requested design
+- Suggests migration plan if redesign needed
+- Preserves working tokens, flags violations
+
+**Workflow Integration**:
+
+**`/tasks --ui-first`**:
+- Reads `visual-language.md` → uses tokens.css for HTML mockup generation
+- Reads `brand-guidelines.md` → applies brand voice to microcopy
+- Reads `accessibility-standards.md` → ensures WCAG compliance in mockups
+- Generates mockups linked to tokens.css (live updates on token changes)
+
+**`/implement`**:
+- Reads `component-governance.md` → enforces state requirements (hover, active, disabled, loading, error, success)
+- Reads `visual-language.md` → uses design tokens in component implementations
+- Validates components against accessibility standards
+
+**Benefits**:
+- **Zero design drift** — Design decisions frozen before first feature
+- **Auto-WCAG compliance** — Contrast ratios auto-fixed to ≥4.5:1
+- **Token-driven UI** — All components reference tokens.css (change once, update everywhere)
+- **Multi-surface consistency** — Same design system for web, email, PDF, CLI, charts
+- **Brownfield support** — Scans existing design, suggests migration path
+
+**Example Output** (greenfield):
+
+```bash
+✅ Generated: docs/design/brand-guidelines.md
+✅ Generated: docs/design/visual-language.md
+✅ Generated: docs/design/accessibility-standards.md
+✅ Generated: docs/design/component-governance.md
+✅ Generated: design/systems/tokens.css (WCAG AA compliant)
+✅ Generated: design/systems/tokens.json
+
+🛡️  WCAG Auto-Fix:
+  Text on light: 4.7:1 ✅
+  Text on dark: 7.2:1 ✅
+
+📊 Design Token Summary:
+  Colors: 6 palettes (primary, neutral, success, warning, error, info)
+  Spacing: 17 values (base unit: 6px)
+  Typography: 8 sizes, 4 weights
+  Surfaces: 5 (UI, email, PDF, CLI, charts)
+```
+
+**Example Output** (brownfield):
+
+```bash
+🔍 Scanning existing design system...
+✅ Found: design/systems/tokens.css
+
+📊 Scan Results:
+  Tokens: 127
+  WCAG Violations: 3
+  Matches with answers: 8
+  Conflicts with answers: 2
+
+⚠️  WCAG Violations:
+  - text-primary: #3b82f6 on #ffffff = 3.2:1 ❌ (needs ≥4.5:1)
+  - primary-500: #3b82f6 on white = 3.2:1 ❌
+
+⚠️  Conflicts:
+  - Primary Color: Existing=#3b82f6, Requested=#2563eb
+  - Spacing Base: Existing=8px, Requested=6px (comfortable)
+
+💡 Suggestions:
+  - Run init-brand-tokens.mjs --auto-fix-contrast to fix violations
+  - Review conflicts in design/scan-report.md
+  - Create migration plan if redesigning
+```
+
+### Generated Documentation (8 Core Files)
 
 **Location**: `docs/project/`
 
@@ -424,23 +536,29 @@ The workflow automatically detects and adapts to three deployment models:
 ### staging-prod (Recommended)
 
 - **Detection**: Git remote + staging branch + `.github/workflows/deploy-staging.yml`
-- **Workflow**: optimize → preview → ship-staging → validate-staging → ship-prod
-- **Features**: Full staging validation, rollback testing, production promotion
+- **Workflow**: optimize → preview → ship-staging → validate-staging → ship-prod → finalize
+- **Features**: Full staging validation, rollback testing, **tagged promotion**, GitHub releases
+- **Tagged Promotion**:
+  - Version extracted from CHANGELOG.md (patch/minor/major selection)
+  - Git tag created and pushed (e.g., `v1.2.3`)
+  - GitHub Actions workflow triggers on tag push (`.github/workflows/deploy-production.yml`)
+  - Deployment waits for GitHub Actions completion
+  - GitHub Release created automatically with changelog excerpt
 - **Use for**: Production applications, team projects, critical deployments
 
 ### direct-prod
 
 - **Detection**: Git remote + no staging branch/workflow
-- **Workflow**: optimize → preview → deploy-prod
-- **Features**: Direct production deployment, deployment ID tracking
+- **Workflow**: optimize → preview → deploy-prod → finalize
+- **Features**: Direct production deployment, deployment ID tracking, auto-finalization
 - **Use for**: Simple applications, solo developers, rapid iteration
 - **Risk**: Higher (no staging validation)
 
 ### local-only
 
 - **Detection**: No git remote configured
-- **Workflow**: optimize → preview → build-local
-- **Features**: Local build validation, security scanning, artifact analysis
+- **Workflow**: optimize → preview → build-local → finalize
+- **Features**: Local build validation, security scanning, artifact analysis, documentation updates
 - **Use for**: Local development, prototypes, desktop applications
 
 **Override**: Set deployment model explicitly in `.spec-flow/memory/constitution.md`

@@ -1,6 +1,12 @@
-# /ship - Unified Deployment Orchestrator
+---
+description: Unified deployment orchestrator with multi-model support
+version: 2.0
+updated: 2025-11-17
+---
 
-**Purpose**: Orchestrate the complete post-implementation deployment workflow from optimization through production release, with support for multiple deployment models and automatic state management.
+# /ship — Unified Deployment Orchestrator
+
+**Purpose**: Orchestrate complete post-implementation deployment workflow from optimization through production release
 
 **Usage**:
 - `/ship` - Start deployment workflow from beginning
@@ -8,141 +14,101 @@
 - `/ship status` - Display current deployment status
 
 **Deployment Models**:
-- **staging-prod**: Full staging validation before production (optimize → preview → ship-staging → validate-staging → ship-prod → essential finalization)
-- **direct-prod**: Direct production deployment (optimize → preview → deploy-prod → essential finalization)
-- **local-only**: Local build and integration (optimize → preview → build-local → merge-to-main → essential finalization)
-
-**Note**: All models include essential finalization (roadmap update + branch cleanup). Optional full documentation via `/finalize` command.
+- **staging-prod**: Full staging validation before production
+- **direct-prod**: Direct production deployment
+- **local-only**: Local build and integration
 
 **Dependencies**: Requires completed `/implement` phase
+
+---
 
 <context>
 ## TODO TRACKING REQUIREMENT
 
-**CRITICAL**: You MUST use TodoWrite to track all ship workflow progress. This is non-negotiable.
+**CRITICAL**: You MUST use TodoWrite to track all ship workflow progress.
 
-**Why this matters**: The /ship workflow involves 5-8 phases over 20-40 minutes with manual gates. Without TodoWrite:
-- User loses visibility when CI errors occur
-- Workflow appears frozen or stuck
-- Hard to identify current phase or blockers
-- Impossible to resume after fixing errors
+**Why**: The /ship workflow involves 5-8 phases over 20-40 minutes with manual gates. Without TodoWrite, user loses visibility and cannot resume after errors.
 
 **When to use TodoWrite**:
-1. **Immediately** after loading feature context - create full todo list
-2. **After every phase completes** - mark completed, mark next as in_progress
-3. **When errors occur** - add "Fix [specific error]" todo
-4. **At manual gates** - keep as pending until user approval
+1. Immediately after loading feature context - create full todo list
+2. After every phase completes - mark completed, mark next as in_progress
+3. When errors occur - add "Fix [specific error]" todo
+4. At manual gates - keep as pending until user approval
 
 **Only ONE todo should be in_progress at a time.**
 </context>
 
+---
+
 <instructions>
+## USER INPUT
+
+```text
+$ARGUMENTS
+```
+
+You **MUST** consider the user input before proceeding (if not empty).
 
 ## Step 1: Initialize & Create Todo List
 
 1. Read workflow-state.yaml from most recent feature directory
 2. Detect deployment model (staging-prod, direct-prod, or local-only)
-3. **IMMEDIATELY create TodoWrite list** based on model:
-
-**staging-prod** (8 phases):
-```
-TodoWrite({
-  todos: [
-    {content: "Initialize and load feature context", status: "completed", activeForm: "..."},
-    {content: "Run pre-flight validation (env, build, docker, CI, deps)", status: "in_progress", activeForm: "Running pre-flight checks"},
-    {content: "Execute /optimize phase", status: "pending", activeForm: "Optimizing for production"},
-    {content: "Execute /preview phase (manual gate)", status: "pending", activeForm: "Preparing preview"},
-    {content: "Deploy to staging environment", status: "pending", activeForm: "Deploying to staging"},
-    {content: "Validate staging environment (manual gate)", status: "pending", activeForm: "Validating staging"},
-    {content: "Deploy to production environment", status: "pending", activeForm: "Deploying to production"},
-    {content: "Essential finalization (roadmap + branch cleanup)", status: "pending", activeForm: "Finalizing deployment"},
-  ]
-})
-```
-
-**direct-prod** (6 phases):
-```
-TodoWrite({
-  todos: [
-    {content: "Initialize and load feature context", status: "completed", activeForm: "..."},
-    {content: "Run pre-flight validation (env, build, docker, CI, deps)", status: "in_progress", activeForm: "Running pre-flight checks"},
-    {content: "Execute /optimize phase", status: "pending", activeForm: "Optimizing for production"},
-    {content: "Execute /preview phase (manual gate)", status: "pending", activeForm: "Preparing preview"},
-    {content: "Deploy directly to production", status: "pending", activeForm: "Deploying to production"},
-    {content: "Essential finalization (roadmap + branch cleanup)", status: "pending", activeForm: "Finalizing deployment"},
-  ]
-})
-```
-
-**local-only** (7 phases):
-```
-TodoWrite({
-  todos: [
-    {content: "Initialize and load feature context", status: "completed", activeForm: "..."},
-    {content: "Run pre-flight validation (env, build, docker, CI, deps)", status: "in_progress", activeForm: "Running pre-flight checks"},
-    {content: "Execute /optimize phase", status: "pending", activeForm: "Optimizing for production"},
-    {content: "Execute /preview phase (manual gate)", status: "pending", activeForm: "Preparing preview"},
-    {content: "Build locally and validate artifacts", status: "pending", activeForm: "Building locally"},
-    {content: "Merge feature branch to main", status: "pending", activeForm: "Merging to main"},
-    {content: "Essential finalization (roadmap + branch cleanup)", status: "pending", activeForm: "Finalizing deployment"},
-  ]
-})
-```
+3. **IMMEDIATELY create TodoWrite list** based on model (see examples in original ship.md)
 
 ## Step 2: Execute Pre-flight Validation
 
-Run pre-flight checks to validate environment before starting deployment:
+Run pre-flight checks using centralized CLI:
 
 ```bash
-# Run build locally to catch errors early
-npm run build  # or yarn build, or pnpm build
-
-# Check for missing environment variables
-gh secret list
-
-# Validate CI workflows (if .github/workflows exists)
-yq eval '.' .github/workflows/*.yml
+python .spec-flow/scripts/spec-cli.py ship-finalize preflight --feature-dir "$FEATURE_DIR"
 ```
 
+**What it does**:
+- Runs local build to catch errors early
+- Checks GitHub secrets (if gh CLI available)
+- Validates CI workflow syntax (if .github/workflows exists)
+
 If any check fails:
-- **Update TodoWrite**: Add "Fix [specific error]" as new todo
+- Update TodoWrite: Add "Fix [specific error]" as new todo
 - Keep "Run pre-flight validation" as `in_progress`
 - Tell user to fix error and run `/ship continue`
-- **EXIT** - don't proceed to next phase
+- **EXIT**
 
 If all checks pass:
-- **Update TodoWrite**: Mark pre-flight as `completed`, mark /optimize as `in_progress`
+- Update TodoWrite: Mark pre-flight as `completed`, mark /optimize as `in_progress`
 - Continue to Step 3
 
 ## Step 3: Run /optimize
 
-Execute the `/optimize` slash command for code review and production readiness:
+Execute the `/optimize` slash command:
 
 ```bash
 /optimize
 ```
 
 After `/optimize` completes:
-- **Update TodoWrite**: Mark /optimize as `completed`, mark /preview as `in_progress`
+- Update TodoWrite: Mark /optimize as `completed`, mark /preview as `in_progress`
 - Continue to Step 4
 
 If `/optimize` fails:
-- **Update TodoWrite**: Add "Fix code review issues" as new todo
+- Update TodoWrite: Add "Fix code review issues" as new todo
 - Tell user to address issues and run `/ship continue`
 - **EXIT**
 
 ## Step 4: Run /preview (Manual Gate)
 
-Execute the `/preview` slash command to start local dev server:
+Execute the `/preview` slash command:
 
 ```bash
 /preview
 ```
 
 After dev server starts:
-- **Update TodoWrite**: Mark /preview as `completed`, keep deployment phase as `pending`
-- **Display manual gate message**:
+- Update TodoWrite: Mark /preview as `completed`, keep deployment phase as `pending`
+- Display manual gate message (see below)
+- **EXIT** - wait for user to run `/ship continue`
 
+**Manual gate message**:
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🛑 MANUAL GATE: Preview Testing Required
@@ -161,8 +127,6 @@ To abort: /ship abort
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-- **EXIT** - wait for user to run `/ship continue`
-
 ## Step 5: Deploy (Model-Specific)
 
 ### If staging-prod model:
@@ -171,29 +135,15 @@ To abort: /ship abort
    ```bash
    /ship-staging
    ```
-   - **Update TodoWrite**: Mark staging deploy as `completed`, mark validation as `pending`
+   Update TodoWrite: Mark staging deploy as `completed`, mark validation as `pending`
 
-2. **Wait for staging validation** (manual gate):
-   ```
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🛑 MANUAL GATE: Staging Validation Required
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-   Staging is live. Please:
-   1. ✅ Run /validate-staging for automated checks
-   2. ✅ Test feature in staging
-   3. ✅ Verify rollback works
-
-   When complete, run: /ship continue
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ```
-   - **EXIT** - wait for user
+2. **Wait for staging validation** (manual gate) - Display message, EXIT
 
 3. **Deploy to production** (after user approval):
    ```bash
    /ship-prod
    ```
-   - **Update TodoWrite**: Mark production deploy as `completed`, mark finalize as `in_progress`
+   Update TodoWrite: Mark production deploy as `completed`, mark finalize as `in_progress`
 
 ### If direct-prod model:
 
@@ -201,7 +151,7 @@ To abort: /ship abort
    ```bash
    /deploy-prod
    ```
-   - **Update TodoWrite**: Mark production deploy as `completed`, mark finalize as `in_progress`
+   Update TodoWrite: Mark production deploy as `completed`, mark finalize as `in_progress`
 
 ### If local-only model:
 
@@ -209,7 +159,7 @@ To abort: /ship abort
    ```bash
    /build-local
    ```
-   - **Update TodoWrite**: Mark local build as `completed`, mark merge as `in_progress`
+   Update TodoWrite: Mark local build as `completed`, mark merge as `in_progress`
 
 2. **Merge to main**:
    ```bash
@@ -217,197 +167,86 @@ To abort: /ship abort
    git merge --no-ff [feature-branch]
    git push origin main
    ```
-   - **Update TodoWrite**: Mark merge as `completed`, mark finalize as `in_progress`
+   Update TodoWrite: Mark merge as `completed`, mark finalize as `in_progress`
 
 ## Step 6: Essential Finalization (All Models)
 
-Run core cleanup tasks for EVERY deployment, regardless of deployment model:
-
-### 6.1: Update Roadmap Issue to 'Shipped'
-
-1. **Find roadmap issue** for this feature (from workflow-state.yaml):
-   ```bash
-   FEATURE_SLUG=$(yq eval '.feature.slug' workflow-state.yaml)
-   gh issue list --label type:feature --search "slug: $FEATURE_SLUG" --json number,title,body
-   ```
-
-2. **Update issue status** to shipped:
-   ```bash
-   ISSUE_NUMBER=[extracted-from-above]
-   gh issue edit $ISSUE_NUMBER \
-     --add-label "status:shipped" \
-     --remove-label "status:in-progress"
-   ```
-
-3. **Add shipped comment** with deployment details:
-   ```bash
-   # Get production URL from workflow-state.yaml
-   PROD_URL=$(yq eval '.deployment.production.url // "Not recorded"' workflow-state.yaml)
-   VERSION=$(yq eval '.deployment.version // "unknown"' workflow-state.yaml)
-
-   gh issue comment $ISSUE_NUMBER --body "🚀 Shipped in v$VERSION on $(date +%Y-%m-%d)
-
-**Production URL**: $PROD_URL
-
-Deployment complete!"
-   ```
-
-4. **Close the issue**:
-   ```bash
-   gh issue close $ISSUE_NUMBER --comment "Closing as shipped."
-   echo "✅ Issue #$ISSUE_NUMBER closed"
-   ```
-
-**Error handling**: If issue not found or GitHub API fails, log warning and continue (non-blocking).
-
-### 6.2: Clean Up Feature Branch
-
-1. **Get branch names**:
-   ```bash
-   FEATURE_BRANCH=$(git branch --show-current)
-
-   # Detect main branch (main or master)
-   if git show-ref --verify --quiet refs/heads/main; then
-     MAIN_BRANCH="main"
-   elif git show-ref --verify --quiet refs/heads/master; then
-     MAIN_BRANCH="master"
-   else
-     echo "⚠️  Cannot detect main branch, skipping branch cleanup"
-     # Continue anyway - non-critical
-   fi
-   ```
-
-2. **Switch to main branch** (if not already on it):
-   ```bash
-   if [ "$FEATURE_BRANCH" != "$MAIN_BRANCH" ]; then
-     git checkout $MAIN_BRANCH
-   else
-     echo "Already on $MAIN_BRANCH, no need to switch"
-   fi
-   ```
-
-3. **Delete local feature branch**:
-   ```bash
-   if [ "$FEATURE_BRANCH" != "$MAIN_BRANCH" ]; then
-     git branch -d $FEATURE_BRANCH
-     echo "✅ Deleted local branch: $FEATURE_BRANCH"
-   fi
-   ```
-
-4. **Delete remote feature branch** (if exists):
-   ```bash
-   if git ls-remote --exit-code --heads origin "$FEATURE_BRANCH" >/dev/null 2>&1; then
-     git push origin --delete $FEATURE_BRANCH
-     echo "✅ Deleted remote branch: origin/$FEATURE_BRANCH"
-   else
-     echo "⏭️  Remote branch doesn't exist, nothing to delete"
-   fi
-   ```
-
-**Error handling**: If branch deletion fails (unmerged changes), log warning and continue (non-blocking).
-
-### 6.3: Display Final Summary
-
-After essential finalization completes:
-- **Update TodoWrite**: Mark finalize as `completed`
-- Display final summary:
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ Deployment Complete!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-[Feature Title]
-Deployment Model: [staging-prod/direct-prod/local-only]
-
-Essential Cleanup Done:
-✅ Roadmap issue #[number] updated to 'shipped' and closed
-✅ Feature branch '[branch-name]' deleted (local + remote)
-
-Production URL: [url]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-### 6.4: Check for Infrastructure Cleanup Needs
-
-After deployment completes, check if infrastructure commands need to be run:
+Run essential finalization tasks using centralized CLI:
 
 ```bash
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# INFRASTRUCTURE CLEANUP RECOMMENDATIONS
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-if [ -f .spec-flow/scripts/bash/detect-infrastructure-needs.sh ]; then
-  FLAG_CLEANUP_NEEDED=$(.spec-flow/scripts/bash/detect-infrastructure-needs.sh flag-cleanup 2>/dev/null | jq -r '.needed // false')
-
-  if [ "$FLAG_CLEANUP_NEEDED" = "true" ]; then
-    ACTIVE_FLAGS=$(.spec-flow/scripts/bash/detect-infrastructure-needs.sh flag-cleanup 2>/dev/null | jq -r '.active_flags[]')
-    FLAG_COUNT=$(echo "$ACTIVE_FLAGS" | wc -l)
-
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "🚩 ACTIVE FEATURE FLAGS DETECTED ($FLAG_COUNT)"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "Remove flags that are no longer needed:"
-    echo ""
-
-    while IFS= read -r flag; do
-      if [ -n "$flag" ]; then
-        echo "  /flag-cleanup $flag"
-      fi
-    done <<< "$ACTIVE_FLAGS"
-
-    echo ""
-    echo "Keeping flags increases tech debt. Clean up before next sprint."
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-  fi
-fi
+python .spec-flow/scripts/spec-cli.py ship-finalize finalize --feature-dir "$FEATURE_DIR"
 ```
 
-Display final message:
+**What it does**:
 
+1. **Update roadmap issue to 'shipped'**:
+   - Finds GitHub issue for feature
+   - Updates labels (status:shipped, removes status:in-progress)
+   - Adds shipped comment with deployment details
+   - Closes the issue
+
+2. **Clean up feature branch**:
+   - Switches to main/master branch
+   - Deletes local feature branch
+   - Deletes remote feature branch (if exists)
+
+3. **Check for infrastructure cleanup needs**:
+   - Detects active feature flags
+   - Recommends cleanup commands
+   - Warns about tech debt
+
+After essential finalization completes:
+- Update TodoWrite: Mark essential finalization as `completed`, mark full finalization as `in_progress`
+- Continue to Step 7
+
+## Step 7: Full Finalization (Automatic)
+
+Run the `/finalize` slash command to complete all documentation:
+
+```bash
+/finalize
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📚 Optional: Full Documentation
+**What it does** (see `.claude/commands/phases/finalize.md` for full details):
 
-For comprehensive documentation updates, run:
-  /finalize
+1. **Update CHANGELOG.md**:
+   - Moves unreleased changes to versioned section
+   - Extracts version number for tagging
+   - Follows Keep a Changelog format
 
-This will:
-- Update CHANGELOG.md with release notes
-- Update README.md with new features
-- Generate user documentation
-- Manage GitHub milestones
-- Create release notes
+2. **Update README.md**:
+   - Installation instructions
+   - Usage examples
+   - Feature list
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+3. **Update help documentation**:
+   - User guides
+   - API documentation
+   - Integration docs
+
+4. **GitHub Release Management**:
+   - Creates/updates milestones
+   - Closes current milestone
+   - Creates next milestone
+   - Generates GitHub release with notes
+
+5. **Version tagging** (if tagged promotion enabled):
+   - Extracts version from CHANGELOG.md
+   - Creates annotated git tag: `v{version}`
+   - Pushes tag to trigger production deployment
+
+After full finalization completes:
+- Update TodoWrite: Mark full finalization as `completed`
+- Display final summary with deployment URLs, version, and next steps
 
 ## Error Handling
 
 **When ANY phase fails**:
-1. **Update TodoWrite**: Add "Fix [specific error from logs]" as new todo
-2. Keep failed phase as `in_progress` (or pending if not started)
+1. Update TodoWrite: Add "Fix [specific error from logs]" as new todo
+2. Keep failed phase as `in_progress`
 3. Display clear error message with log file path
 4. Tell user to fix error and run `/ship continue`
 5. **EXIT**
-
-**Example**:
-```
-Pre-flight build failed with 3 TypeScript errors:
-
-  src/components/Header.tsx:42 - Type 'string' not assignable to 'number'
-  src/utils/format.ts:15 - Cannot find module 'date-fns'
-  src/pages/Dashboard.tsx:89 - Property 'userId' does not exist on 'User'
-
-TodoWrite updated with: "Fix 3 TypeScript build errors"
-
-Fix these errors and run: /ship continue
-```
 
 ## Resume Capability (/ship continue)
 
@@ -430,6 +269,8 @@ When user runs `/ship status`:
    - Manual gates waiting for approval
 
 </instructions>
+
+---
 
 <constraints>
 ## ANTI-HALLUCINATION RULES
