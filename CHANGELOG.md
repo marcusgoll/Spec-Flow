@@ -2,6 +2,33 @@
 
 ---
 
+## [6.6.0] - 2025-11-18
+
+### Added
+- **Streamlined Workflow**: Automated progression after plan approval through implementation
+  - Removed /preview phase (all testing now happens in staging)
+  - Auto-progression: tasks → validate → implement → optimize → ship-staging
+  - 3 manual gates: specification review, planning review, staging validation
+  - Philosophy: "Test in staging, not locally" for production-like validation
+
+### Changed
+- **Task Completion Tracking**: Automatic velocity tracking and Progress Summary updates
+  - Updated tasks-workflow.sh to use tasks-template.md structure
+  - Updated implement-workflow.sh specialist prompts to call task-tracker mark-done-with-notes
+  - Enables automatic velocity metrics, ETA calculation, and bottleneck detection
+  - Task completion now updates both tasks.md checkboxes AND NOTES.md AND Progress Summary
+
+### Technical Details
+- **feature.md**: Updated workflow phases with manual gates and auto-progression flags
+- **ship.md**: Removed /preview phase, updated staging validation manual gate message
+- **tasks-workflow.sh**: Added instruction to use tasks-template.md for Progress Summary section
+- **implement-workflow.sh**: Added mandatory task-tracker calls with detailed "What this does" explanations
+
+---
+
+
+---
+
 ## [6.5.0] - 2025-11-18
 
 ### Added
