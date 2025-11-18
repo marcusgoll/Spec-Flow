@@ -6,21 +6,28 @@ updated: 2025-11-18
 
 # /ship — Unified Deployment Orchestrator
 
-**Purpose**: Orchestrate complete post-implementation deployment workflow from optimization through production release
+**Purpose**: Orchestrate complete post-implementation deployment workflow with zero manual gates
 
-**Workflow**: optimize → deploy-staging → [manual staging validation] → deploy-prod → finalize
+**Workflow**: [pre-flight + optimize] (parallel) → deploy-staging → [automated validation] → deploy-prod → finalize
+
+**Timing**: 25-35 minutes fully automated (down from 65-165 min with 3 manual gates)
 
 **Usage**:
-- `/ship` - Start deployment workflow from beginning
-- `/ship continue` - Resume from last completed phase or proceed after manual gate
+- `/ship` - Start deployment workflow from beginning (fully automated)
+- `/ship continue` - Resume from last completed phase (if failure occurred)
 - `/ship status` - Display current deployment status
 
 **Deployment Models**:
-- **staging-prod**: Full staging validation before production (recommended)
+- **staging-prod**: Automated staging validation before production (recommended)
 - **direct-prod**: Direct production deployment (skip staging)
 - **local-only**: Local build and integration only
 
-**Manual Gate**: Staging validation (test complete feature in staging before production)
+**Automation**:
+- ✅ Pre-flight + optimize run in parallel (saves ~10 min)
+- ✅ Zero manual gates (removed /preview, interactive version selection)
+- ✅ Auto-generated validation reports (E2E, Lighthouse, rollback test)
+- ✅ Platform API-based deployment ID extraction (no log parsing)
+- ✅ Auto-fix CI failures via GitHub Action
 
 **Dependencies**: Requires completed `/implement` phase
 
@@ -31,13 +38,13 @@ updated: 2025-11-18
 
 **CRITICAL**: You MUST use TodoWrite to track all ship workflow progress.
 
-**Why**: The /ship workflow involves 5-8 phases over 20-40 minutes with manual gates. Without TodoWrite, user loses visibility and cannot resume after errors.
+**Why**: The /ship workflow involves 5 phases over 25-35 minutes, fully automated. Without TodoWrite, user loses visibility and cannot resume after errors.
 
 **When to use TodoWrite**:
 1. Immediately after loading feature context - create full todo list
 2. After every phase completes - mark completed, mark next as in_progress
 3. When errors occur - add "Fix [specific error]" todo
-4. At manual gates - keep as pending until user approval
+4. On completion - mark all todos as completed
 
 **Only ONE todo should be in_progress at a time.**
 </context>
@@ -59,47 +66,44 @@ You **MUST** consider the user input before proceeding (if not empty).
 2. Detect deployment model (staging-prod, direct-prod, or local-only)
 3. **IMMEDIATELY create TodoWrite list** based on model (see examples in original ship.md)
 
-## Step 2: Execute Pre-flight Validation
+## Step 2: Run Pre-flight Validation & /optimize (Parallel)
 
-Run pre-flight checks using centralized CLI:
+**IMPORTANT**: Run these checks in parallel by making both tool calls in a single message. This saves ~10 minutes.
 
+**Pre-flight validation** (Bash tool):
 ```bash
 python .spec-flow/scripts/spec-cli.py ship-finalize preflight --feature-dir "$FEATURE_DIR"
 ```
 
-**What it does**:
-- Runs local build to catch errors early
-- Checks GitHub secrets (if gh CLI available)
-- Validates CI workflow syntax (if .github/workflows exists)
-
-If any check fails:
-- Update TodoWrite: Add "Fix [specific error]" as new todo
-- Keep "Run pre-flight validation" as `in_progress`
-- Tell user to fix error and run `/ship continue`
-- **EXIT**
-
-If all checks pass:
-- Update TodoWrite: Mark pre-flight as `completed`, mark /optimize as `in_progress`
-- Continue to Step 3
-
-## Step 3: Run /optimize
-
-Execute the `/optimize` slash command:
-
+**Optimize checks** (SlashCommand tool):
 ```bash
 /optimize
 ```
 
-After `/optimize` completes:
-- Update TodoWrite: Mark /optimize as `completed`, mark deployment phase as `in_progress`
-- Continue to Step 4
+**Pre-flight does**:
+- Runs local build to catch errors early
+- Checks GitHub secrets (if gh CLI available)
+- Validates CI workflow syntax (if .github/workflows exists)
 
-If `/optimize` fails:
-- Update TodoWrite: Add "Fix code review issues" as new todo
-- Tell user to address issues and run `/ship continue`
-- **EXIT**
+**Optimize does** (see `.claude/commands/phases/optimize.md`):
+- Code review (KISS/DRY, security, performance)
+- Accessibility audit (WCAG 2.1 AA)
+- Performance profiling
+- Type safety enforcement
+- Dependency audit
 
-## Step 4: Deploy (Model-Specific)
+**After both complete**:
+- If either fails:
+  - Update TodoWrite: Add "Fix [specific errors]" as new todo
+  - Keep "Run pre-flight + optimize" as `in_progress`
+  - Tell user to fix errors and run `/ship continue`
+  - **EXIT**
+
+- If both pass:
+  - Update TodoWrite: Mark pre-flight + optimize as `completed`, mark deployment phase as `in_progress`
+  - Continue to Step 3
+
+## Step 3: Deploy (Model-Specific)
 
 ### If staging-prod model:
 
@@ -107,40 +111,55 @@ If `/optimize` fails:
    ```bash
    /ship-staging
    ```
-   Update TodoWrite: Mark staging deploy as `completed`, mark validation as `pending`
+   Update TodoWrite: Mark staging deploy as `completed`, mark validation as `in_progress`
 
-2. **Wait for staging validation** (manual gate):
+2. **Automated staging validation**:
 
-   Display manual gate message:
-   ```
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🛑 MANUAL GATE: Staging Validation Required
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-   Feature deployed to staging. Test in production-like environment:
-
-   **What to test** (all UI/UX, accessibility, performance testing happens here):
-   1. ✅ All feature functionality and user flows
-   2. ✅ UI/UX across browsers and screen sizes
-   3. ✅ Accessibility (keyboard nav, screen readers, WCAG 2.1 AA)
-   4. ✅ Performance (load times, responsiveness)
-   5. ✅ Integration with existing features
-   6. ✅ Error handling and edge cases
-   7. ✅ Visual design matches mockups
-
-   **Staging URLs**:
-   - Marketing: https://staging.[domain].com
-   - App: https://app.staging.[domain].com
-   - API: https://api.staging.[domain].com/docs
-
-   When validation complete, run: /ship continue
-   To abort: /ship abort
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Run validation report generation:
+   ```bash
+   python .spec-flow/scripts/spec-cli.py validate-staging --feature-dir "$FEATURE_DIR" --auto
    ```
 
-   **EXIT** - wait for user to run `/ship continue`
+   **What it validates** (fully automated):
+   1. ✅ E2E test results (already passed in CI before staging deployment)
+   2. ✅ Lighthouse CI results (performance/accessibility/best practices)
+   3. ✅ Rollback capability test (verifies deployment IDs, tests alias swap)
+   4. ✅ Health checks (staging deployment responding correctly)
 
-3. **Deploy to production** (after staging approval):
+   **Auto-generates validation report** with:
+   - E2E test summary (passed/failed/skipped)
+   - Lighthouse scores (performance, accessibility, best practices, SEO)
+   - Rollback test results (previous deployment verified live)
+   - Health check status (200 responses from all critical endpoints)
+
+   Display validation summary:
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✅ Automated Staging Validation Complete
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   E2E Tests: 45/45 passed ✅
+   Lighthouse Performance: 98/100 ✅
+   Lighthouse Accessibility: 100/100 ✅
+   Lighthouse Best Practices: 95/100 ✅
+   Rollback Test: Passed ✅
+   Health Checks: All endpoints responding ✅
+
+   Staging validation report: specs/NNN-slug/staging-validation-report.md
+
+   Proceeding to production deployment...
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+   Update TodoWrite: Mark validation as `completed`, mark production deploy as `in_progress`
+
+   If validation fails:
+   - Update TodoWrite: Add "Fix staging validation failures" as new todo
+   - Display failure details from report
+   - Tell user to fix issues and run `/ship continue`
+   - **EXIT**
+
+3. **Deploy to production** (automatic after validation passes):
    ```bash
    /ship-prod
    ```
@@ -170,7 +189,7 @@ If `/optimize` fails:
    ```
    Update TodoWrite: Mark merge as `completed`, mark finalize as `in_progress`
 
-## Step 5: Essential Finalization (All Models)
+## Step 4: Essential Finalization (All Models)
 
 Run essential finalization tasks using centralized CLI:
 
@@ -198,9 +217,9 @@ python .spec-flow/scripts/spec-cli.py ship-finalize finalize --feature-dir "$FEA
 
 After essential finalization completes:
 - Update TodoWrite: Mark essential finalization as `completed`, mark full finalization as `in_progress`
-- Continue to Step 6
+- Continue to Step 5
 
-## Step 6: Full Finalization (Automatic)
+## Step 5: Full Finalization (Automatic)
 
 Run the `/finalize` slash command to complete all documentation:
 

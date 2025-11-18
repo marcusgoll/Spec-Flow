@@ -1,0 +1,147 @@
+name: Auto-Fix CI Failures
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [ main, staging, develop ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-fix:
+    name: Auto-Fix Lint and Format Issues
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          # Install Python dependencies
+          pip install pyyaml
+
+          # Install Node.js dependencies if package.json exists
+          if [ -f "package.json" ]; then
+            npm ci || npm install
+          fi
+
+      - name: Run auto-fix script
+        id: autofix
+        run: |
+          echo "Running auto-fix for CI failures..."
+
+          # Run PSScriptAnalyzer auto-fix for PowerShell
+          if command -v pwsh &> /dev/null; then
+            pwsh -Command "
+              Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser -ErrorAction SilentlyContinue
+              Get-ChildItem -Path .spec-flow/scripts/powershell/ -Filter *.ps1 -Recurse | ForEach-Object {
+                Invoke-Formatter -ScriptDefinition (Get-Content \$_.FullName -Raw) | Set-Content \$_.FullName
+              }
+            " || echo "PowerShell formatting skipped"
+          fi
+
+          # Run ShellCheck suggestions for Bash (informational)
+          if command -v shellcheck &> /dev/null; then
+            echo "Running ShellCheck..."
+            find .spec-flow/scripts/bash -name "*.sh" ! -name "*-workflow.sh" -exec shellcheck -f diff {} \; || true
+          fi
+
+          # Run markdownlint auto-fix
+          if [ -f "package.json" ] && npm list -g markdownlint-cli &> /dev/null || npm install -g markdownlint-cli; then
+            markdownlint --fix '**/*.md' \
+              --ignore node_modules \
+              --ignore .spec-flow/scripts \
+              --config .markdownlint.json || true
+          fi
+
+          # Format JSON files
+          find . -name "*.json" \
+            -not -path "./node_modules/*" \
+            -not -path "./package-lock.json" \
+            -exec sh -c 'jq . "{}" > {}.tmp && mv {}.tmp "{}"' \; || true
+
+          echo "Auto-fix complete"
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected:"
+            git status --short
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No auto-fixable issues found"
+          fi
+
+      - name: Commit and push fixes
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: auto-fix lint and format issues
+
+          🤖 Auto-fixed by CI workflow:
+          - PowerShell formatting (PSScriptAnalyzer)
+          - Markdown linting (markdownlint)
+          - JSON formatting (jq)
+
+          Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          git push
+
+      - name: Comment on PR
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ **Auto-Fix Applied**\n\nAutomatically fixed lint and format issues:\n- PowerShell formatting (PSScriptAnalyzer)\n- Markdown linting (markdownlint)\n- JSON formatting (jq)\n\nChanges have been committed to this PR. CI checks will re-run automatically.'
+            })
+
+      - name: Check for complex issues
+        if: always()
+        run: |
+          echo "Checking for issues that require manual intervention..."
+
+          # Check for type errors (TypeScript/Python)
+          if find . -name "*.ts" -o -name "*.tsx" | grep -q .; then
+            echo "⚠️ TypeScript files detected - type errors require manual review"
+          fi
+
+          # Check for test failures (would be in CI logs)
+          echo "ℹ️ Test failures require specialist review (test-architect agent)"
+
+          # Check for complex lint issues
+          echo "ℹ️ Complex lint issues require code-reviewer agent"
+
+          echo ""
+          echo "Auto-fix handles:"
+          echo "  ✅ PowerShell formatting"
+          echo "  ✅ Markdown linting"
+          echo "  ✅ JSON formatting"
+          echo ""
+          echo "Delegate to specialists:"
+          echo "  🔧 Type errors → type-enforcer agent"
+          echo "  🧪 Test failures → test-architect agent"
+          echo "  📊 Code quality → code-reviewer agent"

@@ -109,14 +109,7 @@ else
   echo "✅ Optimization complete"
 fi
 
-# Check 3: Preview approved
-PREVIEW_STATUS=$(yq eval '.workflow.manual_gates.preview.status // "pending"' "$STATE_FILE")
-if [ "$PREVIEW_STATUS" != "approved" ]; then
-  echo "❌ Preview gate not approved"
-  CHECKS_PASSED=false
-else
-  echo "✅ Preview approved"
-fi
+# Preview phase removed - all testing now happens in staging
 
 # Check 4: Production workflow exists
 PROD_WORKFLOW=""
@@ -397,33 +390,98 @@ echo ""
 
 ## Phase DP.4: Extract Deployment IDs
 
-**Purpose**: Extract deployment IDs from workflow logs for rollback capability
+**Purpose**: Extract deployment IDs using platform APIs for rollback capability
 
 ```bash
 echo "🔍 Phase DP.4: Extract Deployment IDs"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Get workflow logs
-echo "Fetching deployment logs..."
-DEPLOY_LOGS=$(gh run view "$PROD_RUN" --log 2>/dev/null || echo "")
+# Detect deployment platform from environment or config
+DEPLOY_PLATFORM="${DEPLOY_PLATFORM:-vercel}"  # Default to Vercel
 
-# Extract deployment IDs based on deployment platform
-# Try to detect multiple common patterns
+echo "Fetching deployment IDs via $DEPLOY_PLATFORM API..."
+echo ""
 
-# Vercel deployments
-MARKETING_ID=$(echo "$DEPLOY_LOGS" | grep -oE "(https://)?[a-z]+-marketing-[a-z0-9]+\.vercel\.app" | sed 's|https://||' | head -1)
-APP_ID=$(echo "$DEPLOY_LOGS" | grep -oE "(https://)?[a-z]+-[a-z0-9-]+\.vercel\.app" | sed 's|https://||' | grep -v "marketing" | head -1)
+# Initialize deployment ID variables
+MARKETING_ID=""
+APP_ID=""
+API_IMAGE=""
+RAILWAY_ID=""
+NETLIFY_ID=""
 
-# Docker/Railway/generic
-API_IMAGE=$(echo "$DEPLOY_LOGS" | grep -oE "ghcr\.io/[^/]+/[^:]+:[a-f0-9]{7,40}" | head -1)
+case "$DEPLOY_PLATFORM" in
+  vercel)
+    # Use Vercel API to get recent deployments
+    if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+      VERCEL_RESPONSE=$(curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" \
+        "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&limit=10&target=production" 2>/dev/null)
 
-# Railway deployment ID
-RAILWAY_ID=$(echo "$DEPLOY_LOGS" | grep -oE "railway-[a-z0-9-]+" | head -1)
+      # Extract most recent production deployment ID
+      APP_ID=$(echo "$VERCEL_RESPONSE" | jq -r '.deployments[0].uid // empty' 2>/dev/null)
 
-# Netlify deployment ID
-NETLIFY_ID=$(echo "$DEPLOY_LOGS" | grep -oE "https://[a-z0-9-]+--[a-z0-9-]+\.netlify\.app" | head -1)
+      # If multiple projects, extract marketing deployment
+      if [ -n "$VERCEL_MARKETING_PROJECT_ID" ]; then
+        MARKETING_RESPONSE=$(curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" \
+          "https://api.vercel.com/v6/deployments?projectId=$VERCEL_MARKETING_PROJECT_ID&limit=5&target=production" 2>/dev/null)
+        MARKETING_ID=$(echo "$MARKETING_RESPONSE" | jq -r '.deployments[0].uid // empty' 2>/dev/null)
+      fi
 
+      echo "Vercel API response received"
+    else
+      echo "⚠️  VERCEL_TOKEN or VERCEL_PROJECT_ID not set - falling back to log parsing"
+      # Fallback to log parsing if API credentials missing
+      DEPLOY_LOGS=$(gh run view "$PROD_RUN" --log 2>/dev/null || echo "")
+      APP_ID=$(echo "$DEPLOY_LOGS" | grep -oE "dpl_[a-zA-Z0-9]{24}" | head -1)
+    fi
+    ;;
+
+  railway)
+    # Use Railway API
+    if [ -n "$RAILWAY_TOKEN" ] && [ -n "$RAILWAY_SERVICE_ID" ]; then
+      RAILWAY_RESPONSE=$(curl -sS -H "Authorization: Bearer $RAILWAY_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "{\"query\": \"query { service(id: \\\"$RAILWAY_SERVICE_ID\\\") { deployments(first: 5) { edges { node { id createdAt } } } } }\"}" \
+        "https://backboard.railway.app/graphql" 2>/dev/null)
+
+      RAILWAY_ID=$(echo "$RAILWAY_RESPONSE" | jq -r '.data.service.deployments.edges[0].node.id // empty' 2>/dev/null)
+      echo "Railway API response received"
+    else
+      echo "⚠️  RAILWAY_TOKEN or RAILWAY_SERVICE_ID not set - falling back to log parsing"
+      DEPLOY_LOGS=$(gh run view "$PROD_RUN" --log 2>/dev/null || echo "")
+      RAILWAY_ID=$(echo "$DEPLOY_LOGS" | grep -oE "railway-[a-z0-9-]+" | head -1)
+    fi
+    ;;
+
+  netlify)
+    # Use Netlify API
+    if [ -n "$NETLIFY_AUTH_TOKEN" ] && [ -n "$NETLIFY_SITE_ID" ]; then
+      NETLIFY_RESPONSE=$(curl -sS -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+        "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys?per_page=5" 2>/dev/null)
+
+      NETLIFY_ID=$(echo "$NETLIFY_RESPONSE" | jq -r '.[0].id // empty' 2>/dev/null)
+      echo "Netlify API response received"
+    else
+      echo "⚠️  NETLIFY_AUTH_TOKEN or NETLIFY_SITE_ID not set - falling back to log parsing"
+      DEPLOY_LOGS=$(gh run view "$PROD_RUN" --log 2>/dev/null || echo "")
+      NETLIFY_ID=$(echo "$DEPLOY_LOGS" | grep -oE "https://[a-z0-9-]+--[a-z0-9-]+\.netlify\.app" | head -1)
+    fi
+    ;;
+
+  docker|custom)
+    # Docker images - extract from GitHub Container Registry
+    API_IMAGE=$(gh api "/repos/$(gh repo view --json nameWithOwner -q .nameWithOwner)/packages?package_type=container" \
+      --jq '.[0].name' 2>/dev/null || echo "")
+
+    if [ -z "$API_IMAGE" ]; then
+      # Fallback to log parsing
+      DEPLOY_LOGS=$(gh run view "$PROD_RUN" --log 2>/dev/null || echo "")
+      API_IMAGE=$(echo "$DEPLOY_LOGS" | grep -oE "ghcr\.io/[^/]+/[^:]+:[a-f0-9]{7,40}" | head -1)
+    fi
+    ;;
+esac
+
+echo ""
 echo "Extracted deployment IDs:"
 
 if [ -n "$MARKETING_ID" ]; then
@@ -449,10 +507,13 @@ fi
 # Check if we got at least one ID
 if [ -z "$MARKETING_ID" ] && [ -z "$APP_ID" ] && [ -z "$API_IMAGE" ] && [ -z "$RAILWAY_ID" ] && [ -z "$NETLIFY_ID" ]; then
   echo ""
-  echo "⚠️  WARNING: Could not extract deployment IDs from logs"
-  echo "   Rollback may require manual ID lookup"
+  echo "⚠️  WARNING: Could not extract deployment IDs via API"
+  echo "   Ensure platform credentials are configured:"
+  echo "   - Vercel: VERCEL_TOKEN, VERCEL_PROJECT_ID"
+  echo "   - Railway: RAILWAY_TOKEN, RAILWAY_SERVICE_ID"
+  echo "   - Netlify: NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID"
   echo ""
-  echo "Check logs manually: gh run view $PROD_RUN --log"
+  echo "   Rollback may require manual ID lookup"
   echo ""
 
   # Continue anyway - not a fatal error

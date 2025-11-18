@@ -1101,9 +1101,9 @@ fi
 echo ""
 ```
 
-## EXTRACT DEPLOYMENT IDS (FIX #3: Deployment ID Verification)
+## EXTRACT DEPLOYMENT IDS (API-Based)
 
-**Parse workflow logs to extract deployment IDs for rollback:**
+**Extract deployment IDs using platform APIs for reliable rollback capability:**
 
 ```bash
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -1111,68 +1111,108 @@ echo "Extracting Deployment IDs"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Find the staging deployment workflow run
-STAGING_RUN=$(gh run list \
-  --workflow=deploy-staging.yml \
-  --branch=main \
-  --limit=5 \
-  --json databaseId,headSha,conclusion \
-  --jq ".[] | select(.headSha==\"$(git rev-parse origin/main)\") | .databaseId" | head -1)
+# Detect deployment platform
+DEPLOY_PLATFORM="${DEPLOY_PLATFORM:-vercel}"
 
-if [ -z "$STAGING_RUN" ]; then
-  echo "⚠️  Could not find staging deployment run"
-  echo "   Deployment IDs will need to be extracted manually"
-  echo ""
+echo "Fetching deployment IDs via $DEPLOY_PLATFORM API..."
+echo ""
 
-  MARKETING_ID=""
-  APP_ID=""
-  API_IMAGE=""
-else
-  echo "Found staging deployment: Run #$STAGING_RUN"
-  echo "Extracting deployment IDs from logs..."
-  echo ""
+# Initialize variables
+MARKETING_ID=""
+APP_ID=""
+API_IMAGE=""
+RAILWAY_ID=""
+NETLIFY_ID=""
 
-  # Get workflow logs
-  DEPLOY_LOGS=$(gh run view "$STAGING_RUN" --log 2>/dev/null || echo "")
+case "$DEPLOY_PLATFORM" in
+  vercel)
+    # Use Vercel API
+    if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+      VERCEL_RESPONSE=$(curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" \
+        "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&limit=10&target=preview" 2>/dev/null)
 
-  if [ -z "$DEPLOY_LOGS" ]; then
-    echo "⚠️  Could not fetch workflow logs"
-    MARKETING_ID=""
-    APP_ID=""
-    API_IMAGE=""
-  else
-    # Extract Vercel deployment IDs
-    # Pattern: marketing-abc123.vercel.app or https://marketing-abc123.vercel.app
-    MARKETING_ID=$(echo "$DEPLOY_LOGS" | grep -oE "(https://)?[a-z]+-marketing-[a-z0-9]+\.vercel\.app" | sed 's|https://||' | head -1 || echo "")
+      APP_ID=$(echo "$VERCEL_RESPONSE" | jq -r '.deployments[0].uid // empty' 2>/dev/null)
 
-    # Pattern: app-abc123.vercel.app or https://app-abc123.vercel.app
-    APP_ID=$(echo "$DEPLOY_LOGS" | grep -oE "(https://)?app-[a-z0-9-]+\.vercel\.app" | sed 's|https://||' | head -1 || echo "")
+      if [ -n "$VERCEL_MARKETING_PROJECT_ID" ]; then
+        MARKETING_RESPONSE=$(curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" \
+          "https://api.vercel.com/v6/deployments?projectId=$VERCEL_MARKETING_PROJECT_ID&limit=5&target=preview" 2>/dev/null)
+        MARKETING_ID=$(echo "$MARKETING_RESPONSE" | jq -r '.deployments[0].uid // empty' 2>/dev/null)
+      fi
 
-    # Extract Railway/Docker image
-    # Pattern: ghcr.io/org/api:sha123 or ghcr.io/org/api:abc123def456
-    API_IMAGE=$(echo "$DEPLOY_LOGS" | grep -oE "ghcr\.io/[^/]+/[^:]+:[a-f0-9]{7,40}" | head -1 || echo "")
+      echo "✅ Vercel API response received"
+    else
+      echo "⚠️  VERCEL_TOKEN or VERCEL_PROJECT_ID not set"
+    fi
+    ;;
 
-    echo "Extracted IDs:"
-    echo "  Marketing: ${MARKETING_ID:-[not found]}"
-    echo "  App: ${APP_ID:-[not found]}"
-    echo "  API: ${API_IMAGE:-[not found]}"
-    echo ""
-  fi
-fi
+  railway)
+    # Use Railway API
+    if [ -n "$RAILWAY_TOKEN" ] && [ -n "$RAILWAY_SERVICE_ID" ]; then
+      RAILWAY_RESPONSE=$(curl -sS -H "Authorization: Bearer $RAILWAY_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "{\"query\": \"query { service(id: \\\"$RAILWAY_SERVICE_ID\\\") { deployments(first: 5) { edges { node { id createdAt } } } } }\"}" \
+        "https://backboard.railway.app/graphql" 2>/dev/null)
 
-# Verify we got all required IDs
+      RAILWAY_ID=$(echo "$RAILWAY_RESPONSE" | jq -r '.data.service.deployments.edges[0].node.id // empty' 2>/dev/null)
+      echo "✅ Railway API response received"
+    else
+      echo "⚠️  RAILWAY_TOKEN or RAILWAY_SERVICE_ID not set"
+    fi
+    ;;
+
+  netlify)
+    # Use Netlify API
+    if [ -n "$NETLIFY_AUTH_TOKEN" ] && [ -n "$NETLIFY_SITE_ID" ]; then
+      NETLIFY_RESPONSE=$(curl -sS -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+        "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys?per_page=5" 2>/dev/null)
+
+      NETLIFY_ID=$(echo "$NETLIFY_RESPONSE" | jq -r '.[0].id // empty' 2>/dev/null)
+      echo "✅ Netlify API response received"
+    else
+      echo "⚠️  NETLIFY_AUTH_TOKEN or NETLIFY_SITE_ID not set"
+    fi
+    ;;
+
+  docker|custom)
+    # Docker images from GitHub Container Registry
+    API_IMAGE=$(gh api "/repos/$(gh repo view --json nameWithOwner -q .nameWithOwner)/packages?package_type=container" \
+      --jq '.[0].name' 2>/dev/null || echo "")
+    ;;
+esac
+
+echo ""
+echo "Extracted deployment IDs:"
+echo "  Marketing: ${MARKETING_ID:-[not found]}"
+echo "  App: ${APP_ID:-[not found]}"
+echo "  API: ${API_IMAGE:-[not found]}"
+echo "  Railway: ${RAILWAY_ID:-[not found]}"
+echo "  Netlify: ${NETLIFY_ID:-[not found]}"
+echo ""
+
+# Verify we got required IDs
 MISSING_IDS=()
-[ -z "$MARKETING_ID" ] && MISSING_IDS+=("marketing")
-[ -z "$APP_ID" ] && MISSING_IDS+=("app")
-[ -z "$API_IMAGE" ] && MISSING_IDS+=("API")
+case "$DEPLOY_PLATFORM" in
+  vercel)
+    [ -z "$APP_ID" ] && MISSING_IDS+=("app")
+    ;;
+  railway)
+    [ -z "$RAILWAY_ID" ] && MISSING_IDS+=("railway")
+    ;;
+  netlify)
+    [ -z "$NETLIFY_ID" ] && MISSING_IDS+=("netlify")
+    ;;
+  docker|custom)
+    [ -z "$API_IMAGE" ] && MISSING_IDS+=("API")
+    ;;
+esac
 
 if [ ${#MISSING_IDS[@]} -gt 0 ]; then
   echo "⚠️  Missing deployment IDs: ${MISSING_IDS[*]}"
   echo ""
-  echo "Rollback information incomplete. Manual extraction required:"
-  echo "  1. View workflow logs: https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions/runs/$STAGING_RUN"
-  echo "  2. Search logs for deployment URLs"
-  echo "  3. Record IDs in workflow-state.yaml manually"
+  echo "Ensure platform credentials are configured in GitHub Secrets:"
+  echo "  - Vercel: VERCEL_TOKEN, VERCEL_PROJECT_ID"
+  echo "  - Railway: RAILWAY_TOKEN, RAILWAY_SERVICE_ID"
+  echo "  - Netlify: NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID"
   echo ""
   echo "⚠️  Continuing with incomplete rollback metadata"
   echo ""

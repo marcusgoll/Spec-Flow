@@ -121,16 +121,16 @@ Once planning is approved, the following phases execute automatically without ma
 /optimize
 ```
 
-### Deployment & Testing (Manual Gate #3)
+### Deployment & Testing (Fully Automated)
 
 **Phase 6: Deploy to Staging** (automatic):
 ```bash
 /ship-staging
 ```
 
-**PAUSE**: Test feature in staging environment. All UI/UX, accessibility, performance, and integration testing happens here. When staging validation passes, continue to production.
+**Automated Validation**: Staging validation auto-generates report with E2E tests, Lighthouse scores, rollback test, and health checks. All testing happens in staging environment - no manual gates.
 
-**Phase 7: Deploy to Production** (after staging approval):
+**Phase 7: Deploy to Production** (automatic after validation):
 ```bash
 /ship-prod
 ```

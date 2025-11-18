@@ -8,7 +8,7 @@ updated: 2025-11-17
 
 **Purpose**: Run fast, parallel production-readiness checks and fail the feature if any hard blockers show up.
 
-**When to use**: After `/implement` phase complete, before `/preview`
+**When to use**: After `/implement` phase complete, before `/ship`
 
 **Risk Level**: 🟡 MEDIUM - Blocks deployment if quality gates fail
 
@@ -20,12 +20,13 @@ updated: 2025-11-17
 
 ## What This Does
 
-Runs five parallel checks:
+Runs six parallel checks:
 1. **Performance** - Backend benchmarks, frontend Lighthouse, bundle size
 2. **Security** - Static analysis (Bandit/Ruff), dependency audit (Safety/pnpm), security tests
 3. **Accessibility** - WCAG compliance via jest-axe and Lighthouse A11y
 4. **Code Review** - Lints, type checks, test coverage
 5. **Migrations** - Reversibility and drift-free validation
+6. **Docker Build** - Validates Dockerfile builds successfully (skipped if no Dockerfile)
 
 **Output**: Pass/fail for each check, blocks deployment on any failure
 
@@ -52,17 +53,18 @@ python .spec-flow/scripts/spec-cli.py optimize "$ARGUMENTS"
 
 1. **Pre-checks** — Validates environment, feature state, implementation complete
 2. **Extract targets** — Reads quality targets from plan.md (performance, security, accessibility)
-3. **Create progress tracker** — Sets up TodoWrite for 5 parallel checks
-4. **Parallel checks** — Runs all 5 checks concurrently:
+3. **Create progress tracker** — Sets up TodoWrite for 6 parallel checks
+4. **Parallel checks** — Runs all 6 checks concurrently:
    - **Performance**: Backend benchmarks, Lighthouse, bundle size
    - **Security**: Bandit, Safety, pnpm audit, security tests
    - **Accessibility**: jest-axe, Lighthouse A11y (WCAG 2.2 AA default)
    - **Code review**: Lints (ESLint, Ruff), type checks (TypeScript, mypy), tests
    - **Migrations**: Reversibility check (downgrade() exists), drift-free (alembic check)
+   - **Docker Build**: Validates Dockerfile builds (skipped if no Dockerfile)
 5. **Contract verification** — Auto-runs if Pact contracts exist
 6. **Aggregate results** — Collects pass/fail status from each check
 7. **Deploy hygiene** — Warns if artifact strategy missing from plan.md
-8. **Final decision** — PASS (ready for /preview) or FAIL (fix blockers first)
+8. **Final decision** — PASS (ready for /ship) or FAIL (fix blockers first)
 9. **Git commit** — Updates workflow state to completed or failed
 
 **After script completes, you (LLM) must:**
@@ -75,10 +77,12 @@ python .spec-flow/scripts/spec-cli.py optimize "$ARGUMENTS"
 - `specs/*/optimization-accessibility.md` (Status: PASSED|FAILED)
 - `specs/*/code-review.md` (Status: PASSED|FAILED)
 - `specs/*/optimization-migrations.md` (Status: PASSED|FAILED|SKIPPED)
+- `specs/*/optimization-docker.md` (Status: PASSED|FAILED|SKIPPED)
 
 **Read log files:**
 - `specs/*/perf-backend.log` — Backend performance test results
 - `specs/*/lh-perf.json` — Lighthouse performance/accessibility scores
+- `specs/*/docker-build.log` — Docker build output (if Dockerfile exists)
 - `specs/*/bundle-size.log` — Bundle size analysis
 - `specs/*/security-backend.log` — Bandit static analysis
 - `specs/*/security-deps.log` — Safety dependency audit
@@ -94,7 +98,7 @@ python .spec-flow/scripts/spec-cli.py optimize "$ARGUMENTS"
 **Check for failures:**
 ```bash
 BLOCKERS=()
-for f in optimization-performance.md optimization-security.md optimization-accessibility.md code-review.md optimization-migrations.md; do
+for f in optimization-performance.md optimization-security.md optimization-accessibility.md code-review.md optimization-migrations.md optimization-docker.md; do
   if grep -q "Status: FAILED" "$FEATURE_DIR/$f"; then
     BLOCKERS+=("$f")
   fi
@@ -102,7 +106,7 @@ done
 ```
 
 **Severity assessment:**
-- **CRITICAL**: Security High/Critical findings, type errors, migration not reversible
+- **CRITICAL**: Security High/Critical findings, type errors, migration not reversible, Docker build failed
 - **HIGH**: Accessibility score < 95, linting errors, test failures
 - **MEDIUM**: Performance targets missed (if targets specified)
 - **LOW**: Deploy hygiene warnings (artifact strategy missing)
@@ -122,8 +126,9 @@ Check results:
   ✅ Accessibility: PASSED
   ✅ Code Review: PASSED
   ✅ Migrations: PASSED
+  ✅ Docker Build: PASSED (or SKIPPED if no Dockerfile)
 
-All quality gates passed. Ready for /preview
+All quality gates passed. Ready for /ship
 ```
 
 **If any checks fail:**
@@ -139,11 +144,13 @@ Check results:
   ❌ Accessibility: FAILED
   ❌ Code Review: FAILED
   ✅ Migrations: PASSED
+  ❌ Docker Build: FAILED
 
 Blockers:
   - optimization-performance.md
   - optimization-accessibility.md
   - code-review.md
+  - optimization-docker.md
 
 Fix the blockers above and re-run /optimize
 ```
@@ -209,13 +216,29 @@ Find migrations without downgrade:
 Add downgrade() function and re-run /optimize
 ```
 
+**Docker build blocker:**
+```
+❌ Docker build check failed
+
+View build output:
+  cat specs/{slug}/docker-build.log
+
+Common issues:
+  - Missing dependencies in Dockerfile
+  - Invalid base image
+  - Copy command referencing non-existent files
+  - Build arguments not defined
+
+Fix Dockerfile and re-run /optimize
+```
+
 ## 5) Suggest Next Action
 
 **If passed:**
 ```
-Next: /preview
+Next: /ship
 
-Manual UI/UX testing and backend validation before shipping
+Automated deployment workflow (optimize → staging → validation → prod → finalize)
 ```
 
 **If failed:**
@@ -257,6 +280,12 @@ All checks are idempotent (safe to re-run multiple times)
 ### Migrations
 - **Reversible**: All migrations have `downgrade()` function
 - **Drift-free**: `alembic check` passes
+
+### Docker Build
+- **Build success**: `docker build` completes without errors
+- **Skipped if**: No Dockerfile present in project root
+- **Validates**: Base image, dependencies, COPY instructions, build arguments
+- **Tools**: Docker CLI (docker build --no-cache)
 
 ### Deploy Hygiene
 - **Artifact Strategy**: Document build-once, promote-many (Twelve-Factor build/release/run)
@@ -307,6 +336,24 @@ All checks are idempotent (safe to re-run multiple times)
    /optimize
    ```
 
+5. **Docker Build Failure**
+   ```bash
+   # View build errors
+   cat specs/{slug}/docker-build.log
+
+   # Common fixes:
+   # - Check base image is valid
+   # - Verify all COPY sources exist
+   # - Ensure all dependencies are listed
+   # - Check build args are defined
+
+   # Test build manually
+   docker build --no-cache -t test-build .
+
+   # Re-run optimize
+   /optimize
+   ```
+
 ---
 
 ## Success Criteria
@@ -316,6 +363,7 @@ All checks are idempotent (safe to re-run multiple times)
 - ✅ Accessibility: WCAG level met, Lighthouse ≥ 95 (if measured)
 - ✅ Code Quality: Lints, types, tests pass
 - ✅ Migrations: Reversible and drift-free (or skipped)
+- ✅ Docker Build: Builds successfully (or skipped if no Dockerfile)
 - ✅ State updated to completed
 
 ---

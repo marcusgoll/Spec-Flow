@@ -12,9 +12,11 @@ internal: true
 
 **Purpose**: Automated staging→production promotion via git tag creation. Creates semantic version tag, pushes to trigger GitHub Actions deployment, waits for completion, creates GitHub release.
 
-**When to use**: After `/validate-staging` passes with all checks green. This is the final step to ship features to production.
+**When to use**: After automated staging validation passes. This is the final step to ship features to production (fully automated).
 
-**Workflow position**: `spec-flow → clarify → plan → tasks → analyze → implement → optimize → preview → ship-staging → validate-staging → **ship-prod**`
+**Usage**: `/ship-prod [--version major|minor]` (defaults to patch bump)
+
+**Workflow position**: `spec-flow → clarify → plan → tasks → analyze → implement → optimize → ship-staging → [automated validation] → **ship-prod**`
 
 ---
 
@@ -22,10 +24,10 @@ internal: true
 ## MENTAL MODEL
 
 **Tagged Promotion Flow**:
-1. User validates staging manually (`/validate-staging`)
-2. LLM triggers `/ship-prod`
+1. Automated staging validation completes (`/validate-staging --auto`)
+2. LLM triggers `/ship-prod` (fully automated)
 3. Script extracts version from CHANGELOG.md
-4. User chooses version bump (patch/minor/major)
+4. Script defaults to patch bump (override with `--version major|minor` if needed)
 5. Script creates annotated git tag (v1.2.3)
 6. Script pushes tag to origin
 7. GitHub Actions workflow triggers on tag push
@@ -34,7 +36,7 @@ internal: true
 10. Script polls workflow status until complete
 11. Script updates workflow-state.yaml with version/tag/URLs
 
-**Philosophy**: Fully automated from staging environment → production environment. The only manual decision is version selection. Once tag is pushed, GitHub Actions handles deployment, testing, and release creation.
+**Philosophy**: Fully automated from staging environment → production environment. Zero manual gates - defaults to patch versioning, uses conventional commits for auto-detection when possible. Once tag is pushed, GitHub Actions handles deployment, testing, and release creation.
 
 **Token efficiency**: Bash script handles version selection, tag creation, and GitHub Actions polling. LLM only processes results.
 
@@ -67,11 +69,12 @@ python .spec-flow/scripts/spec-cli.py ship-prod "$FEATURE_DIR"
    - Checks for staging-validation-report.md
    - Confirms all checks passed
 
-2. **Version selection** (interactive):
+2. **Version selection** (automatic with override):
    - Extracts current version from CHANGELOG.md
-   - Calculates patch/minor/major bump options
-   - Prompts user to select version
+   - Defaults to patch bump (most common - bug fixes, minor improvements)
+   - Can override with `--version major|minor` flag if breaking changes or new features
    - Validates semantic versioning format (vMAJOR.MINOR.PATCH)
+   - No interactive prompt - fully automated
 
 3. **Create git tag**:
    - Checks if tag already exists

@@ -216,7 +216,7 @@ artifacts:
 ### Required Fields (All Features)
 
 ```yaml
-phase: <one of: clarify, plan, tasks, validate, implement, optimize, preview, ship-staging, ship-prod, finalize>
+phase: <one of: clarify, plan, tasks, validate, implement, optimize, ship-staging, ship-prod, finalize>
 status: <one of: in_progress, completed, failed, paused>
 current_feature: <non-empty string>
 started: <ISO 8601 timestamp>
@@ -265,11 +265,6 @@ manual_gates:
     approved_by: null
     requested_changes: null
     style_guide_updates: null
-  preview:
-    status: "pending"  # pending | approved | skipped | not_applicable
-    previewed_at: null
-    previewed_by: null
-    issues_found: null
   staging_validation:
     status: "pending"  # pending | approved | failed | not_applicable
     staging_url: null
@@ -290,15 +285,6 @@ manual_gates:
   2. User reviews against mockup-approval-checklist.md
   3. User updates `status: "approved"` in workflow-state.yaml
   4. User runs `/feature continue` to proceed
-
-**preview** (all features):
-- **Trigger**: After `/optimize` completes
-- **Blocks**: `/ship` execution until status = "approved" or "skipped"
-- **Purpose**: Manual UI/UX testing on local dev server
-- **Approval Flow**:
-  1. User tests feature locally
-  2. User updates `status: "approved"` in workflow-state.yaml
-  3. User runs `/ship continue` to proceed
 
 **staging_validation** (staging-prod model only):
 - **Trigger**: After `/ship-staging` deploys to staging
@@ -331,8 +317,6 @@ manual_gates:
         token: --space-card-gap
         from: var(--space-4)
         to: var(--space-6)
-  preview:
-    status: pending
   staging_validation:
     status: not_applicable
 ```
@@ -348,8 +332,6 @@ started: 2025-11-14T12:00:00Z
 manual_gates:
   mockup_approval:
     status: not_applicable
-  preview:
-    status: pending
   staging_validation:
     status: not_applicable
 ```
@@ -381,8 +363,7 @@ stateDiagram-v2
     tasks --> validate
     validate --> implement
     implement --> optimize
-    optimize --> preview
-    preview --> ship_staging
+    optimize --> ship_staging
     ship_staging --> ship_prod
     ship_prod --> finalize
     finalize --> [*]
