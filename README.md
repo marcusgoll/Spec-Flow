@@ -44,6 +44,23 @@
 
 ## 🆕 Recent Updates
 
+### v6.4.1 (November 2025)
+
+**Windows Compatibility Fix**
+
+- **Bash Fallback**: spec-cli.py now automatically falls back to bash scripts when PowerShell equivalents don't exist
+  - Enables Windows users to run workflow commands via Git Bash/WSL without errors
+  - Graceful fallback with informative message: "Note: PowerShell script not found, using bash"
+  - Fixes "PowerShell script not found" error for feature-workflow and other commands
+- **Git Permissions**: Fixed executable permissions for ship-prod-workflow.sh (100755 mode)
+- **Python Cache**: Added __pycache__ to .gitignore to prevent accidental commits
+
+**Problem Solved**: Windows users couldn't run workflow commands because spec-cli.py expected PowerShell scripts that were never created during the CLI migration. Only bash scripts exist, but there was no fallback mechanism.
+
+**Impact**: Windows users with Git Bash/WSL can now run all workflow commands seamlessly. Cross-platform compatibility restored without requiring PowerShell script duplication.
+
+---
+
 ### v6.4.0 (November 2025)
 
 **CLI Integration & Design System Expansion**

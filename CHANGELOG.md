@@ -2,6 +2,22 @@
 
 ---
 
+## [6.4.1] - 2025-11-17
+
+### Fixed
+- **Windows Compatibility**: Added automatic bash fallback in spec-cli.py when PowerShell scripts don't exist
+  - Enables Windows users to run workflow commands via Git Bash/WSL
+  - Falls back gracefully with informative message when PowerShell script is missing
+  - Fixes "PowerShell script not found" error for feature-workflow and other commands
+- **Git Permissions**: Fixed executable permissions for ship-prod-workflow.sh
+
+### Technical Details
+- Modified `run_script()` in spec-cli.py to check for bash alternatives before failing
+- Added __pycache__ to .gitignore to prevent Python cache directory commits
+- All workflow scripts now properly executable in git (100755 mode)
+
+---
+
 ## [6.4.0] - 2025-11-17
 
 ### Added
