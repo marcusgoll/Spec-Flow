@@ -44,6 +44,23 @@
 
 ## 🆕 Recent Updates
 
+### v6.11.0 (November 2025)
+
+**CLI Workflow Installation & Feature Continue** - Complete workflow integration
+
+- **CLI Workflow Installation**: GitHub workflows now install via `npx spec-flow init` and `npx spec-flow update`
+  - Automatically copies `.github/workflows/` directory
+  - Uses same conflict resolution as other files (merge by default)
+  - Respects `--strategy` flag (merge|backup|skip|force)
+  - Skips existing workflows to preserve customizations
+- **Feature Continue Mode**: `/feature continue` command now resumes most recent feature
+  - Finds most recently modified feature in `specs/`
+  - Cross-platform compatible (Linux, macOS, Windows)
+  - Extracts feature description from spec.md
+  - Shows clear banner with feature info
+
+---
+
 ### v6.10.0 (November 2025)
 
 **Auto-Install GitHub Workflows** - Seamless workflow integration on package install
