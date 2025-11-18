@@ -420,7 +420,11 @@ ${batch.tasks.map(t => `- ${t.id} [${t.phase || 'GENERAL'}]: ${t.desc}`).join('\
    - GREEN: Minimal implementation to pass test, commit when passing
    - REFACTOR: Clean up code while keeping tests green, commit
 4. For general tasks: Implement, test, commit
-5. Update task status in ${notesFile} with ✅ ${t.id} after completion
+5. **Task Completion Tracking** (MANDATORY after EACH successful task):
+   - Call task-tracker to mark task complete and update Progress Summary
+   - Format: .spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes -TaskId "TXXX" -Notes "Implementation summary (1-2 sentences)" -Evidence "pytest: NN/NN passing" -Coverage "NN% line, NN% branch" -CommitHash "$(git rev-parse --short HEAD)" -Duration "XXmin" -FeatureDir "${featureDir}"
+   - Example: .spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes -TaskId "T001" -Notes "Created Message model with validation" -Evidence "pytest: 25/25 passing" -Coverage "92% line, 88% branch" -CommitHash "$(git rev-parse --short HEAD)" -Duration "15min" -FeatureDir "${featureDir}"
+   - This updates both tasks.md checkbox AND NOTES.md AND Progress Summary velocity metrics
 6. **Error Handling** (MANDATORY):
    - On test failure: Call task-tracker mark-failed BEFORE rollback
    - On linting error: Log to error-log.md with full error output
@@ -702,6 +706,8 @@ Before implementing:
 
 ### Task Status Updates (mandatory)
 
+**CRITICAL**: You MUST call task-tracker for EVERY task (success or failure)
+
 After successful task completion:
 ```bash
 .spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
@@ -710,8 +716,15 @@ After successful task completion:
   -Evidence "pytest: NN/NN passing" or "jest: NN/NN passing, a11y: 0 violations" \
   -Coverage "NN% line, NN% branch (+ΔΔ%)" \
   -CommitHash "$(git rev-parse --short HEAD)" \
+  -Duration "XXmin" \
   -FeatureDir "$FEATURE_DIR"
 ```
+
+**What this does**:
+- Updates tasks.md checkbox from [ ] to [X]
+- Appends to NOTES.md with ✅ TXXX: Description - duration (timestamp)
+- Updates Progress Summary section with velocity metrics (avg time, ETA, bottlenecks)
+- Enables automatic velocity tracking and bottleneck detection
 
 On task failure:
 ```bash
@@ -724,6 +737,11 @@ On task failure:
 # Then rollback if needed
 git restore .
 ```
+
+**What this does**:
+- Appends to error-log.md with ❌ TXXX and error details
+- Does NOT update tasks.md (leaves checkbox unchecked for retry)
+- Enables debugging with complete error history
 
 ---
 

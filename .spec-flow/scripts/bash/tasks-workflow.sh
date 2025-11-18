@@ -259,10 +259,15 @@ echo ""
 # - Phase N: Polish & Cross-Cutting Concerns
 # - [TEST GUARDRAILS] (if tests requested)
 
-echo "Generating tasks.md..."
+echo "Generating tasks.md from template..."
 echo ""
 
-# Claude Code writes tasks.md with format:
+# Claude Code MUST use .spec-flow/templates/tasks-template.md as the base structure
+# Read the template file and populate it with generated tasks
+#
+# Template sections to populate:
+# 1. Progress Summary (leave as template placeholders - auto-updated by task-tracker)
+# 2. Task Format (follow this structure):
 # - [ ] [TID] [P?] [Story?] Description with file path
 #   - REUSE: ExistingService (path/to/service.py)
 #   - Pattern: path/to/similar/file.py
