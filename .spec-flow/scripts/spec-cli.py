@@ -87,13 +87,27 @@ def run_script(script_name, args=None, capture=False, shell_type='auto'):
     if shell_type == 'auto':
         shell_type = 'powershell' if IS_WINDOWS else 'bash'
 
+    script_path = None
+    cmd = []
+
     if shell_type == 'powershell':
         script_path = SCRIPT_DIR / 'powershell' / f'{script_name}.ps1'
+        # Fall back to bash if PowerShell script doesn't exist
         if not script_path.exists():
-            print(f"Error: PowerShell script not found: {script_path}", file=sys.stderr)
-            return ("", 1) if capture else 1
-        cmd = ['pwsh', '-File', str(script_path)]
-    else:
+            bash_fallback = SCRIPT_DIR / 'bash' / f'{script_name}.sh'
+            if bash_fallback.exists():
+                print(f"Note: PowerShell script not found, using bash: {bash_fallback}", file=sys.stderr)
+                script_path = bash_fallback
+                shell_type = 'bash'
+                cmd = ['bash', str(script_path)]
+            else:
+                print(f"Error: PowerShell script not found: {script_path}", file=sys.stderr)
+                print(f"Error: Bash fallback not found: {bash_fallback}", file=sys.stderr)
+                return ("", 1) if capture else 1
+        else:
+            cmd = ['pwsh', '-File', str(script_path)]
+
+    elif shell_type == 'bash':
         script_path = SCRIPT_DIR / 'bash' / f'{script_name}.sh'
         if not script_path.exists():
             print(f"Error: Bash script not found: {script_path}", file=sys.stderr)

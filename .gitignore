@@ -33,4 +33,4 @@ package-lock.json
 dist/
 build/
 
-PUBLISHING.md
+PUBLISHING.md.spec-flow/scripts/__pycache__/
