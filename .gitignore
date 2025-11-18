@@ -34,3 +34,4 @@ dist/
 build/
 
 PUBLISHING.md.spec-flow/scripts/__pycache__/
+.spec-flow/scripts/__pycache__/

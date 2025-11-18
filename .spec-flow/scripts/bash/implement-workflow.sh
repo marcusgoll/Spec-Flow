@@ -421,7 +421,14 @@ ${batch.tasks.map(t => `- ${t.id} [${t.phase || 'GENERAL'}]: ${t.desc}`).join('\
    - REFACTOR: Clean up code while keeping tests green, commit
 4. For general tasks: Implement, test, commit
 5. Update task status in ${notesFile} with ✅ ${t.id} after completion
-6. Auto-rollback on test failures, log to error-log.md
+6. **Error Handling** (MANDATORY):
+   - On test failure: Call task-tracker mark-failed BEFORE rollback
+   - On linting error: Log to error-log.md with full error output
+   - On git conflict: Log to error-log.md, do not auto-resolve
+   - On REUSE file missing: Log to error-log.md, skip task
+   - Format: .spec-flow/scripts/bash/task-tracker.sh mark-failed -TaskId "TXXX" -ErrorMessage "Full error details including stack trace" -FeatureDir "${featureDir}"
+   - After logging: git restore . (rollback changes)
+   - Continue to next task (do not abort batch)
 
 **Commit Format** (one per task):
 \`\`\`
@@ -454,10 +461,11 @@ Coverage: <percentage>
 
 ### Error Handling
 
-- **Test failures**: Specialist auto-rollbacks, logs to error-log.md, continues
-- **Missing REUSE files**: Specialist fails task, logs error, continues
-- **Git conflicts**: Abort, instruct user to resolve
-- **Verification failures**: Record partial results, do not proceed to next group
+- **Test failures**: Specialist MUST call task-tracker mark-failed BEFORE rollback, then continues
+- **Missing REUSE files**: Specialist MUST log via task-tracker mark-failed, then continues
+- **Git conflicts**: Specialist MUST log via task-tracker mark-failed, abort batch, exit 1
+- **Linting failures**: Specialist MUST log via task-tracker mark-failed, rollback, continues
+- **Verification failures**: Record partial results via mark-failed, do not proceed to next group
 
 ---
 
@@ -672,9 +680,16 @@ The bash script above delegates to Claude Code for actual task execution. Claude
 
 On failure:
 ```bash
+# CRITICAL: Log error BEFORE rollback
+.spec-flow/scripts/bash/task-tracker.sh mark-failed \
+  -TaskId "TXXX" \
+  -ErrorMessage "Test failure: $(cat test-output.log | tail -20)" \
+  -FeatureDir "$FEATURE_DIR"
+
+# Then rollback changes
 git restore .
-echo "⚠️  TXXX: Auto-rolled back (test failure)" >> error-log.md
-# Continue to next task
+
+# Continue to next task (do not exit)
 ```
 
 ### REUSE Enforcement
@@ -700,20 +715,59 @@ After successful task completion:
 
 On task failure:
 ```bash
+# MANDATORY: Log error before rollback
 .spec-flow/scripts/bash/task-tracker.sh mark-failed \
   -TaskId "TXXX" \
-  -ErrorMessage "Detailed error description" \
+  -ErrorMessage "Detailed error description with stack trace and error output" \
   -FeatureDir "$FEATURE_DIR"
+
+# Then rollback if needed
+git restore .
 ```
 
 ---
 
 ## Error Handling
 
-- **Test failures**: Auto-rollback, log to error-log.md, continue to next task
-- **Missing REUSE files**: Fail task, log error, continue
-- **Git conflicts**: Abort commit, instruct user to resolve, exit
-- **Verification failures**: Record partial results, do not proceed
+- **Test failures**: Log via task-tracker mark-failed, auto-rollback, continue to next task
+  ```bash
+  .spec-flow/scripts/bash/task-tracker.sh mark-failed \
+    -TaskId "T001" \
+    -ErrorMessage "pytest failed: 3/18 tests failing (see full output)" \
+    -FeatureDir "$FEATURE_DIR"
+  git restore .
+  ```
+- **Missing REUSE files**: Log error, skip task, continue batch
+  ```bash
+  .spec-flow/scripts/bash/task-tracker.sh mark-failed \
+    -TaskId "T002" \
+    -ErrorMessage "REUSE file not found: src/services/auth.ts (claimed in REUSE marker)" \
+    -FeatureDir "$FEATURE_DIR"
+  ```
+- **Git conflicts**: Log conflict details, abort commit, instruct user to resolve, exit
+  ```bash
+  .spec-flow/scripts/bash/task-tracker.sh mark-failed \
+    -TaskId "T003" \
+    -ErrorMessage "Git conflict in src/models/user.ts - manual resolution required" \
+    -FeatureDir "$FEATURE_DIR"
+  exit 1
+  ```
+- **Linting failures**: Log linting errors, rollback, continue
+  ```bash
+  .spec-flow/scripts/bash/task-tracker.sh mark-failed \
+    -TaskId "T004" \
+    -ErrorMessage "ESLint: 5 errors in src/components/Button.tsx (see eslint output)" \
+    -FeatureDir "$FEATURE_DIR"
+  git restore .
+  ```
+- **Verification failures**: Log partial results, do not proceed to next phase
+  ```bash
+  .spec-flow/scripts/bash/task-tracker.sh mark-failed \
+    -TaskId "VERIFY" \
+    -ErrorMessage "Verification failed: 12/25 tasks passing tests, 13 tasks have failures" \
+    -FeatureDir "$FEATURE_DIR"
+  exit 2
+  ```
 
 ---
 
@@ -732,10 +786,10 @@ On task failure:
 
 **Atomic commits per task**: One commit per task with clear message and test evidence. Makes bisect/rollback sane.
 
-**Auto-rollback on failure**: No prompts; log failures and continue. Speed over ceremony.
+**Auto-rollback on failure**: No prompts; ALWAYS log via task-tracker mark-failed BEFORE rollback, then continue. Speed over ceremony.
 
-**REUSE enforcement**: Verify imports before claiming reuse. Fail task if pattern file missing.
+**REUSE enforcement**: Verify imports before claiming reuse. Log via mark-failed if pattern file missing, then skip task.
 
 **WIP limits**: One batch `in_progress` at a time reduces context switching and improves throughput.
 
-**Fail fast, fail loud**: Record failures in error-log.md; never pretend success. Exit with meaningful codes: 0 (success), 1 (error), 2 (verification failed).
+**Fail fast, fail loud**: MANDATORY error logging via task-tracker mark-failed for ALL failures (test, lint, REUSE, conflict). Never pretend success. Exit with meaningful codes: 0 (success), 1 (error), 2 (verification failed).
