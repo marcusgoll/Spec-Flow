@@ -64,6 +64,35 @@ case "$ARGUMENTS" in
 esac
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CONTINUE LAST FEATURE (MODE=continue)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ "$CONTINUE_MODE" = true ]; then
+  # Find most recently modified feature directory (cross-platform)
+  if [ ! -d "specs" ]; then
+    echo "❌ No specs/ directory found"
+    exit 1
+  fi
+
+  LAST_FEATURE=$(ls -td specs/[0-9]*-* 2>/dev/null | head -1)
+
+  if [ -z "$LAST_FEATURE" ]; then
+    echo "❌ No existing features found in specs/"
+    exit 1
+  fi
+
+  SLUG=$(basename "$LAST_FEATURE" | sed 's/^[0-9]*-//')
+  FEATURE_DESCRIPTION=$(grep -m1 "^# " "$LAST_FEATURE/spec.md" 2>/dev/null | sed 's/^# //' || echo "$SLUG")
+
+  echo "📋 Continuing last feature: $SLUG"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "  Feature: $FEATURE_DESCRIPTION"
+  echo "  Directory: $LAST_FEATURE"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # FETCH NEXT FEATURE (MODE=next)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
