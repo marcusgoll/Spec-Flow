@@ -71,20 +71,28 @@ python .spec-flow/scripts/spec-cli.py feature "$ARGUMENTS"
 
 **Follow the phase sequence based on workflow state:**
 
-**Phase 0: Specification**
+### Manual Approval Gates
+
+**Phase 0: Specification** (Manual Gate #1)
 ```bash
 /spec
 ```
+**PAUSE**: Review spec.md for completeness and accuracy. If approved, continue to planning.
 
 **Phase 0.5: Clarification** (conditional):
 ```bash
 /clarify
 ```
 
-**Phase 1: Planning**:
+**Phase 1: Planning** (Manual Gate #2)
 ```bash
 /plan
 ```
+**PAUSE**: Review plan.md and research.md for technical approach. If approved, workflow proceeds automatically through implementation and optimization.
+
+### Automatic Execution After Plan Approval
+
+Once planning is approved, the following phases execute automatically without manual gates:
 
 **Phase 2: Task Breakdown**:
 ```bash
@@ -113,11 +121,24 @@ python .spec-flow/scripts/spec-cli.py feature "$ARGUMENTS"
 /optimize
 ```
 
-**Phase 6-8: Deployment & Finalization**:
+### Deployment & Testing (Manual Gate #3)
+
+**Phase 6: Deploy to Staging** (automatic):
 ```bash
-/ship
+/ship-staging
 ```
-(Automatically runs /finalize after deployment)
+
+**PAUSE**: Test feature in staging environment. All UI/UX, accessibility, performance, and integration testing happens here. When staging validation passes, continue to production.
+
+**Phase 7: Deploy to Production** (after staging approval):
+```bash
+/ship-prod
+```
+
+**Phase 8: Finalization** (automatic):
+```bash
+/finalize
+```
 
 ## 3) Handle Continue Mode
 
@@ -129,15 +150,27 @@ python .spec-flow/scripts/spec-cli.py feature "$ARGUMENTS"
 
 ## 4) Handle Manual Gates
 
-**Preview gate:**
-- Dev server starts
-- User tests UI/UX, accessibility, performance
-- Run `/ship continue` when approved
+**Specification gate** (after /spec):
+- Review spec.md for completeness
+- Verify all requirements captured
+- Run `/feature continue` when approved
 
-**Staging validation gate** (staging-prod model only):
+**Planning gate** (after /plan):
+- Review plan.md and research.md
+- Verify technical approach
+- Check for code reuse opportunities
+- Run `/feature continue` when approved
+- **Workflow then proceeds automatically through implementation**
+
+**Staging validation gate** (after /ship-staging):
 - Staging deployment complete
-- User tests in staging environment
-- Run `/ship continue` when approved
+- Test all functionality in staging environment:
+  - UI/UX across browsers and devices
+  - Accessibility (keyboard nav, screen readers)
+  - Performance (load times, responsiveness)
+  - Integration with existing features
+  - Error handling and edge cases
+- Run `/feature continue` when approved to promote to production
 
 ## 5) Error Handling
 
@@ -170,26 +203,29 @@ TodoWrite({
   todos: [
     {content:"Parse args, initialize state",status:"completed",activeForm:"Initialized"},
     {content:"Phase 0: Specification",status:"pending",activeForm:"Creating spec"},
+    {content:"Manual gate: Spec review",status:"pending",activeForm:"Awaiting spec approval"},
     {content:"Phase 0.5: Clarification (conditional)",status:"pending",activeForm:"Resolving clarifications"},
     {content:"Phase 1: Planning",status:"pending",activeForm:"Creating plan"},
-    {content:"Phase 2: Task breakdown",status:"pending",activeForm:"Generating tasks"},
-    {content:"Phase 2a–2c: Design workflow (UI only)",status:"pending",activeForm:"Running design workflow"},
-    {content:"Phase 3: Cross-artifact analysis",status:"pending",activeForm:"Validating artifacts"},
-    {content:"Phase 4: Implementation",status:"pending",activeForm:"Implementing tasks"},
-    {content:"Phase 5: Optimization",status:"pending",activeForm:"Optimizing code"},
-    {content:"Manual gate: Preview",status:"pending",activeForm:"Awaiting preview"},
-    {content:"Phase 6: Ship to staging",status:"pending",activeForm:"Deploying to staging"},
+    {content:"Manual gate: Plan review",status:"pending",activeForm:"Awaiting plan approval"},
+    {content:"Phase 2: Task breakdown (auto)",status:"pending",activeForm:"Generating tasks"},
+    {content:"Phase 2a–2c: Design workflow (UI only, auto)",status:"pending",activeForm:"Running design workflow"},
+    {content:"Phase 3: Cross-artifact analysis (auto)",status:"pending",activeForm:"Validating artifacts"},
+    {content:"Phase 4: Implementation (auto)",status:"pending",activeForm:"Implementing tasks"},
+    {content:"Phase 5: Optimization (auto)",status:"pending",activeForm:"Optimizing code"},
+    {content:"Phase 6: Ship to staging (auto)",status:"pending",activeForm:"Deploying to staging"},
     {content:"Manual gate: Staging validation",status:"pending",activeForm:"Awaiting staging approval"},
     {content:"Phase 7: Ship to production",status:"pending",activeForm:"Deploying to production"},
-    {content:"Phase 8: Finalize documentation (automatic)",status:"pending",activeForm:"Finalizing documentation"}
+    {content:"Phase 8: Finalize documentation (auto)",status:"pending",activeForm:"Finalizing documentation"}
   ]
 })
 ```
 
 **Rules**:
 - Exactly one phase is `in_progress`
-- Manual gates remain `pending` until explicitly continued
+- **Manual gates**: Spec review (gate #1), Plan review (gate #2), Staging validation (gate #3)
+- **Auto-progression**: After plan approval, phases 2-6 execute automatically
 - Deployment phases adapt to model: `staging-prod`, `direct-prod`, or `local-only`
+- Any blocker (test failure, build error, quality gate) pauses workflow for user review
 
 ---
 
@@ -273,16 +309,22 @@ Never guess; always read, quote, and update atomically.
 Each agent reads context from disk (NOTES.md, tasks.md, spec.md) and returns structured JSON. No hidden handoffs.
 
 **Manual gates are explicit**
-Preview and staging validation pause the workflow until `/feature continue` is called with explicit approval.
+Three manual gates pause workflow for human review:
+1. Spec review — Verify requirements before planning
+2. Plan review — Verify technical approach before implementation
+3. Staging validation — Test complete feature before production
 
-**Auto-continue when safe**
-After implementation completes, automatically chain to `/optimize` → `/ship` unless blocked by critical issues.
+**Auto-progression after plan approval**
+After plan is approved, automatically execute: tasks → validate → implement → optimize → ship-staging
+
+**Test in staging, not locally**
+All UI/UX, accessibility, performance, and integration testing happens in staging environment. No local preview gate.
 
 **Deployment model adapts**
 Detect `staging-prod`, `direct-prod`, or `local-only` from actual repo structure; adjust phases accordingly.
 
 **Fail fast, fail loud**
-Record failures in state; never pretend success. Exit with meaningful codes: 0 (success), 1 (error), 2 (verification failed).
+Record failures in state; never pretend success. Any blocker (test failure, build error, quality gate) pauses workflow and requires `/feature continue` after fix.
 
 ---
 

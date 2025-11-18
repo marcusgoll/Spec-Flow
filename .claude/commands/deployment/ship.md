@@ -1,22 +1,26 @@
 ---
 description: Unified deployment orchestrator with multi-model support
-version: 2.0
-updated: 2025-11-17
+version: 3.0
+updated: 2025-11-18
 ---
 
 # /ship — Unified Deployment Orchestrator
 
 **Purpose**: Orchestrate complete post-implementation deployment workflow from optimization through production release
 
+**Workflow**: optimize → deploy-staging → [manual staging validation] → deploy-prod → finalize
+
 **Usage**:
 - `/ship` - Start deployment workflow from beginning
-- `/ship continue` - Resume from last completed phase
+- `/ship continue` - Resume from last completed phase or proceed after manual gate
 - `/ship status` - Display current deployment status
 
 **Deployment Models**:
-- **staging-prod**: Full staging validation before production
-- **direct-prod**: Direct production deployment
-- **local-only**: Local build and integration
+- **staging-prod**: Full staging validation before production (recommended)
+- **direct-prod**: Direct production deployment (skip staging)
+- **local-only**: Local build and integration only
+
+**Manual Gate**: Staging validation (test complete feature in staging before production)
 
 **Dependencies**: Requires completed `/implement` phase
 
@@ -87,7 +91,7 @@ Execute the `/optimize` slash command:
 ```
 
 After `/optimize` completes:
-- Update TodoWrite: Mark /optimize as `completed`, mark /preview as `in_progress`
+- Update TodoWrite: Mark /optimize as `completed`, mark deployment phase as `in_progress`
 - Continue to Step 4
 
 If `/optimize` fails:
@@ -95,39 +99,7 @@ If `/optimize` fails:
 - Tell user to address issues and run `/ship continue`
 - **EXIT**
 
-## Step 4: Run /preview (Manual Gate)
-
-Execute the `/preview` slash command:
-
-```bash
-/preview
-```
-
-After dev server starts:
-- Update TodoWrite: Mark /preview as `completed`, keep deployment phase as `pending`
-- Display manual gate message (see below)
-- **EXIT** - wait for user to run `/ship continue`
-
-**Manual gate message**:
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🛑 MANUAL GATE: Preview Testing Required
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-The local dev server is running. Please test:
-
-1. ✅ All feature functionality
-2. ✅ UI/UX across screen sizes
-3. ✅ Accessibility (keyboard, screen readers)
-4. ✅ Error states and edge cases
-5. ✅ Performance (no lag)
-
-When complete, run: /ship continue
-To abort: /ship abort
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-## Step 5: Deploy (Model-Specific)
+## Step 4: Deploy (Model-Specific)
 
 ### If staging-prod model:
 
@@ -137,9 +109,38 @@ To abort: /ship abort
    ```
    Update TodoWrite: Mark staging deploy as `completed`, mark validation as `pending`
 
-2. **Wait for staging validation** (manual gate) - Display message, EXIT
+2. **Wait for staging validation** (manual gate):
 
-3. **Deploy to production** (after user approval):
+   Display manual gate message:
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🛑 MANUAL GATE: Staging Validation Required
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   Feature deployed to staging. Test in production-like environment:
+
+   **What to test** (all UI/UX, accessibility, performance testing happens here):
+   1. ✅ All feature functionality and user flows
+   2. ✅ UI/UX across browsers and screen sizes
+   3. ✅ Accessibility (keyboard nav, screen readers, WCAG 2.1 AA)
+   4. ✅ Performance (load times, responsiveness)
+   5. ✅ Integration with existing features
+   6. ✅ Error handling and edge cases
+   7. ✅ Visual design matches mockups
+
+   **Staging URLs**:
+   - Marketing: https://staging.[domain].com
+   - App: https://app.staging.[domain].com
+   - API: https://api.staging.[domain].com/docs
+
+   When validation complete, run: /ship continue
+   To abort: /ship abort
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+   **EXIT** - wait for user to run `/ship continue`
+
+3. **Deploy to production** (after staging approval):
    ```bash
    /ship-prod
    ```
@@ -169,7 +170,7 @@ To abort: /ship abort
    ```
    Update TodoWrite: Mark merge as `completed`, mark finalize as `in_progress`
 
-## Step 6: Essential Finalization (All Models)
+## Step 5: Essential Finalization (All Models)
 
 Run essential finalization tasks using centralized CLI:
 
@@ -197,9 +198,9 @@ python .spec-flow/scripts/spec-cli.py ship-finalize finalize --feature-dir "$FEA
 
 After essential finalization completes:
 - Update TodoWrite: Mark essential finalization as `completed`, mark full finalization as `in_progress`
-- Continue to Step 7
+- Continue to Step 6
 
-## Step 7: Full Finalization (Automatic)
+## Step 6: Full Finalization (Automatic)
 
 Run the `/finalize` slash command to complete all documentation:
 
