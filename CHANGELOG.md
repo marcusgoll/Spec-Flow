@@ -2,6 +2,24 @@
 
 ---
 
+## [6.10.0] - 2025-11-18
+
+### Added
+- **Auto-Install GitHub Workflows**: Postinstall script now automatically copies GitHub Actions workflows to user's `.github/workflows/` directory
+  - Automatically installs workflows if `.github/workflows/` exists (skips files that already exist)
+  - Prompts to create directory if it doesn't exist
+  - Interactive confirmation using inquirer
+  - Silent in CI/non-interactive environments
+  - Preserves user customizations (never overwrites existing files)
+
+### Changed
+- **Enhanced npm Package Experience**: Users no longer need to manually copy workflow files after installation
+  - Workflows install automatically on `npm install spec-flow`
+  - Update detection: New workflows auto-install, existing workflows preserved
+  - Supports both fresh installs and package upgrades
+
+---
+
 ## [6.9.0] - 2025-11-18
 
 ### Added

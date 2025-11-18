@@ -44,6 +44,20 @@
 
 ## 🆕 Recent Updates
 
+### v6.10.0 (November 2025)
+
+**Auto-Install GitHub Workflows** - Seamless workflow integration on package install
+
+- **Automatic Workflow Installation**: Postinstall script copies GitHub Actions workflows to `.github/workflows/`
+  - Auto-installs if directory exists (skips existing files)
+  - Prompts to create directory if needed
+  - Interactive confirmation (inquirer)
+  - Silent in CI/non-interactive environments
+- **Update Detection**: New workflows auto-install during `npm install spec-flow`, existing workflows preserved
+- **Zero Manual Steps**: Users no longer need to manually copy workflow files
+
+---
+
 ### v6.9.0 (November 2025)
 
 **Streamlined Ship Orchestration** - 60% faster deployments with zero manual gates
