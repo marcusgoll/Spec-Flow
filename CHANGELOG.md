@@ -2,6 +2,54 @@
 
 ---
 
+## [6.9.0] - 2025-11-18
+
+### Added
+- **GitHub Actions Auto-Fix CI**: New workflow `.github/workflows/auto-fix-ci.yml` automatically fixes lint/format issues on PR creation
+  - Runs PSScriptAnalyzer formatting for PowerShell scripts
+  - Runs markdownlint auto-fix for Markdown files
+  - Runs jq formatting for JSON files
+  - Auto-commits fixes and comments on PR
+- **Docker Build Validation**: Added Docker build check to `/optimize` command (6th parallel check)
+  - Validates Dockerfile builds successfully before deployment
+  - Automatically skips if no Dockerfile present
+  - Generates `optimization-docker.md` report with PASSED/FAILED/SKIPPED status
+  - Critical blocker if Docker build fails
+
+### Changed
+- **Streamlined Ship Orchestration**: Reduced deployment time by 60% (25-35 min vs 65-165 min)
+  - Removed `/preview` manual gate (all testing now in staging)
+  - Removed interactive version selection from `/ship-prod` (defaults to patch bump, use `--version` flag to override)
+  - Removed manual staging validation checklist (auto-generated validation reports with E2E, Lighthouse, rollback test, health checks)
+  - Parallelized pre-flight + optimize checks (saves ~10 min)
+- **Platform API-Based Deployment IDs**: Replaced log parsing with direct API calls
+  - Vercel API for deployment IDs (more reliable than grep)
+  - Railway GraphQL API for deployment tracking
+  - Netlify API for deployment verification
+  - Fallback to log parsing if credentials missing
+- **Workflow State Schema**: Removed `preview` phase from `workflow-state-schema.md`
+  - Updated phase enum: clarify, plan, tasks, validate, implement, optimize, ship-staging, ship-prod, finalize
+  - Removed `manual_gates.preview` section
+  - Updated state transition diagram
+
+### Fixed
+- **Ship Workflow Automation**: Zero manual gates - fully automated quality validation
+  - Auto-generated staging validation reports
+  - Automatic version bumping (defaults to patch)
+  - Pre-flight and optimize run in parallel
+
+### Breaking Changes
+- **Preview Phase Removed**: `/preview` command archived to `preview.md.deprecated`
+  - All UI/UX testing now happens in staging environment
+  - No local manual testing gate before deployment
+- **/ship-prod Version Selection**: No longer prompts for version interactively
+  - Defaults to patch bump (most common)
+  - Use `--version major|minor` flag to override
+- **workflow-state.yaml Schema**: `preview` phase and `manual_gates.preview` removed
+  - Existing features may need workflow-state.yaml migration
+
+---
+
 ## [6.8.0] - 2025-11-18
 
 ### Added

@@ -44,6 +44,35 @@
 
 ## 🆕 Recent Updates
 
+### v6.9.0 (November 2025)
+
+**Streamlined Ship Orchestration** - 60% faster deployments with zero manual gates
+
+- **Auto-Fix CI Failures**: New GitHub Action automatically fixes lint/format issues on PR creation
+  - PowerShell formatting (PSScriptAnalyzer)
+  - Markdown linting (markdownlint)
+  - JSON formatting (jq)
+  - Auto-commits fixes and comments on PR
+- **Docker Build Validation**: Added Docker build check to /optimize (6th parallel check)
+  - Validates Dockerfile builds before deployment
+  - Auto-skips if no Dockerfile present
+  - Critical blocker if build fails
+- **Faster Deployments**: Reduced from 65-165 min to 25-35 min
+  - Removed /preview manual gate (all testing in staging)
+  - Removed interactive version selection (defaults to patch bump)
+  - Removed manual staging validation checklist (auto-generated reports)
+  - Parallelized pre-flight + optimize checks (saves ~10 min)
+- **Platform API-Based Deployment IDs**: Replaced log parsing with direct API calls
+  - Vercel API, Railway GraphQL, Netlify API
+  - More reliable than grep/awk log parsing
+
+**Breaking Changes**:
+- /preview command archived (all testing now in staging)
+- /ship-prod no longer prompts for version (use `--version major|minor` flag to override patch default)
+- workflow-state.yaml schema updated (removed `preview` phase)
+
+---
+
 ### v6.8.0 (November 2025)
 
 **Full Cross-Platform Support** - 100% command coverage on all platforms (40/40 commands)
