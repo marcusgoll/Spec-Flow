@@ -36,6 +36,7 @@
     "!.claude/skills/x-announcement.md",
     ".spec-flow/",
     ".github/ISSUE_TEMPLATE/",
+    ".github/workflows/",
     "CLAUDE.md",
     "bin/",
     "docs/",
