@@ -83,12 +83,15 @@ jobs:
 
       - name: Run ShellCheck
         run: |
-          shellcheck -e SC1091,SC2034,SC1083,SC2001,SC2012,SC2015,SC2016,SC2046,SC2086,SC2128,SC2155,SC2178,SC2317 .spec-flow/scripts/bash/*.sh || exit 1
+          # Exclude *-workflow.sh files (instruction/documentation files, not executable scripts)
+          shellcheck -e SC1091,SC2034,SC1083,SC2001,SC2012,SC2015,SC2016,SC2046,SC2086,SC2128,SC2155,SC2178,SC2317 \
+            $(find .spec-flow/scripts/bash -name "*.sh" ! -name "*-workflow.sh") || exit 1
           echo "✅ No Bash issues found"
 
       - name: Test Bash scripts syntax
         run: |
-          for script in .spec-flow/scripts/bash/*.sh; do
+          # Exclude *-workflow.sh files (instruction/documentation files, not executable scripts)
+          for script in $(find .spec-flow/scripts/bash -name "*.sh" ! -name "*-workflow.sh"); do
             bash -n "$script" || exit 1
           done
           echo "✅ All Bash scripts have valid syntax"
