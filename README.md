@@ -44,6 +44,29 @@
 
 ## 🆕 Recent Updates
 
+### v6.5.0 (November 2025)
+
+**Comprehensive Error Logging**
+
+- **Automatic Error Tracking**: Error-log.md now automatically populated during workflow execution
+  - Native bash `mark-failed` function in task-tracker.sh
+  - Specialist agents MUST log errors BEFORE auto-rollback
+  - Captures test failures, missing REUSE files, git conflicts, linting errors
+  - Structured format with timestamps, task IDs, and error details
+- **Mandatory Error Logging**: Updated specialist agent prompts in implement-workflow.sh
+  - All failure scenarios require error logging via task-tracker mark-failed
+  - Error capture integrated into auto-rollback logic
+  - Continue to next task after logging (fail gracefully)
+- **CI ShellCheck Fixes**: Excluded workflow instruction files from validation
+  - Workflow files (*-workflow.sh) are documentation, not executable bash scripts
+  - Added SC2004 to exclusions (cosmetic style warnings)
+
+**Problem Solved**: Error-log.md files were created with comprehensive templates during /plan phase but remained empty during workflow execution. Only /debug command and PowerShell task-tracker actually wrote to error-log.md, meaning errors during /implement were lost.
+
+**Impact**: All failures during workflow execution are now automatically logged to error-log.md with full context. Debugging is dramatically faster with complete error history. Specialist agents fail gracefully with proper error tracking.
+
+---
+
 ### v6.4.1 (November 2025)
 
 **Windows Compatibility Fix**

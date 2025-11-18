@@ -2,6 +2,28 @@
 
 ---
 
+## [6.5.0] - 2025-11-18
+
+### Added
+- **Comprehensive Error Logging**: Implemented automatic error tracking during workflow execution
+  - Added native bash `mark-failed` function to task-tracker.sh
+  - Error-log.md now automatically populated during /implement phase
+  - Captures test failures, missing REUSE files, git conflicts, linting errors
+  - Specialist agents required to log errors BEFORE auto-rollback
+  - Resolves issue where error-log.md remained empty despite errors occurring
+
+### Fixed
+- **CI ShellCheck**: Excluded workflow instruction files from validation
+  - Workflow files (*-workflow.sh) are documentation, not executable scripts
+  - Added SC2004 to ShellCheck exclusions (cosmetic style warnings)
+
+### Technical Details
+- **task-tracker.sh**: Native bash implementation for mark-failed action with feature directory auto-detection
+- **implement-workflow.sh**: Updated specialist agent prompts with mandatory error logging instructions
+- **CI workflow**: Modified to exclude instruction files from ShellCheck and syntax validation
+
+---
+
 ## [6.4.1] - 2025-11-17
 
 ### Fixed
