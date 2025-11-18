@@ -109,6 +109,43 @@ async function installDocs({ packageRoot, targetDir, conflictStrategy, verbose }
   return actions;
 }
 
+/** Copy GitHub workflows with conflict resolution; collect actions */
+async function installWorkflows({ packageRoot, targetDir, conflictStrategy, verbose }) {
+  const actions = [];
+  const sourceWorkflowsDir = path.join(packageRoot, '.github', 'workflows');
+  const targetWorkflowsDir = path.join(targetDir, '.github', 'workflows');
+
+  // Check if source workflows exist
+  if (!await fs.pathExists(sourceWorkflowsDir)) {
+    return actions; // No workflows to install
+  }
+
+  await withSpinner('Installing GitHub workflows...', async (setText) => {
+    // Ensure target directory exists
+    await fs.ensureDir(targetWorkflowsDir);
+
+    // Get all workflow files
+    const files = await fs.readdir(sourceWorkflowsDir);
+    const workflowFiles = files.filter(f => f.endsWith('.yml') || f.endsWith('.yaml'));
+
+    for (const file of workflowFiles) {
+      const source = path.join(sourceWorkflowsDir, file);
+      const dest = path.join(targetWorkflowsDir, file);
+
+      const action = await resolveConflict({
+        sourcePath: source,
+        targetPath: dest,
+        strategy: conflictStrategy,
+        fileName: file
+      });
+      actions.push(action);
+      if (verbose) setText(`.github/workflows/${file}: ${action.action}`);
+    }
+  }, { enabled: process.env.CI !== 'true' });
+
+  return actions;
+}
+
 /**
  * Install spec-flow to target directory
  * @param {Object} options
@@ -194,6 +231,10 @@ async function install(options) {
     // 3) root docs
     const docActions = await installDocs({ packageRoot, targetDir, conflictStrategy, verbose });
     conflictActions.push(...docActions);
+
+    // 4) GitHub workflows
+    const workflowActions = await installWorkflows({ packageRoot, targetDir, conflictStrategy, verbose });
+    conflictActions.push(...workflowActions);
 
     printSuccess('\nInstallation complete!');
     return { success: true, error: null, conflictActions };
