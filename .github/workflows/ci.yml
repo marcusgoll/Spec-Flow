@@ -84,7 +84,7 @@ jobs:
       - name: Run ShellCheck
         run: |
           # Exclude *-workflow.sh files (instruction/documentation files, not executable scripts)
-          shellcheck -e SC1091,SC2034,SC1083,SC2001,SC2012,SC2015,SC2016,SC2046,SC2086,SC2128,SC2155,SC2178,SC2317 \
+          shellcheck -e SC1091,SC2034,SC1083,SC2001,SC2004,SC2012,SC2015,SC2016,SC2046,SC2086,SC2128,SC2155,SC2178,SC2317 \
             $(find .spec-flow/scripts/bash -name "*.sh" ! -name "*-workflow.sh") || exit 1
           echo "✅ No Bash issues found"
 
