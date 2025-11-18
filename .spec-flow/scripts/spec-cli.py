@@ -70,6 +70,25 @@ from pathlib import Path
 IS_WINDOWS = sys.platform == 'win32'
 SCRIPT_DIR = Path(__file__).parent
 
+def convert_windows_path_for_bash(path):
+    r"""
+    Convert Windows path to Unix-style path for Git Bash on Windows.
+
+    Examples:
+        D:\coding\workflow\script.sh -> /d/coding/workflow/script.sh
+        C:\Users\file.txt -> /c/Users/file.txt
+    """
+    path_str = str(path)
+
+    # Check if it's a Windows absolute path (contains drive letter)
+    if len(path_str) >= 2 and path_str[1] == ':':
+        drive = path_str[0].lower()
+        rest = path_str[2:].replace('\\', '/')
+        return f'/{drive}{rest}'
+
+    # Already Unix-style or relative path
+    return path_str.replace('\\', '/')
+
 def run_script(script_name, args=None, capture=False, shell_type='auto'):
     """
     Execute platform-specific script (bash or PowerShell)
@@ -96,13 +115,22 @@ def run_script(script_name, args=None, capture=False, shell_type='auto'):
         if not script_path.exists():
             bash_fallback = SCRIPT_DIR / 'bash' / f'{script_name}.sh'
             if bash_fallback.exists():
-                print(f"Note: PowerShell script not found, using bash: {bash_fallback}", file=sys.stderr)
+                # SILENT: Don't print fallback notice to avoid polluting stderr
                 script_path = bash_fallback
                 shell_type = 'bash'
-                cmd = ['bash', str(script_path)]
+                # On Windows, use relative path (subprocess bash can't access /d/ style paths)
+                # On Unix, use absolute path
+                if IS_WINDOWS:
+                    bash_path = f'bash/{script_name}.sh'
+                else:
+                    bash_path = str(script_path)
+                cmd = ['bash', bash_path]
             else:
-                print(f"Error: PowerShell script not found: {script_path}", file=sys.stderr)
-                print(f"Error: Bash fallback not found: {bash_fallback}", file=sys.stderr)
+                # Only print error if VERBOSE mode is enabled
+                verbose = os.environ.get('SPEC_CLI_VERBOSE', '0') == '1'
+                if verbose:
+                    print(f"Error: PowerShell script not found: {script_path}", file=sys.stderr)
+                    print(f"Error: Bash fallback not found: {bash_fallback}", file=sys.stderr)
                 return ("", 1) if capture else 1
         else:
             cmd = ['pwsh', '-File', str(script_path)]
@@ -112,17 +140,23 @@ def run_script(script_name, args=None, capture=False, shell_type='auto'):
         if not script_path.exists():
             print(f"Error: Bash script not found: {script_path}", file=sys.stderr)
             return ("", 1) if capture else 1
-        cmd = ['bash', str(script_path)]
+        # On Windows, use relative path (subprocess bash can't access /d/ style paths)
+        # On Unix, use absolute path
+        if IS_WINDOWS:
+            bash_path = f'bash/{script_name}.sh'
+        else:
+            bash_path = str(script_path)
+        cmd = ['bash', bash_path]
 
     if args:
         cmd.extend(args)
 
     try:
         if capture:
-            result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8')
+            result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', cwd=SCRIPT_DIR)
             return result.stdout, result.returncode
         else:
-            return subprocess.run(cmd).returncode
+            return subprocess.run(cmd, cwd=SCRIPT_DIR).returncode
     except FileNotFoundError as e:
         print(f"Error: Required shell not found: {e}", file=sys.stderr)
         return ("", 1) if capture else 1
@@ -259,7 +293,8 @@ def cmd_ship_prod(args):
 
 def cmd_compact(args):
     """Run context compaction"""
-    script_args = ['--feature-dir', args.feature_dir, '--phase', args.phase]
+    # PowerShell uses PascalCase parameters: -FeatureDir, -Phase
+    script_args = ['-FeatureDir', args.feature_dir, '-Phase', args.phase]
     return run_script('compact-context', script_args)
 
 def cmd_create_feature(args):
@@ -268,7 +303,8 @@ def cmd_create_feature(args):
 
 def cmd_calculate_tokens(args):
     """Calculate token budget"""
-    return run_script('calculate-tokens', ['--feature-dir', args.feature_dir])
+    # PowerShell uses PascalCase parameters: -FeatureDir
+    return run_script('calculate-tokens', ['-FeatureDir', args.feature_dir])
 
 def cmd_check_prereqs(args):
     """Check prerequisites and return JSON"""
@@ -335,14 +371,14 @@ def cmd_generate_feature_claude(args):
         script_args.append(args.feature)
     if args.force:
         script_args.append('--force')
-    return run_script('generate-feature-claude', script_args)
+    return run_script('generate-feature-claude-md', script_args)
 
 def cmd_generate_project_claude(args):
     """Generate project-level CLAUDE.md file"""
     script_args = []
     if args.force:
         script_args.append('--force')
-    return run_script('generate-project-claude', script_args)
+    return run_script('generate-project-claude-md', script_args)
 
 def cmd_update_living_docs(args):
     """Trigger living documentation update"""
@@ -394,11 +430,11 @@ def cmd_roadmap(args):
         script_args.append('--json')
 
     if args.json:
-        stdout, code = run_script('roadmap', script_args, capture=True)
+        stdout, code = run_script('roadmap-manager', script_args, capture=True)
         print(stdout, end='')
         return code
     else:
-        return run_script('roadmap', script_args)
+        return run_script('roadmap-manager', script_args)
 
 # Design System Health
 
@@ -428,7 +464,7 @@ def cmd_epic(args):
         script_args.extend(['--name', args.epic_name])
     if args.description:
         script_args.extend(['--description', args.description])
-    return run_script('epic-manage', script_args)
+    return run_script('epic-manager', script_args)
 
 def cmd_sprint(args):
     """Manage sprint cycles"""
@@ -550,7 +586,7 @@ def cmd_version(args):
         script_args.append(args.bump_type)
     if args.message:
         script_args.extend(['--message', args.message])
-    return run_script('version-bump', script_args)
+    return run_script('version-manager', script_args)
 
 def cmd_deps(args):
     """Manage dependency updates"""

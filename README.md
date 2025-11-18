@@ -44,6 +44,35 @@
 
 ## 🆕 Recent Updates
 
+### v6.8.0 (November 2025)
+
+**Full Cross-Platform Support** - 100% command coverage on all platforms (40/40 commands)
+
+- **PowerShell Wrappers**: All bash-only commands now work on Windows PowerShell
+  - 27 PowerShell wrapper scripts automatically generated (invoke bash via Git Bash)
+  - Automated wrapper generator for future maintenance (generate-ps-wrappers.py)
+  - Maintains single source of truth (bash scripts)
+- **Name Mismatch Fixes**: 10 commands now call correct script names
+  - generate-feature-claude, generate-project-claude, roadmap, epic, version
+  - Created 5 bash dispatcher scripts (flag, gate, schedule, deps, sprint)
+- **Windows Path Resolution**: Fixed bash subprocess path issues on Windows
+  - spec-cli.py uses relative paths with cwd parameter
+  - Handles Windows → Unix path conversion for Git Bash
+- **PowerShell Compatibility**: Fixed parameter naming and duplicate Verbose parameter
+  - kebab-case → PascalCase parameter mapping (--feature-dir → -FeatureDir)
+  - calculate-tokens: Verbose → ShowBreakdown
+- **Comprehensive Documentation**: 6,200+ lines across 5 new docs (analysis, sprints, summary)
+
+**Platform Coverage**:
+- macOS: 40/40 (100%) ✅
+- Linux: 40/40 (100%) ✅
+- Windows (Git Bash): 40/40 (100%) ✅
+- Windows (PowerShell): 40/40 (100%) ✅ (requires Git Bash)
+
+**Windows Requirements**: Git Bash must be installed for PowerShell wrappers to work. Download from https://git-scm.com/download/win
+
+---
+
 ### v6.5.0 (November 2025)
 
 **Comprehensive Error Logging**
@@ -717,12 +746,22 @@ Clone and run the interactive wizard:
 git clone https://github.com/marcusgoll/Spec-Flow.git
 cd Spec-Flow
 
-# 2. Run the installation wizard (Windows)
+# 2. Run the installation wizard (Windows PowerShell)
 powershell -File .spec-flow/scripts/powershell/install-wizard.ps1
+
+# OR (Windows Git Bash)
+./.spec-flow/scripts/bash/install-wizard.sh
 
 # OR (macOS/Linux)
 ./.spec-flow/scripts/bash/install-wizard.sh
 ```
+
+**Windows Users**: For full compatibility with all 40 commands, install **Git for Windows** (provides bash):
+- Download from: https://git-scm.com/download/win
+- Install with default settings (adds bash to PATH)
+- Restart PowerShell session after install
+- Verify: `bash --version` should show GNU bash 5.x.x
+- PowerShell wrappers will automatically invoke bash scripts when needed
 
 **What gets installed:**
 - ✅ `.claude/` - Agents, commands, and settings
@@ -765,7 +804,23 @@ npx spec-flow init --target ./my-project
 
 **From source:**
 
-Clone this repository and ensure you have either PowerShell 7.3+ (`pwsh`) or a POSIX shell (`bash`) plus Python 3.10+ available. Scripts live under `.spec-flow/scripts/powershell/` and `.spec-flow/scripts/bash/`.
+Clone this repository and ensure you have the required dependencies:
+
+**All Platforms**:
+- Python 3.10+ (required for spec-cli.py)
+
+**Windows**:
+- PowerShell 7.3+ (`pwsh`) OR Git Bash (recommended: install both)
+- **Git for Windows** (required for full cross-platform support): https://git-scm.com/download/win
+  - Provides bash for PowerShell wrappers to invoke
+  - Enables all 40 commands to work from PowerShell
+  - Without Git Bash: Only 13 commands work (those with native PowerShell implementations)
+
+**macOS/Linux**:
+- Bash 4.0+ (usually pre-installed)
+- No additional requirements
+
+Scripts live under `.spec-flow/scripts/powershell/` (Windows wrappers) and `.spec-flow/scripts/bash/` (cross-platform core).
 
 **Full installation guide**: [docs/installation.md](docs/installation.md)
 

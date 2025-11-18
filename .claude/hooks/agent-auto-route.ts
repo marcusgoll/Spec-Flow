@@ -99,16 +99,22 @@ function invokeTaskTool(
   contextFiles: string[],
   reason: string
 ): void {
-  // Silent invocation - just output specialist name
-  // The Claude Code extension will see this and invoke the Task tool
-  if (SILENT_MODE) {
-    console.log(`→ ${specialist}`);
-  } else {
-    console.log(`[Auto-Route] → ${specialist} (${reason})`);
-    if (contextFiles.length > 0) {
-      console.log(`  Context: ${contextFiles.join(", ")}`);
+  // SILENT MODE: Write to log file instead of console to avoid infinite loops
+  const logDir = join(process.env.CLAUDE_PROJECT_DIR || process.cwd(), '.spec-flow', 'cache');
+  const logFile = join(logDir, 'agent-routing.log');
+
+  const logEntry = `[${new Date().toISOString()}] Route: ${specialist} (${reason})\n`;
+
+  try {
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
     }
+    fs.appendFileSync(logFile, logEntry);
+  } catch (err) {
+    // Silently fail - don't break the workflow
   }
+
+  // NO CONSOLE OUTPUT - prevents infinite loops
 }
 
 // ===== Main Hook Logic =====
@@ -143,9 +149,7 @@ async function main() {
         const chainCheck = checkChainDepth(result.specialist, rules);
 
         if (!chainCheck.allowed) {
-          if (!SILENT_MODE) {
-            console.error(`[Blocked] ${chainCheck.reason}`);
-          }
+          // SILENT MODE: No console output
           process.exit(0);
         }
 
@@ -169,9 +173,7 @@ async function main() {
       const chainCheck = checkChainDepth(nextSpecialist, rules);
 
       if (!chainCheck.allowed) {
-        if (!SILENT_MODE) {
-          console.error(`[Blocked] ${chainCheck.reason}`);
-        }
+        // SILENT MODE: No console output
         process.exit(0);
       }
 
@@ -190,10 +192,8 @@ async function main() {
     process.exit(0);
 
   } catch (error) {
-    if (!SILENT_MODE) {
-      console.error("[Agent Auto-Route Error]", error);
-    }
-    process.exit(1);
+    // SILENT MODE: No error output to avoid infinite loops
+    process.exit(0);
   }
 }
 

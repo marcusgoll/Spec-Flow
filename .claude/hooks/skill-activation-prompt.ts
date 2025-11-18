@@ -79,9 +79,11 @@ async function main() {
 
         // Generate output if matches found
         if (matchedSkills.length > 0) {
-            let output = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
-            output += '🎯 SKILL ACTIVATION CHECK\n';
-            output += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+            // SILENT MODE: Write to log file instead of console to avoid infinite loops
+            const logDir = join(process.env.CLAUDE_PROJECT_DIR || process.cwd(), '.spec-flow', 'cache');
+            const logFile = join(logDir, 'skill-activation.log');
+
+            let output = `[${new Date().toISOString()}] SKILL ACTIVATION CHECK\n`;
 
             // Group by priority
             const critical = matchedSkills.filter(s => s.config.priority === 'critical');
@@ -90,43 +92,43 @@ async function main() {
             const low = matchedSkills.filter(s => s.config.priority === 'low');
 
             if (critical.length > 0) {
-                output += '⚠️ CRITICAL SKILLS (REQUIRED):\n';
-                critical.forEach(s => output += `  → ${s.name}\n`);
-                output += '\n';
+                output += 'CRITICAL SKILLS: ';
+                output += critical.map(s => s.name).join(', ') + '\n';
             }
 
             if (high.length > 0) {
-                output += '📚 RECOMMENDED SKILLS:\n';
-                high.forEach(s => output += `  → ${s.name}\n`);
-                output += '\n';
+                output += 'RECOMMENDED SKILLS: ';
+                output += high.map(s => s.name).join(', ') + '\n';
             }
 
             if (medium.length > 0) {
-                output += '💡 SUGGESTED SKILLS:\n';
-                medium.forEach(s => output += `  → ${s.name}\n`);
-                output += '\n';
+                output += 'SUGGESTED SKILLS: ';
+                output += medium.map(s => s.name).join(', ') + '\n';
             }
 
             if (low.length > 0) {
-                output += '📌 OPTIONAL SKILLS:\n';
-                low.forEach(s => output += `  → ${s.name}\n`);
-                output += '\n';
+                output += 'OPTIONAL SKILLS: ';
+                output += low.map(s => s.name).join(', ') + '\n';
             }
 
-            output += 'ACTION: Use Skill tool BEFORE responding\n';
-            output += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
-
-            console.log(output);
+            // Write to log file (silent - no console output)
+            try {
+                const fs = require('fs');
+                fs.mkdirSync(logDir, { recursive: true });
+                fs.appendFileSync(logFile, output + '\n');
+            } catch (err) {
+                // Silently fail - don't break the workflow
+            }
         }
 
         process.exit(0);
     } catch (err) {
-        console.error('Error in skill-activation-prompt hook:', err);
-        process.exit(1);
+        // SILENT MODE: No error output to avoid infinite loops
+        process.exit(0);
     }
 }
 
 main().catch(err => {
-    console.error('Uncaught error:', err);
-    process.exit(1);
+    // SILENT MODE: No error output to avoid infinite loops
+    process.exit(0);
 });

@@ -561,10 +561,12 @@ function Add-FeatureToSectionStart {
 }
 
 # Export functions
-Export-ModuleMember -Function @(
-    'Get-FeatureStatus',
-    'Set-FeatureInProgress',
-    'Set-FeatureShipped',
-    'Show-FeatureDiscovery',
-    'Save-DiscoveredFeature'
-)
+# NOTE: Export-ModuleMember only works in .psm1 modules, not .ps1 scripts
+# Commented out to prevent errors when running as a script
+# Export-ModuleMember -Function @(
+#     'Get-FeatureStatus',
+#     'Set-FeatureInProgress',
+#     'Set-FeatureShipped',
+#     'Show-FeatureDiscovery',
+#     'Save-DiscoveredFeature'
+# )

@@ -24,7 +24,7 @@
 .PARAMETER Json
     Output results as JSON for machine parsing
 
-.PARAMETER Verbose
+.PARAMETER ShowBreakdown
     Show per-file token breakdown
 
 .EXAMPLE
@@ -39,7 +39,7 @@
     {"totalTokens":82145,"budget":100000,"shouldCompact":true,...}
 
 .EXAMPLE
-    .\calculate-tokens.ps1 -FeatureDir specs/015-feature -Phase auto -Verbose
+    .\calculate-tokens.ps1 -FeatureDir specs/015-feature -Phase auto -ShowBreakdown
 
     Tokens per file:
       spec.md: 8,234
@@ -49,7 +49,6 @@
     Total: 65,123 / 100,000 (65.1%)
 #>
 
-[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true, HelpMessage = "Feature directory path")]
     [string]$FeatureDir,
@@ -62,7 +61,7 @@ param(
     [switch]$Json,
 
     [Parameter(Mandatory = $false, HelpMessage = "Show per-file token breakdown")]
-    [switch]$Verbose
+    [switch]$ShowBreakdown
 )
 
 Set-StrictMode -Version Latest
@@ -190,7 +189,7 @@ if ($Json) {
     $result | ConvertTo-Json -Depth 3 | Write-Output
 } else {
     # Human-readable output
-    if ($Verbose) {
+    if ($ShowBreakdown) {
         Write-Output ""
         Write-Output " TOKEN BREAKDOWN"
         Write-Output ""
