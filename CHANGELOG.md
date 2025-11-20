@@ -2,7 +2,21 @@
 
 ---
 
-## [7.0.0] - 2025-11-20
+## [7.0.1] - 2025-11-20
+
+### 🐛 Fixed
+
+**Critical Package Fix**
+- Fixed missing bin/ folder in npm package causing installation failures
+- Added bin/, scripts/build-dist.js to package.json files array
+- v7.0.0 was broken and showed version 1.7.1 due to missing CLI dependencies
+- **Action Required**: Users who installed v7.0.0 should upgrade to v7.0.1 immediately
+
+---
+
+## [7.0.0] - 2025-11-20 [BROKEN - Use v7.0.1]
+
+**⚠️ This version is broken. Please use v7.0.1 instead.**
 
 ### ⚠️ BREAKING CHANGES
 

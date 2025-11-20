@@ -1,6 +1,6 @@
 {
   "name": "spec-flow",
-  "version": "7.0.0",
+  "version": "7.0.1",
   "description": "Spec-Driven Development workflow toolkit for Claude Code - Build high-quality features faster with repeatable AI workflows",
   "keywords": [
     "claude",
@@ -26,7 +26,9 @@
     "spec-flow": "bin/cli.js"
   },
   "files": [
-    "dist/"
+    "dist/",
+    "bin/",
+    "scripts/build-dist.js"
   ],
   "scripts": {
     "build": "node scripts/build-dist.js",
