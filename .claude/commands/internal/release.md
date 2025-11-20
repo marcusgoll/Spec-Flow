@@ -19,7 +19,7 @@ GitHub authentication: !`gh auth status >/dev/null 2>&1 && echo "✅ Authenticat
 
 Git remote configured: !`git remote -v | grep -q origin && echo "✅ Configured" || echo "❌ Not configured"`
 
-Recent commits (for version bump): !`git log $(git describe --tags --abbrev=0 2>/dev/null || echo "--all")..HEAD --pretty=format:"%s" 2>/dev/null | head -10`
+Recent commits (last 10): !`git log -10 --pretty=format:"%s" 2>/dev/null || echo "No commits found"`
 </context>
 
 <objective>
