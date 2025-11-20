@@ -1,6 +1,6 @@
 ---
 name: implement-epic
-description: Execute multiple sprints in parallel based on dependency graph from sprint-plan.xml for epic workflows
+description: Execute multiple sprints in parallel based on dependency graph from sprint-plan.md for epic workflows
 argument-hint: [epic-slug]
 allowed-tools: [Read, Write, Edit, Grep, Glob, Bash(git add:*), Bash(git commit:*), Bash(git status:*), Task]
 ---
@@ -14,13 +14,13 @@ allowed-tools: [Read, Write, Edit, Grep, Glob, Bash(git add:*), Bash(git commit:
 
 **Epic Directory**: !`dir /b /ad epics 2>$null | head -1 || echo "none"`
 
-**Sprint Plan**: @epics/*/sprint-plan.xml
+**Sprint Plan**: @epics/*/sprint-plan.md
 
-**Total Sprints**: !`grep -c "<sprint id=" epics/*/sprint-plan.xml 2>$null || echo "0"`
+**Total Sprints**: !`grep -c "^## Sprint S" epics/*/sprint-plan.md 2>$null || echo "0"`
 
-**Execution Layers**: !`grep -c "<layer num=" epics/*/sprint-plan.xml 2>$null || echo "0"`
+**Execution Layers**: !`grep -c "^| Layer |" epics/*/sprint-plan.md 2>$null || echo "0"`
 
-**Locked Contracts**: !`grep -c "<api_contract>" epics/*/sprint-plan.xml 2>$null || echo "0"`
+**Locked Contracts**: !`grep -c "^####.*Contract" epics/*/sprint-plan.md 2>$null || echo "0"`
 
 **Git Status**: !`git status --short 2>$null || echo "clean"`
 
@@ -35,7 +35,7 @@ allowed-tools: [Read, Write, Edit, Grep, Glob, Bash(git add:*), Bash(git commit:
 Execute multiple sprints in parallel based on dependency graph for epic workflows.
 
 Parallel sprint execution workflow:
-1. Detect epic workspace and load sprint-plan.xml
+1. Detect epic workspace and load sprint-plan.md
 2. Validate sprint directories, tasks, and contract files
 3. Execute layers sequentially (sprints within layer run in parallel)
 4. Launch specialist agents per sprint subsystem
@@ -58,7 +58,7 @@ Parallel sprint execution workflow:
 **CRITICAL**: Follow these rules to prevent epic execution errors.
 
 1. **Never assume sprint plan structure**
-   - Always Read sprint-plan.xml to verify structure
+   - Always Read sprint-plan.md to verify structure
    - Quote actual layer dependencies and sprint IDs
    - Verify sprint directories exist before launching agents
 
@@ -92,20 +92,20 @@ Parallel sprint execution workflow:
 
 **Verify epic workspace:**
 ```bash
-# Check for sprint-plan.xml
-if [ ! -f "epics/*/sprint-plan.xml" ]; then
+# Check for sprint-plan.md
+if [ ! -f "epics/*/sprint-plan.md" ]; then
   echo "ERROR: No epic workspace detected"
-  echo "Expected: epics/*/sprint-plan.xml"
+  echo "Expected: epics/*/sprint-plan.md"
   exit 1
 fi
 
-EPIC_DIR=$(dirname $(find epics -name "sprint-plan.xml" | head -1))
+EPIC_DIR=$(dirname $(find epics -name "sprint-plan.md" | head -1))
 echo "Epic Directory: $EPIC_DIR"
 ```
 
-**Read sprint-plan.xml:**
+**Read sprint-plan.md:**
 ```javascript
-const sprintPlan = readXML(`${EPIC_DIR}/sprint-plan.xml`);
+const sprintPlan = await Read(`${EPIC_DIR}/sprint-plan.md`);
 
 const metadata = sprintPlan.sprint_plan.metadata;
 const sprints = sprintPlan.sprint_plan.sprints.sprint;
@@ -228,7 +228,7 @@ Execute Sprint {SPRINT_ID}: {SPRINT_NAME}
 {IF contracts_to_lock}
 - Lock these contracts (producer role):
   {LIST contracts_to_lock}
-- Generate OpenAPI 3.0 specs from plan.xml API design section
+- Generate OpenAPI 3.0 specs from plan.md API design section
 - Write to: {EPIC_DIR}/contracts/*.yaml
 {ENDIF}
 
@@ -248,12 +248,37 @@ Execute Sprint {SPRINT_ID}: {SPRINT_NAME}
    - Refactor: Improve without changing behavior
    - Commit: Atomic commit per task
 4. Run sprint-level test suite
-5. Update sprint status in workflow-state.yaml
+5. **Update sprint workflow-state.yaml** (CRITICAL - must happen after completion):
+   ```yaml
+   # {EPIC_DIR}/sprints/{SPRINT_ID}/workflow-state.yaml
+   sprint:
+     id: {SPRINT_ID}
+     status: completed  # or failed if tests fail
+     started_at: {ISO_TIMESTAMP}
+     completed_at: {ISO_TIMESTAMP}
+     duration_hours: {ACTUAL_HOURS}
+
+   tasks:
+     total: {TOTAL_TASKS}
+     completed: {COMPLETED_TASKS}
+     failed: {FAILED_TASKS}
+
+   tests:
+     total: {TOTAL_TESTS}
+     passed: {PASSED_TESTS}
+     failed: {FAILED_TESTS}
+     coverage_percent: {COVERAGE}
+
+   contracts:
+     locked: [{LIST_OF_CONTRACTS}]
+     consumed: [{LIST_OF_CONTRACTS}]
+     violations: 0  # Must be 0 to proceed
+   ```
 
 **Requirements:**
 - TDD strictly enforced (tests before code)
 - Atomic commits per task (rollback-friendly)
-- Pattern consistency with plan.xml
+- Pattern consistency with plan.md
 - Anti-duplication checks (scan before creating)
 - Contract compliance verification
 - Performance benchmarks captured
@@ -342,6 +367,15 @@ if (layerResults.contract_violations.length > 0) {
 log(`✅ Layer ${layerNum} Results:`);
 log(`  Sprints: ${layerResults.sprints_completed}`);
 log(`  Tasks: ${layerResults.total_tasks}`);
+
+// **CRITICAL: Update epic-level workflow-state.yaml after layer completion**
+const epicState = readYAML(`${EPIC_DIR}/workflow-state.yaml`);
+epicState.layers.completed += 1;
+epicState.sprints.completed += layerResults.sprints_completed;
+
+writeYAML(`${EPIC_DIR}/workflow-state.yaml`, epicState);
+
+log(`📊 Epic Progress: Layer ${epicState.layers.completed}/${epicState.layers.total} complete`);
 log(`  Tests: ${layerResults.total_tests}`);
 log(`  Duration: ${layerResults.duration_hours}h`);
 log(`  Contracts Locked: ${layerResults.contracts_locked.length}`);
@@ -461,7 +495,7 @@ Next: /optimize (quality gates + apply audit recommendations)
 **Epic implementation successfully completed when:**
 
 1. **All layers executed**:
-   - All execution layers from sprint-plan.xml processed sequentially
+   - All execution layers from sprint-plan.md processed sequentially
    - Parallel sprints within each layer completed successfully
    - No failed or blocked sprints remain
 
@@ -495,9 +529,9 @@ Next: /optimize (quality gates + apply audit recommendations)
 <verification>
 **Before marking epic implementation complete, verify:**
 
-1. **Read sprint-plan.xml execution layers**:
+1. **Read sprint-plan.md execution layers**:
    ```bash
-   grep "<layer num=" epics/*/sprint-plan.xml
+   grep "^| Layer |" epics/*/sprint-plan.md
    ```
    All layers should be processed
 
@@ -589,7 +623,7 @@ Launch all parallel sprints in SINGLE message with multiple Task tool calls.
 ### Contract Workflow
 
 **Producer role** (locks contracts):
-1. Read API design from plan.xml
+1. Read API design from plan.md
 2. Generate OpenAPI 3.0 spec
 3. Write to epics/*/contracts/*.yaml
 4. Implement API following spec

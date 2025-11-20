@@ -100,8 +100,8 @@ function invokeTaskTool(
   reason: string
 ): void {
   // SILENT MODE: Write to log file instead of console to avoid infinite loops
-  const logDir = join(process.env.CLAUDE_PROJECT_DIR || process.cwd(), '.spec-flow', 'cache');
-  const logFile = join(logDir, 'agent-routing.log');
+  const logDir = path.join(process.env.CLAUDE_PROJECT_DIR || process.cwd(), '.spec-flow', 'cache');
+  const logFile = path.join(logDir, 'agent-routing.log');
 
   const logEntry = `[${new Date().toISOString()}] Route: ${specialist} (${reason})\n`;
 

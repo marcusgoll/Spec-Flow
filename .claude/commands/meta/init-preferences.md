@@ -1,0 +1,575 @@
+---
+name: init-preferences
+description: Interactive wizard to configure user preferences for command defaults and behavior
+argument-hint: [--reset] (optional flag to reset to defaults)
+allowed-tools: [Read, Write, AskUserQuestion]
+version: 1.0
+created: 2025-11-20
+---
+
+<objective>
+Guide users through interactive preference configuration to customize Spec-Flow command defaults and behavior.
+
+**What it configures:**
+- Command default modes (/epic, /tasks, /init-project, /run-prompt)
+- UI preferences (usage stats, last-used recommendations)
+- Automation behavior (CI/CD defaults)
+
+**Output:**
+- Creates/updates `.spec-flow/config/user-preferences.yaml`
+- Provides configuration summary
+- Shows example commands using new preferences
+
+**Flags:**
+- `--reset`: Reset all preferences to defaults (interactive confirmation)
+</objective>
+
+<context>
+Existing preferences: @.spec-flow/config/user-preferences.yaml
+Preference schema: @.spec-flow/config/user-preferences-schema.yaml
+</context>
+
+<process>
+### Step 0: Check for Reset Flag
+
+**If $ARGUMENTS contains "--reset":**
+
+1. Read existing preferences to show what will be reset
+2. Use AskUserQuestion to confirm:
+   ```
+   Question: "Reset all preferences to defaults?"
+   Options:
+     - "Yes, reset everything" - All preferences will be set to defaults
+     - "No, keep current preferences" - Cancel reset operation
+   ```
+
+3. If confirmed:
+   - Copy `.spec-flow/config/user-preferences.example.yaml` to `.spec-flow/config/user-preferences.yaml`
+   - Display: "✓ Preferences reset to defaults"
+   - End command
+
+4. If cancelled: End command
+
+### Step 1: Welcome and Introduction
+
+Display welcome message:
+
+```
+╔════════════════════════════════════════════════════════════════╗
+║  Spec-Flow Preference Configuration Wizard                     ║
+╚════════════════════════════════════════════════════════════════╝
+
+This wizard will help you configure default behavior for Spec-Flow commands.
+
+Your preferences are saved to: .spec-flow/config/user-preferences.yaml
+
+You can always:
+- Re-run this wizard to update preferences
+- Edit the config file directly
+- Override preferences with command-line flags
+- Reset with: /init-preferences --reset
+
+Let's get started! 🚀
+```
+
+### Step 2: Command Preferences (Round 1 - Epic & Tasks)
+
+**Use AskUserQuestion with 2 questions:**
+
+**Question 1: Epic Command Default Mode**
+```json
+{
+  "question": "What default mode should /epic use?",
+  "header": "/epic mode",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "Interactive (recommended for new users)",
+      "description": "Pause at spec review and plan review for manual approval. Safer for learning the workflow."
+    },
+    {
+      "label": "Auto (recommended for experienced users)",
+      "description": "Skip all prompts and run until blocker. Faster for experienced users who trust the workflow."
+    }
+  ]
+}
+```
+
+**Question 2: Tasks Command Default Mode**
+```json
+{
+  "question": "What default mode should /tasks use?",
+  "header": "/tasks mode",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "Standard (recommended for most projects)",
+      "description": "Generate TDD tasks for direct implementation. Best for API-heavy or backend-focused features."
+    },
+    {
+      "label": "UI-first (recommended for design-heavy projects)",
+      "description": "Generate HTML mockups first, then implementation tasks. Best for UI-heavy features requiring design approval."
+    }
+  ]
+}
+```
+
+### Step 3: Command Preferences (Round 2 - Init-Project & Run-Prompt)
+
+**Use AskUserQuestion with 2 questions:**
+
+**Question 3: Init-Project Command Default Mode**
+```json
+{
+  "question": "What default mode should /init-project use?",
+  "header": "/init-project mode",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "Interactive (recommended)",
+      "description": "Run questionnaire (15-48 questions depending on --with-design). Best for most users."
+    },
+    {
+      "label": "CI (for automation only)",
+      "description": "Non-interactive mode using environment variables. Only use if you're automating project initialization in CI/CD."
+    }
+  ]
+}
+```
+
+**Question 4: Should /init-project include design system by default?**
+```json
+{
+  "question": "Include design system setup (--with-design) by default?",
+  "header": "Design system",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "No (recommended for most projects)",
+      "description": "Skip design system setup. You can always add it later with /init-project --with-design --update."
+    },
+    {
+      "label": "Yes (for design-focused projects)",
+      "description": "Always include design tokens, brand guidelines, and accessibility standards. Adds ~30 questions to initialization."
+    }
+  ]
+}
+```
+
+### Step 4: Command Preferences (Round 3 - Run-Prompt)
+
+**Use AskUserQuestion with 1 question:**
+
+**Question 5: Run-Prompt Command Default Strategy**
+```json
+{
+  "question": "What execution strategy should /run-prompt use for multiple prompts?",
+  "header": "/run-prompt strategy",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "Auto-detect (recommended)",
+      "description": "Analyze prompt dependencies and choose parallel or sequential automatically. Safest and usually fastest."
+    },
+    {
+      "label": "Parallel (fast but risky)",
+      "description": "Always run prompts simultaneously. Faster but can cause conflicts if prompts modify the same files."
+    },
+    {
+      "label": "Sequential (safe but slow)",
+      "description": "Always run prompts one-by-one. Slowest but guarantees no conflicts."
+    }
+  ]
+}
+```
+
+### Step 5: UI Preferences
+
+**Use AskUserQuestion with 2 questions:**
+
+**Question 6: Show Usage Statistics**
+```json
+{
+  "question": "Show usage statistics in command prompts?",
+  "header": "Usage stats",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "Yes (recommended)",
+      "description": "Display 'used 8/10 times' in mode selection prompts. Helps you see your own patterns."
+    },
+    {
+      "label": "No (minimal UI)",
+      "description": "Hide usage statistics. Cleaner but less informative."
+    }
+  ]
+}
+```
+
+**Question 7: Recommend Last-Used Option**
+```json
+{
+  "question": "Mark last-used option with ⭐ in prompts?",
+  "header": "Last-used marker",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "Yes (recommended)",
+      "description": "Show ⭐ next to your most recent choice. Makes it easy to repeat common workflows."
+    },
+    {
+      "label": "No (treat all options equally)",
+      "description": "Don't highlight any option. All choices appear the same."
+    }
+  ]
+}
+```
+
+### Step 6: Automation Preferences
+
+**Use AskUserQuestion with 1 question:**
+
+**Question 8: CI Mode Default**
+```json
+{
+  "question": "Is this primarily used in CI/CD automation?",
+  "header": "Automation mode",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "No (interactive use, recommended)",
+      "description": "Normal interactive mode. Commands will prompt for input when needed."
+    },
+    {
+      "label": "Yes (CI/CD only)",
+      "description": "Default to non-interactive mode. All commands assume --no-input. Only set this for fully automated environments."
+    }
+  ]
+}
+```
+
+### Step 7: Build Configuration Object
+
+**Map answers to preference structure:**
+
+```javascript
+// Map user-friendly answers to config values
+const preferences = {
+  commands: {
+    epic: {
+      default_mode: answer1.includes('Auto') ? 'auto' : 'interactive'
+    },
+    tasks: {
+      default_mode: answer2.includes('UI-first') ? 'ui-first' : 'standard'
+    },
+    'init-project': {
+      default_mode: answer3.includes('Interactive') ? 'interactive' : 'ci',
+      include_design: answer4.includes('Yes') ? true : false
+    },
+    'run-prompt': {
+      default_strategy: answer5.includes('Auto-detect') ? 'auto-detect'
+                      : answer5.includes('Parallel') ? 'parallel'
+                      : 'sequential'
+    }
+  },
+  automation: {
+    auto_approve_minor_changes: false,  // Always false for now
+    ci_mode_default: answer8.includes('Yes') ? true : false
+  },
+  ui: {
+    show_usage_stats: answer6.includes('Yes') ? true : false,
+    recommend_last_used: answer7.includes('Yes') ? true : false
+  }
+};
+```
+
+### Step 8: Write Configuration File
+
+**Write preferences to `.spec-flow/config/user-preferences.yaml`:**
+
+```yaml
+# Spec-Flow User Preferences
+# Generated by /init-preferences wizard on [TIMESTAMP]
+# Documentation: docs/configuration.md
+
+commands:
+  epic:
+    default_mode: [VALUE]
+
+  tasks:
+    default_mode: [VALUE]
+
+  init-project:
+    default_mode: [VALUE]
+    include_design: [VALUE]
+
+  run-prompt:
+    default_strategy: [VALUE]
+
+automation:
+  auto_approve_minor_changes: false
+  ci_mode_default: [VALUE]
+
+ui:
+  show_usage_stats: [VALUE]
+  recommend_last_used: [VALUE]
+```
+
+### Step 9: Display Configuration Summary
+
+**Show user-friendly summary:**
+
+```
+╔════════════════════════════════════════════════════════════════╗
+║  ✅ Preferences Configured Successfully                        ║
+╚════════════════════════════════════════════════════════════════╝
+
+Your preferences have been saved to:
+  .spec-flow/config/user-preferences.yaml
+
+┌─────────────────────────────────────────────────────────────────┐
+│ Command Defaults                                                │
+├─────────────────────────────────────────────────────────────────┤
+│ /epic           → [interactive|auto] mode                       │
+│ /tasks          → [standard|ui-first] mode                      │
+│ /init-project   → [interactive|ci] mode                         │
+│                   [with|without] design system                  │
+│ /run-prompt     → [auto-detect|parallel|sequential] strategy   │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ UI Preferences                                                  │
+├─────────────────────────────────────────────────────────────────┤
+│ Show usage stats:        [Yes|No]                              │
+│ Recommend last-used:     [Yes|No]                              │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ Automation                                                      │
+├─────────────────────────────────────────────────────────────────┤
+│ CI mode default:         [Yes|No]                              │
+└─────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+How Your Commands Will Behave:
+
+Example 1: /epic "add authentication"
+  → Runs in [interactive|auto] mode by default
+  → Override: /epic "add authentication" --[auto|interactive]
+
+Example 2: /tasks
+  → Generates [standard|ui-first] tasks by default
+  → Override: /tasks --[ui-first|standard]
+
+Example 3: /init-project
+  → Uses [interactive|ci] mode
+  → [Includes|Skips] design system (--with-design)
+  → Override: /init-project --[interactive|ci]
+
+Example 4: /run-prompt 005 006 007
+  → Uses [auto-detect|parallel|sequential] strategy
+  → Override: /run-prompt 005 006 007 --[parallel|sequential]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Next Steps:
+
+✓ Your preferences are active immediately
+✓ Commands will remember your mode choices over time
+✓ Override any preference with flags when needed
+✓ Edit .spec-flow/config/user-preferences.yaml directly anytime
+✓ Re-run /init-preferences to change preferences
+✓ Run /init-preferences --reset to restore defaults
+
+Happy building! 🚀
+```
+
+</process>
+
+<verification>
+Before completing, verify:
+- user-preferences.yaml was created/updated successfully
+- File contains valid YAML syntax
+- All 8 questions were answered
+- Configuration summary matches user selections
+- File permissions allow reading/writing
+</verification>
+
+<success_criteria>
+- ✅ User completed all 8 preference questions
+- ✅ Configuration file created at .spec-flow/config/user-preferences.yaml
+- ✅ Valid YAML format with all required fields
+- ✅ Summary displayed showing configured preferences
+- ✅ Example commands shown demonstrating new behavior
+</success_criteria>
+
+<examples>
+
+## Example 1: First-Time User (Interactive Preferences)
+
+**User runs:** `/init-preferences`
+
+**Wizard shows:**
+```
+╔════════════════════════════════════════════════════════════════╗
+║  Spec-Flow Preference Configuration Wizard                     ║
+╚════════════════════════════════════════════════════════════════╝
+...
+```
+
+**User answers 8 questions:**
+1. Epic mode: Interactive ✓
+2. Tasks mode: Standard ✓
+3. Init-project mode: Interactive ✓
+4. Include design: No ✓
+5. Run-prompt strategy: Auto-detect ✓
+6. Show usage stats: Yes ✓
+7. Recommend last-used: Yes ✓
+8. CI mode: No ✓
+
+**Result:**
+```yaml
+commands:
+  epic:
+    default_mode: interactive
+  tasks:
+    default_mode: standard
+  init-project:
+    default_mode: interactive
+    include_design: false
+  run-prompt:
+    default_strategy: auto-detect
+automation:
+  ci_mode_default: false
+ui:
+  show_usage_stats: true
+  recommend_last_used: true
+```
+
+## Example 2: Power User (Automation-Focused)
+
+**User runs:** `/init-preferences`
+
+**User answers:**
+1. Epic mode: Auto ✓
+2. Tasks mode: Standard ✓
+3. Init-project mode: Interactive ✓
+4. Include design: No ✓
+5. Run-prompt strategy: Parallel ✓
+6. Show usage stats: No ✓
+7. Recommend last-used: No ✓
+8. CI mode: No ✓
+
+**Result:**
+```yaml
+commands:
+  epic:
+    default_mode: auto
+  tasks:
+    default_mode: standard
+  init-project:
+    default_mode: interactive
+    include_design: false
+  run-prompt:
+    default_strategy: parallel
+automation:
+  ci_mode_default: false
+ui:
+  show_usage_stats: false
+  recommend_last_used: false
+```
+
+## Example 3: Design-Focused User
+
+**User runs:** `/init-preferences`
+
+**User answers:**
+1. Epic mode: Interactive ✓
+2. Tasks mode: UI-first ✓
+3. Init-project mode: Interactive ✓
+4. Include design: Yes ✓
+5. Run-prompt strategy: Auto-detect ✓
+6. Show usage stats: Yes ✓
+7. Recommend last-used: Yes ✓
+8. CI mode: No ✓
+
+**Result:**
+```yaml
+commands:
+  epic:
+    default_mode: interactive
+  tasks:
+    default_mode: ui-first
+  init-project:
+    default_mode: interactive
+    include_design: true
+  run-prompt:
+    default_strategy: auto-detect
+automation:
+  ci_mode_default: false
+ui:
+  show_usage_stats: true
+  recommend_last_used: true
+```
+
+## Example 4: Reset Preferences
+
+**User runs:** `/init-preferences --reset`
+
+**Wizard shows:**
+```
+Current preferences will be reset to defaults:
+  - /epic: interactive mode
+  - /tasks: standard mode
+  - /init-project: interactive mode, no design
+  - /run-prompt: auto-detect strategy
+  - UI: show stats, recommend last-used
+  - Automation: interactive (not CI mode)
+
+Reset all preferences to defaults?
+  1. Yes, reset everything
+  2. No, keep current preferences
+```
+
+**User selects:** "Yes, reset everything"
+
+**Result:**
+```
+✓ Preferences reset to defaults
+✓ File: .spec-flow/config/user-preferences.yaml
+
+All command preferences have been restored to defaults.
+Run /init-preferences again to customize.
+```
+
+</examples>
+
+<error_handling>
+
+**If user-preferences.yaml already exists:**
+- Show message: "Found existing preferences. This wizard will update your configuration."
+- Proceed normally (overwrite with new preferences)
+
+**If .spec-flow/config/ directory doesn't exist:**
+- Create directory automatically
+- Proceed with wizard
+
+**If write fails (permissions):**
+- Show error: "Failed to write preferences file. Check file permissions."
+- Display configuration as JSON so user can manually create file
+
+**If user cancels wizard (e.g., selects "Other" and cancels):**
+- Show message: "Preference configuration cancelled. No changes made."
+- Existing preferences remain unchanged
+
+</error_handling>
+
+<meta_instructions>
+- Use AskUserQuestion for all 8 questions (3 rounds: 2+2+1+2+1)
+- Write valid YAML with proper indentation (2 spaces)
+- Include timestamp comment at top of generated file
+- Use clear, user-friendly language in all prompts
+- Provide examples showing how preferences affect behavior
+- Validate that all answers were received before writing file
+</meta_instructions>

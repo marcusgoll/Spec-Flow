@@ -41,7 +41,7 @@ This command updates CHANGELOG.md, README.md, help docs, GitHub milestones/relea
    The finalize-workflow.sh script performs:
 
    a. **Epic workflows only** (v5.0+):
-      - Generate walkthrough.xml with velocity metrics
+      - Generate walkthrough.md with velocity metrics
       - Calculate sprint results and lessons learned
       - Run post-mortem audit (/audit-workflow --post-mortem)
       - Detect patterns across epics (if 2-3+ completed)
@@ -138,13 +138,13 @@ If finalization is interrupted, simply re-run `/finalize`. The script will skip 
 <epic_walkthrough>
 **Epic workflows only** (v5.0+):
 
-When /finalize detects an epic workflow (presence of `epics/*/epic-spec.xml`), it generates a comprehensive walkthrough before standard finalization.
+When /finalize detects an epic workflow (presence of `epics/*/epic-spec.md`), it generates a comprehensive walkthrough before standard finalization.
 
 **Walkthrough generation**:
-1. Load all epic artifacts (epic-spec.xml, research.xml, plan.xml, sprint-plan.xml, workflow-state.yaml, audit-report.xml)
+1. Load all epic artifacts (epic-spec.md, research.md, plan.md, sprint-plan.md, workflow-state.yaml, audit-report.xml)
 2. Calculate velocity metrics (expected vs actual multiplier, time saved)
 3. Extract sprint results (tasks completed, duration, tests passed)
-4. Generate walkthrough.xml and walkthrough.md using .spec-flow/templates/walkthrough.xml
+4. Generate walkthrough.md using .spec-flow/templates/walkthrough.md
 5. Run post-mortem audit for final analysis
 6. Detect patterns if 2-3+ epics completed
 7. Offer workflow healing via /heal-workflow

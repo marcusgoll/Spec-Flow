@@ -1,0 +1,25 @@
+# Spec-Flow User Preferences
+# Customize command defaults and behavior to match your workflow
+# Documentation: docs/configuration.md
+
+commands:
+  epic:
+    default_mode: interactive
+
+  tasks:
+    default_mode: standard
+
+  init-project:
+    default_mode: interactive
+    include_design: false
+
+  run-prompt:
+    default_strategy: auto-detect
+
+automation:
+  auto_approve_minor_changes: false
+  ci_mode_default: false
+
+ui:
+  show_usage_stats: true
+  recommend_last_used: true

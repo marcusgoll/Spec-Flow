@@ -32,7 +32,7 @@ Differences from /feature:
 - /plan uses meta-prompting (research → plan via sub-agents)
 - /tasks builds dependency graph, locks API contracts
 - /implement-epic executes sprints in parallel layers
-- Artifacts: XML (epic-spec.xml, plan.xml, sprint-plan.xml, walkthrough.md)
+- Artifacts: Markdown (epic-spec.md, plan.md, sprint-plan.md, walkthrough.md)
 - Auto-triggers /audit-workflow after implementation
 
 ### UI-First Workflow
@@ -87,10 +87,10 @@ Foundation blocks all other features
 
 ### Phase Commands
 - /feature "name" — Create feature spec
-- /epic "goal" — Multi-sprint complex work
+- /epic "goal" [--auto | --interactive | --no-input] — Multi-sprint complex work
 - /clarify — Reduce ambiguity via AskUserQuestion
 - /plan — Generate design artifacts
-- /tasks — Generate concrete TDD tasks (--ui-first for mockups)
+- /tasks [--ui-first | --standard | --no-input] — Generate concrete TDD tasks
 - /validate — Cross-artifact consistency
 - /implement — Execute tasks with TDD (feature workflow)
 - /implement-epic — Execute sprints in parallel layers (epic workflow)
@@ -110,7 +110,7 @@ Foundation blocks all other features
 
 ### Context Management
 - /create-prompt — Generate Claude-to-Claude prompts
-- /run-prompt <N> — Execute prompts in sub-agents (--parallel, --sequential)
+- /run-prompt <N> [--auto-detect | --parallel | --sequential | --no-input] — Execute prompts in sub-agents
 - /whats-next — Handoff document for fresh context
 - /add-to-todos — Capture ideas for later
 - /check-todos — Resume from backlog
@@ -119,13 +119,78 @@ Foundation blocks all other features
 - /heal-skill — Apply skill corrections
 
 ### Project & Roadmap
-- /init-project — Initialize design docs
-- /init-project --with-design — Include design system
+- /init-project [--interactive | --ci | --no-input] [--with-design] — Initialize design docs
+- /init-preferences [--reset] — Configure command defaults (one-time setup)
 - /roadmap — Manage features via GitHub Issues (brainstorm, prioritize, track)
 - /help — Context-aware workflow guidance (--verbose for state details)
 
 ### Infrastructure (Deprecated/Removed)
 Contract, flag, metrics, scheduler commands removed in v6.0+
+
+## Preference System (v7.0+)
+
+Commands use a 3-tier preference system to eliminate flag memorization:
+
+1. **Config File** (`.spec-flow/config/user-preferences.yaml`) - Set once, use forever
+2. **Command History** (`.spec-flow/memory/command-history.yaml`) - Learns from usage
+3. **Command Flags** - Explicit overrides
+
+### Setup
+
+Run once to configure defaults:
+```
+/init-preferences
+```
+
+8-question wizard configures:
+- Command default modes (/epic, /tasks, /init-project, /run-prompt)
+- UI preferences (show usage stats, recommend last-used)
+- Automation behavior (CI/CD mode)
+
+### How It Works
+
+**Without preferences:**
+```
+/epic "add auth"
+→ Prompts: "Run in auto or interactive mode?"
+```
+
+**With preferences (default: interactive):**
+```
+/epic "add auth"
+→ Runs in interactive mode (no prompt)
+```
+
+**After learning (used auto 8/10 times):**
+```
+/epic "add auth"
+→ Suggests: "Auto (last used, 8/10 times) ⭐"
+```
+
+**Override with flags:**
+```
+/epic "add auth" --auto
+→ Uses auto mode (ignores preferences)
+```
+
+**CI/CD automation:**
+```
+/epic "add auth" --no-input
+→ Non-interactive mode for automation
+```
+
+### Configuration Files
+
+- `.spec-flow/config/user-preferences.yaml` - User configuration
+- `.spec-flow/config/user-preferences.example.yaml` - Template
+- `.spec-flow/config/user-preferences-schema.yaml` - Validation schema
+- `.spec-flow/memory/command-history.yaml` - Usage tracking
+
+### Universal Flags
+
+All commands support:
+- `--no-input` - Disable all prompts for CI/CD
+- Mode-specific flags override preferences
 
 ## Artifacts by Command
 
@@ -142,7 +207,7 @@ Contract, flag, metrics, scheduler commands removed in v6.0+
 | /ship-prod | production-ship-report.md, GitHub release |
 | /deploy-prod | production-ship-report.md |
 | /build-local | local-build-report.md |
-| /epic | epic-spec.xml, plan.xml, sprint-plan.xml, walkthrough.md |
+| /epic | epic-spec.md, plan.md, sprint-plan.md, walkthrough.md |
 
 ## State Management
 
@@ -267,7 +332,7 @@ Batch 2-3 related questions, multiSelect for subsystems, conditional rounds for 
 
 /implement reads: component-governance.md, visual-language.md
 
-/implement-epic reads: sprint-plan.xml, epic-spec.xml, plan.xml, locked API contracts
+/implement-epic reads: sprint-plan.md, epic-spec.md, plan.md, locked API contracts
 
 ## References
 

@@ -1,0 +1,45 @@
+# Command Usage History
+# Automatically tracks command mode usage to learn user preferences
+# DO NOT EDIT MANUALLY - Updated automatically by commands
+
+# Usage pattern: Commands record their mode selection after execution
+# Format:
+#   command_name:
+#     last_used_mode: <mode>
+#     usage_count:
+#       <mode1>: <count>
+#       <mode2>: <count>
+#     last_updated: <ISO 8601 timestamp>
+
+epic:
+  last_used_mode: null
+  usage_count:
+    auto: 0
+    interactive: 0
+  last_updated: null
+
+tasks:
+  last_used_mode: null
+  usage_count:
+    standard: 0
+    ui-first: 0
+  last_updated: null
+
+init-project:
+  last_used_mode: null
+  usage_count:
+    interactive: 0
+    ci: 0
+  last_updated: null
+
+run-prompt:
+  last_used_mode: null
+  usage_count:
+    auto-detect: 0
+    parallel: 0
+    sequential: 0
+  last_updated: null
+
+# Metadata
+schema_version: "1.0"
+created_at: null

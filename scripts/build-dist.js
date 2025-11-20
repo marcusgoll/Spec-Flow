@@ -77,6 +77,16 @@ const BUILD_CONFIG = {
     '.claude/commands/epic/epic.md',
     '.claude/skills/clarification-phase/references/question-bank.md',
     '.claude/skills/epic/references/question-bank.md',
+    '.spec-flow/config/user-preferences.yaml',
+    '.spec-flow/config/user-preferences-schema.yaml',
+    '.spec-flow/config/user-preferences.example.yaml',
+    '.spec-flow/memory/command-history.yaml',
+    '.spec-flow/scripts/utils/load-preferences.ps1',
+    '.spec-flow/scripts/utils/load-preferences.sh',
+    '.spec-flow/scripts/utils/load-command-history.ps1',
+    '.spec-flow/scripts/utils/load-command-history.sh',
+    '.spec-flow/scripts/utils/track-command-usage.ps1',
+    '.spec-flow/scripts/utils/track-command-usage.sh',
     '.spec-flow/scripts/bash/create-new-feature.sh',
     '.spec-flow/scripts/powershell/create-new-feature.ps1',
     '.spec-flow/templates/spec-template.md',
@@ -84,6 +94,9 @@ const BUILD_CONFIG = {
     '.spec-flow/templates/tasks-template.md',
     '.spec-flow/templates/epic-spec.xml',
     '.spec-flow/templates/sprint-plan.xml',
+    '.spec-flow/templates/epic-spec.md',
+    '.spec-flow/templates/sprint-plan.md',
+    '.spec-flow/templates/walkthrough.md',
     'package.json',
     'README.md',
     'CLAUDE.md'
@@ -361,7 +374,7 @@ function copyEssentialFiles() {
 
   // Copy .spec-flow directory (selective)
   console.log('  Copying .spec-flow/...');
-  const specFlowDirs = ['memory', 'scripts', 'templates'];
+  const specFlowDirs = ['config', 'memory', 'scripts', 'templates'];
   for (const dir of specFlowDirs) {
     const srcPath = path.join(BUILD_CONFIG.sourceDir, '.spec-flow', dir);
     const destPath = path.join(BUILD_CONFIG.distDir, '.spec-flow', dir);

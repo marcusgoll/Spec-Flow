@@ -19,7 +19,7 @@ Spec exists: !`test -f specs/*/spec.md && echo "✅ Found" || echo "❌ Missing"
 <objective>
 Generate implementation plan for $ARGUMENTS using research-driven design.
 
-For **epics**: Uses meta-prompting workflow to generate research.xml → plan.xml via isolated sub-agents
+For **epics**: Uses meta-prompting workflow to generate research.md → plan.md via isolated sub-agents
 For **features**: Uses traditional planning workflow with project docs integration
 
 This ensures architecture decisions are grounded in existing codebase patterns and project documentation.
@@ -45,16 +45,16 @@ This ensures architecture decisions are grounded in existing codebase patterns a
    The plan-workflow.sh script performs:
 
    a. **Detect workspace type**: Epic vs Feature
-      - Epic: If `epics/*/epic-spec.xml` exists
+      - Epic: If `epics/*/epic-spec.md` exists
       - Feature: Otherwise
 
    b. **Epic workflows only** (Meta-prompting pipeline):
       - Generate research prompt via `/create-prompt`
-      - Execute research via `/run-prompt` → research.xml
+      - Execute research via `/run-prompt` → research.md
       - Generate plan prompt via `/create-prompt`
-      - Execute plan via `/run-prompt` → plan.xml
-      - Copy XML outputs to epic workspace
-      - Validate XML structure
+      - Execute plan via `/run-prompt` → plan.md
+      - Copy markdown outputs to epic workspace
+      - Validate markdown structure
 
    c. **Feature workflows** (Traditional planning):
       - Load all 8 project docs (if available)
@@ -78,7 +78,7 @@ This ensures architecture decisions are grounded in existing codebase patterns a
    - **Decision tree**: Present next-step options (UI: /design-variations or /tasks, Backend: /tasks)
 
 3. **Review generated artifacts**:
-   - Epic: `research.xml`, `plan.xml`
+   - Epic: `research.md`, `plan.md`
    - Feature: `research.md` (if epic), `plan.md`, `data-model.md`, `contracts/api.yaml`, `quickstart.md`, `error-log.md`
 
 4. **Verify constitution compliance** (8 core standards):
@@ -97,8 +97,8 @@ This ensures architecture decisions are grounded in existing codebase patterns a
 <verification>
 Before completing, verify:
 - Workspace type correctly detected (epic vs feature)
-- All required artifacts generated (research.xml/plan.xml for epics, or plan.md/data-model.md/etc for features)
-- XML validation passed (epic workflows only)
+- All required artifacts generated (research.md/plan.md for epics, or plan.md/data-model.md/etc for features)
+- Markdown validation passed (epic workflows only)
 - Constitution check passed (all 8 standards considered)
 - HITL gates respected (unless --yes or --skip-clarify)
 - Git commit successful (if auto-commit enabled)
@@ -107,9 +107,9 @@ Before completing, verify:
 
 <success_criteria>
 **Epic workflows**:
-- research.xml exists and validates
-- plan.xml exists and validates
-- XML files contain required tags (<findings>, <recommendations>, <phases>, <constraints>)
+- research.md exists and validates
+- plan.md exists and validates
+- Markdown files contain required sections (Findings, Recommendations, Phases, Constraints)
 - Files copied to epic workspace
 
 **Feature workflows**:
@@ -203,40 +203,73 @@ See `.claude/skills/planning-phase/reference.md` for implementation details.
 <meta_prompting_workflow>
 **Epic workflows only** (v5.0+):
 
-When plan detects `epics/*/epic-spec.xml`, it uses meta-prompting to generate research and plan via isolated sub-agents.
+When plan detects `epics/*/epic-spec.md`, it uses meta-prompting to generate research and plan via isolated sub-agents.
 
 ### Workflow
 
 1. **Generate research prompt** via `/create-prompt "Research technical approach for: $EPIC_OBJECTIVE"`
-2. **Execute research** via `/run-prompt 001-$EPIC_SLUG-research` → research.xml
+2. **Execute research** via `/run-prompt 001-$EPIC_SLUG-research` → research.md
 3. **Generate plan prompt** via `/create-prompt "Create implementation plan based on research findings"`
-4. **Execute plan** via `/run-prompt 002-$EPIC_SLUG-plan` → plan.xml
-5. **Validate XML** structure and required tags
+4. **Execute plan** via `/run-prompt 002-$EPIC_SLUG-plan` → plan.md
+5. **Validate markdown** structure and required sections
 6. **Copy to epic workspace** and cleanup prompt artifacts
 
 ### Output Structure
 
-**research.xml**:
-```xml
-<research>
-  <findings category="...">...</findings>
-  <recommendations confidence="high|medium|low">...</recommendations>
-  <metadata>
-    <confidence level="...">...</confidence>
-    <dependencies>...</dependencies>
-    <open_questions>...</open_questions>
-  </metadata>
-</research>
+**research.md**:
+```markdown
+---
+epic_slug: {{EPIC_SLUG}}
+generated: {{TIMESTAMP}}
+---
+
+# Research Findings
+
+## Findings
+
+### {{CATEGORY}}
+{{FINDINGS}}
+
+## Recommendations
+
+**Confidence**: high|medium|low
+
+{{RECOMMENDATIONS}}
+
+## Metadata
+
+- **Confidence Level**: {{LEVEL}}
+- **Dependencies**: {{DEPS}}
+- **Open Questions**: {{QUESTIONS}}
 ```
 
-**plan.xml**:
-```xml
-<plan>
-  <architecture_decisions>...</architecture_decisions>
-  <phases>...</phases>
-  <risks severity="..." probability="...">...</risks>
-  <constraints>...</constraints>
-</plan>
+**plan.md**:
+```markdown
+---
+epic_slug: {{EPIC_SLUG}}
+generated: {{TIMESTAMP}}
+---
+
+# Implementation Plan
+
+## Architecture Decisions
+
+{{DECISIONS}}
+
+## Phases
+
+{{PHASES}}
+
+## Risks
+
+**Severity**: {{SEVERITY}}
+**Probability**: {{PROBABILITY}}
+
+{{RISKS}}
+
+## Constraints
+
+{{CONSTRAINTS}}
 ```
 
 See `.claude/skills/planning-phase/reference.md` for full meta-prompting workflow details.

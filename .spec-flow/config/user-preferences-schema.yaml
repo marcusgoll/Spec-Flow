@@ -1,0 +1,136 @@
+# User Preferences Schema
+# Defines the structure and validation rules for user-preferences.yaml
+
+schema_version: "1.0"
+description: "User preferences for Spec-Flow command defaults and behavior"
+
+properties:
+  commands:
+    type: object
+    description: "Command-specific preference overrides"
+    properties:
+      epic:
+        type: object
+        description: "Preferences for /epic command"
+        properties:
+          default_mode:
+            type: string
+            enum: [auto, interactive]
+            default: interactive
+            description: "Default execution mode (auto skips prompts, interactive pauses at reviews)"
+
+      tasks:
+        type: object
+        description: "Preferences for /tasks command"
+        properties:
+          default_mode:
+            type: string
+            enum: [standard, ui-first]
+            default: standard
+            description: "Default task generation mode (ui-first generates mockups first)"
+
+      init-project:
+        type: object
+        description: "Preferences for /init-project command"
+        properties:
+          default_mode:
+            type: string
+            enum: [interactive, ci]
+            default: interactive
+            description: "Default initialization mode (interactive uses questionnaire, ci uses env vars)"
+          include_design:
+            type: boolean
+            default: false
+            description: "Automatically include --with-design flag (design system setup)"
+
+      run-prompt:
+        type: object
+        description: "Preferences for /run-prompt command"
+        properties:
+          default_strategy:
+            type: string
+            enum: [auto-detect, parallel, sequential]
+            default: auto-detect
+            description: "Default execution strategy (auto-detect analyzes dependencies, parallel runs simultaneously, sequential runs one-by-one)"
+
+  automation:
+    type: object
+    description: "Automation and CI/CD behavior"
+    properties:
+      auto_approve_minor_changes:
+        type: boolean
+        default: false
+        description: "Automatically approve minor changes (formatting, comments, docs) without prompts"
+
+      ci_mode_default:
+        type: boolean
+        default: false
+        description: "Default to CI-friendly behavior (non-interactive, assumes --no-input)"
+
+  ui:
+    type: object
+    description: "User interface preferences"
+    properties:
+      show_usage_stats:
+        type: boolean
+        default: true
+        description: "Show command usage statistics in AskUserQuestion prompts (e.g., 'used 8/10 times')"
+
+      recommend_last_used:
+        type: boolean
+        default: true
+        description: "Mark last-used option with ⭐ in prompts"
+
+# Validation rules
+validation:
+  required_fields: []
+  optional_fields: [commands, automation, ui]
+
+# Migration notes
+migrations:
+  "1.0": "Initial schema version"
+
+# Examples
+examples:
+  - name: "Power user (always auto mode)"
+    config:
+      commands:
+        epic:
+          default_mode: auto
+        tasks:
+          default_mode: standard
+        run-prompt:
+          default_strategy: parallel
+      automation:
+        ci_mode_default: false
+      ui:
+        show_usage_stats: true
+        recommend_last_used: true
+
+  - name: "Design-focused user"
+    config:
+      commands:
+        epic:
+          default_mode: interactive
+        tasks:
+          default_mode: ui-first
+        init-project:
+          include_design: true
+      ui:
+        show_usage_stats: true
+
+  - name: "CI/CD automation"
+    config:
+      commands:
+        epic:
+          default_mode: auto
+        tasks:
+          default_mode: standard
+        init-project:
+          default_mode: ci
+      automation:
+        auto_approve_minor_changes: true
+        ci_mode_default: true
+      ui:
+        show_usage_stats: false
+        recommend_last_used: false

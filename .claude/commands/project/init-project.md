@@ -1,7 +1,9 @@
 ---
 description: Generate 8 project design documents (overview, architecture, tech-stack, data, API, capacity, deployment, workflow) via interactive questionnaire or config file
 allowed-tools: [Bash(.spec-flow/scripts/powershell/init-project.ps1:*), Bash(.spec-flow/scripts/bash/init-project.sh:*), Bash(git status:*), Bash(ls:*), Bash(cat:*), Bash(wc:*), Bash(test:*), Bash(jq:*), Bash(yq:*), Bash(gh:*), Read, AskUserQuestion]
-argument-hint: ["project-name"] [--with-design] [--update|--force|--write-missing-only] [--config FILE] [--ci] [--non-interactive]
+argument-hint: ["project-name"] [--with-design] [--update|--force|--write-missing-only] [--config FILE] [--ci | --no-input | --interactive]
+version: 2.0
+updated: 2025-11-20
 ---
 
 <context>
@@ -45,19 +47,86 @@ These docs establish the foundation for `/roadmap` and `/feature` workflows by d
 - Required tools: git, jq, yq (for config file mode)
 - Optional: gh (for foundation issue), markdownlint, lychee
 
-**Modes:**
-- Default: Interactive questionnaire (15 questions, ~10 min)
-- --with-design: Extended questionnaire (48 questions, ~20-30 min)
-- --update: Fill `[NEEDS CLARIFICATION]` sections only
-- --force: Overwrite all docs (destructive)
-- --ci: Non-interactive mode (environment variables)
-- --config: Load from JSON/YAML file
+**Mode Flags:**
+- `--interactive`: Interactive questionnaire mode (15 questions, ~10 min) - default
+- `--ci` / `--no-input`: Non-interactive CI/CD mode (reads environment variables)
+- `--with-design`: Include design system setup (extended questionnaire with 48 questions)
+
+**Operation Flags:**
+- `--update`: Fill `[NEEDS CLARIFICATION]` sections only (preserves existing content)
+- `--force`: Overwrite all docs completely (destructive)
+- `--write-missing-only`: Only create files that don't exist
+- `--config FILE`: Load answers from JSON/YAML config file
+
+**Preference System:**
+The command uses 3-tier preferences to determine mode:
+1. Config file: `.spec-flow/config/user-preferences.yaml` (default_mode, include_design)
+2. Command history: Learns from past usage
+3. Command-line flags: Explicit overrides
 </objective>
 
 <process>
-1. **Detect platform and mode** from $ARGUMENTS:
+0. **Load User Preferences (3-Tier System)**:
+
+   **Determine initialization mode using 3-tier preference system:**
+
+   a. **Load configuration file** (Tier 1 - lowest priority):
+      ```powershell
+      $preferences = & .spec-flow/scripts/utils/load-preferences.ps1 -Command "init-project"
+      $configMode = $preferences.commands.'init-project'.default_mode  # "interactive" or "ci"
+      $includeDesign = $preferences.commands.'init-project'.include_design  # true or false
+      ```
+
+   b. **Load command history** (Tier 2 - medium priority, overrides config):
+      ```powershell
+      $history = & .spec-flow/scripts/utils/load-command-history.ps1 -Command "init-project"
+
+      if ($history.last_used_mode -and $history.total_uses -gt 0) {
+          $preferredMode = $history.last_used_mode  # Use learned preference
+      } else {
+          $preferredMode = $configMode  # Fall back to config
+      }
+      ```
+
+   c. **Check command-line flags** (Tier 3 - highest priority):
+      ```javascript
+      const args = "$ARGUMENTS".trim();
+      const hasInteractiveFlag = args.includes('--interactive');
+      const hasCIFlag = args.includes('--ci');
+      const hasNoInput = args.includes('--no-input');
+      const hasWithDesign = args.includes('--with-design');
+
+      let selectedMode;
+      let designFlag = '';
+
+      // Determine mode
+      if (hasCIFlag || hasNoInput) {
+          selectedMode = 'ci';  // CI/automation override
+      } else if (hasInteractiveFlag) {
+          selectedMode = 'interactive';  // Explicit interactive override
+      } else {
+          selectedMode = preferredMode;  // Use config/history preference
+      }
+
+      // Determine design flag (from config or explicit flag)
+      if (hasWithDesign || (includeDesign && !hasNoInput)) {
+          designFlag = '--with-design';
+      }
+
+      // Build final arguments for script
+      const finalArgs = args + ' ' + designFlag;
+      ```
+
+   d. **Track usage for learning system**:
+      ```powershell
+      # Record selection after command completes successfully
+      & .spec-flow/scripts/utils/track-command-usage.ps1 -Command "init-project" -Mode $selectedMode
+      ```
+
+1. **Detect platform and mode** from processed arguments:
    - Platform: Windows → PowerShell, macOS/Linux → Bash
-   - Mode: Extract flags (--update, --force, --with-design, --ci, --config, etc.)
+   - Mode: Use selectedMode from preference system
+   - Flags: Pass through operational flags (--update, --force, --config, etc.)
    - Project name: Extract from first positional argument if present
 
 2. **Execute appropriate script** based on platform:

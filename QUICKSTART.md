@@ -154,6 +154,39 @@ Claude: Great! Let me score this feature...
 
 **Skip if:** You have one clear feature to build and don't need prioritization
 
+#### 3. Configure Your Workflow Preferences (Optional)
+
+```
+/init-preferences
+```
+
+Claude will guide you through 8 quick questions to customize command defaults:
+- `/epic` default mode (interactive vs auto)
+- `/tasks` default mode (standard vs UI-first)
+- `/init-project` defaults (interactive vs CI, include design system)
+- `/run-prompt` execution strategy (auto-detect, parallel, sequential)
+- UI preferences (show usage stats, highlight last-used options)
+
+**Example interaction:**
+```
+You: /init-preferences
+Claude: What default mode should /epic use?
+  1. Interactive (pause at reviews) - recommended for new users
+  2. Auto (skip prompts) - recommended for experienced users
+
+You: [Select option 1]
+Claude: ✓ /epic will default to interactive mode
+```
+
+**Why?** No more remembering flags! Set your preferences once, and commands adapt to your workflow. The system also learns from your usage over time.
+
+**Skip if:** You're fine with defaults (interactive mode, standard tasks, auto-detect strategy)
+
+**How it works:**
+- **Config file**: Set once, use forever (`.spec-flow/config/user-preferences.yaml`)
+- **Learning system**: Commands remember your choices and suggest them
+- **Override anytime**: Flags like `--auto` always override preferences
+
 ### Configure Claude Code Permissions (Required)
 
 The installer creates `.claude/settings.local.json` with your project path. Review permissions:
@@ -293,21 +326,51 @@ See the full [Troubleshooting Guide](docs/troubleshooting.md) or [file an issue]
 
 ## Quick Reference
 
-| Command | Purpose |
-|---------|---------|
-| `/roadmap` | Manage feature backlog with ICE scoring |
-| `/feature "name"` | Create specification and run workflow |
-| `/plan` | Generate implementation plan |
-| `/tasks` | Break plan into 20-30 actionable tasks |
-| `/implement` | Execute implementation tasks |
-| `/optimize` | Code review, performance, accessibility checks |
-| `/ship-staging` | Deploy to staging |
-| `/validate-staging` | Manual staging validation gate |
-| `/ship-prod` | Deploy to production |
+### Core Commands
+
+| Command | Purpose | Common Flags |
+|---------|---------|--------------|
+| `/init-preferences` | Configure workflow defaults (one-time setup) | `--reset` |
+| `/roadmap` | Manage feature backlog with ICE scoring | |
+| `/feature "name"` | Create specification and run workflow | |
+| `/epic "goal"` | Multi-sprint complex work | `--auto`, `--interactive`, `--no-input` |
+| `/plan` | Generate implementation plan | |
+| `/tasks` | Break plan into 20-30 actionable tasks | `--ui-first`, `--standard` |
+| `/implement` | Execute implementation tasks | |
+| `/optimize` | Code review, performance, accessibility checks | |
+| `/ship-staging` | Deploy to staging | |
+| `/validate-staging` | Manual staging validation gate | |
+| `/ship-prod` | Deploy to production | |
+
+### Preference System
+
+Your preferences control default behavior. Set once with `/init-preferences`:
+
+**No preferences configured:**
+```bash
+/epic "add auth"
+→ Prompts: "Run in auto or interactive mode?"
+```
+
+**With preferences configured:**
+```bash
+/epic "add auth"
+→ Runs in your preferred mode automatically
+```
+
+**Override with flags:**
+```bash
+/epic "add auth" --auto
+→ Always uses auto mode regardless of preferences
+```
 
 **Pro tips**:
+- Run `/init-preferences` once to set your workflow defaults
+- Commands learn from your choices (e.g., "You used auto mode 8/10 times")
+- Use flags (`--auto`, `--ui-first`, etc.) to override preferences
 - Use `/feature "feature-name"` to automate progression with manual gate at staging validation
 - Use `/feature continue` to resume after manual validation or fixing issues
+- Use `--no-input` flag for CI/CD automation (disables all prompts)
 
 ---
 

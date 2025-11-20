@@ -1,16 +1,21 @@
 ---
 description: Execute multi-sprint epic workflow from interactive scoping through deployment with parallel sprint execution and self-improvement
-argument-hint: [epic description | slug | continue | next]
+argument-hint: [epic description | slug | continue | next] [--auto | --interactive | --no-input]
 allowed-tools: [Read, Write, Edit, Grep, Glob, Bash, Task, AskUserQuestion, TodoWrite, SlashCommand, Skill]
-version: 5.0
-updated: 2025-11-19
+version: 5.2
+updated: 2025-11-20
 ---
 
 # /epic — Epic-Level Workflow Orchestration
 
 **Purpose**: Transform high-level product goals into coordinated multi-sprint implementations with parallel execution, self-adaptation, and comprehensive walkthrough documentation.
 
-**Command**: `/epic [epic description | slug | continue | next]`
+**Command**: `/epic [epic description | slug | continue | next] [--auto | --interactive | --no-input]`
+
+**Flags**:
+- `--auto`: Run in auto mode - bypass all interactive prompts except critical blockers (CI failures, security issues, deployment errors)
+- `--interactive`: Force interactive mode - pause at spec review and plan review (overrides config/history)
+- `--no-input`: Non-interactive mode for CI/CD - same as --auto but explicitly signals automation context
 
 **When to use**: For complex features requiring multiple sprints (>2 sprints), cross-cutting concerns, or when automatic sprint decomposition and parallel execution would accelerate delivery.
 
@@ -57,10 +62,155 @@ Transform high-level product goals into coordinated multi-sprint implementations
 - staging-prod: Git remote + staging branch + staging workflow
 - direct-prod: Git remote without staging infrastructure
 - local-only: No git remote configured
+
+**Auto-mode** (if --auto flag present):
+- Skip spec review PAUSE
+- Auto-execute research/planning prompts without "What's next?" prompt
+- Skip plan review PAUSE
+- Only stop for critical blockers: CI failures, security issues, deployment errors
 </objective>
 
 <process>
-### Step 0: Auto-Initialize Project (If Needed)
+### Step 0.1: Load User Preferences (3-Tier System)
+
+**Determine execution mode using 3-tier preference system:**
+
+1. **Load configuration file** (Tier 1 - lowest priority):
+   ```powershell
+   # Load from .spec-flow/config/user-preferences.yaml
+   $preferences = & .spec-flow/scripts/utils/load-preferences.ps1 -Command "epic"
+   $configMode = $preferences.commands.epic.default_mode  # "interactive" or "auto"
+   ```
+
+2. **Load command history** (Tier 2 - medium priority, overrides config):
+   ```powershell
+   # Load from .spec-flow/memory/command-history.yaml
+   $history = & .spec-flow/scripts/utils/load-command-history.ps1 -Command "epic"
+
+   if ($history.last_used_mode -and $history.total_uses -gt 0) {
+       $preferredMode = $history.last_used_mode  # Use learned preference
+       $usageStats = $history.usage_count  # For display: "used 8/10 times"
+   } else {
+       $preferredMode = $configMode  # Fall back to config
+   }
+   ```
+
+3. **Check command-line flags** (Tier 3 - highest priority, overrides everything):
+   ```javascript
+   const args = "$ARGUMENTS".trim();
+   const hasAutoFlag = args.includes('--auto');
+   const hasInteractiveFlag = args.includes('--interactive');
+   const hasNoInput = args.includes('--no-input');
+   const epicDescription = args.replace(/--auto|--interactive|--no-input/g, '').trim();
+
+   let selectedMode;
+
+   if (hasNoInput || hasAutoFlag) {
+       selectedMode = 'auto';  // CI/automation override
+   } else if (hasInteractiveFlag) {
+       selectedMode = 'interactive';  // Explicit interactive override
+   } else {
+       selectedMode = $preferredMode;  // Use config/history preference
+   }
+   ```
+
+4. **If no explicit override, ask user with smart suggestions:**
+   ```javascript
+   // Only prompt if no flag provided and not in CI mode
+   if (!hasAutoFlag && !hasInteractiveFlag && !hasNoInput) {
+       // Use AskUserQuestion with learned preferences
+       const options = [
+           {
+               label: history.last_used_mode === 'auto'
+                   ? `Auto (last used, ${history.usage_count.auto}/${history.total_uses} times) ⭐`
+                   : 'Auto',
+               description: 'Skip all prompts, run until blocker'
+           },
+           {
+               label: history.last_used_mode === 'interactive'
+                   ? `Interactive (last used, ${history.usage_count.interactive}/${history.total_uses} times) ⭐`
+                   : 'Interactive',
+               description: 'Pause at spec review and plan review'
+           }
+       ];
+
+       // Show prompt with smart suggestions
+       // Mark last-used with ⭐ if preferences.ui.recommend_last_used === true
+       // Show usage stats if preferences.ui.show_usage_stats === true
+   }
+   ```
+
+5. **Create/update workflow-state.yaml and track usage:**
+   ```yaml
+   # epics/{EPIC_SLUG}/workflow-state.yaml
+   epic:
+     number: {EPIC_NUMBER}
+     slug: {EPIC_SLUG}
+     title: {EPIC_TITLE}
+     auto_mode: {true|false}  # Based on selectedMode
+     started_at: {ISO_TIMESTAMP}
+     current_phase: specification
+
+   phases:
+     specification:
+       status: in_progress
+       started_at: {ISO_TIMESTAMP}
+     research:
+       status: pending
+     planning:
+       status: pending
+     implementation:
+       status: pending
+     optimization:
+       status: pending
+     deployment:
+       status: pending
+     finalization:
+       status: pending
+
+   manual_gates:
+     spec_review:
+       status: {auto_skipped|pending}  # auto_skipped if auto_mode: true
+       blocking: {false|true}  # false if auto_mode: true
+       skipped_at: {ISO_TIMESTAMP}  # if auto_skipped
+     plan_review:
+       status: {auto_skipped|pending}  # auto_skipped if auto_mode: true
+       blocking: {false|true}  # false if auto_mode: true
+       skipped_at: {ISO_TIMESTAMP}  # if auto_skipped
+
+   sprints:
+     total: 0  # Updated after planning
+     completed: 0
+     failed: 0
+
+   layers:
+     total: 0  # Updated after planning
+     completed: 0
+   ```
+
+   ```powershell
+   # Display selected mode
+   if ($selectedMode -eq 'auto') {
+       "🤖 Auto-mode enabled - will run automatically until blocker"
+       # manual_gates.*.status set to "auto_skipped"
+   } else {
+       "📋 Interactive mode - will pause at reviews"
+       # manual_gates.*.status set to "pending"
+   }
+
+   # Track this usage for learning system
+   & .spec-flow/scripts/utils/track-command-usage.ps1 -Command "epic" -Mode $selectedMode
+   ```
+
+**If auto-mode selected:**
+- Bypass all PAUSE points (spec review, plan review)
+- Auto-execute `/run-prompt` after `/create-prompt` (skip "What's next?" prompt)
+- Only stop for critical blockers: CI failures, security issues, deployment errors
+
+**If interactive mode selected:**
+- Follow standard workflow with manual PAUSE points
+
+### Step 0.2: Auto-Initialize Project (If Needed)
 
 **Check for project initialization:**
 ```bash
@@ -131,47 +281,73 @@ AskUserQuestion({
 })
 ```
 
-**Generate epic specification (XML format):**
+**Generate epic specification (Markdown format):**
 ```bash
 # Create epic workspace
 mkdir -p epics/NNN-slug
 
-# Generate epic-spec.xml using template
-# Template location: .spec-flow/templates/epic-spec.xml
+# Generate epic-spec.md using template
+# Template location: .spec-flow/templates/epic-spec.md
 ```
 
 **Epic specification structure:**
-```xml
-<epic>
-  <metadata>
-    <number>NNN</number>
-    <slug>epic-slug</slug>
-    <title>Epic Title</title>
-    <type>new-feature|enhancement|refactoring|infrastructure</type>
-    <complexity>small|medium|large</complexity>
-    <created>2025-11-19</created>
-  </metadata>
+```markdown
+---
+number: NNN
+slug: epic-slug
+title: Epic Title
+type: new-feature|enhancement|refactoring|infrastructure
+complexity: small|medium|large
+created: 2025-11-19
+---
 
-  <objective>
-    <business_value>What this delivers to users/business</business_value>
-    <success_metrics>How we measure success</success_metrics>
-    <constraints>Technical, time, or resource constraints</constraints>
-  </objective>
+# Epic NNN: Epic Title
 
-  <subsystems>
-    <subsystem name="backend">Changes needed</subsystem>
-    <subsystem name="frontend">Changes needed</subsystem>
-    <subsystem name="database">Changes needed</subsystem>
-  </subsystems>
+## Objective
 
-  <clarifications>
-    <!-- Filled by /clarify phase -->
-    <clarification question="..." answer="..." />
-  </clarifications>
-</epic>
+### Business Value
+What this delivers to users/business
+
+### Success Metrics
+How we measure success
+
+### Constraints
+Technical, time, or resource constraints
+
+## Subsystems
+
+### Backend
+**Involved**: Yes/No
+Changes needed
+
+### Frontend
+**Involved**: Yes/No
+Changes needed
+
+### Database
+**Involved**: Yes/No
+Changes needed
+
+## Clarifications
+<!-- Filled by /clarify phase -->
 ```
 
-**PAUSE**: Review epic-spec.xml. User can run `/clarify` if ambiguous, or continue to planning.
+**PAUSE (Interactive Mode Only)**: Review epic-spec.md. User can run `/clarify` if ambiguous, or continue to planning.
+
+**When paused (interactive mode):**
+- Display: "📋 Spec review complete. Continue to planning? (y/n)"
+- If approved, update workflow-state.yaml:
+  ```yaml
+  manual_gates:
+    spec_review:
+      status: approved
+      approved_at: {ISO_TIMESTAMP}
+      approved_by: user
+  ```
+
+**If auto-mode enabled**:
+- Skip this PAUSE - proceed directly to Step 1.5
+- Manual gate already set to "auto_skipped" in workflow-state.yaml (from Step 0.1)
 
 ### Step 1.5: Interactive Epic Scoping (Question Bank-Driven) **NEW in v5.0**
 
@@ -212,9 +388,9 @@ AskUserQuestion({
 });
 ```
 
-**Apply answers to epic-spec.xml atomically**:
-- business_goal → `<objective><business_value>`
-- subsystem_selection → `<subsystems>` (create subsystem tags for each selected)
+**Apply answers to epic-spec.md atomically**:
+- business_goal → `## Objective` > `### Business Value`
+- subsystem_selection → `## Subsystems` (update **Involved** field for each selected)
 
 **Round 2: Scope Refinement (0-4 questions, conditional)**
 
@@ -241,11 +417,11 @@ if (refinementQuestions.length > 0) {
 }
 ```
 
-**Apply answers to epic-spec.xml**:
-- backend_scope → Add details to `<subsystem name="backend">`
-- frontend_scope → Add details to `<subsystem name="frontend">`
-- database_scope → Add details to `<subsystem name="database">`
-- integration_scope → Add details to `<subsystem name="integrations">`
+**Apply answers to epic-spec.md**:
+- backend_scope → Add details to `### Backend` section
+- frontend_scope → Add details to `### Frontend` section
+- database_scope → Add details to `### Database` section
+- integration_scope → Add details to `### Infrastructure` section
 
 **Round 3: Success Metrics (2 questions)**
 
@@ -260,13 +436,13 @@ AskUserQuestion({
 // If "Specific targets" selected, follow-up:
 if (answers["Targets"] === "Specific targets") {
   const customTargets = answers["Targets_custom"];
-  // Parse and apply to epic-spec.xml
+  // Parse and apply to epic-spec.md
 }
 ```
 
-**Apply answers to epic-spec.xml**:
-- measurement_approach → `<objective><success_metrics type="...">`
-- target_values → `<objective><success_metrics>` (actual target values)
+**Apply answers to epic-spec.md**:
+- measurement_approach → `### Success Metrics` section
+- target_values → `### Success Metrics` section (actual target values)
 
 **Round 4: Dependencies & Constraints (2 questions)**
 
@@ -279,9 +455,9 @@ AskUserQuestion({
 });
 ```
 
-**Apply answers to epic-spec.xml**:
-- external_dependencies → `<dependencies>` (list external deps)
-- constraints → `<objective><constraints>` (time, budget, tech, etc.)
+**Apply answers to epic-spec.md**:
+- external_dependencies → `## Dependencies` section
+- constraints → `### Constraints` section (time, budget, tech, etc.)
 
 **Round 5: Complexity Assessment (2 questions)**
 
@@ -299,9 +475,9 @@ if (answers["Sprint Estimate"] === "7+ sprints") {
 }
 ```
 
-**Apply answers to epic-spec.xml**:
-- technical_complexity → `<metadata><complexity>`
-- sprint_estimate → `<metadata><estimated_sprints>`
+**Apply answers to epic-spec.md**:
+- technical_complexity → YAML frontmatter `complexity` field
+- sprint_estimate → Document in `## Overview` section
 
 #### Progress Indicators
 
@@ -315,7 +491,7 @@ if (answers["Sprint Estimate"] === "7+ sprints") {
 #### Final Output
 
 **After 5 rounds complete**:
-1. All epic-spec.xml placeholders filled
+1. All epic-spec.md placeholders filled
 2. Zero ambiguities remaining
 3. Ready for /plan without needing /clarify
 
@@ -333,7 +509,7 @@ if (answers["Sprint Estimate"] === "7+ sprints") {
   Estimated Sprints: 3-4 sprints
 
 📋 Next Steps:
-  1. Review epic-spec.xml for accuracy
+  1. Review epic-spec.md for accuracy
   2. Run /plan to generate research → plan → sprint breakdown
   3. Run /epic continue to execute automated workflow
 ```
@@ -345,7 +521,7 @@ if (answers["Sprint Estimate"] === "7+ sprints") {
 **NEW in v5.0**: With interactive scoping (Step 1.5), /clarify should **rarely** be needed for epics.
 
 **Ambiguity check** (after interactive scoping):
-- Count placeholders in epic-spec.xml: `grep -c "\[NEEDS CLARIFICATION\]" epics/NNN-slug/epic-spec.xml`
+- Count placeholders in epic-spec.md: `grep -c "\[NEEDS CLARIFICATION\]" epics/NNN-slug/epic-spec.md`
 - Check for missing subsystems
 - Verify success metrics defined
 - Confirm constraints documented
@@ -358,7 +534,7 @@ if (answers["Sprint Estimate"] === "7+ sprints") {
 **The /clarify command will:**
 - Use AskUserQuestion for 2-6 targeted questions
 - Validate answers against project docs (tech-stack.md, architecture.md)
-- Update epic-spec.xml with clarifications
+- Update epic-spec.md with clarifications
 - Mark clarification phase complete in workflow-state.yaml
 
 **Expected outcome**: With 5-round interactive scoping (Step 1.5), most epics have ambiguity score < 30 and skip /clarify entirely.
@@ -409,7 +585,40 @@ if (answers["Sprint Estimate"] === "7+ sprints") {
 - `.prompts/002-[epic-slug]-plan/plan.xml`
 - Contains: architecture decisions, implementation phases, dependencies, risks
 
-**PAUSE**: Review research.xml and plan.xml. If approved, continue to sprint breakdown.
+**PAUSE (Interactive Mode Only)**: Review research.md and plan.md. If approved, continue to sprint breakdown.
+
+**When paused (interactive mode):**
+- Display: "📋 Plan review complete. Continue to sprint breakdown? (y/n)"
+- If approved, update workflow-state.yaml:
+  ```yaml
+  manual_gates:
+    plan_review:
+      status: approved
+      approved_at: {ISO_TIMESTAMP}
+      approved_by: user
+
+  phases:
+    research:
+      status: completed
+      completed_at: {ISO_TIMESTAMP}
+    planning:
+      status: completed
+      completed_at: {ISO_TIMESTAMP}
+  ```
+
+**If auto-mode enabled**:
+- Skip this PAUSE - proceed directly to Step 4
+- Manual gate already set to "auto_skipped" in workflow-state.yaml (from Step 0.1)
+- Update phases status automatically:
+  ```yaml
+  phases:
+    research:
+      status: completed
+      completed_at: {ISO_TIMESTAMP}
+    planning:
+      status: completed
+      completed_at: {ISO_TIMESTAMP}
+  ```
 
 ### Step 4: Sprint Breakdown with Dependency Graph
 
@@ -484,14 +693,14 @@ if (answers["Sprint Estimate"] === "7+ sprints") {
 ```
 
 **The /implement-epic phase will:**
-1. Read sprint-plan.xml to get execution layers
+1. Read sprint-plan.md to get execution layers
 2. For each layer:
    - Launch parallel Task agents (one per sprint in layer)
    - Each agent reads:
-     - epic-spec.xml (requirements)
-     - research.xml (findings)
-     - plan.xml (architecture)
-     - tasks.xml (filtered to sprint)
+     - epic-spec.md (requirements)
+     - research.md (findings)
+     - plan.md (architecture)
+     - tasks.md (filtered to sprint)
      - Locked API contracts
    - Wait for all agents in layer to complete
    - Validate outputs:
@@ -758,10 +967,10 @@ Layer 3/3: S03 (auth-integration) → Pending
 **Epic successfully completed when:**
 
 1. **All artifacts generated**:
-   - epic-spec.xml (fully populated, zero placeholders)
-   - research.xml (findings with confidence levels)
-   - plan.xml (architecture decisions and phases)
-   - sprint-plan.xml (dependency graph and execution layers)
+   - epic-spec.md (fully populated, zero placeholders)
+   - research.md (findings with confidence levels)
+   - plan.md (architecture decisions and phases)
+   - sprint-plan.md (dependency graph and execution layers)
    - walkthrough.md (comprehensive post-mortem)
 
 2. **Quality gates passed**:
@@ -794,10 +1003,10 @@ Layer 3/3: S03 (auth-integration) → Pending
 1. **Read workflow-state.yaml**: Confirm all phases show `status: completed`
 2. **Check artifact existence**:
    ```powershell
-   Test-Path epics/NNN-slug/epic-spec.xml
-   Test-Path epics/NNN-slug/research.xml
-   Test-Path epics/NNN-slug/plan.xml
-   Test-Path epics/NNN-slug/sprint-plan.xml
+   Test-Path epics/NNN-slug/epic-spec.md
+   Test-Path epics/NNN-slug/research.md
+   Test-Path epics/NNN-slug/plan.md
+   Test-Path epics/NNN-slug/sprint-plan.md
    Test-Path epics/NNN-slug/walkthrough.md
    ```
 3. **Validate quality gates**: Read optimization-report.xml, confirm no blocking issues
@@ -812,11 +1021,11 @@ Layer 3/3: S03 (auth-integration) → Pending
 **Files created/modified by this command:**
 
 **Epic workspace** (epics/NNN-slug/):
-- epic-spec.xml — Epic requirements and scoping
-- research.xml — Technical research findings
-- plan.xml — Architecture decisions and implementation plan
-- sprint-plan.xml — Dependency graph and execution layers
-- tasks.xml — All tasks across sprints with acceptance criteria
+- epic-spec.md — Epic requirements and scoping
+- research.md — Technical research findings
+- plan.md — Architecture decisions and implementation plan
+- sprint-plan.md — Dependency graph and execution layers
+- tasks.md — All tasks across sprints with acceptance criteria
 - walkthrough.md — Comprehensive post-mortem and lessons learned
 - workflow-state.yaml — Current phase, gates, deployment metadata
 - optimization-report.xml — Quality gate results
@@ -859,7 +1068,7 @@ TodoWrite({
   todos: [
     {content:"Parse args, initialize epic state",status:"completed",activeForm:"Initialized"},
     {content:"Auto-check: /init-project (if needed)",status:"completed",activeForm:"Project initialized"},
-    {content:"Phase 0: Epic specification",status:"completed",activeForm:"Created epic-spec.xml"},
+    {content:"Phase 0: Epic specification",status:"completed",activeForm:"Created epic-spec.md"},
     {content:"Phase 0.5: Clarification (auto-invoked)",status:"completed",activeForm:"Resolved ambiguities"},
     {content:"Manual gate: Epic spec review",status:"completed",activeForm:"Spec approved"},
     {content:"Phase 1: Meta-prompting research",status:"completed",activeForm:"Research complete"},

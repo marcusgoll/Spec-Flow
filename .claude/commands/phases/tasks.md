@@ -1,7 +1,9 @@
 ---
 description: Generate TDD task breakdown from plan.md with test-first sequencing and mockup-first mode (--ui-first)
 allowed-tools: [Read, Grep, Glob, Bash(python .spec-flow/scripts/spec-cli.py tasks:*), Bash(git add:*), Bash(git commit:*), Bash(git status:*), Bash(git branch:*), Bash(jq:*), Bash(ls:*), Bash(wc:*)]
-argument-hint: [--ui-first] (optional flag for mockup-first workflow)
+argument-hint: [--ui-first | --standard | --no-input] (optional flags for mode selection)
+version: 2.0
+updated: 2025-11-20
 ---
 
 <context>
@@ -34,13 +36,68 @@ This ensures traceable, deterministic task generation that prevents hallucinated
 - Required tools: git, jq
 
 **Flags**:
-- `--ui-first` : Generate HTML mockup tasks before implementation (sets manual gate for mockup approval)
+- `--ui-first`: Generate HTML mockup tasks before implementation (sets manual gate for mockup approval)
+- `--standard`: Standard TDD task generation (no mockups) - explicit override of config/history
+- `--no-input`: Non-interactive mode for CI/CD - uses default (standard) mode
 </objective>
 
 <process>
+0. **Load User Preferences (3-Tier System)**:
+
+   **Determine task generation mode using 3-tier preference system:**
+
+   a. **Load configuration file** (Tier 1 - lowest priority):
+      ```powershell
+      $preferences = & .spec-flow/scripts/utils/load-preferences.ps1 -Command "tasks"
+      $configMode = $preferences.commands.tasks.default_mode  # "standard" or "ui-first"
+      ```
+
+   b. **Load command history** (Tier 2 - medium priority, overrides config):
+      ```powershell
+      $history = & .spec-flow/scripts/utils/load-command-history.ps1 -Command "tasks"
+
+      if ($history.last_used_mode -and $history.total_uses -gt 0) {
+          $preferredMode = $history.last_used_mode  # Use learned preference
+      } else {
+          $preferredMode = $configMode  # Fall back to config
+      }
+      ```
+
+   c. **Check command-line flags** (Tier 3 - highest priority):
+      ```javascript
+      const args = "$ARGUMENTS".trim();
+      const hasUIFirstFlag = args.includes('--ui-first');
+      const hasStandardFlag = args.includes('--standard');
+      const hasNoInput = args.includes('--no-input');
+
+      let selectedMode;
+      let passToScript;
+
+      if (hasNoInput) {
+          selectedMode = 'standard';  // CI default
+          passToScript = '';  // No flag to script
+      } else if (hasUIFirstFlag) {
+          selectedMode = 'ui-first';
+          passToScript = '--ui-first';
+      } else if (hasStandardFlag) {
+          selectedMode = 'standard';
+          passToScript = '';  // No flag means standard
+      } else {
+          // No explicit flag - use preference
+          selectedMode = preferredMode;
+          passToScript = selectedMode === 'ui-first' ? '--ui-first' : '';
+      }
+      ```
+
+   d. **Track usage for learning system**:
+      ```powershell
+      # Record selection after command completes successfully
+      & .spec-flow/scripts/utils/track-command-usage.ps1 -Command "tasks" -Mode $selectedMode
+      ```
+
 1. **Execute task generation workflow** via spec-cli.py:
    ```bash
-   python .spec-flow/scripts/spec-cli.py tasks "$ARGUMENTS"
+   python .spec-flow/scripts/spec-cli.py tasks $passToScript
    ```
 
    The tasks-workflow.sh script performs:

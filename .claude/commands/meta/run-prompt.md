@@ -1,11 +1,25 @@
 ---
 name: run-prompt
 description: Delegate one or more prompts to fresh sub-task contexts with parallel or sequential execution
-argument-hint: <prompt-number(s)-or-name> [--parallel|--sequential]
+argument-hint: <prompt-number(s)-or-name> [--parallel | --sequential | --auto-detect | --no-input]
+version: 2.0
+updated: 2025-11-20
 ---
 
 <objective>
 Execute one or more prompts from `./prompts/` as delegated sub-tasks with fresh context. Supports single prompt execution, parallel execution of multiple independent prompts, and sequential execution of dependent prompts.
+
+**Execution Strategy Flags:**
+- `--auto-detect`: Analyze prompt dependencies and choose strategy automatically (default)
+- `--parallel`: Force parallel execution (independent tasks only)
+- `--sequential`: Force sequential execution (safe for dependent tasks)
+- `--no-input`: Non-interactive mode for CI/CD - uses auto-detect strategy
+
+**Preference System:**
+The command uses 3-tier preferences to determine execution strategy:
+1. Config file: `.spec-flow/config/user-preferences.yaml` (default_strategy)
+2. Command history: Learns from past usage
+3. Command-line flags: Explicit overrides
 </objective>
 
 <input>
@@ -25,16 +39,67 @@ The user will specify which prompt(s) to run via $ARGUMENTS, which can be:
   </input>
 
 <process>
+<step0_load_preferences>
+**Load User Preferences (3-Tier System):**
+
+Determine execution strategy using 3-tier preference system:
+
+a. **Load configuration file** (Tier 1 - lowest priority):
+   ```powershell
+   $preferences = & .spec-flow/scripts/utils/load-preferences.ps1 -Command "run-prompt"
+   $configStrategy = $preferences.commands.'run-prompt'.default_strategy  # "auto-detect", "parallel", or "sequential"
+   ```
+
+b. **Load command history** (Tier 2 - medium priority, overrides config):
+   ```powershell
+   $history = & .spec-flow/scripts/utils/load-command-history.ps1 -Command "run-prompt"
+
+   if ($history.last_used_mode -and $history.total_uses -gt 0) {
+       $preferredStrategy = $history.last_used_mode  # Use learned preference
+   } else {
+       $preferredStrategy = $configStrategy  # Fall back to config
+   }
+   ```
+
+c. **Check command-line flags** (Tier 3 - highest priority):
+   ```javascript
+   const args = "$ARGUMENTS".trim();
+   const hasParallelFlag = args.includes('--parallel');
+   const hasSequentialFlag = args.includes('--sequential');
+   const hasAutoDetect = args.includes('--auto-detect');
+   const hasNoInput = args.includes('--no-input');
+
+   let selectedStrategy;
+
+   if (hasNoInput || hasAutoDetect) {
+       selectedStrategy = 'auto-detect';  // CI/automation default
+   } else if (hasParallelFlag) {
+       selectedStrategy = 'parallel';  // Explicit parallel override
+   } else if (hasSequentialFlag) {
+       selectedStrategy = 'sequential';  // Explicit sequential override
+   } else {
+       selectedStrategy = preferredStrategy;  // Use config/history preference
+   }
+   ```
+
+d. **Track usage for learning system**:
+   ```powershell
+   # Record selection after command completes successfully
+   & .spec-flow/scripts/utils/track-command-usage.ps1 -Command "run-prompt" -Mode $selectedStrategy
+   ```
+</step0_load_preferences>
+
 <step1_parse_arguments>
 Parse $ARGUMENTS to extract:
 - Prompt numbers/names (all arguments that are not flags)
-- Execution strategy flag (--parallel or --sequential)
+- Execution strategy: Use selectedStrategy from preference system
 
 <examples>
 - "005" → Single prompt: 005
-- "005 006 007" → Multiple prompts: [005, 006, 007], strategy: sequential (default)
-- "005 006 007 --parallel" → Multiple prompts: [005, 006, 007], strategy: parallel
-- "005 006 007 --sequential" → Multiple prompts: [005, 006, 007], strategy: sequential
+- "005 006 007" → Multiple prompts: [005, 006, 007], strategy: from preferences
+- "005 006 007 --parallel" → Multiple prompts: [005, 006, 007], strategy: parallel (override)
+- "005 006 007 --sequential" → Multiple prompts: [005, 006, 007], strategy: sequential (override)
+- "005 006 007 --auto-detect" → Multiple prompts: [005, 006, 007], strategy: auto-detect (analyze dependencies)
 </examples>
 </step1_parse_arguments>
 

@@ -356,6 +356,23 @@ Before completing, verify:
 9. **Verification Always**: Every prompt should include clear success criteria and verification steps
 </intelligence_rules>
 
+<auto_mode_detection>
+Before presenting the decision tree, check if we're in auto-mode (called from /epic --auto):
+
+**Detection steps:**
+1. Use Glob tool to search for `epics/*/workflow-state.yaml`
+2. If found, use Read tool to check for `auto_mode: true`
+3. If auto-mode detected:
+   - Log: "🤖 Auto-mode detected - executing prompts automatically"
+   - Determine execution strategy (parallel vs sequential based on prompt analysis)
+   - Use SlashCommand to invoke `/run-prompt [numbers] --sequential`
+   - Skip the decision tree entirely
+   - End the command
+
+**If auto-mode NOT detected:**
+- Proceed to decision tree as normal
+</auto_mode_detection>
+
 <decision_tree>
 After saving the prompt(s), present this decision tree to the user:
 
@@ -463,6 +480,8 @@ If user chooses #2, invoke via SlashCommand tool: `/run-prompt 005`
 - Adapt the XML structure to fit the task - not every tag is needed every time
 - Consider the user's working directory as the root for all relative paths
 - Each prompt file should contain ONLY the prompt content, no preamble or explanation
-- After saving, present the decision tree as inline text (not AskUserQuestion)
-- Use the SlashCommand tool to invoke /run-prompt when user makes their choice
+- **After saving, check for auto-mode**: Use Glob + Read to detect `epics/*/workflow-state.yaml` with `auto_mode: true`
+- **If auto-mode detected**: Skip decision tree, log auto-mode detection, and auto-execute /run-prompt --sequential
+- **If auto-mode NOT detected**: Present the decision tree as inline text (not AskUserQuestion)
+- Use the SlashCommand tool to invoke /run-prompt when user makes their choice (or automatically in auto-mode)
 </meta_instructions>

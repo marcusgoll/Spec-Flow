@@ -1,0 +1,86 @@
+# User Preferences Example
+# Copy this file to user-preferences.yaml and customize for your workflow
+
+# Command-specific preferences
+commands:
+  # /epic command preferences
+  epic:
+    # Options: auto | interactive
+    # - auto: Skip all prompts, run until blocker
+    # - interactive: Pause at spec review and plan review
+    default_mode: interactive
+
+  # /tasks command preferences
+  tasks:
+    # Options: standard | ui-first
+    # - standard: Generate tasks for TDD implementation
+    # - ui-first: Generate HTML mockups before implementation
+    default_mode: standard
+
+  # /init-project command preferences
+  init-project:
+    # Options: interactive | ci
+    # - interactive: Run questionnaire (15-48 questions)
+    # - ci: Use environment variables (for automation)
+    default_mode: interactive
+
+    # Automatically include design system setup (--with-design)
+    include_design: false
+
+  # /run-prompt command preferences
+  run-prompt:
+    # Options: auto-detect | parallel | sequential
+    # - auto-detect: Analyze dependencies and choose strategy
+    # - parallel: Run all prompts simultaneously
+    # - sequential: Run prompts one-by-one
+    default_strategy: auto-detect
+
+# Automation preferences
+automation:
+  # Automatically approve minor changes (formatting, comments, docs)
+  # Useful for CI/CD pipelines
+  auto_approve_minor_changes: false
+
+  # Default to CI-friendly behavior (assume --no-input)
+  # Set to true for fully automated environments
+  ci_mode_default: false
+
+# UI preferences
+ui:
+  # Show usage statistics in prompts (e.g., "used 8/10 times")
+  show_usage_stats: true
+
+  # Mark last-used option with ⭐ in prompts
+  recommend_last_used: true
+
+# ============================================================================
+# Example Configurations
+# ============================================================================
+
+# For Power Users (prefer automation):
+# commands:
+#   epic:
+#     default_mode: auto
+#   tasks:
+#     default_mode: standard
+#   run-prompt:
+#     default_strategy: parallel
+
+# For UI/Design-Focused Developers:
+# commands:
+#   tasks:
+#     default_mode: ui-first
+#   init-project:
+#     include_design: true
+
+# For CI/CD Automation:
+# commands:
+#   epic:
+#     default_mode: auto
+#   init-project:
+#     default_mode: ci
+# automation:
+#   auto_approve_minor_changes: true
+#   ci_mode_default: true
+#   ui:
+#     show_usage_stats: false
