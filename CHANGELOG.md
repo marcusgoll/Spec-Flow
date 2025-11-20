@@ -2,6 +2,18 @@
 
 ---
 
+## [7.0.3] - 2025-11-20
+
+### 🐛 Fixed
+
+**Missing QUICKSTART.md File**
+- Added QUICKSTART.md to package (was missing, causing "package corrupted" error)
+- Copied QUICKSTART.md from example-workflow-app to root
+- Updated build script to include QUICKSTART.md in dist/ output
+- v7.0.2 showed "Package corrupted: Missing QUICKSTART.md" during installation
+
+---
+
 ## [7.0.2] - 2025-11-20
 
 ### 🐛 Fixed
@@ -15,7 +27,7 @@
 
 ---
 
-## [7.0.1] - 2025-11-20 [BROKEN - Use v7.0.2]
+## [7.0.1] - 2025-11-20 [BROKEN - Use v7.0.3]
 
 **⚠️ This version is broken. Please use v7.0.2 instead.**
 

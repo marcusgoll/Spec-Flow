@@ -372,7 +372,7 @@ function copyEssentialFiles() {
 
   // Copy package files
   console.log('  Copying package files...');
-  const packageFiles = ['package.json', 'README.md', 'CHANGELOG.md', 'LICENSE', 'CLAUDE.md', '.gitignore'];
+  const packageFiles = ['package.json', 'README.md', 'CHANGELOG.md', 'LICENSE', 'CLAUDE.md', 'QUICKSTART.md', '.gitignore'];
   for (const file of packageFiles) {
     const srcPath = path.join(BUILD_CONFIG.sourceDir, file);
     const destPath = path.join(BUILD_CONFIG.distDir, file);
