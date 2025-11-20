@@ -28,7 +28,7 @@ const { execSync } = require('child_process');
 const BUILD_CONFIG = {
   sourceDir: process.cwd(),
   distDir: path.join(process.cwd(), 'dist'),
-  maxSizeMB: 4,
+  maxSizeMB: 10,
 
   // Essential patterns to include
   include: [
@@ -59,19 +59,23 @@ const BUILD_CONFIG = {
     '**/test-*',
     '**/*.log',
     '**/.DS_Store',
+    '**/node_modules',
     '**/node_modules/**',
+    '**/*package-lock.json',
+    '**/*tsconfig.json',
     '**/dist/**',
     '**/.git/**'
   ],
 
   // Core files that must exist in dist
   requiredFiles: [
+    '.claude/commands/core/feature.md',
     '.claude/commands/phases/clarify.md',
     '.claude/commands/phases/plan.md',
     '.claude/commands/phases/tasks.md',
     '.claude/commands/phases/implement.md',
     '.claude/commands/epic/epic.md',
-    '.claude/skills/clarify/references/question-bank.md',
+    '.claude/skills/clarification-phase/references/question-bank.md',
     '.claude/skills/epic/references/question-bank.md',
     '.spec-flow/scripts/bash/create-new-feature.sh',
     '.spec-flow/scripts/powershell/create-new-feature.ps1',
@@ -130,6 +134,14 @@ function copyDirectory(src, dest, options = {}) {
  * Check if path should be excluded based on patterns
  */
 function shouldExclude(filePath, excludePatterns) {
+  // Normalize path to use forward slashes for consistent pattern matching
+  const normalizedPath = filePath.replace(/\\/g, '/');
+
+  // Check if path contains node_modules directory
+  if (normalizedPath.includes('node_modules')) {
+    return true;
+  }
+
   return excludePatterns.some(pattern => {
     const regex = new RegExp(
       pattern
@@ -137,7 +149,7 @@ function shouldExclude(filePath, excludePatterns) {
         .replace(/\*/g, '[^/]*')
         .replace(/\./g, '\\.')
     );
-    return regex.test(filePath);
+    return regex.test(normalizedPath);
   });
 }
 
@@ -426,7 +438,7 @@ Package size within ${BUILD_CONFIG.maxSizeMB}MB limit.
     deployment/     # Deployment workflows
   agents/           # Specialist agent configurations
   skills/           # Workflow skills with question banks
-    clarify/references/question-bank.md
+    clarification-phase/references/question-bank.md
     epic/references/question-bank.md
 
 .spec-flow/

@@ -2,6 +2,18 @@
 
 ---
 
+## [6.11.1] - 2025-11-20
+
+### Fixed
+- **Release Script**: Fixed bash eval error from nested command substitution (08e8e9f)
+
+### Changed
+- **Build System**: Updated build validation to correct question bank path reference
+- **Build System**: Improved node_modules exclusion with path normalization
+- **Build System**: Increased package size limit to 10MB for comprehensive workflow toolkit
+
+---
+
 ## [6.11.0] - 2025-11-18
 
 ### Added
