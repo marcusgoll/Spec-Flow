@@ -2,6 +2,89 @@
 
 ---
 
+## [9.0.0] - 2025-11-20
+
+### ⚠️ BREAKING CHANGES
+
+**Epic Git Workflow Requirements**
+
+- Epic workflows now require branch creation and atomic commits
+- Epic branches follow pattern: `epic/NNN-slug`
+- Atomic commits required at 8 phase points (spec, research, plan, sprint breakdown, optimize, preview, per-layer implementation)
+- Existing epic workflows must adapt to new git workflow requirements
+
+### ✨ Added
+
+**Epic Git Workflow**
+
+- Add branch creation (`epic/NNN-slug`) at epic start
+- Add 8 atomic commit points across epic phases
+- Add per-layer commits during implementation (not bundled at end)
+- Add epic commit templates to git-workflow-enforcer skill
+- Add epic phase detection patterns for auto-commit generation
+- Branch validation: Must start from main/master
+
+**Auto-Mode Flag Propagation**
+
+- Add auto-mode flag propagation from `/epic` to `/implement-epic`
+- Add auto-mode reading logic in implementation phase (Step 1.5)
+- Display mode contract to user (what stops, what auto-retries)
+
+**Failure Classification System**
+
+- Add `classifyFailure()` function to distinguish critical vs fixable issues
+- **Critical blockers** (stop even in auto-mode):
+  - CI pipeline failures
+  - Security scan failures (HIGH/CRITICAL CVEs)
+  - Deployment failures
+- **Fixable issues** (auto-retry in auto-mode):
+  - Test failures (not CI-related)
+  - Build failures
+  - Dependency issues (npm/pip/cargo)
+  - Infrastructure problems (docker, ports)
+  - Type errors
+
+**Auto-Retry Logic**
+
+- Add `attemptAutoFix()` function with 2-3 retry attempts
+- Add `executeFixStrategy()` function with 10+ strategies:
+  - `re-run-tests`: Re-run failing tests
+  - `check-dependencies`: Verify package.json/requirements.txt
+  - `clear-cache`: Clear npm/pip/cargo cache
+  - `clean-install`: Delete node_modules and reinstall
+  - `reinstall-deps`: Fresh dependency installation
+  - `rebuild`: Clean build from scratch
+  - `restart-services`: Restart docker-compose services
+  - `check-ports`: Verify ports available
+  - `verify-env`: Check environment variables
+  - `fix-types`: Run type checker and auto-fix
+- Progressive delay between retries: 5s, 10s, 15s
+
+**Smart Error Handling**
+
+- Replace immediate error throws with auto-retry logic
+- Check auto-mode flag before stopping
+- Classify failure type before deciding to stop
+- Attempt auto-fix for fixable issues (3 attempts)
+- Only stop if: (1) Critical blocker OR (2) Auto-fix exhausted OR (3) Interactive mode
+
+### 🔧 Changed
+
+- `/epic` now creates `epic/NNN-slug` branch before spec generation
+- `/implement-epic` commits after EACH layer (not bundled at end)
+- Epic auto-mode now respects its contract: only stops for critical blockers
+- Fixable issues (tests, builds, infrastructure) are auto-retried in auto-mode
+
+### 🐛 Fixed
+
+- **Epic auto-mode stopping for fixable issues**: Auto-mode was stopping for ALL failures (test failures, npm errors, infrastructure issues) instead of only critical blockers (CI failures, security issues, deployment errors)
+  - Root cause: `auto_mode` flag was never passed from `epic.md` to `implement-epic.md`
+  - Impact: Made unattended epic execution impossible despite auto-mode promise
+- **Missing workflow-state.yaml updates**: Sprint completion never updated workflow-state.yaml
+- **Manual gates staying 'pending' in auto-mode**: Gates should be marked `auto_skipped` when running in auto-mode
+
+---
+
 ## [8.0.0] - 2025-11-20
 
 ### ⚠️ BREAKING CHANGES
