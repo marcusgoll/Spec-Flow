@@ -157,7 +157,7 @@ AGENTS
 ### Implementation Commands & Agents (Current Phase)
 - `/implement` - Orchestrates parallel specialist execution
 - `backend-dev` - Backend/API implementation
-- `frontend-shipper` - Frontend/UI implementation
+- `frontend-dev` - Frontend/UI implementation
 - `database-architect` - Schema design and migrations
 - `contracts-sdk` - API contract management
 

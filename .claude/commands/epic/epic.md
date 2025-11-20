@@ -286,6 +286,24 @@ AskUserQuestion({
 # Create epic workspace
 mkdir -p epics/NNN-slug
 
+# Create epic branch (following feature workflow pattern)
+CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+EPIC_BRANCH="epic/${NNN}-${SLUG}"
+
+if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
+    git checkout -b "$EPIC_BRANCH"
+    echo "✅ Created branch: $EPIC_BRANCH"
+elif [[ "$CURRENT_BRANCH" == "$EPIC_BRANCH" ]]; then
+    echo "✅ Already on epic branch: $EPIC_BRANCH"
+else
+    echo "⚠️  Warning: Not on main/master. Current branch: $CURRENT_BRANCH"
+    echo "   Epic work will happen on current branch unless you create epic branch manually."
+fi
+
+# Update workflow-state.yaml with branch information
+# epics/${NNN}-${SLUG}/workflow-state.yaml
+# Add: git.branch: $EPIC_BRANCH
+
 # Generate epic-spec.md using template
 # Template location: .spec-flow/templates/epic-spec.md
 ```
@@ -330,6 +348,36 @@ Changes needed
 
 ## Clarifications
 <!-- Filled by /clarify phase -->
+```
+
+**Commit epic specification (atomic commit #1):**
+```bash
+# Auto-invoke git-workflow-enforcer skill for atomic commit
+# Or manually commit if skill unavailable:
+
+EPIC_SLUG=$(yq -r '.slug' epics/*/workflow-state.yaml)
+EPIC_TYPE=$(yq -r '.epic.type // "epic"' epics/*/epic-spec.md)
+COMPLEXITY=$(yq -r '.epic.complexity // "unknown"' epics/*/epic-spec.md)
+SUBSYSTEMS=$(yq -r '.epic.subsystems | length // 0' epics/*/epic-spec.md)
+
+git add epics/${EPIC_SLUG}/
+git commit -m "docs(epic-spec): create specification for ${EPIC_SLUG}
+
+Type: ${EPIC_TYPE}
+Complexity: ${COMPLEXITY}
+Subsystems: ${SUBSYSTEMS}
+
+Next: /clarify (if needed) or research phase
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+**Alternative (recommended): Use git-workflow-enforcer skill:**
+```bash
+# Invoke skill to auto-generate commit
+/meta:enforce-git-commits --phase "epic-specification"
 ```
 
 **PAUSE (Interactive Mode Only)**: Review epic-spec.md. User can run `/clarify` if ambiguous, or continue to planning.
@@ -565,6 +613,37 @@ if (answers["Sprint Estimate"] === "7+ sprints") {
 - `.prompts/001-[epic-slug]-research/research.xml`
 - Contains: findings, confidence levels, dependencies, open questions, assumptions
 
+**Copy research to epic workspace and commit (atomic commit #2):**
+```bash
+# Copy research.xml to epic directory
+cp .prompts/001-${EPIC_SLUG}-research/research.xml epics/${EPIC_SLUG}/research.md
+
+# Extract metadata for commit message
+FINDINGS_COUNT=$(xmllint --xpath 'count(//finding)' epics/${EPIC_SLUG}/research.md)
+CONFIDENCE=$(xmllint --xpath 'string(//confidence_level)' epics/${EPIC_SLUG}/research.md)
+OPEN_QUESTIONS=$(xmllint --xpath 'count(//open_question)' epics/${EPIC_SLUG}/research.md)
+
+# Commit research
+git add .prompts/001-${EPIC_SLUG}-research/
+git add epics/${EPIC_SLUG}/research.md
+git commit -m "docs(epic-research): complete technical research for ${EPIC_SLUG}
+
+Findings: ${FINDINGS_COUNT}
+Confidence: ${CONFIDENCE}
+Open questions: ${OPEN_QUESTIONS}
+
+Next: Planning phase
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+**Alternative (recommended): Use git-workflow-enforcer skill:**
+```bash
+/meta:enforce-git-commits --phase "epic-research"
+```
+
 **Generate planning prompt:**
 ```bash
 /create-prompt "Create implementation plan based on research"
@@ -584,6 +663,39 @@ if (answers["Sprint Estimate"] === "7+ sprints") {
 **Plan outputs:**
 - `.prompts/002-[epic-slug]-plan/plan.xml`
 - Contains: architecture decisions, implementation phases, dependencies, risks
+
+**Copy plan to epic workspace and commit (atomic commit #3):**
+```bash
+# Copy plan.xml to epic directory
+cp .prompts/002-${EPIC_SLUG}-plan/plan.xml epics/${EPIC_SLUG}/plan.md
+
+# Extract metadata for commit message
+ARCH_DECISIONS=$(xmllint --xpath 'count(//architecture_decision)' epics/${EPIC_SLUG}/plan.md)
+PHASE_COUNT=$(xmllint --xpath 'count(//phase)' epics/${EPIC_SLUG}/plan.md)
+DEPENDENCY_COUNT=$(xmllint --xpath 'count(//dependency)' epics/${EPIC_SLUG}/plan.md)
+RISK_COUNT=$(xmllint --xpath 'count(//risk)' epics/${EPIC_SLUG}/plan.md)
+
+# Commit plan
+git add .prompts/002-${EPIC_SLUG}-plan/
+git add epics/${EPIC_SLUG}/plan.md
+git commit -m "docs(epic-plan): create implementation plan for ${EPIC_SLUG}
+
+Architecture decisions: ${ARCH_DECISIONS}
+Phases: ${PHASE_COUNT}
+Dependencies: ${DEPENDENCY_COUNT}
+Risks: ${RISK_COUNT}
+
+Next: Sprint breakdown
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+**Alternative (recommended): Use git-workflow-enforcer skill:**
+```bash
+/meta:enforce-git-commits --phase "epic-plan"
+```
 
 **PAUSE (Interactive Mode Only)**: Review research.md and plan.md. If approved, continue to sprint breakdown.
 
@@ -685,11 +797,50 @@ if (answers["Sprint Estimate"] === "7+ sprints") {
 - Sprint assignments
 - Acceptance criteria per task
 
+**Commit sprint breakdown and locked contracts (atomic commit #4):**
+```bash
+# Extract metadata for commit message
+SPRINT_COUNT=$(xmllint --xpath 'count(//sprint)' epics/${EPIC_SLUG}/sprint-plan.md)
+LAYER_COUNT=$(xmllint --xpath 'count(//layer)' epics/${EPIC_SLUG}/sprint-plan.md)
+CONTRACT_COUNT=$(find epics/${EPIC_SLUG}/contracts -name '*.yaml' | wc -l)
+TASK_COUNT=$(xmllint --xpath 'count(//task)' epics/${EPIC_SLUG}/tasks.md)
+
+# Commit sprint breakdown and contracts
+git add epics/${EPIC_SLUG}/sprint-plan.md
+git add epics/${EPIC_SLUG}/tasks.md
+git add epics/${EPIC_SLUG}/contracts/
+git commit -m "docs(epic-tasks): create sprint breakdown for ${EPIC_SLUG} (${SPRINT_COUNT} sprints)
+
+Sprints: ${SPRINT_COUNT}
+Layers: ${LAYER_COUNT}
+Contracts locked: ${CONTRACT_COUNT}
+Total tasks: ${TASK_COUNT}
+
+Next: /implement-epic (parallel sprint execution)
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+**Alternative (recommended): Use git-workflow-enforcer skill:**
+```bash
+/meta:enforce-git-commits --phase "epic-sprint-breakdown"
+```
+
 ### Step 5: Parallel Sprint Implementation
 
 **Invoke /implement-epic for parallel sprint execution:**
 ```bash
-/implement-epic
+# Read auto_mode from workflow-state.yaml
+AUTO_MODE=$(yq -r '.epic.auto_mode // "false"' epics/*/workflow-state.yaml)
+
+# Pass auto_mode flag to implement-epic
+if [ "$AUTO_MODE" = "true" ]; then
+    /implement-epic --auto-mode
+else
+    /implement-epic
+fi
 ```
 
 **The /implement-epic phase will:**
@@ -759,6 +910,37 @@ Layer 3/3: S03 (auth-integration) → Pending
 
 **If gates fail, workflow pauses. User must fix and run `/epic continue`.**
 
+**Commit optimization results (atomic commit #5):**
+```bash
+# Extract metadata for commit message
+PERF_SCORE=$(yq -r '.performance.score // "N/A"' epics/${EPIC_SLUG}/optimization-report.md)
+SEC_SCORE=$(yq -r '.security.score // "N/A"' epics/${EPIC_SLUG}/optimization-report.md)
+A11Y_SCORE=$(yq -r '.accessibility.score // "N/A"' epics/${EPIC_SLUG}/optimization-report.md)
+QUALITY_SCORE=$(yq -r '.code_quality.score // "N/A"' epics/${EPIC_SLUG}/optimization-report.md)
+
+# Commit optimization results
+git add epics/${EPIC_SLUG}/optimization-report.md
+git commit -m "docs(epic-optimize): complete optimization for ${EPIC_SLUG}
+
+Performance: ${PERF_SCORE}/100
+Security: ${SEC_SCORE}/100
+Accessibility: ${A11Y_SCORE}/100
+Code quality: ${QUALITY_SCORE}/100
+
+All quality gates passed
+
+Next: /preview (if needed) or /ship
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+**Alternative (recommended): Use git-workflow-enforcer skill:**
+```bash
+/meta:enforce-git-commits --phase "epic-optimize"
+```
+
 ### Step 7: Preview (Adaptive Manual Gate)
 
 **Analyze epic complexity to determine if preview needed:**
@@ -784,6 +966,37 @@ Layer 3/3: S03 (auth-integration) → Pending
 
 **If preview auto-skipped:**
 - Record in workflow-state.yaml: `preview.status: skipped, reason: "Small epic, no UI changes"`
+
+**Commit preview results (atomic commit #6):**
+```bash
+# Extract metadata for commit message
+AUTO_CHECKS=$(yq -r '.preview.auto_checks // "N/A"' epics/${EPIC_SLUG}/workflow-state.yaml)
+MANUAL_STATUS=$(yq -r '.manual_gates.preview.status // "N/A"' epics/${EPIC_SLUG}/workflow-state.yaml)
+
+# Commit preview results (if preview was performed)
+if [ -f epics/${EPIC_SLUG}/preview-report.md ]; then
+    git add epics/${EPIC_SLUG}/preview-report.md
+fi
+
+git add epics/${EPIC_SLUG}/workflow-state.yaml
+git commit -m "docs(epic-preview): complete preview for ${EPIC_SLUG}
+
+Auto-checks: ${AUTO_CHECKS}
+Manual review: ${MANUAL_STATUS}
+
+Ready for deployment
+
+Next: /ship
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+**Alternative (recommended): Use git-workflow-enforcer skill:**
+```bash
+/meta:enforce-git-commits --phase "epic-preview"
+```
 
 ### Step 8: Unified Deployment
 

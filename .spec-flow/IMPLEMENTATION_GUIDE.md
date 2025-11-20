@@ -5,6 +5,7 @@ This document outlines the enhancements needed for the remaining phase commands 
 ## Status Summary
 
 ✅ **COMPLETED:**
+
 - `/epic` command created
 - XML templates (epic-spec.xml, sprint-plan.xml, walkthrough.xml)
 - Infrastructure commands (audit-workflow, heal-workflow, workflow-health)
@@ -12,6 +13,7 @@ This document outlines the enhancements needed for the remaining phase commands 
 - `/clarify` enhanced with auto-invoke + AskUserQuestion
 
 🔨 **REMAINING:**
+
 - `/plan` - Meta-prompting integration
 - `/tasks` - Sprint breakdown with dependency graph
 - `/implement` - Parallel sprint execution
@@ -30,7 +32,7 @@ This document outlines the enhancements needed for the remaining phase commands 
 
 ### Add Meta-Prompting Section (Before existing logic)
 
-```markdown
+````markdown
 ## META-PROMPTING WORKFLOW (New in v5.0)
 
 **For epic workflows**, use meta-prompting to generate research → plan pipeline:
@@ -40,8 +42,10 @@ This document outlines the enhancements needed for the remaining phase commands 
 ```bash
 /create-prompt "Research technical approach for: [epic objective from epic-spec.xml]"
 ```
+````
 
 **The create-prompt skill will:**
+
 - Detect purpose: Research
 - Ask contextual questions (depth, sources, output format)
 - Generate research prompt in `.prompts/001-[epic-slug]-research/`
@@ -55,6 +59,7 @@ This document outlines the enhancements needed for the remaining phase commands 
 ```
 
 **Output:** `.prompts/001-[epic-slug]-research/research.xml`
+
 - Findings with confidence levels
 - Dependencies identified
 - Open questions flagged
@@ -67,6 +72,7 @@ This document outlines the enhancements needed for the remaining phase commands 
 ```
 
 **The create-prompt skill will:**
+
 - Reference research.xml from previous step
 - Generate plan prompt in `.prompts/002-[epic-slug]-plan/`
 - Specify plan.xml output with phases, dependencies, constraints
@@ -78,6 +84,7 @@ This document outlines the enhancements needed for the remaining phase commands 
 ```
 
 **Output:** `.prompts/002-[epic-slug]-plan/plan.xml`
+
 - Architecture decisions
 - Implementation phases
 - Risk assessment
@@ -94,8 +101,9 @@ For compatibility with existing workflow, convert XML to markdown:
 ```
 
 **Detection Logic:**
+
 ```javascript
-const isEpic = fs.existsSync('epics/*/epic-spec.xml');
+const isEpic = fs.existsSync("epics/*/epic-spec.xml");
 if (isEpic) {
   // Use meta-prompting workflow
   runMetaPrompting();
@@ -104,7 +112,8 @@ if (isEpic) {
   runTraditionalPlanning();
 }
 ```
-```
+
+````
 
 ### Integration Points
 
@@ -132,13 +141,13 @@ if (isEpic) {
 ```javascript
 const isEpic = fs.existsSync(workspaceDir + '/epic-spec.xml');
 const planPath = isEpic ? 'plan.xml' : 'plan.md';
-```
+````
 
 ### Step 2: Analyze Complexity
 
 ```javascript
 // Read plan to understand phases and subsystems
-const plan = readXML('plan.xml');
+const plan = readXML("plan.xml");
 const estimatedHours = calculateEstimate(plan.phases);
 const subsystems = plan.subsystems; // backend, frontend, database, etc.
 
@@ -153,23 +162,23 @@ if (needsMultipleSprints) {
   // Group tasks by subsystem and dependencies
   const sprints = {
     S01: {
-      name: 'Backend API',
-      subsystems: ['backend', 'database'],
+      name: "Backend API",
+      subsystems: ["backend", "database"],
       dependencies: [],
-      tasks: filterTasksBySubsystem(allTasks, ['backend', 'database'])
+      tasks: filterTasksBySubsystem(allTasks, ["backend", "database"]),
     },
     S02: {
-      name: 'Frontend UI',
-      subsystems: ['frontend'],
-      dependencies: ['S01'], // needs backend API
-      tasks: filterTasksBySubsystem(allTasks, ['frontend'])
+      name: "Frontend UI",
+      subsystems: ["frontend"],
+      dependencies: ["S01"], // needs backend API
+      tasks: filterTasksBySubsystem(allTasks, ["frontend"]),
     },
     S03: {
-      name: 'Integration & Tests',
-      subsystems: ['backend', 'frontend', 'testing'],
-      dependencies: ['S01', 'S02'],
-      tasks: filterTasksBySubsystem(allTasks, ['testing'])
-    }
+      name: "Integration & Tests",
+      subsystems: ["backend", "frontend", "testing"],
+      dependencies: ["S01", "S02"],
+      tasks: filterTasksBySubsystem(allTasks, ["testing"]),
+    },
   };
 }
 ```
@@ -179,10 +188,15 @@ if (needsMultipleSprints) {
 ```javascript
 const dependencyGraph = {
   layers: [
-    { num: 1, sprints: ['S01'], parallelizable: true, dependencies: [] },
-    { num: 2, sprints: ['S02'], parallelizable: false, dependencies: ['S01'] },
-    { num: 3, sprints: ['S03'], parallelizable: false, dependencies: ['S01', 'S02'] }
-  ]
+    { num: 1, sprints: ["S01"], parallelizable: true, dependencies: [] },
+    { num: 2, sprints: ["S02"], parallelizable: false, dependencies: ["S01"] },
+    {
+      num: 3,
+      sprints: ["S03"],
+      parallelizable: false,
+      dependencies: ["S01", "S02"],
+    },
+  ],
 };
 ```
 
@@ -197,7 +211,7 @@ for (const contract of contracts) {
   generateContract(contract, {
     path: `contracts/api/${contract.name}.yaml`,
     producer: contract.producer_sprint,
-    consumers: contract.consumer_sprints
+    consumers: contract.consumer_sprints,
   });
 }
 ```
@@ -207,12 +221,14 @@ for (const contract of contracts) {
 Use template: `.spec-flow/templates/sprint-plan.xml`
 
 Fill in:
+
 - Sprint metadata (IDs, names, estimates)
 - Dependencies between sprints
 - Execution layers for parallel execution
 - Locked contracts
 - Critical path analysis
-```
+
+````
 
 ### Integration Points
 
@@ -240,7 +256,7 @@ Fill in:
 ```javascript
 const sprintPlan = readXML('sprint-plan.xml');
 const layers = sprintPlan.execution_layers.layer;
-```
+````
 
 ### Step 2: Execute Layers Sequentially
 
@@ -248,9 +264,12 @@ const layers = sprintPlan.execution_layers.layer;
 for (const layer of layers) {
   console.log(`Executing Layer ${layer.number}: ${layer.sprint_ids}`);
 
-  if (layer.parallelizable === 'true' && layer.sprint_ids.split(',').length > 1) {
+  if (
+    layer.parallelizable === "true" &&
+    layer.sprint_ids.split(",").length > 1
+  ) {
     // Launch parallel Task agents (MUST be in single message)
-    await executeParallelSprints(layer.sprint_ids.split(','));
+    await executeParallelSprints(layer.sprint_ids.split(","));
   } else {
     // Execute single sprint
     await executeSprint(layer.sprint_ids);
@@ -268,8 +287,8 @@ for (const layer of layers) {
 ```javascript
 function executeParallelSprints(sprintIds) {
   // Build array of Task tool calls
-  const taskCalls = sprintIds.map(sprintId => ({
-    subagent_type: 'backend-dev', // or frontend-shipper, database-architect
+  const taskCalls = sprintIds.map((sprintId) => ({
+    subagent_type: "backend-dev", // or frontend-dev, database-architect
     description: `Implement sprint ${sprintId}`,
     prompt: `
       Implement sprint: ${sprintId}
@@ -288,7 +307,7 @@ function executeParallelSprints(sprintIds) {
       - Anti-duplication: Reuse existing patterns
 
       Output: Implementation in sprints/${sprintId}/
-    `
+    `,
   }));
 
   // Invoke ALL tasks in SINGLE message
@@ -317,12 +336,12 @@ for (const sprint of completedSprints) {
     status: sprint.status,
     tasks_completed: sprint.tasks_completed,
     tests_passing: sprint.tests_passing,
-    duration_hours: sprint.duration
+    duration_hours: sprint.duration,
   });
 }
 
 // Write consolidated report
-writeResults('implementation-report.xml', results);
+writeResults("implementation-report.xml", results);
 ```
 
 ### Step 6: Auto-Audit
@@ -332,7 +351,8 @@ After all sprints complete:
 ```bash
 /audit-workflow
 ```
-```
+
+````
 
 ### Integration Points
 
@@ -367,9 +387,10 @@ After all sprints complete:
 echo "Running workflow effectiveness audit..."
 
 /audit-workflow
-```
+````
 
 **Audit analyzes:**
+
 - Phase efficiency (time vs value)
 - Bottleneck detection
 - Sprint parallelization effectiveness
@@ -377,7 +398,8 @@ echo "Running workflow effectiveness audit..."
 - Documentation quality
 
 **Output:** `audit-report.xml` in epic/feature workspace
-```
+
+````
 
 ### Integration Points
 
@@ -418,13 +440,13 @@ const needsPreview =
   complexity.has_ui_changes ||
   complexity.sprint_count > 2 ||
   complexity.subsystems.includes('frontend');
-```
+````
 
 ### Step 2: Auto-Skip Decision
 
 ```javascript
 if (!needsPreview) {
-  console.log('✅ Preview auto-skipped: No UI changes, small epic');
+  console.log("✅ Preview auto-skipped: No UI changes, small epic");
 
   // Run AI pre-flight checks anyway
   runAutomatedChecks();
@@ -432,10 +454,10 @@ if (!needsPreview) {
   // Update workflow state
   updateWorkflowState({
     preview: {
-      status: 'skipped',
-      reason: 'No UI changes detected, backend-only epic',
-      automated_checks: 'passed'
-    }
+      status: "skipped",
+      reason: "No UI changes detected, backend-only epic",
+      automated_checks: "passed",
+    },
   });
 
   return { skipped: true };
@@ -448,7 +470,7 @@ if (!needsPreview) {
 const preFlightChecks = {
   accessibility: runAccessibilityScan(),
   visual_regression: runVisualRegression(),
-  integration_smoke: runSmokeTests()
+  integration_smoke: runSmokeTests(),
 };
 
 // Generate preview-report.xml
@@ -458,7 +480,8 @@ writePreviewReport(preFlightChecks);
 ### Step 4: Manual Preview (If Needed)
 
 (Keep existing manual preview logic for UI-heavy epics)
-```
+
+````
 
 ### Integration Points
 
@@ -494,7 +517,7 @@ const artifacts = {
   audit_report: readXML('audit-report.xml'),
   optimization_report: readXML('optimization-report.xml')
 };
-```
+````
 
 ### Step 2: Calculate Metrics
 
@@ -503,8 +526,9 @@ const metrics = {
   duration: calculateDuration(artifacts.workflow_state),
   velocity_multiplier: artifacts.audit_report.velocity_impact.actual_multiplier,
   sprint_count: artifacts.sprint_plan.sprints.sprint.length,
-  tasks_completed: artifacts.tasks.task.filter(t => t.status === 'completed').length,
-  quality_score: artifacts.audit_report.overall_score
+  tasks_completed: artifacts.tasks.task.filter((t) => t.status === "completed")
+    .length,
+  quality_score: artifacts.audit_report.overall_score,
 };
 ```
 
@@ -514,11 +538,14 @@ const metrics = {
 const walkthrough = {
   overview: extractOverview(artifacts),
   phases_completed: extractPhases(artifacts.workflow_state),
-  sprints_summary: extractSprints(artifacts.sprint_plan, artifacts.workflow_state),
+  sprints_summary: extractSprints(
+    artifacts.sprint_plan,
+    artifacts.workflow_state
+  ),
   validation: extractValidation(artifacts.optimization_report),
   key_files_modified: extractFileChanges(),
   next_steps: extractNextSteps(artifacts.audit_report),
-  summary: extractSummary(artifacts)
+  summary: extractSummary(artifacts),
 };
 ```
 
@@ -580,7 +607,8 @@ if (userChoice === "Yes, apply now") {
   /heal-workflow
 }
 ```
-```
+
+````
 
 ### Integration Points
 
@@ -659,19 +687,21 @@ You are an epic orchestrator agent responsible for coordinating multi-sprint wor
 - /heal-workflow (apply improvements)
 - /workflow-health (aggregate metrics)
 </integration>
-```
+````
 
 ---
 
 ## Implementation Priority
 
 1. **High Priority** (Critical for epic workflow):
+
    - `/plan` meta-prompting
    - `/tasks` sprint breakdown
    - `/implement` parallel execution
    - `/finalize` walkthrough generation
 
 2. **Medium Priority** (Enhances experience):
+
    - `/optimize` workflow audit integration
    - `/preview` adaptive gating
    - Epic agent brief
@@ -698,6 +728,7 @@ You are an epic orchestrator agent responsible for coordinating multi-sprint wor
    - Audit report identifies improvements
 
 **Expected results:**
+
 - 3-5x velocity improvement (vs sequential)
 - All XML artifacts valid and complete
 - Workflow audit score ≥ 80/100

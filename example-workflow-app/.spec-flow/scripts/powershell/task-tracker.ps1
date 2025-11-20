@@ -217,7 +217,7 @@ function Get-RecommendedAgent {
     # Analyze file paths for agent routing
     foreach ($path in $FilePaths) {
         if ($path -match "apps/api") { return "backend-dev" }
-        if ($path -match "apps/web") { return "frontend-shipper" }
+        if ($path -match "apps/web") { return "frontend-dev" }
         if ($path -match "contracts/") { return "contracts-sdk" }
         if ($path -match "migrations|alembic") { return "database-architect" }
         if ($path -match "\.github/workflows") { return "ci-cd-release" }

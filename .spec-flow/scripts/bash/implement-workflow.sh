@@ -390,7 +390,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 function mapDomainToSpecialist(domain) {
   const mapping = {
     'backend': 'backend-dev',
-    'frontend': 'frontend-shipper',
+    'frontend': 'frontend-dev',
     'database': 'database-architect',
     'tests': 'qa-test',
     'general': 'general-purpose'

@@ -8,12 +8,14 @@
 This guide explains how to use the parallel epic development workflow for large features requiring coordination across multiple agents (backend, frontend, database, etc.).
 
 **When to Use**:
+
 - Feature requires >10 tasks
 - Work can be split into independent vertical slices
 - Multiple specialist agents can work simultaneously
 - Contracts can be defined upfront
 
 **Benefits**:
+
 - **Faster delivery**: Parallel development reduces lead time
 - **WIP limits**: One epic per agent prevents context switching
 - **Quality gates**: Both CI and security gates enforce standards
@@ -28,6 +30,7 @@ This guide explains how to use the parallel epic development workflow for large 
 **Command**: `/feature "Feature Name"`
 
 Creates feature directory with initial structure:
+
 ```
 specs/002-auth-system/
 ├── CLAUDE.md           # Feature context
@@ -44,14 +47,17 @@ specs/002-auth-system/
 **Command**: `/plan`
 
 The planning agent generates `plan.md` with:
+
 1. **Implementation Plan** (standard, sequential approach)
 2. **Epic Breakdown** (parallel approach, if feature is large enough)
 
 **Epic Breakdown Example**:
-```markdown
+
+````markdown
 ## Epic Breakdown
 
 ### Epic 1: Authentication API
+
 **Vertical Slice**: Backend
 **Contracts**: POST /api/auth/login, POST /api/auth/register
 **Dependencies**: None
@@ -59,12 +65,14 @@ The planning agent generates `plan.md` with:
 **Agent Type**: backend-dev
 
 **Deliverables**:
+
 - [ ] POST /api/auth/register endpoint
 - [ ] POST /api/auth/login endpoint (JWT generation)
 - [ ] Unit tests (80% coverage)
 - [ ] Feature flag: auth_api_enabled
 
 **Contract Outputs**:
+
 ```yaml
 # contracts/api/v1.1.0/openapi.yaml excerpt
 paths:
@@ -77,29 +85,34 @@ paths:
         200:
           description: Login successful
 ```
+````
 
 ---
 
 ### Epic 2: Authentication UI
+
 **Vertical Slice**: Frontend
 **Contracts**: Consumes Epic 1 API endpoints
 **Dependencies**: Epic 1 (contracts locked)
 **Estimated Tasks**: 6
-**Agent Type**: frontend-shipper
+**Agent Type**: frontend-dev
 
 **Deliverables**:
+
 - [ ] LoginForm component
 - [ ] AuthContext provider
 - [ ] E2E tests
 - [ ] Feature flag: auth_ui_enabled
-```
+
+````
 
 **Validation**: Run dependency graph parser
 ```bash
 .spec-flow/scripts/bash/dependency-graph-parser.sh specs/002-auth/plan.md --format text
-```
+````
 
 **Output**:
+
 ```
 Epic Dependency Graph
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -125,6 +138,7 @@ Execution Order (Topological Sort):
 **Step 1**: Design contracts (OpenAPI schemas)
 
 Create `contracts/api/v1.1.0/openapi.yaml`:
+
 ```yaml
 openapi: 3.1.0
 info:
@@ -153,7 +167,7 @@ paths:
                 type: object
                 properties:
                   token: { type: string }
-                  user: { $ref: '#/components/schemas/User' }
+                  user: { $ref: "#/components/schemas/User" }
         401:
           description: Invalid credentials
 ```
@@ -161,33 +175,36 @@ paths:
 **Step 2**: Create CDC pacts
 
 Create `contracts/pacts/auth-ui-to-auth-api.json`:
+
 ```json
 {
   "consumer": { "name": "auth-ui" },
   "provider": { "name": "auth-api" },
-  "interactions": [{
-    "description": "login with valid credentials",
-    "request": {
-      "method": "POST",
-      "path": "/api/auth/login",
-      "headers": { "Content-Type": "application/json" },
-      "body": {
-        "email": "user@example.com",
-        "password": "password123"
-      }
-    },
-    "response": {
-      "status": 200,
-      "headers": { "Content-Type": "application/json" },
-      "body": {
-        "token": "jwt-token-here",
-        "user": {
-          "id": "user-id",
-          "email": "user@example.com"
+  "interactions": [
+    {
+      "description": "login with valid credentials",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "email": "user@example.com",
+          "password": "password123"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "token": "jwt-token-here",
+          "user": {
+            "id": "user-id",
+            "email": "user@example.com"
+          }
         }
       }
     }
-  }]
+  ]
 }
 ```
 
@@ -200,6 +217,7 @@ Create `contracts/pacts/auth-ui-to-auth-api.json`:
 ```
 
 **Output** (success):
+
 ```
 Contract Verification
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -231,6 +249,7 @@ Next: Assign epics to agents
 ```
 
 Creates `contracts/fixtures/auth-api-v1.1.0.json`:
+
 ```json
 {
   "LoginRequest": {
@@ -262,6 +281,7 @@ Creates `contracts/fixtures/auth-api-v1.1.0.json`:
 ```
 
 **Output**:
+
 ```
 ✅ Assigned epic-auth-api to backend-agent
 
@@ -292,6 +312,7 @@ Next steps:
 **Step 3**: Backend agent implements tasks
 
 The backend-dev agent:
+
 1. Reads `plan.md` for Epic 1 deliverables
 2. Reads `contracts/api/v1.1.0/openapi.yaml` for API contract
 3. Implements behind `if (featureFlags.auth_api_enabled) { ... }`
@@ -307,6 +328,7 @@ Once Epic 1 tasks are complete (or can run in parallel if using fixtures):
 ```
 
 **Output**:
+
 ```
 ✅ Assigned epic-auth-ui to frontend-agent
 
@@ -320,7 +342,8 @@ Next steps:
 
 **Step 5**: Frontend agent implements
 
-The frontend-shipper agent:
+The frontend-dev agent:
+
 1. Reads `plan.md` for Epic 2 deliverables
 2. Reads `contracts/api/v1.1.0/openapi.yaml` for API contract
 3. Uses `contracts/fixtures/auth-api-v1.1.0.json` to mock API calls
@@ -339,6 +362,7 @@ The frontend-shipper agent:
 ```
 
 **Output**:
+
 ```
 Epic State Summary
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -364,6 +388,7 @@ WIP Status: 2/2 slots occupied
 ```
 
 **Output**:
+
 ```
 DORA Metrics (Last 7 Days)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -393,6 +418,7 @@ When epic completes all tasks, it transitions to `Review` state.
 ```
 
 **Output** (passing):
+
 ```
 CI Quality Gate
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -414,6 +440,7 @@ Epic can transition: Review → Integrated
 ```
 
 **Output** (passing):
+
 ```
 Security Quality Gate
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -450,6 +477,7 @@ export AUTH_UI_ENABLED=true
 **Step 2**: Test in staging
 
 Manual QA verification:
+
 - Login form appears
 - Login succeeds with valid credentials
 - Login fails with invalid credentials
@@ -459,6 +487,7 @@ Manual QA verification:
 **Step 3**: Enable flags in production
 
 Gradual rollout:
+
 1. Enable for 10% of users
 2. Monitor metrics (error rate, latency)
 3. Enable for 50% of users
@@ -472,6 +501,7 @@ Gradual rollout:
 ```
 
 **Output**:
+
 ```
 ℹ️  Scanning codebase for references to: auth_api_enabled
 
@@ -504,6 +534,7 @@ Feature complete and deployed.
 ```
 
 **Output**:
+
 ```
 ⚠️ Parked epic-payment-integration
 
@@ -528,6 +559,7 @@ Epic parked
 ```
 
 **Effect**:
+
 - WIP slot released
 - Next queued epic auto-assigned
 - Backend agent continues working on different epic
@@ -549,12 +581,14 @@ Epic parked
 ```
 
 **Checks**:
+
 1. Branch age violations (>24h)
 2. CFR spike (>15%)
 3. Flag debt (>5 active flags, expired flags)
 4. Epic parking time (>48h)
 
 **Output** (alert triggered):
+
 ```
 DORA Metrics Alerts
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -620,6 +654,7 @@ DORA Metrics Alerts
 **Cause**: Contracts not verified
 
 **Fix**:
+
 ```bash
 /contract.verify
 ```
@@ -631,6 +666,7 @@ DORA Metrics Alerts
 **Cause**: Environment differences (Node version, missing dependencies)
 
 **Fix**:
+
 1. Check Node/Python version matches CI
 2. Run `npm ci` (not `npm install`) to match lockfile
 3. Check for missing environment variables
@@ -642,6 +678,7 @@ DORA Metrics Alerts
 **Cause**: Blocker not resolved or forgotten
 
 **Fix**:
+
 1. Escalate blocker resolution
 2. If blocker will take >1 week, deprioritize epic (remove from sprint)
 3. Assign different epic to agent
@@ -659,4 +696,5 @@ DORA Metrics Alerts
 ---
 
 **Version History**:
+
 - v1.0.0 (2025-11-10): Initial guide for parallel epic workflow

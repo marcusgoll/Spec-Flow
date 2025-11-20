@@ -8,11 +8,13 @@
 Added version display to all installation and update workflows for better visibility.
 
 **What's New:**
+
 - `npx spec-flow update` now displays the version after successful update
 - `npx spec-flow init` displays version after installation (both fresh and update scenarios)
 - Version displayed in cyan with bold formatting for easy identification
 
 **Display Format:**
+
 ```
 ✓ Update complete!
 
@@ -20,6 +22,7 @@ Spec-Flow version: 1.7.1
 ```
 
 **Locations Updated:**
+
 - `bin/cli.js` - update command
 - `bin/install-wizard.js` - init command (3 scenarios: non-interactive update, interactive update, fresh install)
 
@@ -37,6 +40,7 @@ npm install -g spec-flow@1.7.1
 ```
 
 Or upgrade:
+
 ```bash
 npm update -g spec-flow
 ```
@@ -49,6 +53,7 @@ npm update -g spec-flow
 
 **Problem Solved:**
 The `/implement` command had unreliable task completion tracking due to manual updates by agents. Tasks were tracked in two disconnected systems (tasks.md checkboxes and NOTES.md completion markers), leading to:
+
 - Agents forgetting to update status (~50% miss rate)
 - Desynchronization between tasks.md and NOTES.md
 - False negative completion status
@@ -62,11 +67,13 @@ Created a unified, atomic task status tracking system using the enhanced task-tr
 #### 1. Enhanced task-tracker.ps1 (`.spec-flow/scripts/powershell/task-tracker.ps1`)
 
 **New Actions:**
+
 - `mark-done-with-notes` - Atomically update both tasks.md and NOTES.md
 - `mark-failed` - Log task failures to error-log.md
 - `sync-status` - Migrate existing features (tasks.md → NOTES.md)
 
 **New Functions:**
+
 ```powershell
 Update-TaskCompletionAtomic    # Atomic updates with evidence tracking
 Mark-TaskFailed                # Structured error logging
@@ -75,6 +82,7 @@ Get-NotesFile, Get-ErrorLogFile # Helper functions
 ```
 
 **New Parameters:**
+
 - `-Evidence` - Test execution evidence (e.g., "pytest: 25/25 passing")
 - `-Coverage` - Coverage delta (e.g., "92% (+8%)")
 - `-CommitHash` - Git commit for traceability
@@ -83,6 +91,7 @@ Get-NotesFile, Get-ErrorLogFile # Helper functions
 #### 2. Updated /implement Command (`.claude/commands/implement.md`)
 
 **Changes:**
+
 - Task-tracker initialization after feature directory loading
 - Replace manual NOTES.md validation with task-tracker status queries
 - Updated agent prompt templates to require task-tracker usage
@@ -90,6 +99,7 @@ Get-NotesFile, Get-ErrorLogFile # Helper functions
 - Fallback to manual NOTES.md check if task-tracker unavailable
 
 **Agent Prompt Template:**
+
 ```bash
 .spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
   -TaskId "TXXX" \
@@ -103,12 +113,14 @@ Get-NotesFile, Get-ErrorLogFile # Helper functions
 #### 3. Updated Agent Briefs (4 files)
 
 **Files Modified:**
+
 - `.claude/agents/backend-dev.md`
-- `.claude/agents/frontend-shipper.md`
+- `.claude/agents/frontend-dev.md`
 - `.claude/agents/qa-test.md`
 - `.claude/agents/database-architect.md`
 
 **New Section Added:** "Task Completion Protocol"
+
 - Step-by-step completion workflow
 - Task-tracker usage examples
 - Failure handling instructions
@@ -117,6 +129,7 @@ Get-NotesFile, Get-ErrorLogFile # Helper functions
 #### 4. Updated /analyze Command (`.claude/commands/analyze.md`)
 
 **New Section:** "TASK STATUS CONSISTENCY CHECK"
+
 - Validates tasks.md ↔ NOTES.md synchronization
 - Uses task-tracker validate action
 - Reports inconsistencies as medium-priority issues
@@ -125,6 +138,7 @@ Get-NotesFile, Get-ErrorLogFile # Helper functions
 #### 5. Migration Script (`.spec-flow/scripts/bash/migrate-task-status.sh`)
 
 **Features:**
+
 - Scans all feature directories in specs/
 - Interactive or batch mode (--all flag)
 - Dry-run preview (--dry-run flag)
@@ -134,27 +148,33 @@ Get-NotesFile, Get-ErrorLogFile # Helper functions
 ### 🎯 Key Benefits
 
 ✅ **100% Reliable Task Completion Tracking**
+
 - Agents call one script instead of manual edits
 - Atomic updates prevent desync between files
 
 ✅ **Structured Evidence Collection**
+
 - Test execution results
 - Coverage deltas
 - Git commit traceability
 
 ✅ **Automatic Phase Marker Extraction**
+
 - Detects [RED], [GREEN], [REFACTOR], [US1], [P1], [P] from tasks.md
 - Includes in NOTES.md completion markers
 
 ✅ **Rollback Safety**
+
 - mark-failed function logs errors systematically
 - Keeps checkbox unchecked for retry
 
 ✅ **Consistency Validation**
+
 - /analyze checks for discrepancies
 - Migration utility for existing features
 
 ✅ **Single Source of Truth**
+
 - task-tracker.ps1 manages both tasks.md and NOTES.md
 - No more manual edits
 - Standardized format
@@ -162,20 +182,24 @@ Get-NotesFile, Get-ErrorLogFile # Helper functions
 ### 📝 Files Changed
 
 **Scripts:**
+
 - `.spec-flow/scripts/powershell/task-tracker.ps1` (+235 lines)
 - `.spec-flow/scripts/bash/migrate-task-status.sh` (new file, 177 lines)
 
 **Commands:**
+
 - `.claude/commands/implement.md` (~100 lines modified)
 - `.claude/commands/analyze.md` (+32 lines)
 
 **Agent Briefs:**
+
 - `.claude/agents/backend-dev.md` (+38 lines)
-- `.claude/agents/frontend-shipper.md` (+38 lines)
+- `.claude/agents/frontend-dev.md` (+38 lines)
 - `.claude/agents/qa-test.md` (+34 lines)
 - `.claude/agents/database-architect.md` (+34 lines)
 
 **Configuration:**
+
 - `package.json` (version bump to 1.7.0)
 
 ### 🔄 Migration Guide
@@ -183,11 +207,13 @@ Get-NotesFile, Get-ErrorLogFile # Helper functions
 **For Existing Projects:**
 
 1. **Update Spec-Flow:**
+
    ```bash
    npm update -g spec-flow@1.7.0
    ```
 
 2. **Migrate Existing Features** (optional but recommended):
+
    ```bash
    # Preview changes
    .spec-flow/scripts/bash/migrate-task-status.sh --dry-run
@@ -211,14 +237,16 @@ Get-NotesFile, Get-ErrorLogFile # Helper functions
 
 ```markdown
 ✅ T001 [RED]: Task description
-  - Evidence: pytest: 25/25 passing, <500ms p95
-  - Coverage: 92% line, 87% branch (+8%)
-  - Committed: abc123
+
+- Evidence: pytest: 25/25 passing, <500ms p95
+- Coverage: 92% line, 87% branch (+8%)
+- Committed: abc123
 
 ✅ T002 [US1] [P1]: MessageForm component
-  - Evidence: jest: 12/12 passing, a11y: 0 violations
-  - Coverage: 88% (+6%)
-  - Committed: def456
+
+- Evidence: jest: 12/12 passing, a11y: 0 violations
+- Coverage: 88% (+6%)
+- Committed: def456
 ```
 
 ### 🐛 Bug Fixes
@@ -228,11 +256,13 @@ Get-NotesFile, Get-ErrorLogFile # Helper functions
 ### ⚠️ Breaking Changes
 
 **Behavior Changes (Non-Breaking):**
+
 - Agents now MUST use task-tracker for status updates
 - Manual NOTES.md/tasks.md edits will cause desync warnings
 - /analyze now includes task status consistency validation
 
 **Backward Compatibility:**
+
 - Existing manual NOTES.md entries remain valid
 - Migration script handles brownfield projects
 - Fallback to manual validation if task-tracker unavailable
@@ -240,6 +270,7 @@ Get-NotesFile, Get-ErrorLogFile # Helper functions
 ### 🔮 Future Enhancements
 
 Discovered during implementation:
+
 - Real-time task status dashboard
 - Parallel task conflict detection
 - Coverage trend visualization
@@ -252,6 +283,7 @@ npm install -g spec-flow@1.7.0
 ```
 
 Or upgrade:
+
 ```bash
 npm update -g spec-flow
 ```
@@ -274,12 +306,14 @@ Integrated comprehensive branch management into the Spec-Flow workflow to enforc
 **Features Added:**
 
 1. **Clean Worktree Validation**
+
    - Validates working directory is clean before starting new features
    - Checks both unstaged changes (`git diff --quiet`) and staged changes (`git diff --cached --quiet`)
    - Prevents feature initialization with uncommitted changes
    - Location: `.claude/commands/spec-flow.md` lines 69-139
 
 2. **Automatic Feature Branch Creation**
+
    - Detects current branch (main/master detection)
    - Auto-creates feature branches with naming convention: `feat/NNN-slug`
    - Sequential feature numbering based on existing specs directories
@@ -288,6 +322,7 @@ Integrated comprehensive branch management into the Spec-Flow workflow to enforc
    - Location: `.claude/commands/spec-flow.md` lines 69-139
 
 3. **Branch Name State Tracking**
+
    - Workflow state now tracks branch name for each feature
    - Added `branch_name` field to feature metadata in workflow-state.yaml
    - Default: "local" for non-git projects
@@ -330,6 +365,7 @@ npm install -g spec-flow@1.6.4
 ```
 
 Or upgrade:
+
 ```bash
 npm update -g spec-flow
 ```
@@ -348,11 +384,13 @@ Fixed all code quality issues identified by shellcheck static analysis tool in b
 **Issues Fixed:**
 
 1. **SC2162 (info)**: `read` without `-r` will mangle backslashes
+
    - Added `-r` flag to all `read` commands
    - Prevents unexpected behavior with backslash escaping
    - Affected: roadmap-manager.sh (1 fix), version-manager.sh (5 fixes)
 
 2. **SC2125 (warning)**: Brace expansions and globs are literal in assignments
+
    - Changed glob pattern assignment to use `find` command
    - Before: `local ship_report="$feature_dir"/*-ship-report.md`
    - After: `ship_report=$(find "$feature_dir" -name "*-ship-report.md" -type f | head -1)`
@@ -385,6 +423,7 @@ npm install -g spec-flow@1.6.3
 ```
 
 Or upgrade:
+
 ```bash
 npm update -g spec-flow
 ```
@@ -409,6 +448,7 @@ The update command was failing on Windows with `EPERM: operation not permitted` 
 
 **Root Cause:**
 The update function was incorrectly backing up ALL directories in `USER_DATA_DIRECTORIES`, including:
+
 - `node_modules` (managed by package managers, contains symlinks)
 - `.git` (managed by git)
 - `dist`, `build`, `coverage`, `.next`, `.nuxt`, `out` (build artifacts)
@@ -422,6 +462,7 @@ Separated concerns with two constants:
 2. **`BACKUP_DIRECTORIES`** - Directories to back up during updates (only `specs` + `.spec-flow/memory`)
 
 Now updates only back up truly valuable user data:
+
 - `.spec-flow/memory` (roadmap, constitution, design inspirations)
 - `specs` (feature specifications)
 
@@ -445,6 +486,7 @@ npm install -g spec-flow@1.6.2
 ```
 
 Or upgrade:
+
 ```bash
 npm update -g spec-flow
 ```
@@ -464,6 +506,7 @@ Running `npx spec-flow init` in brownfield projects with existing `.claude` or `
 The `init` command now intelligently detects existing installations and seamlessly guides users through the update process:
 
 **Interactive Mode:**
+
 - Detects existing Spec-Flow installation
 - Shows current installation status (`.claude`, `.spec-flow` directories)
 - Prompts user: "Update existing installation (recommended)" or "Cancel"
@@ -471,11 +514,13 @@ The `init` command now intelligently detects existing installations and seamless
 - Displays clear next steps after successful update
 
 **Non-Interactive Mode:**
+
 - Auto-detects existing installation
 - Automatically runs update without user intervention
 - Perfect for CI/CD pipelines and automation scripts
 
 **Before:**
+
 ```bash
 $ npx spec-flow init
 ✗ Already installed. Use update command or remove existing installation.
@@ -483,6 +528,7 @@ $ npx spec-flow init
 ```
 
 **After (Interactive):**
+
 ```bash
 $ npx spec-flow init
 ⚠ Spec-Flow is already installed in this directory
@@ -502,6 +548,7 @@ Next steps:
 ```
 
 **After (Non-Interactive):**
+
 ```bash
 $ npx spec-flow init --non-interactive
 Auto-updating existing installation...
@@ -528,6 +575,7 @@ npm install -g spec-flow@1.6.1
 ```
 
 Or upgrade from 1.6.0:
+
 ```bash
 npm update -g spec-flow
 ```
@@ -543,30 +591,35 @@ This release introduces three major enhancements to the Spec-Flow workflow toolk
 #### YAML State Management
 
 **What's New:**
+
 - All workflow state files now use YAML format instead of JSON
 - Improved LLM editability with human-friendly syntax
 - Support for inline comments in state files
 - Auto-migration from JSON to YAML with backward compatibility
 
 **Benefits:**
+
 - Easier for AI agents to read and modify state
 - Better version control diffs
 - Human-readable with inline documentation
 - Reduced parsing errors
 
 **Migration:**
+
 - Existing JSON files auto-migrate on first access
 - Batch migration utility: `.spec-flow/scripts/bash/migrate-state-to-yaml.sh`
 - Originals preserved as `.json.backup`
 - Schema version: 1.0.0 → 2.0.0
 
 **Prerequisites:**
+
 - `yq` v4.0+ (replaces `jq` for YAML processing)
 - PowerShell: `powershell-yaml` module
 
 #### Roadmap Integration
 
 **What's New:**
+
 - Automatic roadmap lifecycle tracking throughout workflow
 - `/spec-flow` command marks features as "In Progress"
 - `/ship` command marks features as "Shipped" with metadata
@@ -574,22 +627,26 @@ This release introduces three major enhancements to the Spec-Flow workflow toolk
 - Interactive prompts for discovered features
 
 **Roadmap Lifecycle:**
+
 ```
 Backlog → Later → Next → In Progress → Shipped
 ```
 
 **Feature Discovery:**
+
 - Detects patterns: "TODO", "future work", "phase 2", "out of scope"
 - Prompts: Add now, save for later, or skip
 - Deferred features saved to `.spec-flow/memory/discovered-features.md`
 
 **Scripts:**
+
 - `.spec-flow/scripts/bash/roadmap-manager.sh` (313 lines)
 - `.spec-flow/scripts/powershell/roadmap-manager.ps1` (560 lines)
 
 #### Automated Version Management
 
 **What's New:**
+
 - Semantic versioning with intelligent auto-detection
 - Version bumping integrated into `/ship` workflow (Phase S.5)
 - Auto-generated release notes from ship reports
@@ -597,11 +654,13 @@ Backlog → Later → Next → In Progress → Shipped
 - npm package version synchronization
 
 **Versioning Logic:**
+
 - Breaking changes → MAJOR bump (e.g., 1.5.3 → 2.0.0)
 - Bug fixes/patches → PATCH bump (e.g., 1.5.3 → 1.5.4)
 - New features → MINOR bump (e.g., 1.5.3 → 1.6.0)
 
 **Process:**
+
 1. Read current version from `package.json`
 2. Analyze spec and ship report for bump type
 3. Calculate new version
@@ -611,17 +670,20 @@ Backlog → Later → Next → In Progress → Shipped
 7. Update roadmap with version number
 
 **Scripts:**
+
 - `.spec-flow/scripts/bash/version-manager.sh` (464 lines)
 - `.spec-flow/scripts/powershell/version-manager.ps1` (512 lines)
 
 ### 📝 Documentation Updates
 
 - **constitution.md**: v1.0.0 → v1.1.0
+
   - Added "Roadmap Management" section
   - Added "Version Management" section
   - Documented automatic transitions and policies
 
 - **CLAUDE.md**: Added "New Features (v1.1.0)" section
+
   - YAML state files documentation
   - Roadmap integration guide
   - Version management instructions
@@ -633,6 +695,7 @@ Backlog → Later → Next → In Progress → Shipped
 ### 🔧 Command Updates
 
 **Updated Commands:**
+
 - `/spec-flow`: Integrated roadmap marking (in progress)
 - `/ship`: Integrated version management and roadmap updates (shipped)
 - `/ship-status`: YAML state compatibility
@@ -642,18 +705,21 @@ Backlog → Later → Next → In Progress → Shipped
 - `/validate-staging`: YAML state compatibility
 
 **State File Migration:**
+
 - All `jq` commands replaced with `yq` equivalents
 - State file references: `workflow-state.json` → `workflow-state.yaml`
 
 ### 📦 New Scripts
 
 **Bash Scripts:**
+
 1. `.spec-flow/scripts/bash/migrate-state-to-yaml.sh` (203 lines)
 2. `.spec-flow/scripts/bash/roadmap-manager.sh` (313 lines)
 3. `.spec-flow/scripts/bash/version-manager.sh` (464 lines)
 4. `.spec-flow/scripts/bash/workflow-state.sh` (456 lines, updated)
 
 **PowerShell Scripts:**
+
 1. `.spec-flow/scripts/powershell/migrate-state-to-yaml.ps1` (221 lines)
 2. `.spec-flow/scripts/powershell/roadmap-manager.ps1` (560 lines)
 3. `.spec-flow/scripts/powershell/version-manager.ps1` (512 lines)
@@ -671,6 +737,7 @@ Backlog → Later → Next → In Progress → Shipped
 **For Existing Projects:**
 
 1. **Install yq** (required):
+
    ```bash
    # macOS
    brew install yq
@@ -685,11 +752,13 @@ Backlog → Later → Next → In Progress → Shipped
    ```
 
 2. **Install PowerShell-yaml** (Windows only):
+
    ```powershell
    Install-Module -Name powershell-yaml -Scope CurrentUser
    ```
 
 3. **Migrate existing features**:
+
    ```bash
    # Dry run (preview changes)
    .spec-flow/scripts/bash/migrate-state-to-yaml.sh --dry-run
@@ -699,6 +768,7 @@ Backlog → Later → Next → In Progress → Shipped
    ```
 
 4. **Verify migration**:
+
    ```bash
    # Check for YAML files
    find specs -name "workflow-state.yaml"
@@ -720,6 +790,7 @@ Backlog → Later → Next → In Progress → Shipped
 ### 🔮 Future Enhancements
 
 Potential features discovered during implementation:
+
 - Interactive CLI for version management
 - Rollback capability testing in staging
 - Performance benchmarking integration
@@ -733,16 +804,19 @@ This release was built entirely through AI-assisted development using Claude Cod
 ---
 
 **Installation:**
+
 ```bash
 npm install -g spec-flow@1.6.0
 ```
 
 **Upgrade:**
+
 ```bash
 npm update -g spec-flow
 ```
 
 **Documentation:**
+
 - GitHub: https://github.com/marcusgoll/Spec-Flow
 - Issues: https://github.com/marcusgoll/Spec-Flow/issues
 

@@ -164,7 +164,7 @@ Purpose: Enable parallel sprint execution based on dependency analysis
 
     {{#AGENT_ASSIGNMENTS}}
     <assignment layer="{{LAYER_NUMBER}}" sprint_id="{{SPRINT_ID}}">
-      <agent_type>{{AGENT_TYPE}}</agent_type> <!-- backend-dev | frontend-shipper | database-architect -->
+      <agent_type>{{AGENT_TYPE}}</agent_type> <!-- backend-dev | frontend-dev | database-architect -->
       <rationale>{{RATIONALE}}</rationale>
     </assignment>
     {{/AGENT_ASSIGNMENTS}}

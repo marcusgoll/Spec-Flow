@@ -88,6 +88,121 @@ git commit -m "docs(preview): create release notes for ${FEATURE_SLUG} v${VERSIO
 - Migration guide: ${HAS_MIGRATION}"
 ```
 
+## Epic Phase Commit Templates
+
+### Epic Phase 0: Specification
+
+```bash
+git commit -m "docs(epic-spec): create specification for ${EPIC_SLUG}
+
+Type: ${EPIC_TYPE}
+Complexity: ${COMPLEXITY}
+Subsystems: ${SUBSYSTEM_COUNT}
+Estimated sprints: ${ESTIMATED_SPRINTS}
+
+Next: /clarify (if needed) or research phase"
+```
+
+### Epic Phase 1: Research
+
+```bash
+git commit -m "docs(epic-research): complete technical research for ${EPIC_SLUG}
+
+Findings: ${FINDINGS_COUNT}
+Confidence: ${CONFIDENCE_LEVEL}
+Open questions: ${OPEN_QUESTIONS}
+Dependencies: ${DEPENDENCY_COUNT}
+
+Next: Planning phase"
+```
+
+### Epic Phase 1: Planning
+
+```bash
+git commit -m "docs(epic-plan): create implementation plan for ${EPIC_SLUG}
+
+Architecture decisions: ${ARCH_DECISIONS}
+Phases: ${PHASE_COUNT}
+Dependencies: ${DEPENDENCY_COUNT}
+Risks: ${RISK_COUNT}
+
+Next: Sprint breakdown"
+```
+
+### Epic Phase 2: Sprint Breakdown
+
+```bash
+git commit -m "docs(epic-tasks): create sprint breakdown for ${EPIC_SLUG} (${SPRINT_COUNT} sprints)
+
+Sprints: ${SPRINT_COUNT}
+Layers: ${LAYER_COUNT}
+Contracts locked: ${CONTRACT_COUNT}
+Total tasks: ${TASK_COUNT}
+
+Next: /implement-epic (parallel sprint execution)"
+```
+
+### Epic Phase 3: Layer Implementation
+
+```bash
+git commit -m "feat(epic): complete layer ${LAYER_NUM} (sprints ${SPRINT_IDS})
+
+Duration: ${DURATION_HOURS}h
+Tasks: ${TASKS_COMPLETED}
+Tests: ${TESTS_PASSING} passing
+Coverage: ${COVERAGE}%
+Contracts locked: ${CONTRACTS_LOCKED}
+
+Layer ${LAYER_NUM} of ${LAYER_TOTAL} complete
+Epic progress: ${SPRINTS_COMPLETED}/${SPRINTS_TOTAL} sprints
+
+Next layer: ${NEXT_LAYER} (or optimization if final)"
+```
+
+### Epic Phase 3: Implementation Summary
+
+```bash
+git commit -m "feat(epic): complete ${EPIC_SLUG} with ${MULTIPLIER}x velocity
+
+Total sprints: ${TOTAL_SPRINTS}
+Execution strategy: ${EXECUTION_STRATEGY}
+Expected duration: ${EXPECTED_HOURS}h (sequential)
+Actual duration: ${ACTUAL_HOURS}h (parallel)
+
+Audit score: ${AUDIT_SCORE}/100
+Bottlenecks: ${BOTTLENECK_COUNT}
+
+Next: /optimize"
+```
+
+### Epic Phase 5: Optimization
+
+```bash
+git commit -m "docs(epic-optimize): complete optimization for ${EPIC_SLUG}
+
+Performance: ${PERF_SCORE}/100
+Security: ${SEC_SCORE}/100
+Accessibility: ${A11Y_SCORE}/100
+Code quality: ${QUALITY_SCORE}/100
+
+All quality gates passed
+
+Next: /preview (if needed) or /ship"
+```
+
+### Epic Phase 6: Preview
+
+```bash
+git commit -m "docs(epic-preview): complete preview for ${EPIC_SLUG}
+
+Auto-checks: ${AUTO_CHECK_RESULTS}
+Manual review: ${MANUAL_REVIEW_STATUS}
+
+Ready for deployment
+
+Next: /ship"
+```
+
 ## Task Commit Templates
 
 ### RED Phase (Write Failing Test)

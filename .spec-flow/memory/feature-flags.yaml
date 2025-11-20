@@ -16,7 +16,7 @@
 # Schema:
 # flags:
 #   - name: feature_name_enabled
-#     owner: agent-name (backend-dev, frontend-shipper, etc.)
+#     owner: agent-name (backend-dev, frontend-dev, etc.)
 #     epic: epic-slug (if part of epic)
 #     branch: feature/branch-name
 #     created: 2025-11-10T14:30:00Z

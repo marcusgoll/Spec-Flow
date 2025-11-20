@@ -9,15 +9,18 @@ Route task to specialist agent: $ARGUMENTS
 **Purpose**: Intelligent agent delegation based on task domain, file paths, and keywords.
 
 **Pattern**: Routing (from Anthropic best practices)
+
 - Classify input by domain -> Route to specialized sub-agent -> Return structured result
 
 **Context efficiency**:
+
 - Agent receives minimal, focused context
 - No token waste on irrelevant codebase scanning
 
 ## PARSE TASK DESCRIPTION
 
 From `$ARGUMENTS`, extract:
+
 - **Domain**: Backend | Frontend | Database | Tests | Debugging | Review
 - **File paths**: Explicit paths mentioned (e.g., "api/app/routes/users.py")
 - **Keywords**: Trigger words for agent selection
@@ -26,14 +29,17 @@ From `$ARGUMENTS`, extract:
 ## ROUTING DECISION TREE
 
 ### Backend API/Services
+
 **Agent**: `backend-dev`
 
 **Triggers**:
+
 - File paths: `api/**/*.py`, `app/**/*.py`
 - Keywords: "endpoint", "route", "service", "FastAPI", "Pydantic", "middleware"
 - Task types: Implement API, create service, add endpoint
 
 **Context to provide**:
+
 - Task description
 - Relevant spec.md sections
 - REUSE markers from tasks.md (if applicable)
@@ -42,14 +48,17 @@ From `$ARGUMENTS`, extract:
 ---
 
 ### Frontend UI/Components
-**Agent**: `frontend-shipper`
+
+**Agent**: `frontend-dev`
 
 **Triggers**:
+
 - File paths: `apps/**/*.tsx`, `apps/**/*.ts`, `components/**`
 - Keywords: "component", "UI", "React", "Next.js", "page", "form", "button"
 - Task types: Implement UI, create component, add page
 
 **Context to provide**:
+
 - Task description
 - visuals/README.md (for UX patterns)
 - Design system references
@@ -58,14 +67,17 @@ From `$ARGUMENTS`, extract:
 ---
 
 ### Database Schema/Queries
+
 **Agent**: `database-architect`
 
 **Triggers**:
+
 - File paths: `api/alembic/**`, `api/app/models/**`
 - Keywords: "migration", "schema", "database", "SQL", "Alembic", "table", "RLS"
 - Task types: Create migration, update schema, optimize query
 
 **Context to provide**:
+
 - Task description
 - data-model.md (ERD and schema definitions)
 - Existing migration files
@@ -74,14 +86,17 @@ From `$ARGUMENTS`, extract:
 ---
 
 ### Tests/QA
+
 **Agent**: `qa-test`
 
 **Triggers**:
+
 - File paths: `**/tests/**`, `**/test_*.py`, `**/*.test.ts`
 - Keywords: "test", "coverage", "E2E", "Playwright", "Jest", "integration", "unit"
 - Task types: Write tests, increase coverage, fix failing tests
 
 **Context to provide**:
+
 - Task description
 - Test patterns from .spec-flow/templates/test-patterns.md
 - Coverage targets from plan.md (80%+ line, 80%+ branch)
@@ -90,13 +105,16 @@ From `$ARGUMENTS`, extract:
 ---
 
 ### Debugging/Error Fixing
+
 **Agent**: `debugger`
 
 **Triggers**:
+
 - Keywords: "bug", "error", "failing", "broken", "fix", "debug", "crash"
 - Task types: Debug issue, fix error, resolve failure
 
 **Context to provide**:
+
 - Error description and stack trace
 - error-log.md (recent entries for context)
 - Reproduction steps
@@ -105,13 +123,16 @@ From `$ARGUMENTS`, extract:
 ---
 
 ### Code Review/Quality
+
 **Agent**: `senior-code-reviewer`
 
 **Triggers**:
+
 - Keywords: "review", "quality", "contract", "KISS", "DRY", "security", "compliance"
 - Task types: Review code, validate contracts, check quality gates
 
 **Context to provide**:
+
 - Files to review (git diff or specific paths)
 - OpenAPI contracts (if exist in specs/NNN/contracts/)
 - Quality gate requirements from plan.md
@@ -153,13 +174,14 @@ Task({
 - Files changed (list with paths)
 - Tests added/modified (with evidence)
 - Verification status (lint, types, tests)
-- Notes or side effects`
-})
+- Notes or side effects`,
+});
 ```
 
 ## STRUCTURED RESULT
 
 Agent should return:
+
 ```json
 {
   "agent": "backend-dev",
@@ -181,6 +203,7 @@ Agent should return:
 ## ROUTING EXAMPLES
 
 ### Example 1: Backend Task
+
 ```
 Input: "Implement POST /api/users endpoint with validation"
 Analysis:
@@ -192,17 +215,19 @@ Context: spec.md requirements, data-model.md User schema, REUSE: validation_serv
 ```
 
 ### Example 2: Frontend Task
+
 ```
 Input: "Create UserProfile component with avatar upload"
 Analysis:
   - Domain: Frontend UI
   - Keywords: "component", "avatar", "upload"
   - File paths: None explicit (will be apps/app/components/)
-Route: frontend-shipper
+Route: frontend-dev
 Context: visuals/README.md patterns, design system colors, REUSE: ImageUpload component
 ```
 
 ### Example 3: Database Task
+
 ```
 Input: "Add migration for user_preferences table"
 Analysis:
@@ -214,6 +239,7 @@ Context: data-model.md ERD, existing migrations, RLS requirements from plan.md
 ```
 
 ### Example 4: Debugging Task
+
 ```
 Input: "Fix failing test_user_creation - IntegrityError on email field"
 Analysis:
@@ -236,12 +262,13 @@ Context: error-log.md recent entries, test file, User model definition
 
 - Always provide minimal, focused context (avoid full codebase dumps)
 - Include REUSE markers when available (prevent duplication)
--\spec-flow expected deliverables clearly
+  -\spec-flow expected deliverables clearly
 - Require evidence for test execution (no "tests should pass" without proof)
 
 ## RETURN
 
 Brief routing summary:
+
 ```
 Routed to: [agent-name]
 Domain: [Backend/Frontend/Database/Tests/Debug/Review]
@@ -252,7 +279,3 @@ Context provided:
 
 Agent working on: [task description]
 ```
-
-
-
-

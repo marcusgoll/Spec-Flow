@@ -15,10 +15,11 @@ Intelligent agent delegation based on task domain analysis, file path patterns, 
 **When called**: Automatically invoked by `/implement` for task processing. Users rarely call directly.
 
 **Architecture**:
+
 - **Routing Engine**: Shared scoring algorithm in `@.claude/agents/agent-routing-rules.json`
-- **26 Specialist Agents**: backend-dev, frontend-shipper, database-architect, qa-test, debugger, senior-code-reviewer, plus 10 phase agents
+- **26 Specialist Agents**: backend-dev, frontend-dev, database-architect, qa-test, debugger, senior-code-reviewer, plus 10 phase agents
 - **Context Efficiency**: Each agent receives minimal, focused context (< 2000 tokens)
-</objective>
+  </objective>
 
 <context>
 **Task to route**:
@@ -40,6 +41,7 @@ $ARGUMENTS
 ## 1. Validate Arguments
 
 If `$ARGUMENTS` is empty, display usage:
+
 ```
 Usage: /route-agent [task description]
 
@@ -56,10 +58,12 @@ Set `TASK_DESCRIPTION = $ARGUMENTS`
 Extract classification signals from task description:
 
 **File paths mentioned**:
+
 - Look for patterns: `api/app/*.py`, `apps/**/*.tsx`, `api/alembic/**`, `tests/**`
 - Extract explicit file paths from task text
 
 **Keywords present**:
+
 - **Backend**: "endpoint", "route", "service", "FastAPI", "Pydantic", "middleware", "API"
 - **Frontend**: "component", "UI", "React", "Next.js", "page", "form", "button", "tsx"
 - **Database**: "migration", "schema", "database", "SQL", "Alembic", "table", "RLS", "model"
@@ -68,6 +72,7 @@ Extract classification signals from task description:
 - **Review**: "review", "quality", "contract", "KISS", "DRY", "security", "compliance"
 
 **Task type**:
+
 - **Implement**: "create", "add", "implement", "build"
 - **Fix**: "fix", "resolve", "debug", "repair"
 - **Test**: "test", "coverage", "verify"
@@ -78,6 +83,7 @@ Extract classification signals from task description:
 Use shared routing engine from `@.claude/agents/agent-routing-rules.json`:
 
 **Scoring algorithm**:
+
 1. **File path matching**: +20 points per matched glob pattern
 2. **Keyword matching**: +10 points per matched keyword
 3. **Intent pattern matching**: +15 points for regex match on task description
@@ -85,14 +91,15 @@ Use shared routing engine from `@.claude/agents/agent-routing-rules.json`:
 5. **Tie-breaking**: Apply conflict resolution rules:
    - database-architect wins over backend-dev (schema/migration tasks)
    - qa-test wins over debugger (test creation tasks)
-   - frontend-shipper wins over backend-dev (UI tasks)
+   - frontend-dev wins over backend-dev (UI tasks)
 6. **Confidence threshold**: Only route if score ≥ 10 (minScore from config)
 
 **Display routing decision**:
+
 ```
 Routing analysis:
   backend-dev: [N] points
-  frontend-shipper: [N] points
+  frontend-dev: [N] points
   database-architect: [N] points
   qa-test: [N] points
   debugger: [N] points
@@ -103,6 +110,7 @@ Reason: [file path match | keyword match | intent match]
 ```
 
 **Fallback for no clear match** (all scores < 10):
+
 - Default to `debugger` (general-purpose agent)
 - Display warning: "⚠️ No clear agent match, defaulting to debugger"
 
@@ -111,21 +119,25 @@ Reason: [file path match | keyword match | intent match]
 Collect focused context for selected agent (keep under 2000 tokens):
 
 **Identify feature directory**:
+
 - Current working directory if in `specs/NNN-feature-name/`
 - Or most recent feature: `ls -td specs/*/ | head -1`
 
 **Read context files from routing config**:
+
 - The selected agent's `contextFiles` array in routing rules specifies which files to load
 - **backend-dev**: `["spec.md", "plan.md", "tasks.md"]`
 - **database-architect**: `["spec.md", "plan.md", "tasks.md", "docs/project/data-architecture.md"]`
-- **frontend-shipper**: `["spec.md", "plan.md", "tasks.md", "visuals/screens.yaml"]`
+- **frontend-dev**: `["spec.md", "plan.md", "tasks.md", "visuals/screens.yaml"]`
 
 **Extract relevant sections only** (don't send entire files):
+
 - For `@spec.md`: Get requirement related to task
 - For `@tasks.md`: Get REUSE markers if task ID mentioned
 - For `@error-log.md`: Get last 20 entries only (if debugging)
 
 **Prepare context summary**:
+
 ```
 **Feature**: [feature-name] (specs/NNN-feature-name)
 **Task ID**: T0NN (if applicable)
@@ -172,6 +184,7 @@ Summary of changes, test evidence, verification status, next steps."""
 ```
 
 Display progress:
+
 ```
 Agent: [agent-name]
 Context: [N] tokens (files: [list])
@@ -183,26 +196,30 @@ Working...
 After agent completes, validate structured output:
 
 **Check agent returned**:
+
 - Files changed (list with paths)
 - Tests added/modified
 - Verification status (lint, types, tests, coverage)
 - Notes or side effects
 
 **Verify deliverables**:
+
 - If agent says "tests pass", check for actual test output
 - If agent says "lint clean", verify with linter command
 - If agent says "coverage 85%", check coverage report
 
 **Validate quality gates**:
+
 - ✅ Lint: No errors, warnings acceptable
 - ✅ Types: No type errors
 - ✅ Tests: All pass, coverage ≥80%
 - ✅ Security: No new vulnerabilities
 
 **If validation fails**:
+
 - Report missing deliverables to user
 - Suggest re-running agent with stricter requirements
-</process>
+  </process>
 
 <success_criteria>
 Routing is successful when:
@@ -216,7 +233,7 @@ Routing is successful when:
 - ✅ Files changed listed with paths
 - ✅ Test evidence provided
 - ✅ Routing decision displayed with reasoning
-</success_criteria>
+  </success_criteria>
 
 <constraints>
 **When routing tasks, always**:
@@ -228,17 +245,19 @@ Routing is successful when:
 - ✅ Use shared routing rules from `@.claude/agents/agent-routing-rules.json`
 
 **Never**:
+
 - ❌ Send full codebase dumps to agents
 - ❌ Route without analyzing task first
 - ❌ Accept agent output without validation
 - ❌ Skip quality gate checks
 - ❌ Invoke agents without focused context
-</constraints>
+  </constraints>
 
 <output>
 Display routing decision and agent status:
 
 **Routing Phase**:
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Agent Routing
@@ -256,6 +275,7 @@ Agent working...
 ```
 
 **Completion Phase**:
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Agent Complete
@@ -279,32 +299,41 @@ Verification:
 
 Next steps: [if any]
 ```
+
 </output>
 
 <examples>
 ## Routing Examples
 
 **Backend Task**:
+
 ```bash
 /route-agent "Implement POST /api/users endpoint with validation"
 ```
+
 → Routes to `backend-dev` (30 points: keywords "endpoint", "api", "POST")
 
 **Frontend Task**:
+
 ```bash
 /route-agent "Create UserProfile component with avatar upload"
 ```
-→ Routes to `frontend-shipper` (20 points: keywords "component", "avatar")
+
+→ Routes to `frontend-dev` (20 points: keywords "component", "avatar")
 
 **Database Task**:
+
 ```bash
 /route-agent "Add migration for user_preferences table"
 ```
+
 → Routes to `database-architect` (25 points: keywords "migration", "table" + specificity bonus)
 
 **Debugging Task**:
+
 ```bash
 /route-agent "Fix failing test_user_creation - IntegrityError on email field"
 ```
+
 → Routes to `debugger` (25 points: keywords "fix", "failing", "error")
 </examples>

@@ -14,7 +14,7 @@ All phase commands need a "COMMIT ARTIFACTS" section added before their final RE
 
 **Add before RETURN section:**
 
-```markdown
+````markdown
 ## COMMIT SPECIFICATION
 
 **After creating spec.md, commit the artifacts:**
@@ -40,11 +40,13 @@ echo ""
 git log -1 --oneline
 echo ""
 ```
+````
 
 **Why:** Spec is the foundation - commit it immediately for rollback safety.
 
 **Rollback:** `git reset --hard HEAD~1` (reverts spec creation)
-```
+
+````
 
 ---
 
@@ -78,12 +80,13 @@ echo "✅ Clarifications committed: $COMMIT_HASH"
 echo ""
 git log -1 --oneline
 echo ""
-```
+````
 
 **Why:** Clarifications change requirements - commit to track evolution.
 
 **Rollback:** `git reset --hard HEAD~1` (reverts clarifications)
-```
+
+````
 
 ---
 
@@ -120,12 +123,13 @@ echo "✅ Plan committed: $COMMIT_HASH"
 echo ""
 git log -1 --oneline
 echo ""
-```
+````
 
 **Why:** Plan guides implementation - commit before tasks created.
 
 **Rollback:** `git reset --hard HEAD~1` (reverts plan)
-```
+
+````
 
 ---
 
@@ -167,12 +171,13 @@ echo "✅ Tasks committed: $COMMIT_HASH"
 echo ""
 git log -1 --oneline
 echo ""
-```
+````
 
 **Why:** Tasks define work scope - commit before implementation.
 
 **Rollback:** `git reset --hard HEAD~1` (reverts tasks)
-```
+
+````
 
 ---
 
@@ -207,12 +212,13 @@ echo "✅ Analysis committed: $COMMIT_HASH"
 echo ""
 git log -1 --oneline
 echo ""
-```
+````
 
 **Why:** Analysis validates design - commit before implementing.
 
 **Rollback:** `git reset --hard HEAD~1` (reverts analysis)
-```
+
+````
 
 ---
 
@@ -237,34 +243,38 @@ echo ""
 Test: $TEST_NAME
 Expected: FAILED (ImportError/NotImplementedError)
 Evidence: $(pytest output | head -3)"
-  ```
+````
 
 **GREEN Phase** [GREEN→TXXX]:
+
 - Minimal implementation to pass RED test
 - Run tests, must pass
 - **Commit when tests pass:**
   ```bash
   git add .
   git commit -m "feat(green): TXXX implement to pass test
+  ```
 
 Implementation: $SUMMARY
 Tests: All passing ($PASS/$TOTAL)
 Coverage: $COV% (+$DELTA%)"
-  ```
+
+````
 
 **REFACTOR Phase** [REFACTOR]:
 - Clean up code (DRY, KISS)
 - Tests must stay green
 - **Commit after refactor:**
-  ```bash
-  git add .
-  git commit -m "refactor: TXXX clean up implementation
+```bash
+git add .
+git commit -m "refactor: TXXX clean up implementation
 
 Improvements: $IMPROVEMENTS
 Tests: Still passing
 Coverage: Maintained"
-  ```
-```
+````
+
+````
 
 **Also add at end of /implement (before RETURN):**
 
@@ -306,14 +316,16 @@ echo "✅ Implementation committed: $COMMIT_HASH"
 echo ""
 git log -1 --oneline
 echo ""
-```
+````
 
 **Why:** Implementation is the most critical phase - commit frequently.
 
 **Rollback:**
+
 - Entire implementation: `git reset --hard <commit-before-implement>`
 - Single task: `git revert <task-commit-hash>`
-```
+
+````
 
 ---
 
@@ -351,12 +363,13 @@ echo "✅ Optimization committed: $COMMIT_HASH"
 echo ""
 git log -1 --oneline
 echo ""
-```
+````
 
 **Why:** Optimization changes code - commit before deployment.
 
 **Rollback:** `git reset --hard HEAD~1` (reverts optimizations)
-```
+
+````
 
 ---
 
@@ -390,12 +403,13 @@ echo "✅ Release notes committed: $COMMIT_HASH"
 echo ""
 git log -1 --oneline
 echo ""
-```
+````
 
 **Why:** Release notes document what's shipping - commit before deployment.
 
 **Rollback:** `git reset --hard HEAD~1` (reverts release notes)
-```
+
+````
 
 ---
 
@@ -428,8 +442,9 @@ fi
 
 echo "✅ Working tree clean - ready to proceed"
 echo ""
-```
-```
+````
+
+````
 
 ---
 
@@ -464,11 +479,12 @@ git commit -m "feat(green): T015 implement Message model to pass test"
 # After REFACTOR improvements
 git add api/app/models/message.py
 git commit -m "refactor: T015 improve Message model with base class"
-```
+````
 
 ### Commit Verification
 
 **After every commit, verify:**
+
 ```bash
 git log -1 --oneline
 # Should show your commit message
@@ -480,6 +496,7 @@ git rev-parse --short HEAD
 ### Task Completion Requirement
 
 **task-tracker REQUIRES commit hash:**
+
 ```bash
 .spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
   -TaskId "T015" \
@@ -495,6 +512,7 @@ git rev-parse --short HEAD
 ### Rollback Procedures
 
 **If implementation fails:**
+
 ```bash
 # Discard uncommitted changes
 git restore .
@@ -504,6 +522,7 @@ git reset --hard HEAD~1
 ```
 
 **If specific task needs revert:**
+
 ```bash
 # Find commit for task
 git log --oneline --grep="T015"
@@ -515,21 +534,25 @@ git revert <commit-hash>
 ### Commit Message Templates
 
 **Test commits:**
+
 ```
 test(red): T015 write failing test for Message model
 ```
 
 **Implementation commits:**
+
 ```
 feat(green): T015 implement Message model to pass test
 ```
 
 **Refactor commits:**
+
 ```
 refactor: T015 improve Message model with base class
 ```
 
 **Fix commits:**
+
 ```
 fix: T015 correct Message model validation
 ```
@@ -541,9 +564,10 @@ fix: T015 correct Message model validation
 3. **Always provide commit hash to task-tracker**
 4. **Verify commit succeeded** before proceeding
 5. **Use conventional commit format** for consistency
-```
 
-### frontend-shipper.md
+````
+
+### frontend-dev.md
 
 **Add same "Git Workflow (MANDATORY)" section as backend-dev.md**
 
@@ -552,7 +576,7 @@ Just replace examples:
 # Frontend examples
 git add apps/app/components/MessageForm.tsx
 git commit -m "feat(green): T002 implement MessageForm component"
-```
+````
 
 ---
 
@@ -580,6 +604,7 @@ m3n4o5p feat: create feature branch feat/001-user-messaging
 ```
 
 **Benefits:**
+
 - ✅ Clean history showing workflow progression
 - ✅ Every commit is a potential rollback point
 - ✅ Easy to find when bugs were introduced
@@ -650,20 +675,24 @@ git reset --hard <mvp-commit>
 ## Integration Summary
 
 **Total files to modify:**
+
 - 8 commands: specify, clarify, plan, tasks, analyze, implement, optimize, preview
-- 2 agent briefs: backend-dev, frontend-shipper
+- 2 agent briefs: backend-dev, frontend-dev
 - 1 new skill: git-workflow-enforcer (DONE ✅)
 
 **Total additions:**
+
 - ~50 lines per command (commit section)
 - ~100 lines per agent (git workflow section)
 - ~600 lines total
 
 **Token impact:**
+
 - Git Workflow Skill: +600 tokens when triggered
 - Command overhead: Minimal (git commands execute quickly)
 
 **Safety improvement:**
+
 - Before: 0-2 commits per feature (only PR merges)
 - After: 20-50 commits per feature (every phase + every task)
 - Rollback granularity: 25x improvement

@@ -2,16 +2,16 @@
 
 ## Command Overview
 
-| Command | Purpose | Required Parameters | Optional Parameters |
-|---------|---------|---------------------|---------------------|
-| `status` | Get current task status | None | `-Json` |
-| `mark-done-with-notes` | Mark task complete atomically | `-TaskId` | `-Notes`, `-Evidence`, `-Coverage`, `-CommitHash`, `-Duration` |
-| `mark-in-progress` | Mark task as in progress | `-TaskId` | None |
-| `mark-failed` | Log task failure | `-TaskId`, `-ErrorMessage` | None |
-| `sync-status` | Migrate completed tasks to NOTES.md | None | None |
-| `next` | Get next available task | None | `-Json` |
-| `summary` | Get phase-wise progress summary | None | `-Json` |
-| `validate` | Validate task file structure | None | `-Json` |
+| Command                | Purpose                             | Required Parameters        | Optional Parameters                                            |
+| ---------------------- | ----------------------------------- | -------------------------- | -------------------------------------------------------------- |
+| `status`               | Get current task status             | None                       | `-Json`                                                        |
+| `mark-done-with-notes` | Mark task complete atomically       | `-TaskId`                  | `-Notes`, `-Evidence`, `-Coverage`, `-CommitHash`, `-Duration` |
+| `mark-in-progress`     | Mark task as in progress            | `-TaskId`                  | None                                                           |
+| `mark-failed`          | Log task failure                    | `-TaskId`, `-ErrorMessage` | None                                                           |
+| `sync-status`          | Migrate completed tasks to NOTES.md | None                       | None                                                           |
+| `next`                 | Get next available task             | None                       | `-Json`                                                        |
+| `summary`              | Get phase-wise progress summary     | None                       | `-Json`                                                        |
+| `validate`             | Validate task file structure        | None                       | `-Json`                                                        |
 
 ## Command Details
 
@@ -20,11 +20,13 @@
 **Purpose**: Get current task status including completed, in-progress, and pending tasks.
 
 **Usage**:
+
 ```bash
 .spec-flow/scripts/bash/task-tracker.sh status -Json
 ```
 
 **Output (JSON)**:
+
 ```json
 {
   "FeatureDir": "specs/001-example-feature",
@@ -53,7 +55,7 @@
       "Description": "Create UI components",
       "IsParallel": false,
       "Priority": "High",
-      "RecommendedAgent": "frontend-shipper"
+      "RecommendedAgent": "frontend-dev"
     }
   ],
   "ParallelSafetyCheck": {
@@ -64,9 +66,10 @@
 ```
 
 **Output (Table)**:
+
 ```
 Total: 28 | Completed: 12 (43%) | In Progress: 2 | Pending: 14
-Next: T004 - Create UI components (frontend-shipper)
+Next: T004 - Create UI components (frontend-dev)
 ```
 
 ---
@@ -76,6 +79,7 @@ Next: T004 - Create UI components (frontend-shipper)
 **Purpose**: Atomically mark task complete in both tasks.md and NOTES.md with implementation evidence.
 
 **Usage**:
+
 ```bash
 .spec-flow/scripts/bash/task-tracker.sh mark-done-with-notes \
   -TaskId T001 \
@@ -87,6 +91,7 @@ Next: T004 - Create UI components (frontend-shipper)
 ```
 
 **Parameters**:
+
 - `-TaskId` (required): Task ID (e.g., T001, T002)
 - `-Notes` (optional): Implementation summary
 - `-Evidence` (optional): Test execution evidence
@@ -95,6 +100,7 @@ Next: T004 - Create UI components (frontend-shipper)
 - `-Duration` (optional): Task duration (e.g., "15min", "2h"). Defaults to "est" if not provided
 
 **Output (JSON)**:
+
 ```json
 {
   "Success": true,
@@ -109,21 +115,25 @@ Next: T004 - Create UI components (frontend-shipper)
 **File Updates**:
 
 **tasks.md (before)**:
+
 ```markdown
 - [ ] T001 [RED] Create Message model with validation
 ```
 
 **tasks.md (after)**:
+
 ```markdown
-- [X] T001 [RED] Create Message model with validation
+- [x] T001 [RED] Create Message model with validation
 ```
 
 **NOTES.md (appended)**:
+
 ```markdown
 ✅ T001 [RED]: Created Message model with validation - 15min (2025-11-19 10:30)
-  - Evidence: pytest: 25/25 passing
-  - Coverage: 92% (+8%)
-  - Committed: abc123
+
+- Evidence: pytest: 25/25 passing
+- Coverage: 92% (+8%)
+- Committed: abc123
 ```
 
 ---
@@ -133,14 +143,17 @@ Next: T004 - Create UI components (frontend-shipper)
 **Purpose**: Mark task as currently being worked on.
 
 **Usage**:
+
 ```bash
 .spec-flow/scripts/bash/task-tracker.sh mark-in-progress -TaskId T002
 ```
 
 **Parameters**:
+
 - `-TaskId` (required): Task ID to mark in progress
 
 **Output (JSON)**:
+
 ```json
 {
   "Success": true,
@@ -153,11 +166,13 @@ Next: T004 - Create UI components (frontend-shipper)
 **File Updates**:
 
 **tasks.md (before)**:
+
 ```markdown
 - [ ] T002 Implement API routes
 ```
 
 **tasks.md (after)**:
+
 ```markdown
 - [~] T002 Implement API routes
 ```
@@ -171,6 +186,7 @@ Next: T004 - Create UI components (frontend-shipper)
 **Purpose**: Log task failure in error-log.md for debugging and retry tracking.
 
 **Usage**:
+
 ```bash
 .spec-flow/scripts/bash/task-tracker.sh mark-failed \
   -TaskId T003 \
@@ -178,10 +194,12 @@ Next: T004 - Create UI components (frontend-shipper)
 ```
 
 **Parameters**:
+
 - `-TaskId` (required): Task ID that failed
 - `-ErrorMessage` (required): Error description
 
 **Output (JSON)**:
+
 ```json
 {
   "Success": true,
@@ -195,6 +213,7 @@ Next: T004 - Create UI components (frontend-shipper)
 **File Updates**:
 
 **error-log.md (created if doesn't exist, appended otherwise)**:
+
 ```markdown
 # Error Log
 
@@ -208,6 +227,7 @@ Next: T004 - Create UI components (frontend-shipper)
 ```
 
 **tasks.md (unchanged)**:
+
 ```markdown
 - [ ] T003 Create test suite for MessageService
 ```
@@ -223,11 +243,13 @@ Next: T004 - Create UI components (frontend-shipper)
 **Use Case**: When NOTES.md is missing or incomplete, this command reads tasks.md and generates NOTES.md entries for already-completed tasks.
 
 **Usage**:
+
 ```bash
 .spec-flow/scripts/bash/task-tracker.sh sync-status
 ```
 
 **Output (JSON)**:
+
 ```json
 {
   "Success": true,
@@ -240,21 +262,27 @@ Next: T004 - Create UI components (frontend-shipper)
 **Example Migration**:
 
 **Before (tasks.md has completions, NOTES.md missing/incomplete)**:
+
 ```markdown
 # tasks.md
-- [X] T001 Create database schema
-- [X] T002 Implement API routes
+
+- [x] T001 Create database schema
+- [x] T002 Implement API routes
 - [ ] T003 Create UI components
 ```
 
 **After sync-status**:
+
 ```markdown
 # NOTES.md (generated)
+
 ✅ T001: Create database schema
-  - Migrated from tasks.md (completed previously)
+
+- Migrated from tasks.md (completed previously)
 
 ✅ T002: Implement API routes
-  - Migrated from tasks.md (completed previously)
+
+- Migrated from tasks.md (completed previously)
 ```
 
 ---
@@ -264,11 +292,13 @@ Next: T004 - Create UI components (frontend-shipper)
 **Purpose**: Get next available task based on dependencies and parallel safety.
 
 **Usage**:
+
 ```bash
 .spec-flow/scripts/bash/task-tracker.sh next -Json
 ```
 
 **Output (JSON)**:
+
 ```json
 {
   "NextTasks": [
@@ -278,7 +308,7 @@ Next: T004 - Create UI components (frontend-shipper)
       "IsParallel": false,
       "FilePaths": ["apps/web/components/MessageList.tsx"],
       "Priority": "High",
-      "RecommendedAgent": "frontend-shipper",
+      "RecommendedAgent": "frontend-dev",
       "McpTools": [
         "mcp__chrome-devtools__take_screenshot",
         "mcp__chrome-devtools__performance_start_trace"
@@ -303,14 +333,16 @@ Next: T004 - Create UI components (frontend-shipper)
 ```
 
 **Agent Routing Logic**:
+
 - File path contains `apps/api` → `backend-dev`
-- File path contains `apps/web` → `frontend-shipper`
+- File path contains `apps/web` → `frontend-dev`
 - File path contains `contracts/` → `contracts-sdk`
 - File path contains `migrations` → `database-architect`
 - Description contains `test` → `qa-test`
 - Description contains `debug|fix` → `debugger`
 
 **MCP Tool Recommendations**:
+
 - Frontend tasks → Chrome DevTools (screenshot, performance)
 - Test tasks → Chrome DevTools (snapshot, click) + IDE (getDiagnostics)
 - CI/CD tasks → GitHub MCP (run_workflow, create_release)
@@ -323,11 +355,13 @@ Next: T004 - Create UI components (frontend-shipper)
 **Purpose**: Get phase-wise progress breakdown and recommendations.
 
 **Usage**:
+
 ```bash
 .spec-flow/scripts/bash/task-tracker.sh summary -Json
 ```
 
 **Output (JSON)**:
+
 ```json
 {
   "OverallProgress": 42.9,
@@ -359,17 +393,16 @@ Next: T004 - Create UI components (frontend-shipper)
     }
   },
   "RecentlyCompleted": [
-    {"Id": "T008", "Description": "Create test fixtures"},
-    {"Id": "T009", "Description": "Implement message validation"},
-    {"Id": "T010", "Description": "Add database indexes"}
+    { "Id": "T008", "Description": "Create test fixtures" },
+    { "Id": "T009", "Description": "Implement message validation" },
+    { "Id": "T010", "Description": "Add database indexes" }
   ],
-  "Recommendations": [
-    "Write tests BEFORE code - complete T011 before T012"
-  ]
+  "Recommendations": ["Write tests BEFORE code - complete T011 before T012"]
 }
 ```
 
 **Phase Classification**:
+
 - **Setup**: Tasks matching "setup|configure|initialize"
 - **Tests**: Tasks matching "test|spec"
 - **Implementation**: Tasks matching "implement|create|build" (excluding tests)
@@ -383,11 +416,13 @@ Next: T004 - Create UI components (frontend-shipper)
 **Purpose**: Validate task file structure for TDD compliance and parallel safety.
 
 **Usage**:
+
 ```bash
 .spec-flow/scripts/bash/task-tracker.sh validate -Json
 ```
 
 **Output (JSON)**:
+
 ```json
 {
   "Valid": false,
@@ -397,24 +432,26 @@ Next: T004 - Create UI components (frontend-shipper)
     "Missing file paths in tasks: T015, T016"
   ],
   "TaskCount": 28,
-  "Recommendations": [
-    "Fix issues before implementation"
-  ]
+  "Recommendations": ["Fix issues before implementation"]
 }
 ```
 
 **Validation Checks**:
+
 1. **TDD Violations**: Implementation tasks completed before related tests
 2. **Parallel Safety**: More than 2 in-progress tasks or file path conflicts
 3. **Missing File Paths**: Tasks without file paths (excluding setup/configure tasks)
 
 **Example TDD Check**:
+
 ```markdown
 # Violation detected:
-- [X] T012 Implement message validation
+
+- [x] T012 Implement message validation
 - [ ] T011 Write tests for message validation
 
 # Recommendation:
+
 Complete T011 (test) before T012 (implement) for TDD compliance
 ```
 
@@ -434,6 +471,7 @@ All commands return structured error output when failures occur:
 ```
 
 **Common Errors**:
+
 - `"No specs directory found. Run /feature first."` → No active feature directory
 - `"No tasks.md found. Run /tasks first."` → Task breakdown phase not complete
 - `"Task T### not found in tasks.md"` → Invalid task ID

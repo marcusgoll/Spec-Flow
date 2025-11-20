@@ -2,7 +2,18 @@
 name: quick
 description: Implement small bug fixes and features (<100 LOC) without full workflow. Use for single-file changes, bug fixes, refactors, and minor enhancements that can be completed in under 30 minutes.
 argument-hint: <description>
-allowed-tools: [Read, Grep, Glob, Bash(git *), Bash(pytest *), Bash(npm *), Bash(npx *), Task, AskUserQuestion]
+allowed-tools:
+  [
+    Read,
+    Grep,
+    Glob,
+    Bash(git *),
+    Bash(pytest *),
+    Bash(npm *),
+    Bash(npx *),
+    Task,
+    AskUserQuestion,
+  ]
 ---
 
 <objective>
@@ -21,6 +32,7 @@ Recent commits (last 3):
 </context>
 
 <when_to_use>
+
 ## ✅ Good Candidates (Use /quick)
 
 - **Bug fixes**: UI glitches, logic errors, null checks
@@ -48,6 +60,7 @@ Recent commits (last 3):
 ## 1. Validate Scope and Get Description
 
 **If $ARGUMENTS is empty:**
+
 - Use AskUserQuestion to request:
   - **Question**: "What change would you like to implement?"
   - **Options**: Provide examples (bug fix, refactor, doc update, config change)
@@ -56,6 +69,7 @@ Recent commits (last 3):
 **Store description in DESCRIPTION variable.**
 
 **Verify scope is appropriate:**
+
 - Check if description mentions database, schema, migration, API contract, auth, security
 - If YES: Recommend using `/feature` instead and explain why
 - If NO: Proceed with implementation
@@ -63,38 +77,45 @@ Recent commits (last 3):
 ## 2. Detect UI Changes and Load Style Guide (Conditional)
 
 **Check if DESCRIPTION contains UI-related keywords:**
+
 - Keywords: UI, component, button, form, card, layout, design, style, CSS, Tailwind, color, spacing, font, typography, gradient, shadow, border
 
 **If UI change detected:**
+
 1. Read `docs/project/style-guide.md` (if exists)
 2. Read `design/systems/tokens.json` (if exists)
 3. Note: "UI change detected - enforcing style guide compliance"
 4. Set STYLE_GUIDE_MODE = true
 
 **If files not found:**
+
 - Warn: "Style guide not found. Consider running `/init-project --with-design` for UI consistency rules."
 - Continue without style guide (note this in output)
 
 **If non-UI change:**
+
 - Set STYLE_GUIDE_MODE = false
 - Skip style guide loading
 
 ## 3. Create Lightweight Branch
 
 **Generate branch name:**
+
 - Slugify DESCRIPTION to create branch name: `quick/[slug]`
 - Use only lowercase, numbers, hyphens
 - Truncate to 50 characters
 
 **Create or checkout branch:**
+
 - Run: `git checkout -b quick/[slug]`
 - If branch already exists: `git checkout quick/[slug]` and note "Using existing branch"
 
 ## 4. Implement Changes
 
 **Determine implementation agent:**
+
 - Backend/API/Python → Use Task tool with `backend-dev` agent
-- Frontend/UI/React/TypeScript → Use Task tool with `frontend-shipper` agent
+- Frontend/UI/React/TypeScript → Use Task tool with `frontend-dev` agent
 - Tests only → Use Task tool with `qa-test` agent
 - Documentation only → Implement directly (no agent needed)
 
@@ -181,16 +202,19 @@ After implementation, provide:
 **Detect test framework and run tests:**
 
 **Backend (Python):**
+
 - If `pytest.ini` or `tests/` directory exists with `.py` files
 - Run: `pytest tests/ -v --tb=short`
 - Capture output and pass/fail status
 
 **Frontend (Node):**
+
 - If `package.json` exists with test script
 - Run: `npm test -- --run` or `npm run test:ci`
 - Capture output and pass/fail status
 
 **Handle test failures:**
+
 - If tests fail: Display output, ask user if they want to:
   1. Fix failing tests before committing
   2. Skip tests (document why in commit message)
@@ -203,21 +227,25 @@ After implementation, provide:
 Run automated validation checks:
 
 **1. Check for hardcoded colors:**
+
 - Grep for: `#[0-9a-fA-F]{3,6}`, `rgb(`, `hsl(` in modified files
 - Exclude: node_modules, .next, build directories
 - Exclude: oklch() declarations (these are valid)
 - If found: List violations with file:line references
 
 **2. Check for arbitrary spacing:**
+
 - Grep for: `[Npx]` patterns in modified files (e.g., `[17px]`, `[23px]`)
 - Exclude: max-w-[600px] and max-w-[700px] (these are allowed for text line length)
 - If found: List violations, suggest 8pt grid alternatives
 
 **3. Check for focus states:**
+
 - Grep for: `onClick`, `onPress`, `button`, `Button` without `focus:` in same file
 - If many missing: Warn about potential accessibility issues
 
 **Report validation results:**
+
 - ✅ All checks passed
 - ⚠️ N warning(s) found (non-blocking but should be addressed)
 - List specific violations with remediation steps
@@ -225,14 +253,17 @@ Run automated validation checks:
 ## 7. Commit Changes
 
 **Stage all changes:**
+
 - Run: `git add .`
 
 **Check if there are changes to commit:**
+
 - Run: `git diff --staged --quiet`
 - If no changes: Display "No changes to commit" and exit
 - If changes exist: Proceed with commit
 
 **Generate commit message:**
+
 ```
 quick: {DESCRIPTION}
 
@@ -244,18 +275,21 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **Create commit:**
+
 - Run: `git commit -m "[commit message]"`
 - Display commit SHA and summary
 
 ## 8. Show Summary
 
 **Display completion information:**
+
 - Branch name: `quick/[slug]`
 - Files changed: Count from `git diff --name-only HEAD~1`
 - Commit SHA: Short SHA from `git rev-parse --short HEAD`
 - Changes summary: `git diff --stat HEAD~1`
 
 **Next steps:**
+
 ```
 ✅ Quick change complete!
 
@@ -270,10 +304,12 @@ Next steps:
   • Push (if remote): git push origin main
   • Delete branch: git branch -d quick/[slug]
 ```
+
 </process>
 
 <success_criteria>
 Quick implementation is complete when:
+
 - Changes implemented in <30 minutes
 - All relevant tests pass (or failures documented)
 - Changes committed to `quick/[slug]` branch
@@ -282,24 +318,25 @@ Quick implementation is complete when:
 - No breaking changes introduced
 - Code follows existing patterns and conventions
 - Single concern addressed (no scope creep)
-</success_criteria>
+  </success_criteria>
 
 <comparison_table>
+
 ## /quick vs /feature
 
 Use this table to decide which command to use:
 
-| Aspect | /quick | /feature |
-|--------|--------|----------|
-| **Duration** | <30 min | 2-8 hours |
-| **Scope** | <100 LOC, <5 files | Unlimited scope |
-| **Planning** | None | Full spec/plan/tasks |
-| **Artifacts** | Commit only | spec.md, plan.md, tasks.md, reports |
-| **Review** | Self-review | Multi-phase (/analyze, /optimize) |
-| **Testing** | Run existing tests | Create new test coverage |
-| **Deployment** | Manual merge | Automated (staging → prod) |
-| **Quality gates** | Basic (tests pass) | Comprehensive (security, performance, accessibility) |
-| **Best for** | Bug fixes, refactors, tweaks | New features, API changes, migrations |
+| Aspect            | /quick                       | /feature                                             |
+| ----------------- | ---------------------------- | ---------------------------------------------------- |
+| **Duration**      | <30 min                      | 2-8 hours                                            |
+| **Scope**         | <100 LOC, <5 files           | Unlimited scope                                      |
+| **Planning**      | None                         | Full spec/plan/tasks                                 |
+| **Artifacts**     | Commit only                  | spec.md, plan.md, tasks.md, reports                  |
+| **Review**        | Self-review                  | Multi-phase (/analyze, /optimize)                    |
+| **Testing**       | Run existing tests           | Create new test coverage                             |
+| **Deployment**    | Manual merge                 | Automated (staging → prod)                           |
+| **Quality gates** | Basic (tests pass)           | Comprehensive (security, performance, accessibility) |
+| **Best for**      | Bug fixes, refactors, tweaks | New features, API changes, migrations                |
 
 **Decision rule**: If you can implement it in one sitting without pausing to think about architecture, use `/quick`. If you need to plan, coordinate, or consider impacts, use `/feature`.
 </comparison_table>
@@ -315,62 +352,74 @@ Use this table to decide which command to use:
 - Commits to `quick/fix-login-button-alignment-on-mobile`
 
 **Example 2: Refactor**
+
 ```
 /quick "Refactor user service to use async/await instead of promises"
 ```
+
 - Agent converts `.then()` chains to `async/await`
 - Updates error handling to use try/catch
 - Runs existing tests to verify behavior unchanged
 - Commits to `quick/refactor-user-service-to-use-async-await`
 
 **Example 3: Documentation**
+
 ```
 /quick "Update README with new /quick command usage and examples"
 ```
+
 - No agent needed (direct implementation)
 - Adds section to README with command syntax
 - Includes examples and comparison table
 - Commits to `quick/update-readme-with-new-quick-command`
 
 **Example 4: UI Change with Style Guide**
+
 ```
 /quick "Add success message toast after user signup with proper design tokens"
 ```
+
 - UI change detected → loads style guide
 - Agent uses semantic-success color from tokens.json
 - Ensures 8pt grid spacing and proper typography
 - Validates WCAG AA contrast
 - Style guide validation checks pass
 - Commits to `quick/add-success-message-toast-after-user-signup`
-</examples>
+  </examples>
 
 <error_handling>
 **If description is too complex for /quick:**
+
 - Recommend using `/feature` instead
 - Explain why (e.g., "Database migrations require full workflow for zero-downtime planning")
 - Provide command to start: `/feature "[description]"`
 
 **If tests fail:**
+
 - Display test output with failures highlighted
 - Ask user: Fix now, skip with justification, or abort?
 - If skip: Require justification in commit message
 
 **If style guide files missing (UI change):**
+
 - Warn user: "Style guide not found - consider running `/init-project --with-design`"
 - Continue without style guide enforcement
 - Note in summary: "Style guide validation skipped (files not found)"
 
 **If no changes to commit:**
+
 - Display: "No changes detected - verify implementation completed successfully"
 - Show `git status` output
 - Do not create empty commit
 
 **If branch already exists:**
+
 - Checkout existing branch
 - Warn: "Using existing branch quick/[slug] - previous work may exist"
 - Show existing commits on branch: `git log main..HEAD --oneline`
 
 **If git not initialized:**
+
 - Error: "Git repository not found - initialize with `git init` first"
 - Abort command execution
-</error_handling>
+  </error_handling>

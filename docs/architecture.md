@@ -1,6 +1,7 @@
 ﻿# Spec-Flow Architecture
 
 ## Workflow Overview
+
 Spec-Flow orchestrates feature work through a fixed series of Claude commands. Each command focuses on a deliverable (specification, plan, tasks, review) and hands contextual artifacts to the next step.
 
 ## Workflow State Machine
@@ -152,6 +153,7 @@ Spec-Flow orchestrates feature work through a fixed series of Claude commands. E
 ```
 
 **Key**:
+
 - `┌─────┐` = Automated phase
 - `╔═════╗` = Manual gate (requires user action)
 - `→ PAUSE` = Workflow stops, awaiting fixes
@@ -166,7 +168,7 @@ spec-flow-workflow-kit/
 ├── .claude/                          # Claude Code configuration
 │   ├── agents/                       # Agent persona briefs
 │   │   ├── backend-dev.md
-│   │   ├── frontend-shipper.md
+│   │   ├── frontend-dev.md
 │   │   ├── qa-test.md
 │   │   ├── senior-code-reviewer.md
 │   │   ├── debugger.md
@@ -267,16 +269,18 @@ spec-flow-workflow-kit/
 ```
 
 ## Token Strategy
+
 The workflow keeps artifacts concise by:
+
 - Pre-calculating budgets per phase (75k/100k/125k tokens) inside `/feature`.
 - Running `compact-context.ps1` automatically when budgets exceed 80%.
 - Encouraging teams to move long research to reference docs and link instead of inlining.
 
 ## Adapting the Workflow
+
 1. Update `.spec-flow/templates/` to reflect your organizations spec formats.
 2. Edit `.spec-flow/memory/constitution.md` to encode your engineering principles.
 3. Adjust `check-prerequisites.ps1` if your repo structure differs (for example, storing specs outside `specs/`).
 4. Customize agent briefs in `.claude/agents/` to mirror the roles on your team.
 
 For more detailed usage instructions, see `README.md` and `CONTRIBUTING.md`.
-

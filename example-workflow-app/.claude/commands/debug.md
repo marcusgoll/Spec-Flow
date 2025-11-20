@@ -7,20 +7,25 @@ Debug issue for: specs/$FEATURE
 ## LOAD CONTEXT
 
 1. **Check prerequisites**:
+
    ```bash
    pwsh -NoProfile -File .spec-flow/scripts/powershell/check-prerequisites.ps1 -Json
    # or
    .spec-flow/scripts/bash/check-prerequisites.sh --json
    ```
+
    Parse FEATURE_DIR from output
 
 2. **Load error log**:
+
    ```bash
    Read specs/$FEATURE/error-log.md
    ```
+
    Review recent entries to avoid repeating known issues
 
 3. **Gather context**:
+
    ```bash
    # Check git status for unstaged changes
    git status
@@ -36,6 +41,7 @@ Debug issue for: specs/$FEATURE
 ## PARSE ERROR DESCRIPTION
 
 From user input, identify:
+
 - **Error type**: Build failure, test failure, runtime error, UI bug, performance issue
 - **Component**: Backend API, Frontend, Database, Integration
 - **Symptoms**: Error messages, stack traces, incorrect behavior
@@ -65,6 +71,7 @@ When `--from-optimize` flag is present:
 
 1. **Skip manual context gathering** (already provided)
 2. **Extract structured fields**:
+
    ```bash
    ISSUE_ID=$1
    SEVERITY=$2
@@ -86,35 +93,42 @@ When `--from-optimize` flag is present:
 Based on issue category, route to appropriate specialist agent:
 
 **Contract Violation**:
-- Backend contracts  backend-dev
-- Frontend contracts  frontend-shipper
+
+- Backend contracts backend-dev
+- Frontend contracts frontend-dev
 - Fix: Update schema/endpoint to match OpenAPI contract
 
 **KISS (Keep It Simple)**:
-- Backend  backend-dev
-- Frontend  frontend-shipper
+
+- Backend backend-dev
+- Frontend frontend-dev
 - Fix: Simplify complex code, remove unnecessary abstraction
 
 **DRY (Don't Repeat Yourself)**:
-- Backend  backend-dev
-- Frontend  frontend-shipper
+
+- Backend backend-dev
+- Frontend frontend-dev
 - Fix: Extract duplicate code into shared utility/service
 
 **Security**:
-- Backend/Frontend  debugger
+
+- Backend/Frontend debugger
 - Fix: Apply security patch, add validation, fix vulnerability
 
 **Type Safety**:
-- Backend  backend-dev (add Python types)
-- Frontend  frontend-shipper (add TypeScript types)
+
+- Backend backend-dev (add Python types)
+- Frontend frontend-dev (add TypeScript types)
 - Fix: Add missing type annotations, fix type errors
 
 **Test Coverage**:
-- All  qa-test
+
+- All qa-test
 - Fix: Add missing unit/integration tests
 
 **Database**:
-- Schema/queries  database-architect
+
+- Schema/queries database-architect
 - Fix: Update schema, optimize query, fix migration
 
 ### Structured Agent Invocation
@@ -160,10 +174,7 @@ Agent should return in structured format:
   "issue_id": "CR001",
   "fix_applied": true,
   "root_cause": "Response schema missing required field from OpenAPI contract",
-  "files_changed": [
-    "api/app/routes/users.py",
-    "api/app/schemas/user.py"
-  ],
+  "files_changed": ["api/app/routes/users.py", "api/app/schemas/user.py"],
   "changes_summary": "Added email: str field to UserResponse schema",
   "verification": {
     "lint": "pass",
@@ -190,7 +201,7 @@ When fix completes, append entry to error-log.md:
 
 **Fix Applied**: $CHANGES_SUMMARY
 **Files Changed**: [list from agent response]
-**Verification**: Lint , Types , Tests 
+**Verification**: Lint , Types , Tests
 
 **From /optimize auto-fix** (Issue ID: $ISSUE_ID)
 ```
@@ -208,15 +219,17 @@ ERROR_DOMAIN=$(analyze-error-domain "$ERROR_TYPE" "$COMPONENT" "$FILE_PATHS")
 ```
 
 **Routing decision tree** (from `/route-agent`):
-- Backend API/Services  debugger or backend-dev
-- Frontend UI/Components  debugger or frontend-shipper
-- Database Issues  database-architect
-- Test Failures  qa-test
-- Performance Issues  Use Chrome DevTools MCP + debugger
+
+- Backend API/Services debugger or backend-dev
+- Frontend UI/Components debugger or frontend-dev
+- Database Issues database-architect
+- Test Failures qa-test
+- Performance Issues Use Chrome DevTools MCP + debugger
 
 ### Routing Examples
 
 #### Backend Bug
+
 ```bash
 Input: "API endpoint returning 500 error on POST /api/users"
 Analysis:
@@ -228,6 +241,7 @@ Context: error-log.md, stack trace, recent commits
 ```
 
 #### Frontend Bug
+
 ```bash
 Input: "Button not clickable on mobile viewport"
 Analysis:
@@ -239,6 +253,7 @@ Context: CSS styles, responsive design specs, visuals/README.md
 ```
 
 #### Database Bug
+
 ```bash
 Input: "Migration failing with constraint violation"
 Analysis:
@@ -271,7 +286,9 @@ mcp__chrome-devtools__performance_start_trace --reload=true --autoStop=true
 ```
 
 ### Performance Issues
+
 **Frontend Performance**:
+
 ```bash
 # Use Chrome DevTools performance profiling
 mcp__chrome-devtools__performance_start_trace --reload=true --autoStop=true
@@ -281,6 +298,7 @@ mcp__chrome-devtools__performance_analyze_insight --insightName="[insight]"
 ```
 
 **Backend Performance**:
+
 ```bash
 # Use debugger with performance focus
 Task tool with performance profiling instructions
@@ -289,6 +307,7 @@ Task tool with performance profiling instructions
 ## CAPTURE DEBUG FINDINGS
 
 After specialist completes debugging, extract:
+
 - **Failure**: What broke (e.g., "Authentication middleware rejected valid tokens")
 - **Symptom**: Observable behavior (e.g., "401 Unauthorized on /api/me endpoint")
 - **Learning**: Root cause (e.g., "JWT secret mismatch between .env and config.py")
@@ -333,6 +352,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ## WORKFLOW EXAMPLES
 
 ### Example 1: Test Failure
+
 ```
 User: "Test test_create_message is failing"
 
@@ -351,6 +371,7 @@ User: "Test test_create_message is failing"
 ```
 
 ### Example 2: UI Bug
+
 ```
 User: "Button is not clickable on mobile"
 
@@ -372,6 +393,7 @@ User: "Button is not clickable on mobile"
 ```
 
 ### Example 3: Performance Regression
+
 ```
 User: "Dashboard loading very slow after last merge"
 
@@ -413,22 +435,22 @@ User: "Dashboard loading very slow after last merge"
 Brief summary:
 
 **Manual mode** (user-invoked):
--  Error: [brief description]
--  Root cause: [identified cause]
--  Fix: [what was changed] OR  In progress
--  error-log.md: Entry N added
--  Verification: [tests passing/failing]
--  Files changed: [list]
+
+- Error: [brief description]
+- Root cause: [identified cause]
+- Fix: [what was changed] OR In progress
+- error-log.md: Entry N added
+- Verification: [tests passing/failing]
+- Files changed: [list]
 - Next: Continue with `/implement` or fix remaining issues
 
 **Structured mode** (from /optimize --from-optimize):
--  Issue ID: [CR###]
--  Severity: [CRITICAL/HIGH/MEDIUM/LOW]
--  Category: [Contract/KISS/DRY/Security/etc]
--  Fix applied: [Yes/No]
--  Files changed: [list]
--  Verification: Lint [/], Types [/], Tests [/]
--  error-log.md: Entry N added (linked to issue ID)
--  Return to /optimize: [for next issue or completion]
 
-
+- Issue ID: [CR###]
+- Severity: [CRITICAL/HIGH/MEDIUM/LOW]
+- Category: [Contract/KISS/DRY/Security/etc]
+- Fix applied: [Yes/No]
+- Files changed: [list]
+- Verification: Lint [/], Types [/], Tests [/]
+- error-log.md: Entry N added (linked to issue ID)
+- Return to /optimize: [for next issue or completion]

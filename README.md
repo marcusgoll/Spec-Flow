@@ -40,6 +40,7 @@
 </div>
 
 ---
+
 ---
 
 ## 🆕 Recent Updates
@@ -98,6 +99,7 @@
   - More reliable than grep/awk log parsing
 
 **Breaking Changes**:
+
 - /preview command archived (all testing now in staging)
 - /ship-prod no longer prompts for version (use `--version major|minor` flag to override patch default)
 - workflow-state.yaml schema updated (removed `preview` phase)
@@ -124,6 +126,7 @@
 - **Comprehensive Documentation**: 6,200+ lines across 5 new docs (analysis, sprints, summary)
 
 **Platform Coverage**:
+
 - macOS: 40/40 (100%) ✅
 - Linux: 40/40 (100%) ✅
 - Windows (Git Bash): 40/40 (100%) ✅
@@ -147,7 +150,7 @@
   - Error capture integrated into auto-rollback logic
   - Continue to next task after logging (fail gracefully)
 - **CI ShellCheck Fixes**: Excluded workflow instruction files from validation
-  - Workflow files (*-workflow.sh) are documentation, not executable bash scripts
+  - Workflow files (\*-workflow.sh) are documentation, not executable bash scripts
   - Added SC2004 to exclusions (cosmetic style warnings)
 
 **Problem Solved**: Error-log.md files were created with comprehensive templates during /plan phase but remained empty during workflow execution. Only /debug command and PowerShell task-tracker actually wrote to error-log.md, meaning errors during /implement were lost.
@@ -165,7 +168,7 @@
   - Graceful fallback with informative message: "Note: PowerShell script not found, using bash"
   - Fixes "PowerShell script not found" error for feature-workflow and other commands
 - **Git Permissions**: Fixed executable permissions for ship-prod-workflow.sh (100755 mode)
-- **Python Cache**: Added __pycache__ to .gitignore to prevent accidental commits
+- **Python Cache**: Added **pycache** to .gitignore to prevent accidental commits
 
 **Problem Solved**: Windows users couldn't run workflow commands because spec-cli.py expected PowerShell scripts that were never created during the CLI migration. Only bash scripts exist, but there was no fallback mechanism.
 
@@ -301,8 +304,8 @@
 - Deterministic repo root detection
 - Actionable error messages with "Fix:" instructions
 
-
 ### v4.3.0 (November 2025)
+
 **Epic & Sprint Roadmap System** - Comprehensive parallel epic workflow with trunk-based development
 
 - **Contract Infrastructure** (8 tasks)
@@ -339,6 +342,7 @@
 ---
 
 ### v4.2.0 (November 2025)
+
 **Integrated Showcase Features** - Production-tested patterns from 6 months of real-world use
 
 - **Auto-Activation System**: Hook-based skill suggestions (30-40% faster workflow navigation)
@@ -348,6 +352,7 @@
 - **Quality Agents**: Three new specialists (refactor-planner, auto-error-resolver, web-research-specialist)
 
 ### v4.1.0 (November 2025)
+
 **Living Documentation** - Hierarchical CLAUDE.md files with automatic updates
 
 - **Hierarchical Context Navigation**: 3-level CLAUDE.md hierarchy (root → project → feature)
@@ -373,6 +378,7 @@
 ---
 
 ### v3.2.0 (November 2025)
+
 **Planning Optimization** - 50-60% faster feature planning with docs/project integration
 
 - **Mandatory Project Docs Integration**: `/plan` now parses `docs/project/` files for instant context
@@ -396,6 +402,7 @@
 ---
 
 ### v3.1.0 (November 2025)
+
 **OKLCH Color Space Upgrade** - Perceptually uniform design tokens
 
 - **OKLCH Color Space**: Upgraded `/init-brand-tokens` to generate OKLCH colors
@@ -416,6 +423,7 @@
 ---
 
 ### v3.0.1 (November 2025)
+
 **Package Fix** - Added missing design commands to npm
 
 - **Fixed npm package**: Added missing design workflow commands
@@ -432,6 +440,7 @@
 ---
 
 ### v3.0.0 (November 2025)
+
 **Constitution Cleanup** - Simplified project structure and documentation
 
 - **BREAKING CHANGE**: Constitution file structure reorganized
@@ -452,6 +461,7 @@
 ---
 
 ### v2.12.0 (November 2025)
+
 **S-Tier Design Workflow** - Complete UI/UX design system without Figma
 
 - **Three-Phase Pipeline**: `/design` orchestrator chains Variations → Functional → Polish with human approval gates
@@ -460,7 +470,7 @@
 - **Comprehensive Handoff**: `implementation-spec.md` (26KB) provides pixel-perfect component breakdown, interactions, accessibility, testing strategy
 - **Usability Evaluation**: `dont-make-me-think-checklist.md` with 130 checkpoints across 10 categories (visual clarity, navigation, content, interactions, feedback, cognitive load, conventions, error prevention, mobile, accessibility)
 - **Brownfield Scanner**: Analyzes existing codebases to detect and consolidate design patterns (e.g., 47 colors → 12 tokens)
-- **Frontend Integration**: Frontend-shipper agent validates implementation against design artifacts with automated design lint checks
+- **Frontend Integration**: frontend-dev agent validates implementation against design artifacts with automated design lint checks
 
 **Problem Solved**: Before v2.12.0, achieving high-quality UI/UX required Figma and manual design handoff, leading to inconsistent implementations and design-dev drift. Manual validation of design principles (elevation, hierarchy, gradients) was error-prone.
 
@@ -469,6 +479,7 @@
 ---
 
 ### v2.10.0 (October 2025)
+
 **X Announcement Slash Command** - Converted X announcement from skill to slash command
 
 - **Direct Invocation**: `/x-announce "version"` replaces skill-based workflow
@@ -484,6 +495,7 @@
 ---
 
 ### v2.9.0 (October 2025)
+
 **Help Command** - Context-aware workflow navigation
 
 - **Contextual Guidance**: `/help` shows where you are and what to do next
@@ -501,6 +513,7 @@
 ---
 
 ### v2.8.1 (October 2025)
+
 **npm Package Fix** - Properly excludes internal workflow files
 
 - **Fixed npm package**: Internal files (release.md, x-announcement.md) no longer included in published package
@@ -515,6 +528,7 @@
 ---
 
 ### v2.8.0 (October 2025)
+
 **X Announcement Integration** - Automated social media announcements for releases
 
 - **Automated X Posts**: `/release` now posts announcements to X (Twitter) automatically with custom post generation
@@ -530,6 +544,7 @@
 ---
 
 ### v2.7.0 (October 2025)
+
 **Release Automation & Essential Finalization** - One-command releases and universal branch cleanup
 
 - **Full /release Automation**: CI validation, README updates, CHANGELOG, git tags, GitHub releases, and npm publishing in one command
@@ -546,6 +561,7 @@
 ---
 
 ### v2.6.0 (October 2025)
+
 **TodoWrite Progress Tracking** - Clear visibility and error recovery for /ship and /finalize
 
 - **Visual Progress Tracking**: `/ship` now tracks all 5-8 deployment phases with TodoWrite
@@ -560,6 +576,7 @@
 **Impact**: Deployment workflows are now transparent and recoverable, preventing the frustration of "it stopped and I don't know why."
 
 ### v2.9.0 (October 2025)
+
 **Help Command** - Context-aware workflow navigation
 
 - **Contextual Guidance**: `/help` shows where you are and what to do next
@@ -571,6 +588,7 @@
 - **Always Actionable**: Shows next command to run based on current state
 
 ### v2.8.1 (October 2025)
+
 **npm Package Fix** - Properly excludes internal workflow files
 
 - **Fixed npm package**: Internal files (release.md, x-announcement.md) no longer included in published package
@@ -579,6 +597,7 @@
 - **Security**: Prevents accidental exposure of internal API URLs and workflow development files
 
 ### v2.8.0 (October 2025)
+
 **X Announcement Integration** - Automated social media announcements
 
 - **Automated X Posts**: `/release` posts to X automatically with threaded GitHub link reply
@@ -588,6 +607,7 @@
 - **Security**: Internal files gitignored to protect API URLs
 
 ### v2.1.2 (October 2025)
+
 **/feature next Auto-Pull** - Automatically start highest priority roadmap item
 
 - **Usage**: `/feature next` - Auto-pulls highest priority feature from GitHub Issues
@@ -601,6 +621,7 @@
 **Benefits**: Work on highest priority items automatically, reduce context switching, maintain roadmap sync.
 
 ### v2.1.0 (October 2025)
+
 **GitHub Issues Roadmap Migration** - Complete migration from markdown to GitHub Issues
 
 - **Backend Migration**: `/roadmap` command now uses GitHub Issues instead of markdown files
@@ -619,6 +640,7 @@
 **Documentation**: See `docs/github-roadmap-migration.md` for complete guide.
 
 ### v1.13.0 (October 2025)
+
 **Local Project Integration Workflow** - Automatic merge-to-main for local-only projects
 
 - **New Phase S.4.5a**: Merges feature branch → main/master after successful local build
@@ -635,6 +657,7 @@
 **Impact**: Local-only projects now have complete parity with remote deployment models - all features properly integrate to main branch before being marked "Shipped" in roadmap.
 
 ### v1.12.1 (October 2025)
+
 **Update Command Simplification** - Removed backup overhead for faster, cleaner updates
 
 - **Removed backup creation**: `npx spec-flow update` no longer creates backup folders
@@ -646,9 +669,11 @@
 **Why?** The preserveMemory flag already protects user data during updates. Backups created redundant folders that users had to manually clean up. This change simplifies the update process while maintaining safety.
 
 ### v1.12.0 (October 2025)
+
 **Learnings Persistence & Design Iteration** - Skills learn across npm updates + enhanced design workflow
 
 **Part 1: Learnings Persistence (All 16 Skills)**
+
 - **Separated learnings data from SKILL templates**: Created `learnings.md` for all 16 phase skills
 - **Preserves knowledge across npm updates**: SKILL.md templates get updated, learnings.md data persists
 - **Tracks pitfall frequencies**: Auto-updates frequency stars (⭐☆☆☆☆ → ⭐⭐⭐☆☆) as issues occur
@@ -656,12 +681,14 @@
 - **Zero manual intervention**: System learns automatically as you work
 
 **Part 2: Design Iteration Enhancements**
+
 - **Screen-specific targeting**: `/design-variations $SLUG [$SCREEN]` - iterate on single component
 - **Overwrite protection**: Warns before regenerating, offers [b]ackup to create git tag first
 - **Re-enable support**: Can enable design workflow after initially declining in `/feature`
 - **Iteration patterns guide**: 5 common scenarios with step-by-step solutions (component iteration, A/B testing, state-specific refinement)
 
 **Documentation**
+
 - Added "Skills & Learning System" section to README
 - Two-file architecture explained (templates vs data)
 - Iteration patterns guide for design workflow
@@ -669,6 +696,7 @@
 **Files**: 36 changed (16 learnings.md created, 16 SKILL.md updated, iteration-patterns.md created)
 
 ### v1.11.1 (October 2025)
+
 **Folder Cleanup Refactor** - Cleaner spec directories with on-demand folder creation
 
 - **Eliminated empty folders**: Removed blanket directory pre-creation from `/spec` command
@@ -677,6 +705,7 @@
 - **Files modified**: `.claude/commands/specify.md`
 
 ### v1.11.0 (October 2025)
+
 **Phase-Specific Learning Skills** - Workflow improvement tracking
 
 - Added learning Skills for each workflow phase (spec, plan, tasks, implement, optimize, ship, etc.)
@@ -709,13 +738,13 @@ Building software with AI assistants is powerful, but without structure, project
 
 ### The Problem Without Spec-Flow
 
-| Challenge | Without Spec-Flow | With Spec-Flow |
-|-----------|-------------------|----------------|
-| **Context Loss** | "What were we building again?" after interruptions | NOTES.md tracks all decisions, checkpoints restore context instantly |
-| **Inconsistent Quality** | Features shipped without tests, reviews vary | Every feature follows same rigorous process: spec → plan → implement → review → ship |
-| **Token Waste** | Conversations balloon to 100k+ tokens, Claude slows down | Auto-compaction at 80% budget keeps context efficient (75k/100k/125k per phase) |
-| **No Accountability** | "Did we test this? Who approved?" | Auditable artifacts for every phase, approval gates enforced |
-| **Reinventing Process** | Each feature starts from scratch | Reusable templates, proven patterns, documented workflows |
+| Challenge                | Without Spec-Flow                                        | With Spec-Flow                                                                       |
+| ------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Context Loss**         | "What were we building again?" after interruptions       | NOTES.md tracks all decisions, checkpoints restore context instantly                 |
+| **Inconsistent Quality** | Features shipped without tests, reviews vary             | Every feature follows same rigorous process: spec → plan → implement → review → ship |
+| **Token Waste**          | Conversations balloon to 100k+ tokens, Claude slows down | Auto-compaction at 80% budget keeps context efficient (75k/100k/125k per phase)      |
+| **No Accountability**    | "Did we test this? Who approved?"                        | Auditable artifacts for every phase, approval gates enforced                         |
+| **Reinventing Process**  | Each feature starts from scratch                         | Reusable templates, proven patterns, documented workflows                            |
 
 ### What You Get
 
@@ -763,11 +792,13 @@ Spec-Driven Development flips the traditional model: specifications become execu
 Spec-Flow now features an **optimized orchestrator** (`/feature`) that runs each workflow phase in isolated contexts for maximum efficiency:
 
 **Benefits:**
+
 - ⚡ **67% Token Reduction** - Each phase runs in isolated context (240k → 80k tokens per feature)
 - 🏃 **2-3x Faster** - No cumulative context bloat, no /compact overhead between phases
 - ✅ **Same Quality** - All slash commands unchanged, proven workflow maintained
 
 **How it works:**
+
 ```
 /feature (Orchestrator - Lightweight State Tracking)
   ├→ spec-phase-agent → /spec → Returns summary
@@ -780,6 +811,7 @@ Spec-Flow now features an **optimized orchestrator** (`/feature`) that runs each
 ```
 
 **Choose your workflow:**
+
 - **`/epic "large project"`** - Epic-level orchestration with parallel sprint execution (v5.0+)
 - **`/feature "feature"`** - Full feature workflow (recommended for single features)
 - **`/quick "fix"`** - Fast path for small changes (<100 LOC)
@@ -792,14 +824,14 @@ Spec-Flow now features an **optimized orchestrator** (`/feature`) that runs each
 
 ### When to Use /epic vs /feature
 
-| Criteria | Use /epic | Use /feature |
-|----------|-----------|--------------|
-| **Estimated Work** | >16 hours | ≤16 hours |
-| **Subsystems** | Multiple (backend + frontend + testing) | Single subsystem |
-| **Sprints** | 2-5 sprints | 1 sprint |
-| **API Endpoints** | >5 endpoints | ≤5 endpoints |
-| **Database Tables** | >3 tables | ≤3 tables |
-| **Velocity Gain** | 3-5x (parallel execution) | 1x (sequential) |
+| Criteria            | Use /epic                               | Use /feature     |
+| ------------------- | --------------------------------------- | ---------------- |
+| **Estimated Work**  | >16 hours                               | ≤16 hours        |
+| **Subsystems**      | Multiple (backend + frontend + testing) | Single subsystem |
+| **Sprints**         | 2-5 sprints                             | 1 sprint         |
+| **API Endpoints**   | >5 endpoints                            | ≤5 endpoints     |
+| **Database Tables** | >3 tables                               | ≤3 tables        |
+| **Velocity Gain**   | 3-5x (parallel execution)               | 1x (sequential)  |
 
 ### Epic Workflow Quick Start
 
@@ -849,7 +881,7 @@ Input: "User authentication with OAuth 2.1"
 
 → Parallel Execution
   - Layer 1: S01 executes (backend-dev agent)
-  - Layer 2: S02 executes (frontend-shipper agent)
+  - Layer 2: S02 executes (frontend-dev agent)
   - Layer 3: S03 executes (test-architect agent)
   - Duration: 48h sequential → 18h actual (2.7x faster)
 
@@ -868,27 +900,32 @@ Input: "User authentication with OAuth 2.1"
 ### Epic Features
 
 **Parallel Sprint Execution:**
+
 - Automatic dependency graph analysis
 - Layer-based execution (Layer 1 → Layer 2 → Layer 3)
 - Contract-first development (lock APIs before parallel work)
 - Real-time progress monitoring across sprints
 
 **Meta-Prompting (LLM-to-LLM):**
+
 - Isolated sub-agents prevent context pollution
 - Research → Plan pipeline with confidence levels
 - XML output for machine-parseable artifacts
 
 **Adaptive Workflow:**
+
 - Auto-clarification when ambiguity score > 30
 - Auto-skip preview for backend-only epics
 - Adaptive question count (2-10 based on ambiguity)
 
 **Self-Healing:**
+
 - /audit-workflow after implementation (bottleneck detection)
 - /heal-workflow applies improvements with user approval
 - Pattern detection after 2-3 epics (generates custom automation)
 
 **Comprehensive Documentation:**
+
 - walkthrough.md with velocity metrics, lessons learned
 - All artifacts in XML for LLM parsing (60% token reduction)
 - audit-report.xml with actionable recommendations
@@ -914,16 +951,19 @@ Input: "User authentication with OAuth 2.1"
 ### Expected Outcomes
 
 **Velocity:**
+
 - 3-5x faster than sequential execution
 - Time saved: 30-60 hours for large epics
 - Critical path optimization
 
 **Quality:**
+
 - Zero integration bugs (contract-first development)
 - 85%+ audit scores
 - Comprehensive walkthrough for learning
 
 **Adaptability:**
+
 - Workflow learns from each epic
 - Pattern detection generates custom automation
 - Self-healing prevents workflow drift
@@ -964,6 +1004,7 @@ powershell -File .spec-flow/scripts/powershell/install-wizard.ps1
 ```
 
 **Windows Users**: For full compatibility with all 40 commands, install **Git for Windows** (provides bash):
+
 - Download from: https://git-scm.com/download/win
 - Install with default settings (adds bash to PATH)
 - Restart PowerShell session after install
@@ -971,6 +1012,7 @@ powershell -File .spec-flow/scripts/powershell/install-wizard.ps1
 - PowerShell wrappers will automatically invoke bash scripts when needed
 
 **What gets installed:**
+
 - ✅ `.claude/` - Agents, commands, and settings
 - ✅ `.spec-flow/` - Scripts, templates, and memory
 - ✅ `CLAUDE.md` - Workflow documentation
@@ -1014,9 +1056,11 @@ npx spec-flow init --target ./my-project
 Clone this repository and ensure you have the required dependencies:
 
 **All Platforms**:
+
 - Python 3.10+ (required for spec-cli.py)
 
 **Windows**:
+
 - PowerShell 7.3+ (`pwsh`) OR Git Bash (recommended: install both)
 - **Git for Windows** (required for full cross-platform support): https://git-scm.com/download/win
   - Provides bash for PowerShell wrappers to invoke
@@ -1024,6 +1068,7 @@ Clone this repository and ensure you have the required dependencies:
   - Without Git Bash: Only 13 commands work (those with native PowerShell implementations)
 
 **macOS/Linux**:
+
 - Bash 4.0+ (usually pre-installed)
 - No additional requirements
 
@@ -1040,6 +1085,7 @@ Run the `/setup-constitution` command in Claude to document the engineering prin
 ### 3. Build your roadmap
 
 Use `/roadmap` to manage features via GitHub Issues (prioritized by creation order):
+
 - **Setup**: Authenticate with `gh auth login` or set `GITHUB_TOKEN`, then run `.spec-flow/scripts/bash/setup-github-labels.sh`
 - **Add features**: `/roadmap add "feature description"` creates GitHub issue with metadata labels
 - **Brainstorm**: `/roadmap brainstorm [quick|deep]` generates ideas from research
@@ -1058,6 +1104,7 @@ Use `/roadmap` to manage features via GitHub Issues (prioritized by creation ord
 Select a feature from your roadmap and choose your workflow:
 
 **Full workflow (recommended):**
+
 ```bash
 /feature "feature-name"  # Runs full workflow with isolated phase agents
 # Auto-progresses through: spec → plan → tasks → validate → implement → optimize → ship
@@ -1066,6 +1113,7 @@ Select a feature from your roadmap and choose your workflow:
 ```
 
 **Manual step-by-step:**
+
 ```bash
 /spec "feature-name"  # Create specification
 /plan                    # Create plan
@@ -1076,13 +1124,13 @@ Select a feature from your roadmap and choose your workflow:
 
 ## Supported AI Agents
 
-| Agent | Status | Notes |
-|-------|--------|-------|
-| Claude Code | Supported | Optimised for slash-command workflow. |
-| Cursor | Supported | Pair with `.spec-flow/memory/` context files. |
-| Windsurf | Supported | Share roadmap + constitution for planning. |
-| GitHub Copilot | Partial | Works for code edits; manual command execution. |
-| Gemini CLI | Experimental | Requires manual prompt translation. |
+| Agent          | Status       | Notes                                           |
+| -------------- | ------------ | ----------------------------------------------- |
+| Claude Code    | Supported    | Optimised for slash-command workflow.           |
+| Cursor         | Supported    | Pair with `.spec-flow/memory/` context files.   |
+| Windsurf       | Supported    | Share roadmap + constitution for planning.      |
+| GitHub Copilot | Partial      | Works for code edits; manual command execution. |
+| Gemini CLI     | Experimental | Requires manual prompt translation.             |
 
 ## Skills & Learning System
 
@@ -1091,6 +1139,7 @@ Spec-Flow includes an auto-learning system that captures lessons from each workf
 ### How Skills Work
 
 **16 Phase-Specific Skills**: Each workflow phase has a dedicated skill that learns from execution:
+
 - `.claude/skills/specification-phase/` - Learn from /spec (reduce clarifications, improve classification)
 - `.claude/skills/planning-phase/` - Learn from /plan (maximize code reuse, detect patterns)
 - `.claude/skills/implementation-phase/` - Learn from /implement (TDD enforcement, anti-duplication)
@@ -1098,6 +1147,7 @@ Spec-Flow includes an auto-learning system that captures lessons from each workf
 - ...and 12 more for other phases
 
 **Two-File Architecture**:
+
 1. **SKILL.md** - Template with pitfall descriptions, detection logic, prevention strategies (updated with npm)
 2. **learnings.md** - Accumulated data with frequencies, metrics, instances (preserved across updates)
 
@@ -1106,17 +1156,20 @@ Spec-Flow includes an auto-learning system that captures lessons from each workf
 When you update Spec-Flow via npm, your accumulated learnings are preserved:
 
 **What Gets Updated** (npm overwrites):
+
 - `SKILL.md` - Template improvements, new pitfalls, better detection logic
 - `.claude/commands/*.md` - Command improvements, new features
 - `.spec-flow/templates/*.md` - Artifact templates
 
 **What Gets Preserved** (your local data):
+
 - `learnings.md` - Pitfall frequencies, pattern usage counts, metrics
 - GitHub Issues - Your product roadmap (stored as issues with labels)
 - `.spec-flow/memory/setup-constitution.md` - Your project principles
 - `specs/*/` - All your feature specifications
 
 **Example**: After 10 features, your `learnings.md` shows:
+
 ```yaml
 common_pitfalls:
   - id: "over-clarification"
@@ -1135,11 +1188,13 @@ This data persists across npm updates, so your workflow gets smarter over time.
 ### Auto-Learning in Action
 
 **Skills auto-trigger** when:
+
 - Starting a phase (loads relevant lessons)
 - Completing a phase (detects pitfalls, updates frequencies)
 - Encountering errors (captures patterns for prevention)
 
 **Skills auto-update** when:
+
 - Pitfall detected: Increments frequency (0/5 → 1/5 → 2/5 ★★☆☆☆)
 - Pattern used successfully: Increments usage count, recalculates success rate
 - Metrics updated: Averages recalculated after each feature
@@ -1152,40 +1207,40 @@ This data persists across npm updates, so your workflow gets smarter over time.
 
 Every automation script is provided in both PowerShell (`.ps1`) and shell (`.sh`) form. Pick the variant that matches your environment.
 
-| Task | Windows / Cross-platform | macOS / Linux |
-|------|--------------------------|---------------|
-| Validate prerequisites | `pwsh -File .spec-flow/scripts/powershell/check-prerequisites.ps1 -Json` | `.spec-flow/scripts/bash/check-prerequisites.sh --json` |
-| Scaffold a feature | `pwsh -File .spec-flow/scripts/powershell/create-new-feature.ps1 "Dashboard revamp"` | `.spec-flow/scripts/bash/create-new-feature.sh "Dashboard revamp"` |
-| Estimate token budget | `pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 -FeatureDir specs/015-dashboard` | `.spec-flow/scripts/bash/calculate-tokens.sh --feature-dir specs/015-dashboard` |
-| Compact context | `pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 -FeatureDir specs/015-dashboard` | `.spec-flow/scripts/bash/compact-context.sh --feature-dir specs/015-dashboard` |
+| Task                   | Windows / Cross-platform                                                                        | macOS / Linux                                                                   |
+| ---------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Validate prerequisites | `pwsh -File .spec-flow/scripts/powershell/check-prerequisites.ps1 -Json`                        | `.spec-flow/scripts/bash/check-prerequisites.sh --json`                         |
+| Scaffold a feature     | `pwsh -File .spec-flow/scripts/powershell/create-new-feature.ps1 "Dashboard revamp"`            | `.spec-flow/scripts/bash/create-new-feature.sh "Dashboard revamp"`              |
+| Estimate token budget  | `pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 -FeatureDir specs/015-dashboard` | `.spec-flow/scripts/bash/calculate-tokens.sh --feature-dir specs/015-dashboard` |
+| Compact context        | `pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 -FeatureDir specs/015-dashboard`  | `.spec-flow/scripts/bash/compact-context.sh --feature-dir specs/015-dashboard`  |
 
 > Additional scripts such as `enable-auto-merge`, `wait-for-ci`, and `update-agent-context` also ship with `.sh` wrappers that delegate to PowerShell so you can run them from a POSIX shell while we build native equivalents.
 
 ## Core Philosophy
 
-1. **Specification first**  every artifact traces back to an explicit requirement.
-2. **Agents as teammates**  commands encode expectations so assistants stay aligned.
-3. **Context discipline**  token budgets are measured, compacted, and recycled.
-4. **Ship in stages**  staging and production have dedicated rituals with human gates.
+1. **Specification first** every artifact traces back to an explicit requirement.
+2. **Agents as teammates** commands encode expectations so assistants stay aligned.
+3. **Context discipline** token budgets are measured, compacted, and recycled.
+4. **Ship in stages** staging and production have dedicated rituals with human gates.
 
 ## Development Phases
 
-| Phase | Command | Primary Outputs |
-|-------|---------|-----------------|
-| -1 | `/roadmap` | GitHub Issues with features prioritized by creation order |
-| 0 | `/spec` | `spec.md`, `NOTES.md`, `visuals/README.md` |
-| 0.5 | `/clarify` | Clarification log inside the spec |
-| 1 | `/plan` | `plan.md`, `research.md` |
-| 2 | `/tasks` | `tasks.md` with acceptance criteria |
-| 3 | `/validate` | Risk analysis report |
-| 4 | `/implement` | Implementation checklist & validation hooks |
-| 5 | `/optimize` | Code review summary & optimization plan |
-| 6 | `/debug` | Error triage and remediation plan |
-| 7 | `/preview` | Release notes & preview checklist |
-| 8 | `/ship-staging` | Staging deployment ritual |
-| 9 | `/validate-staging` | Sign-off for staging |
-| 10 | `/ship-prod` | Production launch and follow-up |
-| - | `/compact [phase]` | **Optional:** Reduce token usage between phases |
+| Phase | Command             | Primary Outputs                                           |
+| ----- | ------------------- | --------------------------------------------------------- |
+| -1    | `/roadmap`          | GitHub Issues with features prioritized by creation order |
+| 0     | `/spec`             | `spec.md`, `NOTES.md`, `visuals/README.md`                |
+| 0.5   | `/clarify`          | Clarification log inside the spec                         |
+| 1     | `/plan`             | `plan.md`, `research.md`                                  |
+| 2     | `/tasks`            | `tasks.md` with acceptance criteria                       |
+| 3     | `/validate`         | Risk analysis report                                      |
+| 4     | `/implement`        | Implementation checklist & validation hooks               |
+| 5     | `/optimize`         | Code review summary & optimization plan                   |
+| 6     | `/debug`            | Error triage and remediation plan                         |
+| 7     | `/preview`          | Release notes & preview checklist                         |
+| 8     | `/ship-staging`     | Staging deployment ritual                                 |
+| 9     | `/validate-staging` | Sign-off for staging                                      |
+| 10    | `/ship-prod`        | Production launch and follow-up                           |
+| -     | `/compact [phase]`  | **Optional:** Reduce token usage between phases           |
 
 **Context Management**: The `/compact` command is optional and reduces token usage by summarizing verbose artifacts. Use it between phases when context feels heavy or when suggested by auto-progression.
 
@@ -1204,6 +1259,7 @@ Every automation script is provided in both PowerShell (`.ps1`) and shell (`.sh`
   - `Install-Module -Name powershell-yaml -Scope CurrentUser`
 
 Optional:
+
 - GitHub CLI (`gh`) for auto-merge helpers
 - Pester 5 for PowerShell test suites
 
@@ -1228,6 +1284,7 @@ specs/001-example-feature/
 ```
 
 **What's included**:
+
 - Complete specification with FR/NFR requirements
 - 28 tasks broken down across 5 implementation phases
 - Performance benchmarks (27% better than target)
@@ -1265,27 +1322,24 @@ specs/001-example-feature/
 ## Packages & Releases
 
 - **npm**: Published as [`spec-flow`](https://www.npmjs.com/package/spec-flow). Install globally with `npm install -g spec-flow` or run one-off with `npx spec-flow`.
-- **GitHub Packages**: The `Publish Packages` workflow mirrors each release to GitHub Packages under the scoped name `@marcusgoll/spec-flow`, enabling the repository's *Packages* tab.
+- **GitHub Packages**: The `Publish Packages` workflow mirrors each release to GitHub Packages under the scoped name `@marcusgoll/spec-flow`, enabling the repository's _Packages_ tab.
 - **Automation**: Creating a GitHub release (or manually running the workflow) triggers the dual publish. Set the `NPM_TOKEN` repository secret with an npm automation token that has `publish` rights; GitHub packages use the built-in `GITHUB_TOKEN`.
 
 ## Troubleshooting
 
-| Issue | Resolution |
-|-------|------------|
-| `pwsh` command not found | Install PowerShell 7 (`winget install Microsoft.PowerShell` or `brew install --cask powershell`). |
-| Shell script reports missing feature directory | Run `/feature` first or use `create-new-feature` to scaffold `specs/NNN-slug`. |
-| Token estimate returns zero | Verify files are UTF-8 encoded and not empty. |
-| Context delta lacks checkpoints | Ensure `NOTES.md` records checkpoints prefixed with `-`. |
+| Issue                                          | Resolution                                                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `pwsh` command not found                       | Install PowerShell 7 (`winget install Microsoft.PowerShell` or `brew install --cask powershell`). |
+| Shell script reports missing feature directory | Run `/feature` first or use `create-new-feature` to scaffold `specs/NNN-slug`.                    |
+| Token estimate returns zero                    | Verify files are UTF-8 encoded and not empty.                                                     |
+| Context delta lacks checkpoints                | Ensure `NOTES.md` records checkpoints prefixed with `-`.                                          |
 
 ## Maintainers
 
-* Marcus Gollahon ([@marcusgoll](https://x.com/marcusgoll))
-- Community contributors  join via pull requests!
+- Marcus Gollahon ([@marcusgoll](https://x.com/marcusgoll))
+
+* Community contributors join via pull requests!
 
 ## License
 
 Released under the [MIT License](LICENSE).
-
-
-
-

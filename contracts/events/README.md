@@ -67,7 +67,7 @@ events/
   "required": ["epic_id", "agent", "contracts_locked"],
   "properties": {
     "epic_id": { "type": "string" },
-    "agent": { "enum": ["backend-dev", "frontend-shipper", "database-architect"] },
+    "agent": { "enum": ["backend-dev", "frontend-dev", "database-architect"] },
     "contracts_locked": { "type": "boolean" }
   }
 }
@@ -76,11 +76,13 @@ events/
 ## Versioning
 
 **Breaking changes** to event schemas require major version bump:
+
 - Removing required fields
 - Changing field types
 - Renaming fields
 
 **Additive changes** are safe:
+
 - Adding optional fields
 - Adding new event types
 
@@ -92,24 +94,24 @@ events/
 
 ```javascript
 const signature = crypto
-  .createHmac('sha256', SECRET_KEY)
+  .createHmac("sha256", SECRET_KEY)
   .update(JSON.stringify(payload))
-  .digest('hex');
+  .digest("hex");
 
 // Include in webhook header
-headers['X-Webhook-Signature'] = signature;
+headers["X-Webhook-Signature"] = signature;
 ```
 
 **Verification** (consumer side):
 
 ```javascript
 const expectedSig = crypto
-  .createHmac('sha256', SECRET_KEY)
+  .createHmac("sha256", SECRET_KEY)
   .update(rawBody)
-  .digest('hex');
+  .digest("hex");
 
 if (signature !== expectedSig) {
-  throw new Error('Invalid webhook signature');
+  throw new Error("Invalid webhook signature");
 }
 ```
 
@@ -130,6 +132,7 @@ Event consumers can publish pacts expecting specific event structures. Providers
 ## Platform Agent Responsibility
 
 The **platform agent** owns:
+
 - Webhook signing key management
 - Event schema versioning
 - Breaking change detection
