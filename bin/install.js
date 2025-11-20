@@ -279,8 +279,13 @@ async function update(options) {
       return { success: false, error: result.error || 'Unknown update error' };
     }
 
-    printSuccess('Update complete!');
-    return { success: true, error: null };
+    // Return success with conflictActions for cli.js to display
+    return {
+      success: true,
+      error: null,
+      conflictActions: result.conflictActions || [],
+      backupPaths: {} // No backups created during update (templates only)
+    };
   } catch (error) {
     return { success: false, error: `Update error: ${error.message}` };
   }

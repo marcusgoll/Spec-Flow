@@ -2,56 +2,145 @@
 
 ---
 
-## [6.11.1] - 2025-11-20
+## [7.0.0] - 2025-11-20
 
-### Fixed
-- **Release Script**: Fixed bash eval error from nested command substitution (08e8e9f)
+### ⚠️ BREAKING CHANGES
 
-### Changed
-- **Build System**: Updated build validation to correct question bank path reference
-- **Build System**: Improved node_modules exclusion with path normalization
-- **Build System**: Increased package size limit to 10MB for comprehensive workflow toolkit
+This release consolidates breaking changes that were introduced incrementally in v6.9.0-v6.11.1. We're bumping to v7.0.0 to properly reflect the architectural changes.
+
+#### Preview Phase Removed (from v6.9.0)
+- **Removed**: `/preview` command archived to `preview.md.deprecated`
+- **Impact**: All UI/UX testing now happens in staging environment only
+- **Migration**: Update workflows to test in staging instead of locally
+- **Rationale**: Staging provides production-like validation; local preview was redundant
+
+#### Workflow State Schema Changes (from v6.9.0)
+- **Removed**: `preview` phase from workflow-state.yaml schema
+- **Removed**: `manual_gates.preview` section
+- **Impact**: Existing features may need workflow-state.yaml migration
+- **Migration**: Remove `preview` phase references from existing feature specs
+
+#### Ship-Prod Version Selection (from v6.9.0)
+- **Changed**: `/ship-prod` no longer prompts for version interactively
+- **New Behavior**: Defaults to patch bump (most common use case)
+- **Override**: Use `--version major|minor` flag to override default
+- **Rationale**: 90% of deployments are patch bumps; interactive prompt slowed workflow
+
+### 🐛 Fixed
+
+**CLI Update Command Confirmation** (v7.0.0)
+- Fixed missing confirmation output when running `npx spec-flow update`
+- Update function now returns `conflictActions` and `backupPaths` for display
+- Removed duplicate success messages between install.js and cli.js
+- Added file update summary to show which templates were updated
+
+**Release Script** (from v6.11.1)
+- Fixed bash eval error from nested command substitution (08e8e9f)
+
+**Feature Continue Mode** (from v6.11.0)
+- Implemented `/feature continue` command to resume most recent feature
+- Finds most recently modified feature in `specs/` directory
+- Cross-platform compatible (Linux, macOS, Windows/Git Bash)
+- Extracts feature description from spec.md
+- Shows clear banner with feature info when resuming
+- Fixes error: "❌ Provide a description or use /feature next"
+
+### ✨ Added
+
+**CLI Workflow Installation** (from v6.11.0)
+- GitHub workflows now install automatically via `npx spec-flow init` and `npx spec-flow update`
+- Added `installWorkflows()` function to copy `.github/workflows/` directory
+- Uses same conflict resolution strategy as other files (merge by default)
+- Respects `--strategy` flag (merge|backup|skip|force)
+- Skips existing workflows during update to preserve customizations
+
+**Auto-Install GitHub Workflows** (from v6.10.0)
+- Postinstall script now automatically copies GitHub Actions workflows to user's `.github/workflows/` directory
+- Automatically installs workflows if `.github/workflows/` exists (skips files that already exist)
+- Prompts to create directory if it doesn't exist
+- Interactive confirmation using inquirer
+- Silent in CI/non-interactive environments
+- Preserves user customizations (never overwrites existing files)
+
+**GitHub Actions Auto-Fix CI** (from v6.9.0)
+- New workflow `.github/workflows/auto-fix-ci.yml` automatically fixes lint/format issues on PR creation
+- Runs PSScriptAnalyzer formatting for PowerShell scripts
+- Runs markdownlint auto-fix for Markdown files
+- Runs jq formatting for JSON files
+- Auto-commits fixes and comments on PR
+
+**Docker Build Validation** (from v6.9.0)
+- Added Docker build check to `/optimize` command (6th parallel check)
+- Validates Dockerfile builds successfully before deployment
+- Automatically skips if no Dockerfile present
+- Generates `optimization-docker.md` report with PASSED/FAILED/SKIPPED status
+- Critical blocker if Docker build fails
+
+### 🚀 Changed
+
+**Streamlined Ship Orchestration** (from v6.9.0)
+- Reduced deployment time by 60% (25-35 min vs 65-165 min)
+- Removed `/preview` manual gate (all testing now in staging)
+- Removed interactive version selection from `/ship-prod` (defaults to patch bump)
+- Removed manual staging validation checklist (auto-generated validation reports with E2E, Lighthouse, rollback test, health checks)
+- Parallelized pre-flight + optimize checks (saves ~10 min)
+
+**Platform API-Based Deployment IDs** (from v6.9.0)
+- Replaced log parsing with direct API calls
+- Vercel API for deployment IDs (more reliable than grep)
+- Railway GraphQL API for deployment tracking
+- Netlify API for deployment verification
+- Fallback to log parsing if credentials missing
+
+**Enhanced npm Package Experience** (from v6.10.0)
+- Users no longer need to manually copy workflow files after installation
+- Workflows install automatically on `npm install spec-flow`
+- Update detection: New workflows auto-install, existing workflows preserved
+- Supports both fresh installs and package upgrades
+
+**Build System** (from v6.11.1)
+- Updated build validation to correct question bank path reference
+- Improved node_modules exclusion with path normalization
+- Increased package size limit to 10MB for comprehensive workflow toolkit
+
+### 📝 Migration Guide
+
+#### For Users Upgrading from v6.8.0 or Earlier
+
+1. **Remove Preview References**:
+   ```bash
+   # Find and update any custom scripts referencing /preview
+   grep -r "/preview" .spec-flow/ .claude/
+   ```
+
+2. **Update workflow-state.yaml Schema**:
+   ```yaml
+   # Remove these sections from existing feature specs
+   # phases: [..., preview, ...]  # Remove preview
+   # manual_gates:
+   #   preview: {...}  # Remove this entire section
+   ```
+
+3. **Update Ship-Prod Scripts**:
+   ```bash
+   # Old: /ship-prod (prompts for version)
+   # New: /ship-prod (defaults to patch)
+   # New: /ship-prod --version minor (explicit override)
+   ```
+
+4. **Test in Staging**:
+   - Move all local UI/UX testing to staging validation phase
+   - Update QA checklists to reference staging URLs instead of localhost
 
 ---
 
-## [6.11.0] - 2025-11-18
+## [6.9.0] - 2025-11-18 [YANKED - Use v7.0.0]
 
-### Added
-- **CLI Workflow Installation**: GitHub workflows now install automatically via `npx spec-flow init` and `npx spec-flow update`
-  - Added `installWorkflows()` function to copy `.github/workflows/` directory
-  - Uses same conflict resolution strategy as other files (merge by default)
-  - Respects `--strategy` flag (merge|backup|skip|force)
-  - Skips existing workflows during update to preserve customizations
-
-### Fixed
-- **Feature Continue Mode**: Implemented `/feature continue` command to resume most recent feature
-  - Finds most recently modified feature in `specs/` directory
-  - Cross-platform compatible (Linux, macOS, Windows/Git Bash)
-  - Extracts feature description from spec.md
-  - Shows clear banner with feature info when resuming
-  - Fixes error: "❌ Provide a description or use /feature next"
+**Note**: This version introduced breaking changes but was not properly versioned. Please upgrade directly to v7.0.0 instead.
 
 ---
 
-## [6.10.0] - 2025-11-18
-
-### Added
-- **Auto-Install GitHub Workflows**: Postinstall script now automatically copies GitHub Actions workflows to user's `.github/workflows/` directory
-  - Automatically installs workflows if `.github/workflows/` exists (skips files that already exist)
-  - Prompts to create directory if it doesn't exist
-  - Interactive confirmation using inquirer
-  - Silent in CI/non-interactive environments
-  - Preserves user customizations (never overwrites existing files)
-
-### Changed
-- **Enhanced npm Package Experience**: Users no longer need to manually copy workflow files after installation
-  - Workflows install automatically on `npm install spec-flow`
-  - Update detection: New workflows auto-install, existing workflows preserved
-  - Supports both fresh installs and package upgrades
-
----
-
-## [6.9.0] - 2025-11-18
+## [6.8.0] - 2025-11-18
 
 ### Added
 - **GitHub Actions Auto-Fix CI**: New workflow `.github/workflows/auto-fix-ci.yml` automatically fixes lint/format issues on PR creation

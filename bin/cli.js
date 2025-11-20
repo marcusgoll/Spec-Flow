@@ -82,6 +82,15 @@ program
       printSuccess('\nUpdate complete!');
       console.log(chalk.cyan(`\nSpec-Flow version: ${chalk.bold(VERSION)}`));
       console.log(chalk.gray('Templates updated, user data preserved (memory, specs, learnings.md)'));
+
+      // Show conflict resolutions if any
+      const { formatActions } = require('./conflicts');
+      if (result.conflictActions && result.conflictActions.length > 0) {
+        console.log('');
+        console.log(chalk.white('Files updated:'));
+        console.log(formatActions(result.conflictActions));
+      }
+
       console.log('');
     } catch (error) {
       printError(`Update failed: ${error.message}`);
