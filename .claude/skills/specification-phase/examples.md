@@ -1,11 +1,13 @@
-# Specification Phase Examples
+<overview>
+Real-world specification examples demonstrating good vs bad specs, showing what makes effective specifications through concrete comparisons.
 
-Good specs vs bad specs, showing what makes effective specifications.
+Use these examples to understand quality patterns, common pitfalls, and progressive learning as the skill captures more features through the workflow.
+</overview>
 
-## Good Spec Examples (0-2 Clarifications)
+<good_spec_examples>
+**High-quality specs with 0-2 clarifications demonstrating best practices**
 
-### Example 1: User Authentication with OAuth2
-
+<example_oauth_authentication>
 **Feature**: "Add OAuth2 authentication for user login"
 
 **Classification**:
@@ -27,11 +29,9 @@ Good specs vs bad specs, showing what makes effective specifications.
 - Success criteria is measurable (<5 seconds)
 - Only asks about critical scope decision (GitHub support)
 - Documents deployment requirements upfront
+</example_oauth_authentication>
 
----
-
-### Example 2: Background Job to Process Uploads
-
+<example_background_worker>
 **Feature**: "Create background worker to process file uploads"
 
 **Classification**:
@@ -53,11 +53,9 @@ Good specs vs bad specs, showing what makes effective specifications.
 - Success criteria is quantifiable (100 files/hour, <1% failure)
 - No unnecessary clarifications (all technical defaults documented)
 - Error handling pattern clearly specified
+</example_background_worker>
 
----
-
-### Example 3: Student Progress Dashboard
-
+<example_student_dashboard>
 **Feature**: "Add student progress dashboard showing completion rates"
 
 **Classification**:
@@ -81,13 +79,13 @@ Good specs vs bad specs, showing what makes effective specifications.
 - HEART metrics define success (≥60% engagement)
 - Only asks about scope-defining decisions (audience and data access)
 - UI artifacts referenced for design clarity
+</example_student_dashboard>
+</good_spec_examples>
 
----
+<bad_spec_examples>
+**Problematic specs with >5 clarifications demonstrating anti-patterns**
 
-## Bad Spec Examples (>5 Clarifications)
-
-### Example 1: Export User Data Feature
-
+<example_export_user_data>
 **Feature**: "Allow users to export their data"
 
 **Classification**:
@@ -120,11 +118,9 @@ Good specs vs bad specs, showing what makes effective specifications.
 - Use standard defaults: "Rate limit: 10 exports/day per user (prevents abuse)"
 - Keep only critical clarification: "[NEEDS CLARIFICATION: Which user fields should be included?]"
 - Add measurable criteria: "User receives download link within 30 seconds for <10k records"
+</example_export_user_data>
 
----
-
-### Example 2: Improve Search Performance
-
+<example_improve_search>
 **Feature**: "Make search faster"
 
 **Classification**:
@@ -158,11 +154,9 @@ Good specs vs bad specs, showing what makes effective specifications.
 - Add hypothesis: "Target: 95th percentile <500ms (10x improvement)"
 - Use informed guesses: "Cache: Yes with 5-minute TTL", "Pagination: 20 results per page"
 - Reduce clarifications to 1: "[NEEDS CLARIFICATION: Is full-text search required or exact match?]"
+</example_improve_search>
 
----
-
-### Example 3: Add Email Notifications
-
+<example_email_notifications>
 **Feature**: "Send email notifications to users"
 
 **Classification**:
@@ -200,13 +194,13 @@ Good specs vs bad specs, showing what makes effective specifications.
   2. "[NEEDS CLARIFICATION: Should users opt-in or opt-out by default?]"
 - Add success criteria: "User receives notification email within 1 minute of triggering event"
 - Add user story: "As a user, I want to receive login alerts to detect unauthorized access"
+</example_email_notifications>
+</bad_spec_examples>
 
----
+<side_by_side_comparisons>
+**Comparative analysis of good vs bad spec patterns**
 
-## Side-by-Side Comparison
-
-### Clarification Strategy
-
+<clarification_strategy_comparison>
 | Aspect | Good Spec | Bad Spec |
 |--------|-----------|----------|
 | **Clarifications** | ≤3 (only scope/security critical) | >5 (asks about everything) |
@@ -214,9 +208,9 @@ Good specs vs bad specs, showing what makes effective specifications.
 | **Format decisions** | Documents standard choice (JSON, CSV) | Asks user to choose format |
 | **Performance** | Uses industry defaults (<500ms) | Asks user for target |
 | **Rate limits** | Documents conservative default (100/min) | Asks user to specify |
+</clarification_strategy_comparison>
 
-### Success Criteria Quality
-
+<success_criteria_comparison>
 | Aspect | Good Spec | Bad Spec |
 |--------|-----------|----------|
 | **Measurability** | "User can login in <5 seconds" | "Login works correctly" |
@@ -224,33 +218,43 @@ Good specs vs bad specs, showing what makes effective specifications.
 | **User-facing** | "User receives email within 1 minute" | "Emails are sent" |
 | **Performance** | "95th percentile <500ms" | "Search is fast" |
 | **Accessibility** | "Lighthouse score ≥95" | "UI is accessible" |
+</success_criteria_comparison>
 
-### Classification Accuracy
-
+<classification_accuracy_comparison>
 | Aspect | Good Spec | Bad Spec |
 |--------|-----------|----------|
 | **UI detection** | Backend worker → HAS_UI=false ✓ | Background job → HAS_UI=true ✗ |
 | **Improvement flag** | Performance optimization → IS_IMPROVEMENT=true ✓ | "Make faster" → IS_IMPROVEMENT=false ✗ |
 | **Metrics flag** | User engagement feature → HAS_METRICS=true ✓ | Performance improvement → HAS_METRICS=false ✗ |
 | **Deployment impact** | OAuth creds needed → HAS_DEPLOYMENT_IMPACT=true ✓ | Email service → HAS_DEPLOYMENT_IMPACT=maybe ✗ |
+</classification_accuracy_comparison>
+</side_by_side_comparisons>
 
----
+<progressive_learning_pattern>
+**How the skill improves over time as it captures more real-world examples**
 
-## Progressive Learning Pattern
+<learning_stages>
+**Stage 1: First 5 Features** (Baseline patterns)
+- Track clarification count
+- Track classification accuracy
+- Identify common user input patterns
+- Build default heuristics library
 
-As the specification-phase Skill captures more real-world examples:
+**Stage 2: Features 6-15** (Refinement)
+- Identify common pitfalls (over-clarification, wrong classification)
+- Discover successful shortcuts (informed guess patterns that work)
+- Build pattern library for similar features
+- Optimize research depth selection
 
-1. **First 5 features**: Baseline patterns (track clarification count, classification accuracy)
-2. **Features 6-15**: Refinement (identify common pitfalls, successful shortcuts)
-3. **Features 16+**: Mastery (auto-detect edge cases, suggest improvements)
+**Stage 3: Features 16+** (Mastery)
+- Auto-detect edge cases based on historical patterns
+- Suggest improvements proactively ("This looks similar to feature 007, consider reusing approach")
+- Predict classification with 95%+ accuracy
+- Minimal clarifications needed (average <1.5 per spec)
+</learning_stages>
 
-The Skill file updates automatically:
-- Clarification count trends downward (target: ≤2 average)
-- Classification accuracy trends upward (target: ≥90%)
-- Time-to-spec trends downward (target: ≤15 minutes)
-- Rework rate trends downward (target: <5% specs need revision)
-
-**Example progression**:
+<metrics_progression>
+**Example progression across feature batches**:
 
 | Metric | Features 1-5 | Features 6-15 | Features 16+ |
 |--------|--------------|---------------|--------------|
@@ -259,13 +263,35 @@ The Skill file updates automatically:
 | Time to spec | 22 min | 17 min | 12 min |
 | Rework rate | 12% | 6% | 3% |
 
----
+**Improvement trajectory**:
+- Clarifications decrease as informed guess library grows
+- Classification accuracy increases with pattern recognition
+- Time decreases with template reuse and shortcuts
+- Rework decreases with better upfront quality
+</metrics_progression>
 
-## Real-World Feature Examples
+<skill_updates>
+**The Skill file updates automatically**:
+- Adds new informed guess heuristics discovered during execution
+- Updates classification decision tree with edge cases
+- Refines clarification prioritization based on user feedback
+- Expands examples.md with real-world feature patterns
 
-*This section will be populated as real features move through the workflow:*
+**Example auto-update**:
+```
+After feature 012 (OAuth integration):
+- Added informed guess: "OAuth providers: Google + GitHub (most common for web apps)"
+- Updated classification: "OAuth" keyword triggers HAS_DEPLOYMENT_IMPACT=true
+- Refined research depth: OAuth features default to "full" research (complex integration)
+```
+</skill_updates>
+</progressive_learning_pattern>
 
-### Feature: [Feature Name]
+<real_world_features>
+**Section for capturing actual features from workflow execution**
+
+<template>
+**Feature**: [Feature Name]
 
 **Date**: YYYY-MM-DD
 **Clarifications**: N
@@ -277,7 +303,23 @@ The Skill file updates automatically:
 - [What went well]
 - [What could improve]
 - [Pattern to repeat]
+</template>
 
----
+<placeholder>
+_This section will be populated as real features move through the workflow._
 
-_Examples updated as new features complete the specification phase._
+**Purpose**: Capture real-world execution data to improve the skill over time. Each feature completed through /specify phase adds to this library, creating a self-improving knowledge base.
+
+**Update trigger**: After /specify phase completes successfully, append feature summary using template above.
+</placeholder>
+</real_world_features>
+
+<usage_notes>
+**How to use these examples during /specify execution**:
+
+1. **Before classification**: Review good vs bad classification examples to avoid common mistakes
+2. **During informed guess application**: Reference good spec examples for assumption documentation patterns
+3. **When unsure about clarifications**: Compare with bad spec examples to see over-clarification anti-patterns
+4. **For success criteria writing**: Use good examples as templates for measurable, quantifiable criteria
+5. **Post-execution review**: Compare your spec against examples to identify improvement opportunities
+</usage_notes>

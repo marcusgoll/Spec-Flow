@@ -1,45 +1,77 @@
 ---
-description: Execute tasks with TDD, anti-duplication checks, pattern following (parallel execution)
-version: 2.0
-updated: 2025-11-17
+name: implement
+description: Execute all implementation tasks from tasks.md with test-driven development, parallel batching, and atomic commits
+argument-hint: [feature-slug]
+allowed-tools: [Read, Write, Edit, Grep, Glob, Bash(python .spec-flow/scripts/spec-cli.py:*), Bash(git add:*), Bash(git commit:*), Bash(git diff:*), Bash(git status:*), Bash(npm test:*), Bash(pnpm test:*), Bash(pytest:*)]
 ---
 
-# /implement — Parallel Task Execution with TDD
+# /implement — Task Execution with TDD
 
-**Purpose**: Execute all tasks from `specs/<slug>/tasks.md` with parallel batching, strict TDD phases, auto-rollback on failure, and atomic commits.
+<context>
+**User Input**: $ARGUMENTS
 
-**Command**: `/implement [slug]`
+**Current Branch**: !`git branch --show-current 2>$null || echo "none"`
 
-**When to use**: After `/tasks` completes. Runs all pending tasks, stopping only on critical blockers.
+**Feature Directory**: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>$null | jq -r '.FEATURE_DIR'`
 
----
+**Pending Tasks**: !`grep -c "^- \[ \]" specs/*/tasks.md 2>$null || echo "0"`
 
-## Mental Model
+**Completed Tasks**: !`grep -c "^- \[x\]" specs/*/tasks.md 2>$null || echo "0"`
 
-**Flow**: preflight → execute (parallel batches) → wrap-up
+**Git Status**: !`git status --short 2>$null || echo "clean"`
 
-**Parallelism**: Group independent tasks by domain; keep TDD phases sequential within a task. Speedup bounded by dependency share (Amdahl's Law).
+**Mockup Approval Status** (if UI-first): !`grep -A 5 "mockup_approval:" specs/*/workflow-state.yaml 2>$null | grep "status:" | awk '{print $2}' || echo "n/a"`
 
-**Do not stop unless**: Missing files, repo-wide test suite failure, git conflicts.
+**Implementation Artifacts** (after script execution):
+- @specs/*/tasks.md (updated with completed tasks)
+- @specs/*/CLAUDE.md (living documentation)
+- @design/systems/ui-inventory.md (if UI components created)
+- @design/systems/approved-patterns.md (if patterns extracted)
+</context>
 
----
+<objective>
+Execute all tasks from specs/$ARGUMENTS/tasks.md with parallel batching, strict TDD phases, auto-rollback on failure, and atomic commits.
+
+Implementation workflow:
+1. Run centralized spec-cli.py implement script with arguments
+2. Review implementation progress (completed tasks, generated code)
+3. Update living documentation (UI inventory, approved patterns)
+4. Run full test suite verification
+5. Present results with next action recommendation
+
+**Key principles**:
+- **Test-Driven Development**: Red (failing test) → Green (passing) → Refactor (improve)
+- **Parallel execution**: Group independent tasks by domain, speedup bounded by dependencies
+- **Anti-duplication**: Search existing code before creating new implementations
+- **Pattern following**: Apply plan.md recommended patterns consistently
+- **Atomic commits**: One commit per task with descriptive message
+
+**Workflow position**: `spec → clarify → plan → tasks → implement → optimize → preview → ship`
+</objective>
 
 ## Anti-Hallucination Rules
 
+**CRITICAL**: Follow these rules to prevent implementation errors.
+
 1. **Never speculate about code you have not read**
-   Always `Read` files before referencing them.
+   - Always Read files before referencing them
+   - Verify file existence with Glob before importing
 
 2. **Cite your sources with file paths**
-   Include exact location: `file_path:line_number`
+   - Include exact location: `file_path:line_number`
+   - Quote code snippets when analyzing
 
 3. **Admit uncertainty explicitly**
-   Say "I'm uncertain about [X]. Let me investigate by reading [file]" instead of guessing.
+   - Say "I'm uncertain about [X]. Let me investigate by reading [file]" instead of guessing
+   - Use Grep to find existing import patterns before assuming
 
 4. **Quote before analyzing long documents**
-   For specs >5000 tokens, extract relevant quotes first.
+   - For specs >5000 tokens, extract relevant quotes first
+   - Don't paraphrase - show verbatim text with line numbers
 
 5. **Verify file existence before importing/referencing**
-   Use Glob to find files; use Grep to find existing import patterns.
+   - Use Glob to find files: `**/*.ts`, `**/*.tsx`
+   - Use Grep to find existing patterns: `import.*Component`
 
 **Why**: Hallucinated code references cause compile errors, broken imports, and failed tests. Reading files before referencing prevents 60-70% of implementation errors.
 
@@ -57,12 +89,13 @@ Use this template when making implementation decisions:
 4) What are the trade-offs? [List pros/cons]
 5) Conclusion: [Decision with justification]
 </thinking>
+
 <answer>
 [Implementation approach based on reasoning]
 </answer>
 ```
 
-Use for: choosing implementation approaches, reuse decisions, debugging multi-step failures, prioritizing task order.
+**Use for**: Choosing implementation approaches, reuse decisions, debugging multi-step failures, prioritizing task order.
 
 ---
 
@@ -92,25 +125,17 @@ TodoWrite({
 
 ---
 
-<instructions>
-## USER INPUT
+<process>
 
-```text
-$ARGUMENTS
-```
+### Step 1: Execute Implementation Script
 
-You **MUST** consider the user input before proceeding (if not empty).
-
-## Execute Implementation Workflow
-
-Run the centralized spec-cli tool:
+Run the centralized spec-cli tool with feature slug:
 
 ```bash
 python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
 ```
 
-**What the script does:**
-
+**Script operations** (automated):
 1. **Preflight checks** — Validates git, jq, test runner installed
 2. **Load tasks** — Parses tasks.md for all pending tasks
 3. **Detect batches** — Groups independent tasks for parallel execution
@@ -129,9 +154,7 @@ python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
 3. **Refactor**: Improve code quality without changing behavior
 4. **Commit**: Atomic commit for this task
 
-**After script completes, you (LLM) must:**
-
-## 1) Review Implementation Progress
+### Step 2: Review Implementation Progress
 
 **Check task completion:**
 - Read updated tasks.md to see completed tasks
@@ -143,17 +166,16 @@ python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
 - Verify pattern consistency with plan.md
 - Check for code duplication
 
-## 2) Update Living Documentation
+### Step 3: Update Living Documentation
 
 **When UI components were created during implementation:**
 
-### a) Update ui-inventory.md
+#### a) Update ui-inventory.md
 
 **For each new reusable component created in `components/ui/`:**
 
 1. **Scan for new component files:**
    ```bash
-   # Check what components were created
    git diff HEAD~1 --name-only | grep "components/ui/"
    ```
 
@@ -194,7 +216,7 @@ python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
 - Component is a one-off layout wrapper
 - Component already documented in inventory
 
-### b) Extract Approved Patterns
+#### b) Extract Approved Patterns
 
 **If mockups were approved and converted to production code:**
 
@@ -254,16 +276,11 @@ python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
 - Document patterns immediately after approval
 - Include real code examples from the feature
 
-### c) Update Feature CLAUDE.md
+#### c) Update Feature CLAUDE.md
 
 **Trigger living documentation update for the feature:**
 
 ```bash
-# Update specs/{NNN-slug}/CLAUDE.md with:
-# - Last 3 completed tasks
-# - Velocity metrics
-# - Next steps
-
 cat >> specs/{NNN-slug}/CLAUDE.md <<EOF
 
 ## Implementation Progress ($(date +%Y-%m-%d))
@@ -292,21 +309,13 @@ git add specs/{NNN-slug}/CLAUDE.md
 git commit -m "docs: update feature CLAUDE.md with implementation progress"
 ```
 
-### d) Health Check (Optional)
-
-**Run design health check** to verify documentation freshness:
-
-```bash
-.spec-flow/scripts/bash/design-health-check.sh --verbose
-```
-
 **Target metrics after implementation:**
 - ui-inventory.md: <24 hours lag
 - approved-patterns.md: Documented if pattern reused
 - Feature CLAUDE.md: Updated with last 3 tasks
 - Health score: ≥90%
 
-## 3) Run Full Test Suite
+### Step 4: Run Full Test Suite
 
 **Execute test suite:**
 ```bash
@@ -325,7 +334,7 @@ pnpm test:e2e
 - No regressions introduced
 - Code coverage maintained/improved
 
-## 3) Present Results to User
+### Step 5: Present Results to User
 
 **Summary format:**
 
@@ -348,7 +357,7 @@ Commits:
 Next: /optimize (recommended)
 ```
 
-## 4) Suggest Next Action
+### Step 6: Suggest Next Action
 
 **If all tests pass:**
 ```
@@ -381,11 +390,121 @@ Resolution:
   2. Re-run /implement to continue
 ```
 
-</instructions>
+</process>
+
+<success_criteria>
+**Implementation successfully completed when:**
+
+1. **All tasks completed**:
+   - tasks.md shows all tasks marked with ✅
+   - No blocked or failed tasks remaining
+   - Each task has atomic git commit
+
+2. **Full test suite passing**:
+   - Backend tests: 100% passing
+   - Frontend tests: 100% passing
+   - Integration tests: 100% passing
+   - Code coverage maintained or improved
+
+3. **Living documentation updated**:
+   - ui-inventory.md: New UI components documented (if applicable)
+   - approved-patterns.md: Reusable patterns extracted (if applicable)
+   - Feature CLAUDE.md: Implementation progress recorded
+
+4. **Code quality verified**:
+   - No code duplication (anti-duplication checks passed)
+   - Patterns from plan.md applied consistently
+   - All files follow project conventions
+
+5. **Git commits clean**:
+   - Atomic commits per task with descriptive messages
+   - Final implementation summary commit
+   - No uncommitted changes or conflicts
+
+6. **Workflow state updated**:
+   - workflow-state.yaml marks implementation phase complete
+   - Next phase identified (/optimize recommended)
+</success_criteria>
+
+<verification>
+**Before marking implementation complete, verify:**
+
+1. **Read tasks.md**:
+   ```bash
+   grep -E "^\- \[(x| )\]" specs/*/tasks.md
+   ```
+   All tasks should show ✅ (completed)
+
+2. **Check test suite status**:
+   ```bash
+   # Run full test suite
+   pnpm test && pytest
+   ```
+   Should show 100% passing
+
+3. **Verify git commits**:
+   ```bash
+   git log --oneline -10
+   ```
+   Should show atomic commits per task + final summary
+
+4. **Validate living documentation**:
+   ```bash
+   # Check UI inventory updated
+   git diff HEAD~5 design/systems/ui-inventory.md
+
+   # Check feature CLAUDE.md updated
+   tail -20 specs/*/CLAUDE.md
+   ```
+
+5. **Check for uncommitted changes**:
+   ```bash
+   git status
+   ```
+   Should show clean working tree
+
+6. **Verify no code duplication**:
+   ```bash
+   # Run duplication scanner if available
+   .spec-flow/scripts/bash/detect-duplication.sh
+   ```
+
+**Never claim completion without reading tasks.md and verifying test suite.**
+</verification>
+
+<output>
+**Files created/modified by this command:**
+
+**Implementation code** (varies by feature):
+- Source files (components, hooks, utils, services)
+- Test files (unit, integration, e2e)
+- Type definitions (if TypeScript)
+- API routes/endpoints (if backend)
+
+**Task tracking** (specs/NNN-slug/):
+- tasks.md — All tasks marked as completed
+- CLAUDE.md — Updated with implementation progress
+
+**Living documentation** (design/systems/):
+- ui-inventory.md — New UI components documented (if created)
+- approved-patterns.md — Reusable patterns extracted (if applicable)
+
+**Git commits**:
+- Multiple atomic commits (one per task)
+- Final implementation summary commit
+- Documentation update commits
+
+**Console output**:
+- Implementation progress summary
+- Test suite results
+- Next action recommendation (/optimize or /debug)
+</output>
 
 ---
 
-## PARALLEL EXECUTION
+## Quick Reference
+
+### Parallel Execution
 
 **Batch groups:**
 - Group 1: Independent frontend tasks
@@ -401,9 +520,7 @@ Resolution:
 - Expected speedup: 2-3x for features with high parallelism
 - Bottleneck: Integration tasks (require both frontend + backend)
 
----
-
-## ERROR HANDLING
+### Error Handling
 
 **Auto-rollback on failure:**
 ```
@@ -424,9 +541,7 @@ Task T005 failed at Green phase (test still failing)
 python .spec-flow/scripts/spec-cli.py implement "$SLUG" --continue
 ```
 
----
-
-## ANTI-DUPLICATION
+### Anti-Duplication
 
 **Before creating new code:**
 1. Search for existing implementations (Grep, Glob)
@@ -444,9 +559,7 @@ Before implementing:
   → Update imports, skip implementation
 ```
 
----
-
-## COMMIT STRATEGY
+### Commit Strategy
 
 **Atomic commits per task:**
 ```

@@ -1,286 +1,392 @@
-# /gate.ci
+---
+name: gate-ci
+description: Run CI quality gate checks (tests, linters, type checks, coverage ≥80%) before epic state transition
+argument-hint: [--epic <epic-name>] [--verbose]
+allowed-tools: [Bash(npm *), Bash(pnpm *), Bash(npx *), Bash(pytest *), Bash(black *), Bash(flake8 *), Bash(mypy *), Bash(cargo *), Bash(go *), Bash(jq *), Bash(cat *), Bash(grep *), Read, Write, Edit]
+---
 
-**Purpose**: CI quality gate - tests, linters, coverage checks.
+# /gate-ci — CI Quality Gate
 
-**Phase**: Review
+<context>
+**Arguments**: $ARGUMENTS
 
-**Inputs**:
-- Epic name (optional) - Track gate per-epic
-- Verbose flag (optional) - Show detailed output
+**Current Branch**: !`git branch --show-current 2>$null || echo "none"`
 
-**Outputs**:
-- Gate pass/fail status
-- Updated `workflow-state.yaml` with gate results
-- Detailed failure report if failed
+**Git Status**: !`git status --short 2>$null || echo "clean"`
 
-## Command Specification
+**Project Type Detection**:
+- Node.js: !`test -f package.json && echo "node" || echo ""`
+- Python: !`test -f requirements.txt && echo "python" || echo ""`
+- Rust: !`test -f Cargo.toml && echo "rust" || echo ""`
+- Go: !`test -f go.mod && echo "go" || echo ""`
 
-### Synopsis
+**Workflow State**: @.spec-flow/memory/workflow-state.yaml
+</context>
 
-```bash
-/gate.ci [--epic EPIC] [--verbose]
-```
-
-### Description
-
-Runs CI quality checks as a blocking gate before epics can transition from Review → Integrated state. Ensures code meets quality standards before deployment.
+<objective>
+Run CI quality checks as a blocking gate before epics can transition from Review → Integrated state.
 
 **Checks**:
 1. **Unit & Integration Tests**: All tests must pass
-2. **Linters**: Code style compliance (ESLint, Prettier, Black, Flake8)
-3. **Type Checks**: TypeScript/Python type safety
+2. **Linters**: Code style compliance (ESLint/Prettier, Black/Flake8, clippy, golint)
+3. **Type Checks**: TypeScript/Python/Rust/Go type safety
 4. **Code Coverage**: Minimum 80% line coverage
 
 **Pass Criteria**: ALL checks must pass (no failures allowed)
 
-### Prerequisites
+**Purpose**: Ensures code meets quality standards before deployment.
 
-- Code complete and merged to main
-- Epic in `Review` state
+**Arguments**:
+- `--epic <name>`: Track gate per-epic (optional)
+- `--verbose`: Show detailed test/lint output (optional)
+</objective>
 
-### Arguments
+## Anti-Hallucination Rules
 
-| Argument    | Required | Description                            |
-| ----------- | -------- | -------------------------------------- |
-| `--epic`    | No       | Epic name for per-epic tracking        |
-| `--verbose` | No       | Show detailed test/lint output         |
+**CRITICAL**: Follow these rules to prevent fabricating gate results.
 
-### Examples
+1. **Never claim tests pass without running them**
+   - Always execute actual test commands: `npm test`, `pytest`, `cargo test`, `go test`
+   - Report actual exit codes and output
+   - Don't say "passed" until verification succeeds
 
-**Run CI gate for feature**:
+2. **Quote real command output**
+   - Show actual test failures, lint errors, type errors
+   - Include file:line references from real output
+   - Never invent error messages
+
+3. **Verify coverage from actual reports**
+   - Read coverage/coverage-summary.json (Node.js)
+   - Read coverage.xml or .coverage (Python)
+   - Parse actual coverage percentages
+   - Don't guess at coverage numbers
+
+4. **Check workflow-state.yaml was updated**
+   - Read .spec-flow/memory/workflow-state.yaml after recording gate
+   - Verify gate status matches actual results
+   - Confirm timestamp recorded
+
+5. **Report all failures, not just first one**
+   - If tests fail AND linters fail, report both
+   - Don't stop at first failure
+   - Give complete picture of gate status
+
+**Why this matters**: Fabricated gate passes allow broken code to deploy. Accurate reporting prevents production incidents.
+
+---
+
+<process>
+
+### Step 1: Parse Arguments
+
+**Extract epic name and verbose flag from $ARGUMENTS**:
+
+Parse flags:
+- If `--epic <name>` present, extract epic name for per-epic tracking
+- If `--verbose` present, set verbose mode for detailed output
+- Default: Run gate for current branch/project
+
+### Step 2: Detect Project Type
+
+**Auto-detect based on project files**:
+
 ```bash
-/gate.ci
+PROJECT_TYPE="unknown"
+if [ -f "package.json" ]; then PROJECT_TYPE="node"; fi
+if [ -f "requirements.txt" ]; then PROJECT_TYPE="python"; fi
+if [ -f "Cargo.toml" ]; then PROJECT_TYPE="rust"; fi
+if [ -f "go.mod" ]; then PROJECT_TYPE="go"; fi
+
+if [ "$PROJECT_TYPE" = "unknown" ]; then
+  echo "❌ Unknown project type. No package.json, requirements.txt, Cargo.toml, or go.mod found."
+  exit 1
+fi
+
+echo "ℹ️  Project type: $PROJECT_TYPE"
 ```
 
-**Output (passing)**:
-```
-CI Quality Gate
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### Step 3: Run Tests
 
-ℹ️  Project type: node
+**Execute test suite for project type**:
 
-✅ Tests passed
-✅ Linters passed
-✅ Type checks passed
-✅ Coverage sufficient (≥80%)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ CI gate PASSED
-
-Epic can transition: Review → Integrated
-```
-
-**Run CI gate for specific epic**:
 ```bash
-/gate.ci --epic epic-auth-api
+TESTS_PASSED=false
+
+case "$PROJECT_TYPE" in
+  node)
+    npm test && TESTS_PASSED=true
+    ;;
+  python)
+    pytest && TESTS_PASSED=true
+    ;;
+  rust)
+    cargo test && TESTS_PASSED=true
+    ;;
+  go)
+    go test ./... && TESTS_PASSED=true
+    ;;
+esac
+
+if [ "$TESTS_PASSED" = true ]; then
+  echo "✅ Tests passed"
+else
+  echo "❌ Tests failed"
+fi
 ```
 
-**Output (failing)**:
-```
-CI Quality Gate
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### Step 4: Run Linters
 
-ℹ️  Project type: node
+**Execute linters for project type**:
 
-❌ Tests failed
-✅ Linters passed
-❌ Type checks failed
-✅ Coverage sufficient (≥80%)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-❌ CI gate FAILED
-
-Fix failures before proceeding:
-  • Run tests: npm test (or pytest)
-  • Fix type errors: npx tsc --noEmit
-```
-
-**Verbose output**:
 ```bash
-/gate.ci --verbose
+LINTERS_PASSED=false
+
+case "$PROJECT_TYPE" in
+  node)
+    npm run lint && LINTERS_PASSED=true
+    ;;
+  python)
+    black --check . && flake8 && LINTERS_PASSED=true
+    ;;
+  rust)
+    cargo clippy -- -D warnings && LINTERS_PASSED=true
+    ;;
+  go)
+    golint ./... && gofmt -l . | wc -l | grep -q '^0$' && LINTERS_PASSED=true
+    ;;
+esac
+
+if [ "$LINTERS_PASSED" = true ]; then
+  echo "✅ Linters passed"
+else
+  echo "❌ Linters failed"
+fi
 ```
 
-## Supported Project Types
+### Step 5: Run Type Checks
 
-| Type     | Test Runner     | Linters                | Type Checker |
-| -------- | --------------- | ---------------------- | ------------ |
-| Node.js  | Jest, Vitest    | ESLint, Prettier       | TypeScript   |
-| Python   | pytest          | Black, Flake8          | mypy         |
-| Rust     | cargo test      | clippy, rustfmt        | rustc        |
-| Go       | go test         | golint, gofmt          | go vet       |
+**Execute type checkers for project type**:
 
-**Detection**: Automatic based on project files (package.json, requirements.txt, etc.)
-
-## State Transitions
-
-### Success Path
-
-```
-Review → (CI gate passes) → Integrated
-```
-
-**Effects**:
-1. Gate status recorded as "passed" in `workflow-state.yaml`
-2. Epic allowed to transition to `Integrated`
-3. Timestamp recorded for DORA metrics
-
-### Failure Path
-
-```
-Review → (CI gate fails) → Review (blocked)
-```
-
-**Effects**:
-1. Gate status recorded as "failed"
-2. Epic remains in `Review` state
-3. Detailed failure report generated
-4. Agent notified to fix issues
-
-## Integration with Epic State Machine
-
-**Called During**: `Review` state entry
-
-**Workflow**:
-1. Epic completes all tasks → transitions to `Review`
-2. `/gate.ci` runs automatically (or manually)
-3. If passed: Epic transitions to `Integrated`
-4. If failed: Epic stays in `Review`, agent fixes issues
-
-### Automatic vs Manual
-
-**Automatic (recommended)**:
 ```bash
-# In CI/CD pipeline
-.github/workflows/gates.yml triggers /gate.ci on PR merge
+TYPE_CHECK_PASSED=false
+
+case "$PROJECT_TYPE" in
+  node)
+    npx tsc --noEmit && TYPE_CHECK_PASSED=true
+    ;;
+  python)
+    mypy . && TYPE_CHECK_PASSED=true
+    ;;
+  rust)
+    cargo check && TYPE_CHECK_PASSED=true
+    ;;
+  go)
+    go vet ./... && TYPE_CHECK_PASSED=true
+    ;;
+esac
+
+if [ "$TYPE_CHECK_PASSED" = true ]; then
+  echo "✅ Type checks passed"
+else
+  echo "❌ Type checks failed"
+fi
 ```
 
-**Manual**:
+### Step 6: Verify Code Coverage
+
+**Check coverage meets ≥80% threshold**:
+
 ```bash
-# Developer runs locally before PR
-/gate.ci --verbose
+COVERAGE_PASSED=false
+
+case "$PROJECT_TYPE" in
+  node)
+    if [ -f "coverage/coverage-summary.json" ]; then
+      COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+      if (( $(echo "$COVERAGE >= 80" | bc -l) )); then
+        COVERAGE_PASSED=true
+      fi
+      echo "Coverage: ${COVERAGE}%"
+    else
+      echo "⚠️  No coverage report found. Run: npm test -- --coverage"
+    fi
+    ;;
+  python)
+    # pytest-cov generates coverage.xml
+    if [ -f "coverage.xml" ]; then
+      COVERAGE=$(grep -oP 'line-rate="\K[0-9.]+' coverage.xml | head -1)
+      COVERAGE_PCT=$(echo "$COVERAGE * 100" | bc)
+      if (( $(echo "$COVERAGE_PCT >= 80" | bc -l) )); then
+        COVERAGE_PASSED=true
+      fi
+      echo "Coverage: ${COVERAGE_PCT}%"
+    else
+      echo "⚠️  No coverage report found. Run: pytest --cov=."
+    fi
+    ;;
+  rust|go)
+    # Coverage check optional for Rust/Go
+    COVERAGE_PASSED=true
+    echo "ℹ️  Coverage check skipped (Rust/Go)"
+    ;;
+esac
+
+if [ "$COVERAGE_PASSED" = true ]; then
+  echo "✅ Coverage sufficient (≥80%)"
+else
+  echo "❌ Coverage insufficient (<80%)"
+fi
 ```
 
-## Error Conditions
+### Step 7: Determine Gate Status
 
-| Error                 | Cause                              | Resolution                  |
-| --------------------- | ---------------------------------- | --------------------------- |
-| Unknown project type  | No package.json, requirements.txt  | Add project config file     |
-| Tests failed          | Unit/integration test failures     | Fix failing tests           |
-| Linters failed        | Code style violations              | Run linter auto-fix         |
-| Type check failed     | TypeScript/mypy errors             | Fix type annotations        |
-| Coverage insufficient | <80% line coverage                 | Add more tests              |
+**Calculate overall pass/fail**:
 
-## Quality Standards
+```bash
+GATE_PASSED=false
 
-### Coverage Requirements
+if [ "$TESTS_PASSED" = true ] && \
+   [ "$LINTERS_PASSED" = true ] && \
+   [ "$TYPE_CHECK_PASSED" = true ] && \
+   [ "$COVERAGE_PASSED" = true ]; then
+  GATE_PASSED=true
+fi
+```
 
-**Minimum**: 80% line coverage
+### Step 8: Record Gate Result in workflow-state.yaml
 
-**Measurement**:
-- Node.js: Istanbul/NYC (coverage/coverage-summary.json)
-- Python: pytest-cov
-- Rust: tarpaulin
-- Go: go test -cover
+**Update workflow state with gate results**:
 
-**Exclusions** (configurable):
-- Test files (*_test.js, test_*.py)
-- Generated code (protobuf, GraphQL)
-- Configuration files
+Use Edit tool to update `.spec-flow/memory/workflow-state.yaml`:
 
-### Linter Rules
-
-**Node.js**:
-- ESLint: Airbnb style guide (or project-specific)
-- Prettier: Default formatting rules
-
-**Python**:
-- Black: Default formatting (line length 88)
-- Flake8: PEP 8 compliance
-
-**Enforcement**: All linter errors must be fixed (warnings allowed)
-
-## Files Modified
-
-- `.spec-flow/memory/workflow-state.yaml` - Gate results recorded
-
-**Gate Status Schema**:
 ```yaml
 quality_gates:
   ci:
     status: passed  # or failed
-    timestamp: 2025-11-10T18:00:00Z
+    timestamp: 2025-11-20T10:00:00Z
     tests: true
     linters: true
     type_check: true
     coverage: true
 ```
 
-**Epic-Specific Gates**:
+**If epic-specific** (--epic flag provided):
 ```yaml
 epics:
-  - name: epic-auth-api
-    state: Review
+  - name: <epic-name>
     gates:
       ci:
-        status: passed
-        timestamp: 2025-11-10T18:00:00Z
+        status: passed  # or failed
+        timestamp: 2025-11-20T10:00:00Z
 ```
 
-## Performance
+### Step 9: Display Gate Summary
 
-**Typical Runtime**:
-- Small project (<1000 LOC): 10-30 seconds
-- Medium project (1000-10k LOC): 30-90 seconds
-- Large project (>10k LOC): 2-5 minutes
+**Print gate results**:
 
-**Optimization Tips**:
-- Run tests in parallel (Jest --maxWorkers)
-- Cache dependencies in CI
-- Use incremental builds (TypeScript)
-
-## Best Practices
-
-1. **Run locally first**: Verify gate passes before pushing
-2. **Fix quickly**: Don't let gate failures linger >1h
-3. **Monitor flaky tests**: Track tests that fail intermittently
-4. **Maintain standards**: Don't lower coverage requirements
-
-## Troubleshooting
-
-**Tests pass locally, fail in CI**:
 ```bash
-# Check for environment differences
-# - Node/Python version mismatch
-# - Missing environment variables
-# - Timezone/locale differences
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "CI Quality Gate"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "ℹ️  Project type: $PROJECT_TYPE"
+echo ""
+
+if [ "$TESTS_PASSED" = true ]; then echo "✅ Tests passed"; else echo "❌ Tests failed"; fi
+if [ "$LINTERS_PASSED" = true ]; then echo "✅ Linters passed"; else echo "❌ Linters failed"; fi
+if [ "$TYPE_CHECK_PASSED" = true ]; then echo "✅ Type checks passed"; else echo "❌ Type checks failed"; fi
+if [ "$COVERAGE_PASSED" = true ]; then echo "✅ Coverage sufficient (≥80%)"; else echo "❌ Coverage insufficient (<80%)"; fi
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+if [ "$GATE_PASSED" = true ]; then
+  echo "✅ CI gate PASSED"
+  echo ""
+  echo "Epic can transition: Review → Integrated"
+else
+  echo "❌ CI gate FAILED"
+  echo ""
+  echo "Fix failures before proceeding:"
+  [ "$TESTS_PASSED" = false ] && echo "  • Run tests: npm test (or pytest)"
+  [ "$LINTERS_PASSED" = false ] && echo "  • Fix linters: npm run lint --fix"
+  [ "$TYPE_CHECK_PASSED" = false ] && echo "  • Fix type errors: npx tsc --noEmit"
+  [ "$COVERAGE_PASSED" = false ] && echo "  • Improve coverage: Add more tests"
+fi
 ```
 
-**Coverage reporting not working**:
-```bash
-# Node.js: Regenerate coverage report
-npm test -- --coverage
+</process>
 
-# Python: Install pytest-cov
-pip install pytest-cov
-pytest --cov=.
-```
+<success_criteria>
+**CI gate successfully completed when:**
 
-**Linters too strict**:
-```bash
-# Customize linter rules
-# .eslintrc.js - Disable specific rules
-# .flake8 - Adjust max line length
-```
+1. **All checks executed**: Tests, linters, type checks, coverage all run
+2. **Results accurate**: Exit codes and output match actual command results
+3. **Gate status recorded**: workflow-state.yaml updated with pass/fail and timestamp
+4. **Summary displayed**: Clear pass/fail status shown to user
+5. **Failures detailed**: If failed, specific failures listed with remediation steps
+6. **Epic tracking** (if --epic flag): Gate recorded per-epic in workflow state
+</success_criteria>
 
-## References
+<verification>
+**Before marking gate complete, verify:**
 
-- Jest Documentation: https://jestjs.io/
-- ESLint Rules: https://eslint.org/docs/rules/
-- pytest: https://docs.pytest.org/
-- Coverage Standards: https://testing.googleblog.com/2020/08/code-coverage-best-practices.html
+1. **Check workflow-state.yaml updated**:
+   ```bash
+   cat .spec-flow/memory/workflow-state.yaml | grep -A5 "quality_gates"
+   ```
+   Should show ci gate status and timestamp
+
+2. **Verify test results match reported status**:
+   - If tests reported as passing, exit code should be 0
+   - If tests reported as failing, should have actual failure output
+
+3. **Confirm coverage calculation**:
+   ```bash
+   cat coverage/coverage-summary.json | jq '.total.lines.pct'
+   ```
+   Should match reported coverage percentage
+
+4. **Validate gate decision logic**:
+   - If ALL checks passed → gate should be PASSED
+   - If ANY check failed → gate should be FAILED
+
+**Never claim gate passed without verifying all checks actually succeeded.**
+</verification>
+
+<output>
+**Files created/modified by this command:**
+
+**Workflow state**:
+- `.spec-flow/memory/workflow-state.yaml` - Gate results and timestamp recorded
+
+**Console output**:
+- Gate summary (tests, linters, types, coverage status)
+- Pass/fail verdict
+- Remediation steps if failed
+- Epic transition guidance if passed
+</output>
 
 ---
 
-**Implementation**: `.spec-flow/scripts/bash/gate-ci.sh`
+## Notes
+
+**Supported Project Types**:
+- **Node.js**: Jest/Vitest, ESLint/Prettier, TypeScript
+- **Python**: pytest, Black/Flake8, mypy
+- **Rust**: cargo test, clippy, rustfmt
+- **Go**: go test, golint, gofmt, go vet
+
+**Coverage Requirements**: Minimum 80% line coverage (configurable)
+
+**Gate Blocking**: Epic cannot transition from Review → Integrated until gate passes
+
+**Manual vs Automatic**:
+- Automatic: Triggered by CI/CD on PR merge
+- Manual: Developer runs locally before PR
+
+**Troubleshooting**:
+- Tests pass locally, fail in CI: Check Node/Python version, env vars
+- Coverage not working: Regenerate report with `--coverage` flag
+- Linters too strict: Customize rules in .eslintrc.js or .flake8

@@ -12,6 +12,7 @@ Thumbs.db
 .claude/skills/x-announcement.md
 .claude/commands/release.md
 .claude/commands/x-announce.md
+.claude\skills\x-announcement.md
 
 # Logs and scratch files
 *.log

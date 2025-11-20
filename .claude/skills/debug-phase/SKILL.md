@@ -1,186 +1,156 @@
 ---
 name: debug-phase
-description: "Standard Operating Procedure for /debug phase. Covers error investigation, root cause analysis, systematic debugging, and error documentation."
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash
+description: Systematic debugging techniques including error classification, root cause analysis (5 Whys), reproduction strategies, and error documentation. Use when debugging errors, investigating failures, analyzing stack traces, fixing bugs, or documenting errors in error-log.md. (project)
 ---
 
-# Debug Phase: Standard Operating Procedure
+<objective>
+Provide systematic debugging techniques for error investigation, root cause analysis, and fix implementation. Ensures errors are properly classified, root causes identified (not symptoms), and solutions documented to prevent recurrence.
+</objective>
 
-> **Training Guide**: Step-by-step procedures for executing the `/debug` command with systematic error investigation and documentation.
+<quick_start>
+Debug errors systematically:
 
-**Supporting references**:
-- [reference.md](reference.md) - Error classification matrix, debugging workflow, logging best practices
-- [examples.md](examples.md) - Good debugging (systematic, documented) vs bad (trial-and-error)
-- [scripts/error-classifier.sh](scripts/error-classifier.sh) - Classifies errors by type and severity
+1. Reproduce error consistently (100% reliable reproduction)
+2. Classify by type (syntax/runtime/logic/integration/performance) and severity (critical/high/medium/low)
+3. Isolate root cause using binary search, logging, breakpoints, or 5 Whys
+4. Implement fix with failing test first (TDD)
+5. Add regression tests to prevent recurrence
+6. Document in error-log.md with ERR-XXXX ID
 
----
+**Key principle**: Fix root causes, not symptoms. Use 5 Whys to drill down.
+</quick_start>
 
-## Phase Overview
+<prerequisites>
+Before debugging:
+- Error can be reproduced (even if intermittent, identify conditions)
+- Logs available (application logs, stack traces, network logs)
+- Development environment set up for testing
 
-**Purpose**: Systematically investigate errors, identify root causes, implement fixes, and document findings to prevent recurrence.
+Check error-log.md for similar historical errors before starting.
+</prerequisites>
 
-**Inputs**:
-- Error reports (logs, stack traces, user reports)
-- `error-log.md` (if exists) - Historical error records
+<workflow>
+<step number="1">
+**Search for similar errors**
 
-**Outputs**:
-- `error-log.md` - Updated with new error entry (ERR-XXXX)
-- Fix implementation (code changes)
-- Test cases to prevent recurrence
-- Updated `workflow-state.yaml`
+Check error-log.md for past occurrences:
 
-**Expected duration**: 30 minutes - 4 hours (depends on error complexity)
+```bash
+# Search by error message
+grep -i "connection timeout" error-log.md
 
----
+# Search by component
+grep "Component: StudentProgressService" error-log.md
 
-## Prerequisites
+# Search by error type
+grep "Type: Integration" error-log.md
+```
 
-**Environment checks**:
-- [ ] Error can be reproduced
-- [ ] Logs available (application logs, error logs, stack traces)
-- [ ] Development environment set up
+If similar error found:
+- Review previous fix (workaround or root cause?)
+- Check if error recurred (>2 occurrences = need permanent fix)
+- Note patterns (same component, same conditions, timing)
 
-**Knowledge requirements**:
-- Debugging techniques (binary search, logging, breakpoints)
-- Error classification (syntax, runtime, logic, integration)
-- Root cause analysis (5 Whys, fishbone diagram)
+**If recurring error**: Prioritize permanent fix over workaround.
+</step>
 
----
+<step number="2">
+**Reproduce error consistently**
 
-## Execution Steps
+Create minimal reproduction:
 
-### Step 1: Search for Similar Errors
+1. Gather context: error message, stack trace, timestamp, user actions, environment
+2. Create minimal test case that triggers error 100% of time
+3. If intermittent: identify conditions (timing, data state, race conditions)
 
-**Actions**:
-1. Check if `error-log.md` exists and search for similar errors:
-   ```bash
-   # Search by error message
-   grep -i "connection timeout" error-log.md
+Example reproduction:
+```bash
+# API error
+curl -X POST http://localhost:3000/api/endpoint \
+  -H "Content-Type: application/json" \
+  -d '{"field": "value"}'
 
-   # Search by component
-   grep "Component: StudentProgressService" error-log.md
+# Frontend error
+# 1. Navigate to /dashboard
+# 2. Click "Load Data" button
+# 3. Error appears in console
+```
 
-   # Search by error type
-   grep "Type: Integration" error-log.md
-   ```
+**Validation**: Can trigger error reliably before proceeding.
+</step>
 
-2. If similar error found:
-   - Review previous fix (was it a workaround or root cause fix?)
-   - Check if error recurred (implement permanent fix this time)
-   - Note patterns (same component? same conditions?)
-
-**Quality check**: If recurring error (>2 occurrences), prioritize permanent fix over workaround.
-
----
-
-### Step 2: Reproduce Error Consistently
-
-**Actions**:
-1. **Gather error context**:
-   - Error message and stack trace
-   - Timestamp and frequency
-   - User actions that triggered error
-   - Environment (dev, staging, production)
-   - Browser/OS (if frontend error)
-
-2. **Create minimal reproduction**:
-   ```bash
-   # Example: API error
-   curl -X POST http://localhost:3000/api/endpoint \
-     -H "Content-Type: application/json" \
-     -d '{"field": "value"}'
-
-   # Example: Frontend error
-   # Open browser, navigate to /page, click button X
-   ```
-
-3. **Verify reproduction**:
-   - Can you trigger error reliably (100% of time)?
-   - If intermittent: identify conditions (timing, data, state)
-
-**Quality check**: Error reproduces consistently before proceeding to investigation.
-
----
-
-### Step 3: Classify Error
-
-**Actions**:
-Use error classification matrix (see [reference.md](reference.md)):
+<step number="3">
+**Classify error**
 
 **By type**:
-- **Syntax**: Code doesn't compile/parse (typos, missing brackets)
-- **Runtime**: Code runs but crashes (null pointer, type error)
-- **Logic**: Code runs but produces wrong result
-- **Integration**: External dependency fails (API, database, service)
-- **Performance**: Code works but too slow (timeout, memory)
+- **Syntax**: Code doesn't compile/parse (typos, missing brackets, linting errors)
+- **Runtime**: Code runs but crashes (null pointer, type error, uncaught exception)
+- **Logic**: Code runs but wrong result (calculation error, wrong branch taken)
+- **Integration**: External dependency fails (API timeout, database connection, service unavailable)
+- **Performance**: Code works but too slow (timeout, memory leak, N+1 queries)
 
 **By severity**:
 - **Critical**: Data loss, security breach, total system failure
-- **High**: Feature broken, blocks users
+- **High**: Feature broken, blocks users from core functionality
 - **Medium**: Feature degraded, workaround exists
-- **Low**: Minor UX issue, no functional impact
+- **Low**: Minor UX issue, cosmetic, no functional impact
 
-**Example**:
+Example classification:
 ```markdown
-## Error Classification
-
-**Type**: Integration (API call to external service fails)
-**Severity**: High (dashboard doesn't load, blocks teachers)
-**Component**: StudentProgressService.fetchExternalData()
-**Frequency**: 30% of requests (intermittent)
+Type: Integration (API call to external service fails)
+Severity: High (dashboard doesn't load, blocks teachers)
+Component: StudentProgressService.fetchExternalData()
+Frequency: 30% of requests (intermittent)
 ```
 
-**Quality check**: Error type and severity correctly identified.
+See references/error-classification.md for detailed matrix.
+</step>
 
----
+<step number="4">
+**Isolate root cause**
 
-### Step 4: Isolate Root Cause
+Use systematic techniques:
 
-**Actions**:
-Use systematic debugging techniques:
+**Binary search** (for large codebases):
+- Add logging at midpoint of suspected code
+- If error before midpoint → investigate first half
+- If error after midpoint → investigate second half
+- Repeat until narrowed to specific function
 
-**1. Binary search** (for large codebases):
-```bash
-# Add logging at midpoint
-# If error before midpoint: investigate first half
-# If error after midpoint: investigate second half
-# Repeat until narrowed to specific function
-```
-
-**2. Increase logging**:
+**Increase logging**:
 ```python
 # Add debug logs around suspected area
-logger.debug(f"Before API call: student_id={student_id}")
+logger.debug(f"Before API call: student_id={student_id}, params={params}")
 response = api.fetch_data(student_id)
-logger.debug(f"After API call: response={response}")
+logger.debug(f"After API call: status={response.status}, data_len={len(response.data)}")
 ```
 
-**3. Use breakpoints** (if applicable):
+**Use breakpoints** (interactive debugging):
 ```bash
-# Python debugger
+# Python
 python -m pdb script.py
 
-# Node.js debugger
+# Node.js
 node inspect server.js
 
-# Browser debugger (Frontend)
-# Set breakpoints in Chrome DevTools
+# Browser (Chrome DevTools)
+# Set breakpoints, inspect variables, step through code
 ```
 
-**4. Check assumptions**:
-- Is variable the value you expect?
-- Is function being called when you expect?
-- Are external dependencies available?
+**Check assumptions**:
+- Is variable the value you expect? (log it, don't assume)
+- Is function being called when you expect? (add entry/exit logs)
+- Are external dependencies available? (health check endpoints)
 
-**5. Apply 5 Whys**:
+**Apply 5 Whys** (drill down to root cause):
 ```markdown
-1. Why did the dashboard fail to load?
+1. Why did dashboard fail to load?
    → API call to external service timed out
 
-2. Why did the API call timeout?
+2. Why did API call timeout?
    → Request took >30 seconds (timeout limit)
 
-3. Why did the request take >30 seconds?
+3. Why did request take >30 seconds?
    → External service response time was 45 seconds
 
 4. Why was external service so slow?
@@ -189,436 +159,385 @@ node inspect server.js
 5. Why requesting 1000 records?
    → Missing pagination parameter in API call
 
-**Root cause**: Missing pagination parameter causes over-fetching
+Root cause: Missing pagination parameter causes over-fetching
 ```
 
-**Quality check**: Root cause identified (not just symptoms).
+**Validation**: Root cause identified (not just symptoms). Can explain why error occurred.
+</step>
 
----
+<step number="5">
+**Implement fix (TDD approach)**
 
-### Step 5: Implement Fix
+1. Write failing test first:
+```python
+def test_fetch_external_data_with_pagination():
+    """Test that API call includes pagination parameter"""
+    service = StudentProgressService()
+    result = service.fetchExternalData(student_id=123)
 
-**Actions**:
-1. **Write failing test** (if not exists):
-   ```python
-   def test_fetch_external_data_with_pagination():
-       """Test that API call includes pagination parameter"""
-       service = StudentProgressService()
-       result = service.fetchExternalData(student_id=123)
+    assert len(result) <= 10  # Max 10 records per page
+    assert result.has_next_page  # Pagination metadata present
+```
 
-       # Verify pagination applied
-       assert len(result) <= 10  # Max 10 records per page
-       assert result.has_next_page  # Pagination metadata present
-   ```
+2. Implement fix:
+```python
+# Before (broken)
+def fetchExternalData(self, student_id):
+    return api.get(f"/students/{student_id}/data")
 
-2. **Implement fix**:
-   ```python
-   # Before (broken)
-   def fetchExternalData(self, student_id):
-       return api.get(f"/students/{student_id}/data")
+# After (fixed)
+def fetchExternalData(self, student_id, page_size=10):
+    return api.get(
+        f"/students/{student_id}/data",
+        params={"page_size": page_size}
+    )
+```
 
-   # After (fixed)
-   def fetchExternalData(self, student_id, page_size=10):
-       return api.get(
-           f"/students/{student_id}/data",
-           params={"page_size": page_size}
-       )
-   ```
-
-3. **Verify fix**:
-   ```bash
-   # Run test
-   pytest tests/test_student_progress_service.py::test_fetch_external_data_with_pagination
-   # Should pass
-
-   # Manually test reproduction steps
-   # Error should no longer occur
-   ```
-
-**Quality check**: Fix addresses root cause (not just symptoms), tests pass.
-
----
-
-### Step 6: Prevent Recurrence
-
-**Actions**:
-1. **Add tests for error scenario**:
-   - Unit test for the specific bug
-   - Integration test for the user flow
-   - Regression test to catch if bug reintroduced
-
-2. **Add defensive code** (if applicable):
-   ```python
-   # Validate inputs
-   if page_size > 100:
-       raise ValueError("page_size must be ≤100")
-
-   # Handle errors gracefully
-   try:
-       result = api.get(url, params=params, timeout=5)
-   except requests.Timeout:
-       logger.error(f"API timeout: {url}")
-       raise ServiceUnavailable("External service unavailable")
-   ```
-
-3. **Improve logging** (if needed):
-   ```python
-   # Log API calls with parameters
-   logger.info(f"Fetching external data: student_id={student_id}, page_size={page_size}")
-
-   # Log errors with context
-   logger.error(
-       f"API call failed: {url}",
-       extra={"student_id": student_id, "params": params, "status_code": response.status_code}
-   )
-   ```
-
-**Quality check**: Tests added, defensive code in place, logging improved.
-
----
-
-### Step 7: Document in error-log.md
-
-**Actions**:
-1. Assign error ID (ERR-XXXX):
-   ```bash
-   # Get next available ID
-   LAST_ID=$(grep -oP "ERR-\K\d+" error-log.md | sort -n | tail -1)
-   NEXT_ID=$((LAST_ID + 1))
-   # e.g., ERR-0042
-   ```
-
-2. Add error entry to `error-log.md`:
-   ```markdown
-   ## ERR-0042: Dashboard timeout due to missing pagination
-
-   **Date**: 2025-10-21
-   **Reporter**: John Doe (teacher)
-   **Component**: StudentProgressService.fetchExternalData()
-   **Type**: Integration
-   **Severity**: High
-
-   **Error Message**:
-   ```
-   TimeoutError: Request exceeded 30 second timeout
-   at api.get (/src/services/api.ts:45)
-   ```
-
-   **Steps to Reproduce**:
-   1. Navigate to /dashboard as teacher
-   2. Click "View Progress" for student with 1000+ activities
-   3. Dashboard hangs for 45 seconds, then shows timeout error
-
-   **Root Cause**:
-   Missing pagination parameter in API call to external service caused over-fetching (1000 records instead of 10), resulting in >30s response time exceeding timeout.
-
-   **Fix**:
-   Added `page_size=10` parameter to API call in StudentProgressService.fetchExternalData()
-
-   **Files Changed**:
-   - `api/app/services/student_progress_service.py`: Added pagination parameter
-   - `api/app/tests/services/test_student_progress_service.py`: Added regression test
-
-   **Prevention**:
-   - Added unit test to verify pagination parameter included
-   - Added input validation (max page_size=100)
-   - Improved API logging to track parameters
-
-   **Related Errors**: None
-   **Status**: Fixed (2025-10-21)
-   ```
-
-**Quality check**: Error documented with all required fields.
-
----
-
-### Step 8: Commit Fix
-
-**Actions**:
+3. Verify fix:
 ```bash
-git add api/app/services/student_progress_service.py \
-        api/app/tests/services/test_student_progress_service.py \
-        error-log.md
+# Run test (should pass)
+pytest tests/test_student_progress_service.py
 
-git commit -m "fix: add pagination to external data fetch (ERR-0042)
-
-Root cause: Missing pagination parameter caused over-fetching
-Impact: Dashboard timeout for students with 1000+ activities
-Fix: Added page_size=10 parameter to API call
-
-Changes:
-- Added pagination parameter to fetchExternalData()
-- Added regression test for pagination
-- Updated error-log.md with ERR-0042
-
-Prevents recurrence: Input validation + logging + tests
-"
+# Manually test reproduction steps (error should not occur)
 ```
 
-**Quality check**: Fix committed with detailed message referencing error ID.
+**Validation**: Fix addresses root cause, all tests pass, error no longer reproduces.
+</step>
 
----
+<step number="6">
+**Add regression tests**
 
-## Common Mistakes to Avoid
+Prevent recurrence:
 
-### 🚫 Recurring Errors Not Recognized
+```python
+# Unit test for specific bug
+def test_pagination_parameter_included():
+    """Regression test for ERR-0042: Missing pagination"""
+    service = StudentProgressService()
+    with patch('api.get') as mock_get:
+        service.fetchExternalData(student_id=123)
 
-**Impact**: Wasted debugging time, user frustration, technical debt
+        # Verify pagination param passed
+        mock_get.assert_called_with(
+            '/students/123/data',
+            params={'page_size': 10}
+        )
 
-**Scenario**:
+# Integration test for user flow
+def test_dashboard_loads_with_large_datasets():
+    """Ensure dashboard handles large datasets without timeout"""
+    client = TestClient()
+    response = client.get('/dashboard/student/123')
+
+    assert response.status_code == 200
+    assert response.elapsed.total_seconds() < 5  # No timeout
 ```
-Same "Connection timeout" error debugged 3 times
-Each time: Added 5-second delay as workaround
-Never investigated root cause (connection pool exhaustion)
-```
 
-**Prevention**:
-1. Search error-log.md BEFORE debugging
-2. If error seen before: Review previous fix
-3. If workaround was used: Implement permanent fix this time
-4. Document patterns for future reference
+**Validation**: Tests added covering error scenario, tests pass consistently.
+</step>
 
----
+<step number="7">
+**Document in error-log.md**
 
-### 🚫 Insufficient Error Context
+Create entry with ERR-XXXX ID:
 
-**Impact**: Hard to reproduce, longer debug time, incomplete fixes
-
-**Bad error log**:
 ```markdown
-## Error: Something broke
-**Date**: 2025-10-21
-**Fix**: Restarted server
-```
+## ERR-0042: Dashboard Timeout Due to Missing Pagination
 
-**Good error log**:
-```markdown
-## ERR-0042: Dashboard timeout due to missing pagination
-**Date**: 2025-10-21 14:30:00 UTC
+**Date**: 2025-11-19
+**Severity**: High
+**Type**: Integration
 **Component**: StudentProgressService.fetchExternalData()
-**Error Message**: [full stack trace]
-**Steps to Reproduce**: [detailed steps]
-**Root Cause**: [5 Whys analysis]
-**Fix**: [specific code changes]
-**Prevention**: [tests + logging added]
+**Reporter**: QA team (staging environment)
+
+### Error Description
+Dashboard fails to load student progress data, showing timeout error after 30 seconds.
+
+### Root Cause
+API call to external service was missing pagination parameter, causing over-fetching of 1000+ records instead of paginated 10 records. External service took 45 seconds to respond with large dataset, exceeding 30-second client timeout.
+
+### 5 Whys Analysis
+1. Dashboard timeout → API call timeout
+2. API timeout → Request took >30s
+3. >30s request → External service slow (45s)
+4. Service slow → Too much data (1000 records)
+5. Too much data → Missing pagination parameter
+
+**Root cause**: Missing pagination parameter in API call
+
+### Fix Implemented
+- Added `page_size` parameter (default 10) to `fetchExternalData()`
+- Modified API call to include pagination params
+- Response time reduced from 45s → 2s
+
+### Files Changed
+- `src/services/StudentProgressService.ts` (lines 45-52)
+- `tests/StudentProgressService.test.ts` (added regression test)
+
+### Prevention
+- Unit test: Verify pagination parameter included
+- Integration test: Dashboard loads within 5s with large datasets
+- Added performance monitoring alert if response time >10s
+
+### Related Errors
+- Similar to ERR-0015 (pagination missing in different service)
+- Pattern: Always include pagination for external API calls
 ```
 
-**Prevention**: Use error-log template with required fields
+See references/error-log-template.md for full template.
 
----
+**Validation**: error-log.md updated with complete entry, ERR-XXXX ID assigned.
+</step>
 
-### 🚫 Treating Symptoms Instead of Root Cause
+<step number="8">
+**Verify and close**
 
-**Impact**: Error recurs, user frustration, wasted time
+Final checks:
 
-**Scenario**:
-```
-Symptom: API timeout
-Quick fix: Increase timeout from 30s to 60s
-Result: Still times out, just takes longer
+```bash
+# Error no longer reproduces
+# (run original reproduction steps)
 
-Root cause: Over-fetching 1000 records
-Real fix: Add pagination (response <1s)
-```
+# All tests pass
+npm test  # or pytest, cargo test, etc.
 
-**Prevention**: Use 5 Whys to find root cause, don't stop at first symptom
+# Logs confirm fix
+# Check application logs for success
 
----
-
-### 🚫 No Tests for Bug Fix
-
-**Impact**: Bug can be reintroduced, no regression detection
-
-**Prevention**:
-- Always add regression test for the bug
-- Test should fail before fix, pass after fix
-- Run test suite to ensure no other breakage
-
----
-
-### 🚫 Trial-and-Error Debugging
-
-**Impact**: Wasted time, incomplete understanding, fragile fixes
-
-**Bad approach**:
-```
-1. Change timeout value → still broken
-2. Add try/catch → hides error
-3. Restart service → works temporarily
-4. Don't know why it works, ship it
+# No regressions introduced
+# Run full test suite
 ```
 
-**Good approach**:
+Update workflow-state.yaml (if debugging during a phase):
+```yaml
+debug:
+  status: completed
+  error_id: ERR-0042
+  root_cause: Missing pagination parameter
+  tests_added: 2
 ```
-1. Reproduce error consistently
-2. Add logging to isolate cause
-3. Identify root cause with 5 Whys
-4. Implement targeted fix
-5. Add tests to prevent recurrence
-6. Document in error-log.md
+
+**Validation**: Error resolved, documented, tests added, no regressions.
+</step>
+</workflow>
+
+<validation>
+After debugging, verify:
+
+- Error reproduces consistently before fix (validated reproduction)
+- Root cause identified using 5 Whys or systematic technique
+- Fix addresses root cause, not symptoms
+- Failing test written first (TDD approach)
+- All tests pass after fix
+- Regression tests added to prevent recurrence
+- Error documented in error-log.md with ERR-XXXX ID
+- No new errors introduced (full test suite passes)
+</validation>
+
+<anti_patterns>
+<pitfall name="symptom_fixing">
+**❌ Don't**: Fix symptoms without finding root cause
+- Adding try/catch to hide error
+- Increasing timeout without investigating why slow
+- Restarting service to "fix" memory leak
+
+**✅ Do**: Use 5 Whys to drill down to root cause, fix underlying issue
+
+**Why**: Symptom fixes lead to recurring errors, technical debt, unreliable system
+
+**Example** (bad):
+```python
+# Symptom fix: Hide error with try/catch
+try:
+    data = api.fetch(student_id)
+except TimeoutError:
+    return []  # Return empty, ignore error
 ```
 
-**Prevention**: Follow systematic debugging workflow
+**Example** (good):
+```python
+# Root cause fix: Add pagination to prevent timeout
+data = api.fetch(student_id, page_size=10)  # Paginate to reduce data
+```
+</pitfall>
 
----
+<pitfall name="trial_and_error">
+**❌ Don't**: Random changes hoping to fix issue
+- Change multiple things at once
+- No hypothesis about what's wrong
+- No reproduction validation
 
-## Best Practices
+**✅ Do**: Form hypothesis, change one thing, test, validate
 
-### ✅ Systematic Debugging Workflow
+**Why**: Can't identify what actually fixed it, might introduce new bugs
 
-**Follow consistent process**:
+**Example** (bad workflow):
+```
+1. Change timeout from 30s to 60s
+2. Also add retry logic
+3. Also increase memory limit
+4. Error gone... which change fixed it? Unknown.
+```
+
+**Example** (good workflow):
+```
+1. Hypothesis: Timeout too short
+2. Change only timeout: 30s → 60s
+3. Test: Still fails
+4. Hypothesis: Data too large
+5. Add pagination only
+6. Test: Works! Pagination was the fix.
+```
+</pitfall>
+
+<pitfall name="no_documentation">
+**❌ Don't**: Fix error and move on without documentation
+**✅ Do**: Document in error-log.md with root cause, fix, prevention
+
+**Why**: Same error may recur, team can't learn from past issues
+
+**Required in error-log.md**:
+- ERR-XXXX ID
+- Root cause (5 Whys analysis)
+- Fix implemented
+- Tests added
+- Related errors (if pattern exists)
+</pitfall>
+
+<pitfall name="no_regression_tests">
+**❌ Don't**: Fix bug without adding tests
+**✅ Do**: Write failing test first (TDD), add regression test
+
+**Why**: Bug may be reintroduced later, no safety net
+
+**Example**:
+```python
+# After fixing ERR-0042, add:
+def test_no_timeout_with_large_datasets():
+    """Regression test for ERR-0042: Pagination prevents timeout"""
+    # This test will catch if pagination is removed later
+```
+</pitfall>
+
+<pitfall name="insufficient_reproduction">
+**❌ Don't**: Start debugging without reliable reproduction
+**✅ Do**: Achieve 100% reliable reproduction before investigating
+
+**Why**: Can't validate fix if you can't trigger error consistently
+
+**Intermittent errors**: Identify conditions (timing, data state, race conditions) to make reproducible
+</pitfall>
+</anti_patterns>
+
+<best_practices>
+<practice name="5_whys_analysis">
+Always use 5 Whys to find root cause:
+- Ask "Why?" 5 times to drill down
+- Stop when you reach actionable root cause
+- Document analysis in error-log.md
+
+Example:
 ```markdown
-1. Search error-log.md for similar errors
-2. Reproduce error consistently
-3. Classify error (type + severity)
-4. Isolate root cause (5 Whys, logging, breakpoints)
-5. Implement fix + tests
-6. Prevent recurrence (defensive code + logging)
-7. Document in error-log.md with ERR-XXXX
-8. Commit with detailed message
+1. Why? Dashboard timeout
+2. Why? API call slow
+3. Why? Large dataset
+4. Why? Missing pagination
+5. Why? Developer didn't add parameter
+
+Root cause: Missing pagination parameter
+Fix: Add pagination to API call
 ```
 
-**Result**: Faster debugging, knowledge accumulation, no recurrence
+Result: Root cause identified, not symptoms
+</practice>
 
----
+<practice name="tdd_approach">
+Write failing test first, then implement fix:
 
-### ✅ Error Log Template
+1. Write test that reproduces error (should fail)
+2. Implement fix
+3. Run test (should pass)
+4. Add regression test
 
-**Use consistent format**:
-```markdown
-## ERR-XXXX: [Short description]
+Result: Fix validated, regression prevented
+</practice>
 
-**Date**: [ISO 8601 timestamp]
-**Reporter**: [Name/email]
-**Component**: [File/function name]
-**Type**: [Syntax/Runtime/Logic/Integration/Performance]
-**Severity**: [Critical/High/Medium/Low]
+<practice name="binary_search_debugging">
+For complex codebases, use binary search:
 
-**Error Message**:
-```
-[Full stack trace]
-```
+1. Add logging at midpoint of suspected code
+2. Determine if error before or after midpoint
+3. Narrow to half of code
+4. Repeat until isolated to specific function
 
-**Steps to Reproduce**:
-1. [Step 1]
-2. [Step 2]
-3. [Expected vs actual]
+Result: Quickly narrow down error location in large codebase
+</practice>
 
-**Root Cause**:
-[5 Whys analysis]
+<practice name="comprehensive_documentation">
+Document every error in error-log.md:
+- ERR-XXXX ID for reference
+- Root cause (5 Whys analysis)
+- Fix implemented (files changed, approach)
+- Tests added (regression prevention)
+- Related errors (patterns)
 
-**Fix**:
-[Specific code changes]
+Result: Team learns from past errors, patterns identified
+</practice>
+</best_practices>
 
-**Files Changed**:
-- [file1]: [what changed]
-- [file2]: [what changed]
+<success_criteria>
+Debugging complete when:
 
-**Prevention**:
-- [Tests added]
-- [Logging improved]
-- [Defensive code]
+- [ ] Error reproduces consistently (100% reproduction or conditions identified)
+- [ ] Error classified by type (syntax/runtime/logic/integration/performance) and severity (critical/high/medium/low)
+- [ ] Root cause identified using 5 Whys or systematic technique (not symptoms)
+- [ ] Fix implemented addressing root cause
+- [ ] Failing test written first (TDD approach)
+- [ ] All tests pass after fix
+- [ ] Regression tests added to prevent recurrence
+- [ ] error-log.md updated with ERR-XXXX ID, root cause, fix, tests
+- [ ] Full test suite passes (no regressions introduced)
+- [ ] Error no longer reproduces with original steps
+</success_criteria>
 
-**Related Errors**: [ERR-YYYY, ERR-ZZZZ] or None
-**Status**: Fixed ([date]) or In Progress
-```
+<quality_standards>
+**Good debugging**:
+- Root cause identified (5 Whys completed)
+- Failing test written before fix (TDD)
+- Regression tests added (≥1 per error)
+- Comprehensive error-log.md entry (includes root cause, fix, tests)
+- No symptom fixes (addresses underlying issue)
 
----
+**Bad debugging**:
+- Symptom fixes (try/catch to hide error, increase timeout without investigation)
+- Trial and error (change multiple things, no hypothesis)
+- No tests added (no regression prevention)
+- No documentation (error-log.md not updated)
+- Insufficient reproduction (can't trigger error reliably)
+</quality_standards>
 
-### ✅ 5 Whys Root Cause Analysis
+<troubleshooting>
+**Issue**: Can't reproduce error consistently
+**Solution**: Identify conditions (timing, data state, environment), use logging to capture state when error occurs
 
-**Ask "why" 5 times**:
-```markdown
-1. Why did X fail? → Because Y
-2. Why did Y happen? → Because Z
-3. Why did Z happen? → Because A
-4. Why did A happen? → Because B
-5. Why did B happen? → Because [root cause]
-```
-
-**Stop when**: Reached actionable root cause (not symptoms)
-
----
-
-## Phase Checklist
-
-**Pre-phase checks**:
-- [ ] Error can be reproduced
-- [ ] Logs/stack traces available
-- [ ] Development environment ready
-
-**During phase**:
-- [ ] Searched error-log.md for similar errors
-- [ ] Error reproduced consistently
-- [ ] Error classified (type + severity)
-- [ ] Root cause identified (not symptoms)
-- [ ] Fix implemented and tested
-- [ ] Regression tests added
-- [ ] Error documented in error-log.md
-
-**Post-phase validation**:
-- [ ] Fix verified (error no longer occurs)
-- [ ] Tests pass (including new regression tests)
-- [ ] error-log.md updated with ERR-XXXX
-- [ ] Fix committed with detailed message
-- [ ] workflow-state.yaml updated
-
----
-
-## Quality Standards
-
-**Debugging quality targets**:
-- Average debug time: <2 hours
-- Error recurrence rate: <10%
-- Errors documented: 100%
-
-**What makes good debugging**:
-- Systematic approach (consistent workflow)
-- Root cause identified (not symptoms)
-- Fix tested (regression tests added)
-- Well documented (error-log.md entry complete)
-- Knowledge shared (prevents recurrence)
-
-**What makes bad debugging**:
-- Trial-and-error (no systematic approach)
-- Treats symptoms (root cause unknown)
-- No tests (bug can recur)
-- Undocumented (knowledge lost)
-- Quick workarounds (technical debt)
-
----
-
-## Completion Criteria
-
-**Phase is complete when**:
-- [ ] Error no longer reproduces
-- [ ] Root cause identified and fixed
-- [ ] Tests added (regression + prevention)
-- [ ] error-log.md updated with ERR-XXXX
-- [ ] Fix committed
-- [ ] workflow-state.yaml shows `currentPhase: debug` and `status: completed`
-
-**Ready to proceed**:
-- [ ] All tests pass
-- [ ] Feature works as expected
-- [ ] No known errors remaining
-
----
-
-## Troubleshooting
-
-**Issue**: Cannot reproduce error
-**Solution**: Gather more context (logs, user steps, environment), check for timing/data dependencies
-
-**Issue**: Error is intermittent
-**Solution**: Identify conditions (timing, load, data state), add logging to narrow down triggers
-
-**Issue**: Root cause unclear
-**Solution**: Use 5 Whys, add more logging, use debugger/breakpoints, consult error-log.md patterns
+**Issue**: 5 Whys leads to "developer mistake"
+**Solution**: Keep asking why - why did developer make mistake? (unclear docs, missing validation, no tests?)
 
 **Issue**: Fix works but not sure why
-**Solution**: Insufficient understanding - continue investigation, don't ship unclear fixes
+**Solution**: Add detailed logging before/after fix, compare behavior, validate hypothesis
 
----
+**Issue**: Error recurs after fix
+**Solution**: Check if root cause was correctly identified (use 5 Whys again), verify tests actually prevent recurrence
 
-_This SOP guides the debug phase. Refer to reference.md for debugging techniques and examples.md for debugging patterns._
+**Issue**: Too many errors to debug
+**Solution**: Prioritize by severity (critical > high > medium > low), check for common root causes (same component, same pattern)
+</troubleshooting>
+
+<references>
+See references/ for:
+- Error classification matrix (type × severity decision table)
+- Error log template (complete ERR-XXXX format)
+- Debugging techniques (binary search, logging strategies, breakpoint usage)
+- Common error patterns (pagination, null checks, race conditions)
+- Example error investigations (good vs bad debugging workflows)
+</references>

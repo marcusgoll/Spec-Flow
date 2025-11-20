@@ -1,567 +1,187 @@
 ---
-description: Post-deploy documentation + housekeeping
+description: Finalize documentation (CHANGELOG, README, help docs), update GitHub milestones/releases, and cleanup branches after production deployment
+allowed-tools: [Bash(git *), Bash(gh *), Bash(yq *), Bash(jq *), Bash(date *), Bash(python *), Bash(spec-cli.py *), Read, Write, Edit, Grep, Glob]
 internal: true
-version: 2.1
-updated: 2025-11-12
 ---
 
-# /finalize — Complete Documentation & Cleanup After Deployment
+<context>
+Current workflow state: !`cat specs/*/workflow-state.yaml 2>/dev/null | grep -E '(feature\.|deployment\.production\.|version:)' | head -20`
 
-**Purpose**
-Finalize docs, roadmap, and housekeeping after a **successful production deployment**.
+Recent production deployment: !`yq -r '.deployment.production | "URL: \(.url // "N/A"), Date: \(.completed_at // "N/A"), Status: \(.status // "unknown")"' specs/*/workflow-state.yaml 2>/dev/null`
 
-**Dependencies**
-- A finished prod deploy (`/ship` → `deploy-prod`), with `workflow-state.yaml` containing:
+Required tools check: !`for c in gh jq yq git python; do command -v "$c" >/dev/null 2>&1 && echo "✅ $c" || echo "❌ $c"; done`
+</context>
+
+<objective>
+Finalize documentation, roadmap, and housekeeping after successful production deployment.
+
+This command updates CHANGELOG.md, README.md, help docs, GitHub milestones/releases, and cleans up merged branches. For epic workflows (v5.0+), generates comprehensive walkthrough with velocity metrics before standard finalization.
+
+**Dependencies**:
+- Completed production deployment with workflow-state.yaml containing:
   - `feature.title`, `feature.slug`
   - `deployment.production.url`
-  - `deployment.production.run_id` (for linking logs)
+  - `deployment.production.run_id`
   - `version` (MAJOR.MINOR.PATCH)
 
-**Execution model**
-- **Idempotent**: safe to re-run; completed tasks are skipped
-- **Deterministic**: no prompts, no editors
-- **Tracked**: every step mirrored in **TodoWrite**
-
----
-
-## MENTAL MODEL
-
-You are a **post-deployment finalizer** that updates documentation and housekeeping with zero manual intervention.
-
-**Philosophy**: Deployment is not done until the docs are updated, roadmap is current, and branches are cleaned. Finalize automates this paperwork using industry standards.
-
-**Standards**:
-- **Changelog**: Keep a Changelog format
-- **Versioning**: Semantic Versioning (SemVer)
-- **Badges**: Shields.io static badges
-- **GitHub**: Official gh CLI and REST API
-
-**Token efficiency**: No prompts, no editors, pure automation. TodoWrite tracks every step for resumability.
-
----
-
-## PRECONDITIONS
-
-```bash
-# Required CLIs
-for c in gh jq yq git; do
-  command -v "$c" >/dev/null || { echo "❌ missing: $c"; exit 1; }
-done
-
-# Auth must be valid
-gh auth status >/dev/null || { echo "❌ gh not authenticated"; exit 1; }
-```
-
-**Reference**: `gh auth status` verifies CLI authentication before any API use ([GitHub CLI Manual](https://cli.github.com/manual/gh_auth_status))
-
----
-
-## STEP 0 — Initialize & Create Todo List (MANDATORY)
-
-**CRITICAL**: Create TodoWrite list **IMMEDIATELY** to track all finalization tasks.
-
-```js
-TodoWrite({
-  todos: [
-    { content: "Load feature context and version info", status: "completed", activeForm: "Loading context" },
-    { content: "Update CHANGELOG.md", status: "pending", activeForm: "Updating CHANGELOG.md" },
-    { content: "Update README.md (version badge + features)", status: "pending", activeForm: "Updating README.md" },
-    { content: "Generate user docs (help article)", status: "pending", activeForm: "Generating help article" },
-    { content: "Update API docs (if endpoints changed)", status: "pending", activeForm: "Updating API docs" },
-    { content: "Close current milestone", status: "pending", activeForm: "Closing milestone" },
-    { content: "Create next milestone", status: "pending", activeForm: "Creating next milestone" },
-    { content: "Update roadmap issue to 'shipped'", status: "pending", activeForm: "Updating roadmap issue" },
-    { content: "Update GitHub Release with production info", status: "pending", activeForm: "Updating GitHub Release" },
-    { content: "Commit & push documentation changes", status: "pending", activeForm: "Committing documentation" },
-    { content: "Cleanup feature branch (safe)", status: "pending", activeForm: "Cleaning up branch" }
-  ]
-})
-```
-
-**Load context**:
-
-```bash
-FEATURE_DIR="$(ls -td specs/*/ | head -1)"
-STATE="${FEATURE_DIR%/}/workflow-state.yaml"
-
-TITLE="$(yq -r '.feature.title' "$STATE")"
-SLUG="$(yq -r '.feature.slug'  "$STATE")"
-PROD_URL="$(yq -r '.deployment.production.url // ""' "$STATE")"
-VERSION="$(yq -r '.version' "$STATE")"     # e.g., 1.3.0
-```
-
----
-
-## STEP 1 — CHANGELOG.md (Keep a Changelog + SemVer)
-
-**Standard**: Follow [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/)
-
-```bash
-DATE="$(date +%F)"
-CHANGELOG="CHANGELOG.md"
-
-# Create if missing
-[[ -f $CHANGELOG ]] || cat > $CHANGELOG <<'EOF'
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-This format follows [Keep a Changelog](https://keepachangelog.com/)
-and this project adheres to [Semantic Versioning](https://semver.org/).
-EOF
-
-# Collect notable commits since last tag or last version line
-LAST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
-RANGE="${LAST_TAG:+${LAST_TAG}..HEAD}"
-
-ADDED="$(git log --pretty='- %s' --grep='^feat:'  $RANGE)"
-FIXED="$(git log --pretty='- %s' --grep='^fix:'   $RANGE)"
-CHANGED="$(git log --pretty='- %s' --grep='^refactor:' $RANGE)"
-SECURITY="$(git log --pretty='- %s' --grep='^security:' $RANGE)"
-
-# Prepend new section
-TMP="$(mktemp)"
-{
-  echo "## [v${VERSION}] - ${DATE}"
-  [[ -n "$ADDED" ]]    && { echo ""; echo "### Added"; echo "$ADDED"; }
-  [[ -n "$FIXED" ]]    && { echo ""; echo "### Fixed"; echo "$FIXED"; }
-  [[ -n "$CHANGED" ]]  && { echo ""; echo "### Changed"; echo "$CHANGED"; }
-  [[ -n "$SECURITY" ]] && { echo ""; echo "### Security"; echo "$SECURITY"; }
-  echo ""
-  cat "$CHANGELOG"
-} > "$TMP" && mv "$TMP" "$CHANGELOG"
-```
-
-**After completion**:
-- **Update TodoWrite**: Mark "Update CHANGELOG.md" as `completed`
-- Mark "Update README.md" as `in_progress`
-
----
-
-## STEP 2 — README.md (Version Badge + Features)
-
-**Standard**: Use [Shields.io](https://shields.io/) static badges
-
-```bash
-README="README.md"
-[[ -f $README ]] || touch $README
-
-# Ensure a version badge exists (idempotent replace or append)
-grep -q 'img.shields.io/badge/version-' "$README" \
-  && sed -i 's#img.shields.io/badge/version-[^)]*#img.shields.io/badge/version-v'"$VERSION"'-blue#g' "$README" \
-  || sed -i '1i ![Version](https://img.shields.io/badge/version-v'"$VERSION"'-blue)\n' "$README"
-
-# Append feature line (once)
-LINE=" - 🎉 **${TITLE}** — shipped in v${VERSION}"
-grep -qF "$LINE" "$README" || {
-  # Ensure Features section exists
-  grep -q "^## Features" "$README" || printf "\n## Features\n" >> "$README"
-  # Add feature below Features heading
-  sed -i "/^## Features/a $LINE" "$README"
-}
-```
-
-**After completion**:
-- **Update TodoWrite**: Mark "Update README.md" as `completed`
-- Mark "Generate user docs" as `in_progress`
-
----
-
-## STEP 3 — User Docs (Help Article)
-
-```bash
-DOC_DIR="docs/help/features"
-mkdir -p "$DOC_DIR"
-DOC_FILE="${DOC_DIR}/${SLUG}.md"
-
-cat > "$DOC_FILE" <<EOF
-# ${TITLE}
-
-**Version**: v${VERSION}
-**Released**: ${DATE}
-
-## Overview
-
-Short summary (from spec.md).
-
-## How to Use
-
-Step-by-step (from user stories).
-
-## Features
-
-- Pulled from acceptance criteria.
-
-## Screenshots
-
-<!-- Add or link assets -->
-
-## Troubleshooting
-
-Common issues and resolutions.
-EOF
-
-# Ensure index exists and link entry
-INDEX="docs/help/README.md"
-mkdir -p "$(dirname "$INDEX")"
-grep -q "features/${SLUG}.md" "$INDEX" 2>/dev/null || {
-  [[ -f "$INDEX" ]] || echo "# Help Documentation" > "$INDEX"
-  printf "\n## Features\n\n- [%s](features/%s.md) — v%s\n" "$TITLE" "$SLUG" "$VERSION" >> "$INDEX"
-}
-```
-
-**After completion**:
-- **Update TodoWrite**: Mark "Generate user docs" as `completed`
-- Mark "Update API docs" as `in_progress`
-
----
-
-## STEP 4 — API Docs (Conditional)
-
-```bash
-# Heuristic: if spec/plan mentioned API changes, update docs/API_ENDPOINTS.md
-if rg -n "API|endpoint|route" "$FEATURE_DIR/spec.md" "$FEATURE_DIR/plan.md" >/dev/null 2>&1; then
-  APIDOC="docs/API_ENDPOINTS.md"
-  mkdir -p "$(dirname "$APIDOC")"
-  [[ -f "$APIDOC" ]] || echo "# API Endpoints" > "$APIDOC"
-
-  # Append/update a minimal endpoint block (ensure no duplicates)
-  BLOCK="### ${TITLE} (v${VERSION})"
-  grep -qF "$BLOCK" "$APIDOC" || cat >> "$APIDOC" <<EOF
-
-${BLOCK}
-
-- **Method**: [GET|POST|PUT|DELETE]
-- **Path**: /api/[endpoint]
-- **Auth**: [Required|Optional]
-- **Request**: [Body schema]
-- **Response**: [Response schema]
-
-EOF
-else
-  echo "ℹ️  No API changes detected, skipping API documentation"
-fi
-```
-
-**After completion**:
-- **Update TodoWrite**: Mark "Update API docs" as `completed` (even if skipped)
-- Mark "Close current milestone" as `in_progress`
-
----
-
-## STEP 5 — Milestones (Close Current, Create Next)
-
-**Reference**: Uses [GitHub REST milestones API](https://docs.github.com/en/rest/issues/milestones) via `gh api`
-
-```bash
-# Close current (best-effort; non-blocking if absent)
-CUR_MINOR="$(echo "$VERSION" | awk -F. '{print $1"."$2}')"
-CUR_MS_JSON="$(gh api repos/:owner/:repo/milestones --jq '.[] | select(.title | test("^v?'$CUR_MINOR'\\.x$"))' 2>/dev/null || true)"
-
-if [[ -n "$CUR_MS_JSON" ]]; then
-  CUR_MS_NUM="$(jq -r '.number' <<<"$CUR_MS_JSON")"
-  echo "Closing milestone #${CUR_MS_NUM} (v${CUR_MINOR}.x)"
-  gh api -X PATCH "repos/:owner/:repo/milestones/$CUR_MS_NUM" -f state=closed >/dev/null 2>&1 || true
-else
-  echo "ℹ️  No milestone found for v${CUR_MINOR}.x"
-fi
-
-# Create next minor (e.g., 1.3.0 -> 1.4.0)
-NEXT_MINOR="$(echo "$VERSION" | awk -F. '{printf "%d.%d.0", $1, $2+1}')"
-DUE_ON="$(date -u -d '+14 days' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v+14d +%Y-%m-%dT%H:%M:%SZ)"
-
-echo "Creating next milestone: v${NEXT_MINOR} (due: ${DUE_ON})"
-gh api repos/:owner/:repo/milestones \
-  -f title="v$NEXT_MINOR" \
-  -f due_on="$DUE_ON" \
-  >/dev/null 2>&1 || echo "ℹ️  Milestone v${NEXT_MINOR} already exists or creation failed"
-```
-
-**After completion**:
-- **Update TodoWrite**: Mark "Close current milestone" and "Create next milestone" as `completed`
-- Mark "Update roadmap issue" as `in_progress`
-
----
-
-## STEP 6 — Roadmap Issue → Shipped
-
-**Reference**: Uses [gh issue](https://cli.github.com/manual/gh_issue) commands
-
-```bash
-ISSUE_JSON="$(gh issue list --label 'type:feature' --search "slug: ${SLUG}" --json number --limit 1 2>/dev/null || true)"
-NUM="$(jq -r '.[0].number // empty' <<<"$ISSUE_JSON")"
-
-if [[ -n "$NUM" ]]; then
-  echo "Updating roadmap issue #${NUM} to 'shipped'"
-
-  gh issue edit "$NUM" \
-    --add-label "status:shipped" \
-    --remove-label "status:in-progress" \
-    >/dev/null 2>&1 || true
-
-  gh issue comment "$NUM" --body "$(cat <<TXT
-🚀 Shipped in v${VERSION} on ${DATE}
-
-**Production**: ${PROD_URL:-N/A}
-
-See [release notes](https://github.com/:owner/:repo/releases/tag/v${VERSION})
-TXT
-)" >/dev/null 2>&1 || true
-else
-  echo "ℹ️  No roadmap issue found for slug: ${SLUG}"
-fi
-```
-
-**After completion**:
-- **Update TodoWrite**: Mark "Update roadmap issue" as `completed`
-- Mark "Update GitHub Release" as `in_progress`
-
----
-
-## STEP 7 — Update GitHub Release with Production Info
-
-**Reference**: Uses [gh release](https://cli.github.com/manual/gh_release) commands
-
-```bash
-# Check if release exists for this version
-RELEASE_TAG="v${VERSION}"
-if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-  echo "Updating GitHub Release: ${RELEASE_TAG}"
-
-  # Get existing release body
-  EXISTING_BODY="$(gh release view "$RELEASE_TAG" --json body -q .body)"
-
-  # Prepare production deployment footer
-  PROD_FOOTER="$(cat <<EOF
-
----
-
-## 🚀 Production Deployment
-
-**Status**: ✅ Deployed
-**URL**: ${PROD_URL:-N/A}
-**Date**: ${DATE}
-**Feature**: ${TITLE}
-
-### Deployment Info
-- **Version**: v${VERSION}
-- **Run ID**: $(yq -r '.deployment.production.run_id // "N/A"' "$STATE")
-- **Deploy Logs**: [View logs](https://github.com/:owner/:repo/actions/runs/$(yq -r '.deployment.production.run_id // ""' "$STATE"))
-
-### Documentation
-- **CHANGELOG**: [View changes](https://github.com/:owner/:repo/blob/main/CHANGELOG.md#v${VERSION//.})
-- **Help Article**: [docs/help/features/${SLUG}.md](https://github.com/:owner/:repo/blob/main/docs/help/features/${SLUG}.md)
-
-🎉 Feature fully deployed and documented!
-EOF
-)"
-
-  # Check if release already has production info (idempotent)
-  if echo "$EXISTING_BODY" | grep -q "## 🚀 Production Deployment"; then
-    echo "ℹ️  GitHub Release already contains production deployment info"
-  else
-    # Append production info to existing release notes
-    NEW_BODY="${EXISTING_BODY}${PROD_FOOTER}"
-
-    gh release edit "$RELEASE_TAG" --notes "$NEW_BODY" >/dev/null 2>&1 \
-      && echo "✅ Updated GitHub Release with production deployment info" \
-      || echo "⚠️  Failed to update GitHub Release (non-blocking)"
-  fi
-else
-  echo "ℹ️  No GitHub Release found for ${RELEASE_TAG} (may not be using release tags)"
-fi
-```
-
-**After completion**:
-- **Update TodoWrite**: Mark "Update GitHub Release" as `completed`
-- Mark "Commit & push documentation" as `in_progress`
-
----
-
-## STEP 8 — Commit & Push Docs
-
-```bash
-git add CHANGELOG.md README.md docs/ 2>/dev/null || true
-
-if git diff --cached --quiet; then
-  echo "ℹ️  No documentation changes to commit"
-else
-  git commit -m "docs: finalize v${VERSION} documentation
-
-- Update CHANGELOG.md with v${VERSION} section
-- Update README.md version badge and features list
-- Add help article for ${TITLE}
-- Update API documentation (conditional)
-- Update GitHub Release with production deployment info
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>" || true
-
-  git push || echo "⚠️  Push failed (may need to pull first)"
-fi
-```
-
-**After completion**:
-- **Update TodoWrite**: Mark "Commit & push documentation" as `completed`
-- Mark "Cleanup feature branch" as `in_progress`
-
----
-
-## STEP 9 — Branch Cleanup (Safe)
-
-```bash
-# Only delete if merged and not checked out
-FEATURE_BRANCH="$(yq -r '.workflow.git.feature_branch // ""' "$STATE")"
-
-if [[ -n "$FEATURE_BRANCH" ]]; then
-  CURRENT="$(git branch --show-current)"
-
-  # Switch to main if on feature branch
-  if [[ "$CURRENT" == "$FEATURE_BRANCH" ]]; then
-    git checkout -q main 2>/dev/null || git checkout -q master 2>/dev/null || true
-  fi
-
-  # Only delete if fully merged (safe)
-  if git branch --merged | grep -q " ${FEATURE_BRANCH}$"; then
-    echo "Deleting merged branch: ${FEATURE_BRANCH}"
-    git branch -d "$FEATURE_BRANCH" 2>/dev/null || true
-    git push origin --delete "$FEATURE_BRANCH" >/dev/null 2>&1 || true
-  else
-    echo "ℹ️  Branch ${FEATURE_BRANCH} not fully merged, skipping deletion"
-  fi
-else
-  echo "ℹ️  No feature branch to clean up"
-fi
-```
-
-**After completion**:
-- **Update TodoWrite**: Mark "Cleanup feature branch" as `completed`
-
----
-
-## STEP 10 — Summary
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📚 Finalization Complete
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Version: v${VERSION}
-Feature: ${SLUG}
-Date: ${DATE}
-
-### Files Updated
-
-- ✅ CHANGELOG.md (Keep a Changelog format)
-- ✅ README.md (Shields.io badge + features)
-- ✅ docs/help/features/${SLUG}.md (help article)
-- ✅ docs/API_ENDPOINTS.md (conditional)
-
-### GitHub
-
-- ✅ Closed milestone: v${CUR_MINOR}.x
-- ✅ Created next milestone: v${NEXT_MINOR} (due: [date])
-- ✅ Updated roadmap issue to "shipped" (if found)
-- ✅ Updated GitHub Release with production deployment info
-
-### Git
-
-- ✅ Committed documentation changes
-- ✅ Pushed to main
-- ✅ Cleaned up feature branch (if merged)
-
-### Next Steps
-
-1. Review documentation accuracy
-2. Announce release (social media, blog, email)
-3. Monitor user feedback and error logs
-4. Plan next feature from roadmap
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎉 Full workflow complete: /feature → /ship → /finalize ✅
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Deployment logs: gh run view $(yq -r '.deployment.production.run_id // "N/A"' "$STATE") --log
-```
-
----
-
-## ERROR RECOVERY
-
-**Idempotency**: Re-running `/finalize` is safe. Completed tasks are skipped based on TodoWrite state.
-
-**If any step fails**:
-
-1. **Update TodoWrite**: Keep failed task as `in_progress`
-2. Display specific error with fix instructions
-3. User runs `/finalize` again to resume
-
-**Example error handling**:
-
-```bash
-# If git push fails
-if ! git push; then
-  echo "❌ Git push failed"
-  echo ""
-  echo "Likely cause: Need to pull changes first"
-  echo "Fix: git pull --rebase && /finalize"
-  exit 1
-fi
-```
+**Execution model**:
+- **Idempotent**: Safe to re-run; completed tasks are skipped
+- **Deterministic**: No prompts, no editors
+- **Tracked**: Every step logged with clear progress indicators
+</objective>
+
+<process>
+1. **Check prerequisites** - Verify gh, jq, yq, git, python are installed and gh is authenticated
+
+2. **Execute finalization workflow** via spec-cli.py:
+   ```bash
+   python .spec-flow/scripts/spec-cli.py finalize
+   ```
+
+   The finalize-workflow.sh script performs:
+
+   a. **Epic workflows only** (v5.0+):
+      - Generate walkthrough.xml with velocity metrics
+      - Calculate sprint results and lessons learned
+      - Run post-mortem audit (/audit-workflow --post-mortem)
+      - Detect patterns across epics (if 2-3+ completed)
+      - Offer workflow healing (/heal-workflow)
+
+   b. **Standard finalization** (all workflows):
+      - Update CHANGELOG.md (Keep a Changelog format)
+      - Update README.md (Shields.io version badge + features)
+      - Generate help article at docs/help/features/{slug}.md
+      - Update API docs (conditional if endpoints changed)
+      - Close current milestone, create next milestone
+      - Update roadmap issue to "shipped" status
+      - Update GitHub Release with production deployment info
+      - Commit and push documentation changes
+      - Cleanup feature branch (safe delete if merged)
+
+3. **Review summary output** - Verify all tasks completed successfully
+
+4. **Next steps** (displayed in output):
+   - Review documentation accuracy
+   - Announce release (social media, blog, email)
+   - Monitor user feedback and error logs
+   - Plan next feature from roadmap
+</process>
+
+<verification>
+Before completing, verify:
+- All required tools (gh, jq, yq, git, python) are available
+- GitHub CLI is authenticated (`gh auth status`)
+- CHANGELOG.md has new version section with date
+- README.md version badge matches deployed version
+- Help documentation exists at docs/help/features/{slug}.md
+- GitHub Release contains production deployment section (if release exists)
+- Documentation changes committed and pushed to main
+- Feature branch deleted if fully merged (or noted as unmerged)
+</verification>
+
+<success_criteria>
+- All documentation files updated and committed
+- GitHub Release contains production deployment section (if exists)
+- Roadmap issue marked as "shipped" (if exists)
+- Current milestone closed, next milestone created
+- Feature branch deleted if fully merged
+- Finalization script exits with status 0
+- No bash commands executed beyond allowed tools
+- Idempotent: Safe to re-run if interrupted
+</success_criteria>
+
+<standards>
+**Industry Standards**:
+- **CHANGELOG**: [Keep a Changelog](https://keepachangelog.com/) - Categorize changes as Added/Fixed/Changed/Security
+- **Versioning**: [Semantic Versioning](https://semver.org/) - MAJOR.MINOR.PATCH format
+- **Badges**: [Shields.io](https://shields.io/) - Static version badges
+- **GitHub**: [GitHub CLI Manual](https://cli.github.com/manual/) and [REST API](https://docs.github.com/en/rest)
+
+**Workflow Standards**:
+- No prompts or interactive editors (vi, nano)
+- All operations are deterministic and scriptable
+- Safe for CI/CD execution
+- Graceful degradation for optional operations (milestones, roadmap)
+</standards>
+
+<error_recovery>
+**Idempotency**: Re-running `/finalize` is safe. The finalize-workflow.sh script checks for existing state before modifying files.
+
+**Common errors and fixes**:
+
+1. **Git push fails**
+   - Cause: Need to pull changes first
+   - Fix: `git pull --rebase && /finalize`
+
+2. **GitHub CLI not authenticated**
+   - Cause: Missing gh credentials
+   - Fix: `gh auth login` then retry `/finalize`
+
+3. **Missing required tool**
+   - Cause: gh, jq, yq, or git not installed
+   - Fix: Install missing tool (see prerequisites output), then retry
+
+4. **Branch cleanup fails**
+   - Cause: Branch has unmerged commits
+   - Note: Script uses safe delete (`-d`), never force delete (`-D`)
+   - Result: Branch preserved, manual review required
 
 **GitHub API safety**:
+- All `gh` commands use `|| true` to avoid blocking workflow
+- Optional steps (milestones, roadmap) log warnings but don't fail finalization
+- Rate limiting handled gracefully with warnings
 
-- All `gh` commands use `|| true` to avoid blocking entire workflow
-- Optional steps (milestones, roadmap) are logged but don't fail finalization
-- Rate limiting is handled gracefully with warnings
+**Resume capability**:
+If finalization is interrupted, simply re-run `/finalize`. The script will skip already-completed tasks.
+</error_recovery>
 
-**Branch cleanup safety**:
+<epic_walkthrough>
+**Epic workflows only** (v5.0+):
 
-- Uses `-d` (safe delete) not `-D` (force delete)
-- Only deletes if `git branch --merged` confirms merge
-- Never deletes if unmerged changes exist
+When /finalize detects an epic workflow (presence of `epics/*/epic-spec.xml`), it generates a comprehensive walkthrough before standard finalization.
 
----
+**Walkthrough generation**:
+1. Load all epic artifacts (epic-spec.xml, research.xml, plan.xml, sprint-plan.xml, workflow-state.yaml, audit-report.xml)
+2. Calculate velocity metrics (expected vs actual multiplier, time saved)
+3. Extract sprint results (tasks completed, duration, tests passed)
+4. Generate walkthrough.xml and walkthrough.md using .spec-flow/templates/walkthrough.xml
+5. Run post-mortem audit for final analysis
+6. Detect patterns if 2-3+ epics completed
+7. Offer workflow healing via /heal-workflow
 
-## CONSTRAINTS
+**Walkthrough includes**:
+- Epic goal and success metrics
+- Velocity metrics (expected vs actual)
+- Sprint execution results
+- Validation results (optimization, preview)
+- Key files modified
+- Next steps (enhancements, technical debt, monitoring)
+- Lessons learned (what worked, what struggled)
 
-**TodoWrite discipline**:
+**Pattern detection** (after 2-3 epics):
+Analyzes patterns across completed epics and suggests:
+- Estimation multiplier adjustments
+- API contract locking strategies
+- Design system Phase 0.5 opportunities
+- Sprint sizing heuristic improvements
+- Custom tooling generation via /create-custom-tooling
 
-- Create list at Step 0 (before any work)
-- Update after EVERY step completion
-- Mark as `completed` only if operation succeeded
-- Mark as `completed` (with note) if optional step skipped
+See finalize-workflow.sh:59-408 for full walkthrough generation logic.
+</epic_walkthrough>
 
-**Standards compliance**:
+<notes>
+**Version compatibility**: This command works with both feature and epic workflows. Epic-specific features (walkthrough, pattern detection) only activate for epic workflows.
 
-- CHANGELOG: [Keep a Changelog](https://keepachangelog.com/)
-- Versioning: [Semantic Versioning](https://semver.org/)
-- Badges: [Shields.io](https://shields.io/)
-- GitHub: Official [gh CLI](https://cli.github.com/manual/) and [REST API](https://docs.github.com/en/rest)
-
-**No prompts**:
-
-- All operations are deterministic
-- No editors (vi, nano, etc.)
-- No user input required
-- Safe to run in CI/CD
-
-**Idempotency**:
-
-- Safe to re-run multiple times
-- Completed tasks are skipped
-- Duplicate prevention (grep -q checks)
-- Best-effort operations with graceful degradation
-
----
-
-## NOTES
-
-**Workflow dispatch**: If you later auto-trigger releases via GitHub Actions, the target workflow must declare `on: workflow_dispatch`. Use `gh workflow run` and `gh run watch` to dispatch and monitor ([gh workflow run](https://cli.github.com/manual/gh_workflow_run)).
-
-**Milestone discovery**: Assumes milestones are named `vX.Y.x` (e.g., `v1.2.x`). Adjust regex in Step 5 if using different naming.
+**Milestone naming**: Assumes milestones are named `vX.Y.x` (e.g., `v1.2.x`). Adjust regex in finalize-workflow.sh:611 if using different naming.
 
 **Date format**: Uses ISO-8601 (`YYYY-MM-DD`) for CHANGELOG dates per Keep a Changelog standard.
 
-**Artifact linking**: Production deployment logs can be viewed via `gh run view <run-id> --log` using the `run_id` from `workflow-state.yaml`.
+**Artifact linking**: Production deployment logs can be viewed via:
+```bash
+gh run view $(yq -r '.deployment.production.run_id' specs/*/workflow-state.yaml) --log
+```
+
+**Workflow dispatch**: For automated releases via GitHub Actions, ensure target workflow declares `on: workflow_dispatch`. Use `gh workflow run` and `gh run watch` to dispatch and monitor.
+
+**Script location**: The bash implementation is at `.spec-flow/scripts/bash/finalize-workflow.sh`. It is invoked via spec-cli.py for cross-platform compatibility.
+</notes>

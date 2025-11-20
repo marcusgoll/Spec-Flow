@@ -14,6 +14,7 @@ Workflow Commands:
     debug <feature>             - Debug errors and update error-log.md
     optimize <feature>          - Production-readiness validation
     preview <feature>           - Manual UI/UX testing
+    finalize <feature>          - Post-deploy documentation and housekeeping
     feature <args>              - Orchestrate full feature workflow
 
 Living Documentation:
@@ -269,6 +270,18 @@ def cmd_optimize(args):
         print(stdout, end='')
         return code
     return run_script('optimize-workflow', script_args)
+
+def cmd_finalize(args):
+    """Run finalization workflow"""
+    script_args = []
+    if args.feature:
+        script_args.append(args.feature)
+    if hasattr(args, 'json') and args.json:
+        script_args.append('--json')
+        stdout, code = run_script('finalize-workflow', script_args, capture=True)
+        print(stdout, end='')
+        return code
+    return run_script('finalize-workflow', script_args)
 
 def cmd_feature(args):
     """Run feature workflow orchestration"""
@@ -658,6 +671,11 @@ Examples:
     optimize_parser.add_argument('feature', nargs='?', help='Feature slug (optional, auto-detected if in feature dir)')
     optimize_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
+    # finalize
+    finalize_parser = subparsers.add_parser('finalize', help='Post-deploy documentation and housekeeping')
+    finalize_parser.add_argument('feature', nargs='?', help='Feature slug (optional, auto-detected if in feature dir)')
+    finalize_parser.add_argument('--json', action='store_true', help='Output as JSON')
+
     # feature
     feature_parser = subparsers.add_parser('feature', help='Orchestrate full feature workflow')
     feature_parser.add_argument('arguments', nargs='?', help='Feature description, slug, next, continue, epic:name, sprint:num')
@@ -850,6 +868,7 @@ Examples:
         'implement': cmd_implement,
         'debug': cmd_debug,
         'optimize': cmd_optimize,
+        'finalize': cmd_finalize,
         'feature': cmd_feature,
         'ship-finalize': cmd_ship_finalize,
         'ship-prod': cmd_ship_prod,

@@ -1,679 +1,275 @@
 ---
-description: "Release new version of Spec-Flow package (INTERNAL - workflow development only)"
+description: Automate complete release workflow for Spec-Flow package (version bump, CHANGELOG, git tag, GitHub release, npm publish)
+allowed-tools: [Read, Write, Edit, Bash(git status:*), Bash(git branch:*), Bash(git log:*), Bash(git describe:*), Bash(git add:*), Bash(git commit:*), Bash(git tag:*), Bash(git push:*), Bash(git remote:*), Bash(npm whoami:*), Bash(npm run build:*), Bash(npm publish:*), Bash(gh auth:*), Bash(gh release:*), Bash(gh run:*), Bash(node -p:*), Bash(node -e:*), Bash(date:*), Bash(awk:*), Bash(sed:*), Bash(grep:*), Bash(wc:*), Bash(test:*), Bash(cat:*), Bash(ls:*)]
+argument-hint: [--skip-build] [--skip-npm] [--skip-github] [--announce]
 ---
 
-# Internal Release Command
+<context>
+Current git status: !`git status --short | head -5`
 
-**DO NOT SHIP**: This command is for Spec-Flow workflow development only. Use it to release new versions of the workflow package itself.
+Current branch: !`git branch --show-current`
 
-You are now in release mode. Follow this workflow to automatically release a new version of the Spec-Flow package with smart version detection.
+Current version: !`node -p "require('./package.json').version" 2>/dev/null || echo "unknown"`
 
----
+Last git tag: !`git describe --tags --abbrev=0 2>/dev/null || echo "none"`
 
-## Overview
+npm authentication: !`npm whoami 2>/dev/null && echo "✅ Authenticated" || echo "❌ Not authenticated"`
 
-This command automates the entire release process:
-- ✅ Auto-detects version bump from commit messages (conventional commits)
-- ✅ Updates package.json and CHANGELOG.md
-- ✅ Creates commit and git tag
-- ✅ Pushes to GitHub automatically
-- ✅ Publishes to npm automatically
-- ✅ Verifies success and shows release URLs
+GitHub authentication: !`gh auth status >/dev/null 2>&1 && echo "✅ Authenticated" || echo "❌ Not authenticated"`
 
-**Philosophy**: Manual trigger, but fully automated execution. One command to go from commits → published npm package.
+Git remote configured: !`git remote -v | grep -q origin && echo "✅ Configured" || echo "❌ Not configured"`
 
----
+Recent commits (for version bump): !`git log $(git describe --tags --abbrev=0 2>/dev/null || echo "--all")..HEAD --pretty=format:"%s" 2>/dev/null | head -10`
+</context>
 
-## Step 1: Pre-Flight Checks
+<objective>
+Automate the complete release workflow for the Spec-Flow package, ensuring consistency and reducing manual errors.
 
-Run these checks before proceeding. If any fail, abort and show error message.
+**What it does:**
+1. Pre-flight checks (git, npm, CI status)
+2. Version bump detection (conventional commits → MAJOR, MINOR, PATCH)
+3. Build validation (dist/ directory with BUILD_REPORT.md)
+4. File updates (package.json, CHANGELOG.md, README.md)
+5. Git operations (commit, tag, push)
+6. GitHub Release creation with CHANGELOG notes
+7. npm package publishing
+8. Optional X (Twitter) announcement
 
-### Check 1: Git Remote Configured
-```bash
-git remote get-url origin
+**Operating constraints:**
+- **INTERNAL USE ONLY** — For Spec-Flow workflow development only
+- **Pre-flight Blockers** — 5 checks must pass (git remote, main branch, clean tree, npm auth, CI status)
+- **Build Validation** — dist/BUILD_REPORT.md must exist (v6.12.0+)
+- **Conventional Commits** — Version bump follows semantic versioning rules
+- **Git Safety** — Never force push, always verify remote before push
+
+**Dependencies:**
+- Git repository with remote configured
+- On main branch with clean working tree
+- npm authentication configured (npm whoami)
+- GitHub CLI authenticated (gh auth status)
+- CI passing on latest commit
+- Build system configured (npm run build)
+</objective>
+
+<process>
+1. **Execute pre-flight checks** (5 checks):
+   - Git remote configured
+   - On main branch
+   - Working tree clean (no uncommitted changes)
+   - npm authenticated (npm whoami)
+   - CI passing on latest commit (gh run list)
+
+   **If any check fails**: Display specific error and exit. User must fix issue before releasing.
+
+2. **Detect version bump** using conventional commits:
+   - Get current version from package.json
+   - Get last git tag (or v0.0.0 if none)
+   - Analyze commits since last tag:
+     - **MAJOR**: Any commit with "BREAKING CHANGE:" or "!" after type
+     - **MINOR**: Any commit with "feat:" prefix
+     - **PATCH**: Any commit with "fix:", "docs:", "chore:", "refactor:", "test:"
+   - Calculate new version (e.g., 6.11.0 → 6.12.0 for MINOR bump)
+
+3. **Run build system**:
+   ```bash
+   npm run build
+   ```
+   - Validate dist/ directory created
+   - Verify BUILD_REPORT.md exists in dist/
+   - **If build fails**: Display error and exit
+
+4. **Update package.json**:
+   - Load current package.json
+   - Update version field to new version
+   - Write back with proper formatting (2-space indent + newline)
+
+5. **Update CHANGELOG.md**:
+   - Read current CHANGELOG.md
+   - Extract commits since last tag grouped by type (Features, Fixes, Docs, Chores)
+   - Insert new version section under ## [Unreleased]:
+     ```markdown
+     ## [X.Y.Z] - YYYY-MM-DD
+
+     ### Features
+     - feat: description (commit hash)
+
+     ### Fixes
+     - fix: description (commit hash)
+     ```
+   - Write updated CHANGELOG.md
+
+6. **Update README.md badges** (if version changed from 6.x.x to 7.x.x):
+   - Update npm version badge URLs
+   - Update any version-specific documentation links
+
+7. **Git commit and tag**:
+   ```bash
+   git add package.json CHANGELOG.md README.md dist/
+   git commit -m "chore: release vX.Y.Z"
+   git tag -a vX.Y.Z -m "Release vX.Y.Z"
+   ```
+
+8. **Push to remote**:
+   ```bash
+   git push origin main
+   git push origin vX.Y.Z
+   ```
+   - Verify remote is origin before pushing
+   - Use separate commands for branch and tag (safer than --tags)
+
+9. **Create GitHub Release**:
+   ```bash
+   gh release create vX.Y.Z \
+     --title "Release vX.Y.Z" \
+     --notes "{CHANGELOG section for this version}" \
+     --latest
+   ```
+   - Extract CHANGELOG section for this version
+   - Mark as latest release
+
+10. **Publish to npm** (if --skip-npm not specified):
+    ```bash
+    npm publish
+    ```
+    - Verify npm authentication before publishing
+    - Display success message with npm package URL
+
+11. **Optional X announcement** (if --announce flag specified):
+    - Invoke /announce-release command
+    - Posts release to X (Twitter) with GitHub link
+
+See `.claude/skills/release/references/reference.md` for detailed procedures, error recovery, and example execution run.
+</process>
+
+<verification>
+Before completing, verify:
+- Pre-flight checks all passed (5/5)
+- Version bump calculated correctly (conventional commits analyzed)
+- Build succeeded (dist/BUILD_REPORT.md exists)
+- package.json version updated
+- CHANGELOG.md new section added
+- Git commit created with "chore: release vX.Y.Z" message
+- Git tag created (vX.Y.Z)
+- Remote push succeeded (both branch and tag)
+- GitHub Release created
+- npm publish succeeded (if not --skip-npm)
+- Success summary displayed with all URLs
+</verification>
+
+<success_criteria>
+**Pre-flight validation:**
+- All 5 checks pass before any modifications
+- Clear error messages for each failed check
+- Blocks release if CI not passing
+
+**Version bump accuracy:**
+- MAJOR: Breaking changes detected correctly
+- MINOR: New features detected correctly
+- PATCH: Bug fixes and other commits detected correctly
+- Version follows semantic versioning (X.Y.Z)
+
+**File updates:**
+- package.json version field updated
+- CHANGELOG.md new section inserted under ## [Unreleased]
+- Commits grouped by type (Features, Fixes, Docs, Chores)
+- README.md badges updated if major version change
+
+**Git operations:**
+- Commit message: "chore: release vX.Y.Z"
+- Tag format: vX.Y.Z (with v prefix)
+- Both branch and tag pushed to origin
+- No force push used
+
+**GitHub Release:**
+- Title: "Release vX.Y.Z"
+- Body contains CHANGELOG section for this version
+- Marked as latest release
+
+**npm publishing:**
+- Package published to npm registry
+- Success URL displayed: https://www.npmjs.com/package/spec-flow
+
+**User presentation:**
 ```
-**If fails**: "❌ No git remote configured. Add remote: `git remote add origin <url>`"
+Release Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-### Check 2: On Main Branch
-```bash
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [ "$CURRENT_BRANCH" != "main" ]; then
-  echo "❌ Not on main branch (currently on: $CURRENT_BRANCH)"
-  echo "Switch to main: git checkout main"
-  exit 1
-fi
+Version: vX.Y.Z (MINOR bump)
+Build: ✅ Passed
+Git: ✅ Committed and tagged
+GitHub: ✅ Release created
+npm: ✅ Published
+
+URLs:
+  📦 npm: https://www.npmjs.com/package/spec-flow
+  🔖 GitHub: https://github.com/owner/repo/releases/tag/vX.Y.Z
+
+Next: Users can install with npm install -g spec-flow@X.Y.Z
 ```
+</success_criteria>
 
-### Check 3: Clean Working Tree
-```bash
-git status --porcelain
+<standards>
+**Industry Standards:**
+- **Semantic Versioning**: [semver.org](https://semver.org/) for version numbers
+- **Conventional Commits**: [conventionalcommits.org](https://www.conventionalcommits.org/) for version bump detection
+- **Keep a Changelog**: [keepachangelog.com](https://keepachangelog.com/) for CHANGELOG.md format
+
+**Workflow Standards:**
+- Pre-flight checks block release if any fail
+- Version bump automated from conventional commits
+- Build validation required (dist/ must exist)
+- Git operations atomic (commit, tag, push separately)
+- GitHub Release body contains CHANGELOG section
+- npm publish only if authenticated
+- Success summary with all URLs
+</standards>
+
+<notes>
+**Command location**: `.claude/commands/internal/release.md`
+
+**Reference documentation**: Pre-flight checks, version bump detection, build validation, file update procedures, git operations, GitHub release creation, npm publishing, X announcement integration, error recovery strategies, and complete example execution run are in `.claude/skills/release/references/reference.md`.
+
+**Version**: v2.0 (2025-11-20) — Refactored to XML structure, added dynamic context, tool restrictions
+
+**Arguments:**
+- `--skip-build`: Skip npm run build step (use existing dist/)
+- `--skip-npm`: Skip npm publish step (GitHub Release only)
+- `--skip-github`: Skip GitHub Release creation (npm only)
+- `--announce`: Post release announcement to X (Twitter) after publishing
+
+**Version bump examples:**
 ```
-**If has output**: Ask user if they want to continue with uncommitted changes. Show `git status` output.
+Commits since v6.11.0:
+  feat: add new workflow command    → MINOR (6.11.0 → 6.12.0)
+  fix: resolve template bug         → MINOR (feat takes precedence)
+  docs: update README               → MINOR (feat takes precedence)
 
-### Check 4: npm Authentication
-```bash
-npm whoami
-```
-**If fails**: "❌ Not logged into npm. Run: `npm login`"
+Commits since v6.12.0:
+  fix: resolve auth issue           → PATCH (6.12.0 → 6.12.1)
+  docs: update changelog            → PATCH (fix takes precedence)
 
-### Check 5: CI Status
-```bash
-echo "🔍 Checking CI status..."
-CI_STATUS=$(gh run list --workflow=ci.yml --branch=main --limit=1 --json conclusion --jq '.[0].conclusion')
-
-if [ "$CI_STATUS" != "success" ]; then
-  echo "❌ CI checks are not passing on main branch"
-  echo "Current status: $CI_STATUS"
-  echo ""
-  echo "View CI: https://github.com/marcusgoll/Spec-Flow/actions/workflows/ci.yml"
-  echo ""
-  echo "Options:"
-  echo "1. Fix CI failures and run /release again"
-  echo "2. Wait for CI to complete"
-  echo "3. Override (not recommended): Continue anyway"
-  echo ""
-  read -p "Continue anyway? (yes/no): " OVERRIDE
-  if [ "$OVERRIDE" != "yes" ]; then
-    echo "Release cancelled. Fix CI and try again."
-    exit 1
-  fi
-  echo "⚠️  Proceeding despite CI failures (user override)"
-else
-  echo "✅ CI checks passing"
-fi
-```
-**If fails**: User can override, but warned about risk
-
-**If all checks pass**: Display "✅ Pre-flight checks passed" and continue.
-
----
-
-## Step 2: Analyze Commits for Version Bump
-
-### Get Current Version
-```bash
-CURRENT_VERSION=$(node -p "require('./package.json').version")
-```
-
-### Get Last Release Tag
-```bash
-LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-```
-
-### Get Commits Since Last Release
-```bash
-COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"%s")
-```
-
-### Analyze Commit Messages
-
-Scan commits for conventional commit patterns:
-
-**MAJOR bump** (breaking changes):
-- Match: `/BREAKING CHANGE:/i` in commit body
-- Match: `/^[a-z]+(\(.*\))?!:/i` (e.g., `feat!:`, `fix!:`)
-
-**MINOR bump** (new features):
-- Match: `/^feat(\(.*\))?:/i`
-- Match: `/^feature(\(.*\))?:/i`
-
-**PATCH bump** (fixes and maintenance):
-- Match: `/^fix(\(.*\))?:/i`
-- Match: `/^patch(\(.*\))?:/i`
-- Match: `/^(chore|docs|refactor|test|style|perf)(\(.*\))?:/i`
-
-**Default**: If no clear indicators found → **PATCH**
-
-### Determine Version Bump
-
-Priority order (highest to lowest):
-1. **MAJOR** if any breaking changes found
-2. **MINOR** if any features found (and no breaking changes)
-3. **PATCH** otherwise
-
-### Calculate New Version
-
-```bash
-# Parse current version
-IFS='.' read -r MAJOR MINOR PATCH <<< "${CURRENT_VERSION}"
-
-# Apply bump
-if [ "$BUMP_TYPE" = "major" ]; then
-  MAJOR=$((MAJOR + 1))
-  MINOR=0
-  PATCH=0
-elif [ "$BUMP_TYPE" = "minor" ]; then
-  MINOR=$((MINOR + 1))
-  PATCH=0
-else
-  PATCH=$((PATCH + 1))
-fi
-
-NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-```
-
-### Display Analysis
-
-Show this summary to the user:
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 Release Analysis
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Current Version: v{CURRENT_VERSION}
-New Version:     v{NEW_VERSION}
-Bump Type:       {BUMP_TYPE}
-
-Recent Commits ({COUNT}):
-{list commits with bullet points}
-
-Detected Changes:
-- {X} breaking changes
-- {X} features
-- {X} fixes
-- {X} other
-```
-
----
-
-## Step 3: Confirm Release
-
-Ask user for final confirmation:
-
-```
-Ready to release v{NEW_VERSION}. This will:
-✅ Verify CI checks are passing
-✅ Update package.json version field
-✅ Update CHANGELOG.md with release notes
-✅ Update README.md Recent Updates section
-✅ Commit changes with message: "chore: release v{NEW_VERSION}"
-✅ Create git tag: v{NEW_VERSION}
-✅ Push to GitHub (origin/main + tag)
-✅ Create GitHub Release with release notes
-✅ Publish to npm
-
-Proceed with release? (yes/no)
-```
-
-**If user says no**: Exit gracefully with "Release cancelled."
-
-**If user says yes**: Continue to Step 4.
-
----
-
-## Step 4: Update Files
-
-### 4.1: Update package.json
-
-```bash
-# Read, update version, write back
-node -e "
-const pkg = require('./package.json');
-pkg.version = '${NEW_VERSION}';
-require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
-"
-```
-
-### 4.2: Update CHANGELOG.md
-
-Insert new release entry at the top, right after the header:
-
-```markdown
-## [{NEW_VERSION}] - {YYYY-MM-DD}
-
-### Changed
-- Version bump to {NEW_VERSION}
-
-<!-- Add detailed release notes here before publishing -->
-
----
-```
-
-Use this bash snippet to insert:
-```bash
-TODAY=$(date +%Y-%m-%d)
-TEMP_FILE=$(mktemp)
-
-# Read until we hit the first existing release section
-awk -v version="$NEW_VERSION" -v date="$TODAY" '
-  !inserted && /^## \[/ {
-    print "## [" version "] - " date
-    print ""
-    print "### Changed"
-    print "- Version bump to " version
-    print ""
-    print "<!-- Add detailed release notes here -->"
-    print ""
-    print "---"
-    print ""
-    inserted=1
-  }
-  { print }
-' CHANGELOG.md > "$TEMP_FILE"
-
-mv "$TEMP_FILE" CHANGELOG.md
+Commits since v6.12.1:
+  feat!: remove deprecated commands → MAJOR (6.12.1 → 7.0.0)
+  BREAKING CHANGE: removed /old-cmd → MAJOR (detected in commit body)
 ```
 
-**Show diff** to user before committing:
-```bash
-git diff package.json CHANGELOG.md
-```
-
-### 4.3: Update README.md
-
-Insert new version entry at top of "Recent Updates" section:
-
-```bash
-# Get month name for README format
-MONTH_NAME=$(date +"%B")  # January, February, etc.
-YEAR=$(date +%Y)
-
-# Extract release notes from CHANGELOG (between new version and next version heading)
-RELEASE_NOTES=$(awk "/## \[$NEW_VERSION\]/,/^## \[/" CHANGELOG.md | \
-  sed '1d;$d' | \
-  sed '/^---$/d' | \
-  sed 's/^### /\*\*/' | \
-  sed 's/$/\*\*/' | \
-  head -20)
-
-# Create README update (insert after "## 🆕 Recent Updates")
-TEMP_README=$(mktemp)
-awk -v version="$NEW_VERSION" -v month="$MONTH_NAME" -v year="$YEAR" -v notes="$RELEASE_NOTES" '
-  /^## 🆕 Recent Updates/ {
-    print
-    print ""
-    print "### v" version " (" month " " year ")"
-    print notes
-    print ""
-    inserted=1
-    next
-  }
-  # Skip old first entry header to avoid duplication
-  /^### v[0-9]/ && !skipped && inserted {
-    skipped=1
-    next
-  }
-  { print }
-' README.md > "$TEMP_README"
-
-mv "$TEMP_README" README.md
-echo "✅ README.md updated"
-```
-
-**Show updated diff**:
-```bash
-git diff package.json CHANGELOG.md README.md
-```
-
----
-
-## Step 5: Commit Changes
-
-Create commit with conventional commit format:
-
-```bash
-git add package.json CHANGELOG.md README.md
-
-git commit -m "$(cat <<EOF
-chore: release v${NEW_VERSION}
-
-- Bump version to ${NEW_VERSION}
-- Update CHANGELOG.md with release notes
-- Update README.md with new version
-- Update version references
-
-Release: v${NEW_VERSION}
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
-EOF
-)"
-```
-
-**Verify commit created**:
-```bash
-git log -1 --format="%H %s"
-```
-
----
-
-## Step 6: Create Git Tag
-
-Create annotated git tag:
-
-```bash
-git tag -a "v${NEW_VERSION}" -m "Release v${NEW_VERSION}"
-```
-
-**Verify tag created**:
-```bash
-git tag -l "v${NEW_VERSION}"
-```
-
----
-
-## Step 7: Push to GitHub
-
-Push both the commit and the tag to remote:
-
-```bash
-echo "📤 Pushing to GitHub..."
-git push origin main
-git push origin "v${NEW_VERSION}"
-```
-
-**Error Handling**:
-- If push fails → Show error message and rollback instructions:
-  ```
-  ❌ Push to GitHub failed!
-
-  The commit and tag exist locally but were not pushed.
-
-  Options:
-  1. Fix the issue and run: git push origin main && git push origin v{NEW_VERSION}
-  2. Delete local tag and retry: git tag -d v{NEW_VERSION} && git reset --hard HEAD~1
-  ```
-  **STOP** - Do not proceed to npm publish if push fails.
-
-**If push succeeds**: Display "✅ Pushed to GitHub"
-
-
-## Step 7.5: Create GitHub Release
-
-Create GitHub Release with release notes extracted from CHANGELOG:
-
-```bash
-echo "📦 Creating GitHub Release..."
-
-# Extract release notes from CHANGELOG (everything between new version and next version heading)
-RELEASE_BODY=$(awk "/## \[$NEW_VERSION\]/,/^## \[/" CHANGELOG.md | \
-  sed '1d;$d' | \
-  sed '/^---$/d' | \
-  sed '/^$/N;/^\n$/D')  # Remove multiple blank lines
-
-# Add footer to release notes
-RELEASE_BODY="${RELEASE_BODY}
-
----
-
-📦 **Install**: \`npm install spec-flow@${NEW_VERSION}\`
-📚 **Docs**: https://github.com/marcusgoll/Spec-Flow
-🐛 **Issues**: https://github.com/marcusgoll/Spec-Flow/issues
-
-🤖 Released with [Claude Code](https://claude.com/claude-code)"
-
-# Create GitHub Release using gh CLI
-gh release create "v${NEW_VERSION}" \
-  --title "v${NEW_VERSION}" \
-  --notes "$RELEASE_BODY" \
-  --verify-tag
-
-if [ $? -eq 0 ]; then
-  echo "✅ GitHub Release created: https://github.com/marcusgoll/Spec-Flow/releases/tag/v${NEW_VERSION}"
-else
-  echo "⚠️  GitHub Release creation failed (non-blocking)"
-  echo "Create manually: https://github.com/marcusgoll/Spec-Flow/releases/new?tag=v${NEW_VERSION}"
-fi
-```
-
-**Error Handling**: If GitHub Release fails, workflow continues (release still valid via tag + npm)
-
----
----
-
-## Step 8: Publish to npm
-
-Publish the package to npm registry:
-
-```bash
-echo "📦 Publishing to npm..."
-npm publish
-```
-
-**Wait for publish to complete** (shows progress output).
-
-**Verify publication**:
-```bash
-PUBLISHED_VERSION=$(npm view spec-flow version 2>/dev/null)
-if [ "$PUBLISHED_VERSION" = "$NEW_VERSION" ]; then
-  echo "✅ Published to npm successfully"
-else
-  echo "⚠️  Published but version mismatch (expected: $NEW_VERSION, got: $PUBLISHED_VERSION)"
-fi
-```
-
-**Error Handling**:
-- If npm publish fails → Show error and troubleshooting steps:
-  ```
-  ❌ npm publish failed!
-
-  The commit and tag are pushed to GitHub, but npm package was not published.
-
-  Common causes:
-  - Not logged in: Run `npm login`
-  - Version already exists: Check npm for existing v{NEW_VERSION}
-  - Network issue: Retry with `npm publish`
-  - Permission denied: Verify npm account has publish rights to "spec-flow"
-
-  To retry publish manually:
-  npm publish
-  ```
-  **Continue** - Release is still valid on GitHub even if npm fails.
-
-**If publish succeeds**: Continue to Step 9.
-
----
-
-## Step 9: Post X Announcement (Optional)
-
-Announce the release on X (Twitter) using the `/x-announce` command.
-
-**Note**: This step uses an internal X Poster API. The command file is in `.gitignore` and should not be committed to the repository.
-
-### Invoke X Announce Command
-
-```bash
-# Step 9: X Announcement (Optional)
-if [ -f ".claude/commands/x-announce.md" ]; then
-  echo "📱 Posting release announcement to X..."
-  /x-announce "v${NEW_VERSION}"
-else
-  echo "ℹ️  X announcement command not available (optional - skipping)"
-fi
-```
-
-**What this does**:
-- Invokes the `/x-announce` slash command with the version number
-- Command provides 5 options: post now, schedule, draft, edit, skip
-- If "post now" selected: Posts immediately and creates threaded reply with GitHub link
-- If "schedule" selected: Schedules post for specified datetime
-- If "draft" selected: Saves post without publishing
-- Non-blocking: Errors or skips don't stop the release workflow
-
-**See**: `.claude/commands/x-announce.md` for full implementation details
-
----
-
-## Step 10: Show Success Summary
-
-Display comprehensive success message:
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ Release v{NEW_VERSION} Published!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🎉 Successfully released Spec-Flow v{NEW_VERSION}
-
-📦 Package:
-   npm: https://www.npmjs.com/package/spec-flow/v/{NEW_VERSION}
-   Install: npm install spec-flow@{NEW_VERSION}
-
-🏷️  GitHub Release:
-   URL: https://github.com/marcusgoll/Spec-Flow/releases/tag/v{NEW_VERSION}
-   Tag: v{NEW_VERSION}
-   Commit: {COMMIT_SHA}
-
-📝 Documentation:
-   README.md: ✅ Updated with v{NEW_VERSION}
-   CHANGELOG.md: ✅ Updated with release notes
-   Release Notes: ✅ Published to GitHub
-
-📊 CI Status: ✅ All checks passing
-
-{If X announcement was posted:}
-📱 X Announcement:
-   Main Post: {X_MAIN_POST_URL}
-   Reply: {X_REPLY_POST_URL}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ Release Complete! {If X posted: "Posted to X!" else: "No manual steps required."}
-
-Optional Next Steps:
-1. {If X not posted: "**Announce**: Share release on social media" else: "**Engage**: Monitor X for feedback and questions"}
-2. **Verify**: Test installation with npx spec-flow@{NEW_VERSION} --version
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
----
-
-## Error Recovery Guide
-
-### If Something Goes Wrong
-
-**Scenario 1: Pre-flight checks fail**
-- Fix the issue (e.g., `npm login`, `git checkout main`)
-- Run `/release` again
-
-**Scenario 2: Files updated but commit failed**
-- Check git status: `git status`
-- Fix any issues
-- Manually commit: `git add . && git commit -m "chore: release vX.Y.Z"`
-- Continue manually or run `/release` again
-
-**Scenario 3: Commit created but push failed**
-- Fix network/auth issues
-- Manually push: `git push origin main && git push origin vX.Y.Z`
-- Then manually publish: `npm publish`
-
-**Scenario 4: Pushed but npm publish failed**
-- Fix npm auth: `npm login`
-- Manually publish: `npm publish`
-- Release is still valid on GitHub
-
-**Scenario 5: Everything published but want to undo**
-- **Cannot unpublish from npm** (after 24 hours)
-- Can delete GitHub tag: `git push origin --delete vX.Y.Z`
-- Can delete local tag: `git tag -d vX.Y.Z`
-- Must publish new patch version to fix issues
-
----
-
-## Important Notes
-
-- **Conventional Commits Required**: This command relies on conventional commit messages. If your commits don't follow the convention, it defaults to PATCH.
-- **No Rollback After Publish**: Once published to npm, you cannot unpublish (npm policy). Make sure you're ready before confirming.
-- **CHANGELOG Edits**: The command creates a minimal CHANGELOG entry. Add detailed notes before announcing the release.
-- **GitHub Release**: The command creates a git tag but not a GitHub Release. Create one manually for better visibility.
-- **Credentials Required**: You must be logged into npm (`npm login`) before running this command.
-
----
-
-## Example Run
-
-```
-/release
-
-🔍 Pre-flight checks...
-✅ Git remote configured
-✅ On main branch
-✅ Working tree clean
-✅ npm authenticated
-
-📊 Analyzing commits since v2.1.3...
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 Release Analysis
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Current Version: v2.1.3
-New Version:     v2.2.0
-Bump Type:       minor
-
-Recent Commits (5):
-- feat: add automatic version detection to /release
-- fix: correct error message in pre-flight checks
-- docs: update CLAUDE.md with new release flow
-- chore: update dependencies
-- test: add unit tests for version detection
-
-Detected Changes:
-- 0 breaking changes
-- 1 feature
-- 1 fix
-- 3 other
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Ready to release v2.2.0. This will:
-✅ Update package.json version field
-✅ Add CHANGELOG.md entry for v2.2.0
-✅ Commit changes with message: "chore: release v2.2.0"
-✅ Create git tag: v2.2.0
-✅ Push to GitHub (origin/main + tag)
-✅ Publish to npm
-
-Proceed with release? yes
-
-📝 Updating files...
-✅ package.json updated
-✅ CHANGELOG.md updated
-
-📝 Committing changes...
-✅ Commit created: a1b2c3d chore: release v2.2.0
-
-🏷️  Creating git tag...
-✅ Tag created: v2.2.0
-
-📤 Pushing to GitHub...
-✅ Pushed to origin/main
-✅ Pushed tag v2.2.0
-
-📦 Publishing to npm...
-✅ Published to npm successfully
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ Release v2.2.0 Published!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-[... success message as shown above ...]
-```
-
----
-
-## Workflow Position
-
-This command is **internal only** and runs **outside** the normal feature workflow:
-
-```
-Normal Feature Workflow:
-/feature → ... → /ship-prod → /finalize
-
-Workflow Development:
-[Complete feature] → [Merge to main] → /release → [npm published]
-```
-
-**Use this command when:**
-- You've completed work on a workflow improvement
-- All changes are committed to main branch
-- You're ready to publish a new version of the spec-flow package
-- You want to automate the entire release process
-
-**Do NOT use this for:**
-- User project releases (users manage their own versioning)
-- Feature branches (only release from main)
-- Experimental changes (publish stable releases only)
+**Build system (v6.12.0+):**
+- Requires dist/ directory with BUILD_REPORT.md
+- Validates build before any git operations
+- Blocks release if build fails
+
+**Error recovery:**
+- Pre-flight failure: Fix issue and re-run /release
+- Build failure: Fix build and re-run /release
+- Git push failure: Manually push or delete tag and re-run
+- GitHub Release failure: Manually create or re-run with --skip-npm
+- npm publish failure: Fix authentication and run npm publish manually
+
+**Related commands:**
+- `/announce-release`: Post release to X (automatically invoked with --announce)
+- `/init-project`: Initialize project docs (must exist for roadmap integration)
+- `/roadmap`: Manage features (can reference releases in milestones)
+
+**Internal use disclaimer:**
+This command is for Spec-Flow workflow development only. Not intended for end-user projects. End users should use their own release workflows.
+</notes>

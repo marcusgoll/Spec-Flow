@@ -1,621 +1,548 @@
 ---
 name: clarification-phase
-description: "Standard Operating Procedure for /clarify phase. Covers question generation, prioritization, structured formats, and spec integration."
-allowed-tools: Read, Write, Edit, Grep, Bash
+description: Executes the /clarify phase using AskUserQuestion tool to resolve ambiguities through structured questions (≤3), prioritization, and answer integration. Use when spec.md contains [NEEDS CLARIFICATION] markers, when requirements need disambiguation, or when running /clarify command to resolve critical scope/security/UX ambiguities before planning. (project)
 ---
 
-# Clarification Phase: Standard Operating Procedure
+<objective>
+Execute the /clarify phase by resolving critical ambiguities in spec.md through structured questioning (≤3 questions), prioritization, and answer integration. Ensures specifications are concrete and unambiguous before planning phase.
+</objective>
 
-> **Training Guide**: Step-by-step procedures for executing the `/clarify` command to resolve ambiguities efficiently.
+<quick_start>
+Resolve ambiguities in spec.md using AskUserQuestion tool:
 
-**Supporting references**:
-- [reference.md](reference.md) - Question generation strategies, prioritization matrix, integration patterns
-- [examples.md](examples.md) - Good questions (specific, scope-defining) vs bad questions (vague, with defaults)
-- [templates/clarification-template.md](templates/clarification-template.md) - Structured question template
+1. Extract [NEEDS CLARIFICATION] markers from spec.md
+2. Prioritize using matrix (Critical/High → ask, Medium/Low → assumptions)
+3. Call AskUserQuestion with ≤3 questions (batched, multiSelect for subsystems)
+4. Receive user answers synchronously
+5. Integrate into spec.md, remove all markers
+6. Add Clarifications (Resolved) section with deferred assumptions
 
----
+**Inputs**: spec.md with [NEEDS CLARIFICATION] markers
+**Outputs**: Updated spec.md (no markers), clarifications.md (record)
+</quick_start>
 
-## Phase Overview
+<prerequisites>
+- Spec phase completed (spec.md exists)
+- spec.md contains ≥1 [NEEDS CLARIFICATION] marker (if none, skip /clarify)
+- Git working tree clean
 
-**Purpose**: Resolve critical ambiguities in spec.md through structured questions, then integrate answers back into specification.
+If clarification count >5, review spec phase quality (too many ambiguities).
+</prerequisites>
 
-**Inputs**:
-- `specs/NNN-slug/spec.md` with `[NEEDS CLARIFICATION]` markers
+<workflow>
+<step number="1">
+**Extract clarification needs**
 
-**Outputs**:
-- `specs/NNN-slug/clarifications.md` - Structured questions with user answers
-- Updated `specs/NNN-slug/spec.md` - Resolved requirements, removed markers
-- Updated `workflow-state.yaml`
+Read spec.md, find all [NEEDS CLARIFICATION: ...] markers, extract ambiguity context.
 
-**Expected duration**: 5-15 minutes (question generation) + user response time
-
----
-
-## Prerequisites
-
-**Environment checks**:
-- [ ] Spec phase completed (`spec.md` exists)
-- [ ] spec.md contains `[NEEDS CLARIFICATION]` markers (if none, skip /clarify)
-- [ ] Git working tree clean
-
-**Knowledge requirements**:
-- Question prioritization matrix (Critical > High > Medium > Low)
-- Structured question format (Context → Options → Impact)
-- Spec integration patterns
-
----
-
-## Execution Steps
-
-### Step 1: Extract Clarification Needs
-
-**Actions**:
-1. Read `spec.md` to find all `[NEEDS CLARIFICATION: ...]` markers
-2. Extract ambiguity context for each marker
-3. Count clarifications found
-
-**Example**:
 ```bash
 # Count clarifications
-CLARIFICATION_COUNT=$(grep -c "\[NEEDS CLARIFICATION" specs/NNN-slug/spec.md)
-echo "Found $CLARIFICATION_COUNT clarifications"
+grep -c "\[NEEDS CLARIFICATION" specs/NNN-slug/spec.md
 
-# List them
+# List with line numbers
 grep -n "\[NEEDS CLARIFICATION" specs/NNN-slug/spec.md
 ```
 
-**Quality check**: If count = 0, skip /clarify phase. If count >5, review spec phase (too many clarifications).
+If count = 0, skip /clarify phase.
+</step>
 
----
+<step number="2">
+**Prioritize questions**
 
-### Step 2: Prioritize Questions
+Categorize each clarification by priority:
 
-**Actions**:
-1. Categorize each clarification by priority using matrix (see [reference.md](reference.md)):
-   - **Critical**: Scope boundary, security/privacy, breaking changes
-   - **High**: User experience decisions, functionality tradeoffs
-   - **Medium**: Performance SLAs, technical stack choices
-   - **Low**: Error messages, rate limits
+- **Critical** (always ask): Scope boundary, security/privacy, breaking changes
+- **High** (ask if ambiguous): User experience decisions, functionality tradeoffs
+- **Medium** (use defaults): Performance SLAs, technical stack choices
+- **Low** (use standards): Error messages, rate limits
 
-2. Keep only Critical + High priority questions
-3. Convert Medium/Low to informed guesses (document as assumptions)
+Keep only Critical + High priority questions (target: ≤3).
 
-**Prioritization matrix quick reference**:
-| Category | Priority | Ask? | Example |
-|----------|----------|------|---------|
-| Scope boundary | Critical | ✅ Always | "Does this include admin features?" |
-| Security/Privacy | Critical | ✅ Always | "Should PII be encrypted at rest?" |
-| Breaking changes | Critical | ✅ Always | "Can we change API response format?" |
-| User experience | High | ✅ If ambiguous | "Modal or new page?" |
-| Performance SLA | Medium | ❌ Use defaults | "Response time target?" → Assume <500ms |
-| Technical stack | Medium | ❌ Defer to plan | "Which database?" → Plan phase decision |
-| Error messages | Low | ❌ Use standard | "Error message wording?" → Standard pattern |
-| Rate limits | Low | ❌ Use defaults | "Requests per minute?" → Assume 100/min |
+Convert Medium/Low to informed guesses, document as assumptions.
 
-**Target**: ≤3 questions total after prioritization.
+See references/prioritization-matrix.md for detailed categorization rules.
+</step>
 
-**Quality check**: Are all remaining questions scope/security critical?
+<step number="3">
+**Prepare AskUserQuestion tool call**
 
----
+For each Critical/High priority clarification, structure as AskUserQuestion parameter:
 
-### Step 3: Generate Structured Questions
-
-**Actions**:
-For each Critical/High priority clarification, generate structured question using template:
-
-**Structured question format**:
-```markdown
-## Question N: [Short Title]
-
-**Context**: [Explain ambiguity in spec with specific reference]
-
-**Options**:
-A. [Option 1 description]
-B. [Option 2 description]
-C. [Option 3 description]
-
-**Impact**:
-- Option A: [Implementation cost + user value + tradeoffs]
-- Option B: [Implementation cost + user value + tradeoffs]
-- Option C: [Implementation cost + user value + tradeoffs]
-
-**Recommendation**: [Suggested option with rationale]
-
-**References**: [Link to spec.md line with [NEEDS CLARIFICATION] marker]
+**AskUserQuestion format**:
+```javascript
+AskUserQuestion({
+  questions: [
+    {
+      question: "spec.md:45 mentions 'dashboard metrics' but doesn't specify which. What should we display?",
+      header: "Metrics", // max 12 chars
+      multiSelect: false,
+      options: [
+        {
+          label: "Completion only",
+          description: "% of lessons finished (2 days, basic insights)"
+        },
+        {
+          label: "Completion + time",
+          description: "Lessons finished + hours logged (4 days, actionable insights)"
+        },
+        {
+          label: "Full analytics",
+          description: "Completion + time + quiz scores + engagement (7 days, requires infrastructure)"
+        }
+      ]
+    }
+  ]
+})
 ```
 
-**Example**:
+**Quality standards**:
+- **question**: Full context with spec.md reference (e.g., "spec.md:45 mentions...")
+- **header**: Short label ≤12 chars (e.g., "Metrics", "Auth", "Scope")
+- **multiSelect**: false for single choice, true for subsystems/features
+- **options**: 2-3 concrete choices with impacts in description
+- **label**: Concise option name (1-5 words)
+- **description**: Implementation cost + value + tradeoffs (1-2 sentences)
+
+Batch related questions (max 3 per AskUserQuestion call).
+
+See references/question-bank.md for 40+ example questions in AskUserQuestion format.
+</step>
+
+<step number="4">
+**Document deferred assumptions**
+
+For Medium/Low priority questions not asked, prepare assumptions section:
+
 ```markdown
-## Question 1: Dashboard Metrics Scope
+## Deferred Assumptions (Using Informed Guesses)
 
-**Context**: spec.md line 45 mentions "student progress tracking" but doesn't specify which metrics to display.
-
-**Options**:
-A. Completion rate only (% of lessons finished)
-B. Completion + time spent (lessons finished + hours logged)
-C. Full analytics (completion + time + quiz scores + engagement metrics)
-
-**Impact**:
-- Option A: Fastest (~2 days), basic insights, may require expansion later
-- Option B: Moderate (~4 days), actionable insights for identifying struggling students
-- Option C: Comprehensive (~7 days), requires analytics infrastructure, future-proof
-
-**Recommendation**: Option B (balances insight with implementation cost)
-
-**References**: specs/042-student-progress-dashboard/spec.md:45
-```
-
-**Quality standards for questions**:
-- **Specific**: References exact spec location
-- **Concrete**: 2-3 specific options (not open-ended)
-- **Quantified**: Implementation costs in days/hours
-- **Actionable**: User picks A/B/C (not vague descriptions)
-- **Focused**: One question = One decision (no compounds)
-
-**Quality check**: Does each question follow structured format with clear options?
-
----
-
-### Step 4: Document Deferred Questions as Assumptions
-
-**Actions**:
-1. For Medium/Low priority questions that were not asked, document as assumptions in clarifications.md
-2. Explain why defaults were used instead of asking
-
-**Example**:
-```markdown
-## Deferred Questions (Using Informed Guesses)
-
-### Export Format
+### [Topic]
 **Not asked** (Low priority - standard default exists)
-**Assumption**: CSV format (most compatible, industry standard)
-**Rationale**: Users can request JSON/Excel in future if needed
-**Override**: If requirements differ, specify in spec.md
+**Assumption**: [Concrete default choice]
+**Rationale**: [Why this default is reasonable]
+**Override**: [How user can override in spec.md]
+```
 
-### Rate Limiting
-**Not asked** (Low priority - reasonable default exists)
+These will be included in clarifications.md record after AskUserQuestion call.
+</step>
+
+<step number="5">
+**Call AskUserQuestion tool**
+
+Execute AskUserQuestion with batched Critical/High questions:
+
+```javascript
+AskUserQuestion({
+  questions: [
+    {
+      question: "spec.md:45 mentions 'dashboard metrics'. Which should we display?",
+      header: "Metrics",
+      multiSelect: false,
+      options: [
+        { label: "Completion only", description: "2 days, basic insights" },
+        { label: "Completion + time", description: "4 days, actionable insights" },
+        { label: "Full analytics", description: "7 days, requires infrastructure" }
+      ]
+    },
+    {
+      question: "spec.md:67 doesn't specify access control model. Which approach?",
+      header: "Access",
+      multiSelect: false,
+      options: [
+        { label: "Simple (users/admins)", description: "2 days, basic permissions" },
+        { label: "Role-based (RBAC)", description: "4 days, flexible permissions" }
+      ]
+    }
+  ]
+})
+```
+
+**Batching strategy**:
+- Batch 2-3 related questions per call
+- Use multiSelect: true for subsystem/feature selection questions
+- Use multiSelect: false for single-choice decisions
+
+Tool returns answers object:
+```javascript
+{
+  "Metrics": "Completion + time",
+  "Access": "Role-based (RBAC)"
+}
+```
+
+User can also select "Other" for custom answers.
+</step>
+
+<step number="6">
+**Integrate answers into spec.md**
+
+Use answers from AskUserQuestion tool response to update spec:
+
+For each answered question:
+1. Locate corresponding [NEEDS CLARIFICATION] marker in spec.md
+2. Replace with concrete requirement based on selected option
+3. Remove marker
+
+Example:
+```javascript
+// AskUserQuestion returned:
+{
+  "Metrics": "Completion + time",
+  "Access": "Role-based (RBAC)"
+}
+```
+
+Update spec.md:
+```markdown
+<!-- Before -->
+Dashboard displays student progress [NEEDS CLARIFICATION: Which metrics?]
+Users can access dashboard [NEEDS CLARIFICATION: Access control?]
+
+<!-- After -->
+Dashboard displays:
+- Lesson completion rate (% of assigned lessons finished)
+- Time spent per lesson (hours logged)
+
+User access control (role-based):
+- Teachers: View assigned students only
+- Admins: View all students
+- Students: View own progress only
+```
+
+Validate integration:
+```bash
+# Must return 0 (no markers remain)
+grep -c "\[NEEDS CLARIFICATION" specs/NNN-slug/spec.md
+```
+</step>
+
+<step number="7">
+**Create clarifications.md record**
+
+Generate specs/NNN-slug/clarifications.md as historical record:
+
+```markdown
+# Clarifications for [Feature Name]
+
+**Date**: [timestamp]
+**Questions Asked**: 2 (Critical: 1, High: 1)
+**Deferred**: 3 assumptions
+
+## Questions & Answers
+
+### Q1: Dashboard Metrics (Critical)
+**Question**: spec.md:45 mentions 'dashboard metrics'. Which should we display?
+**Options**: Completion only | Completion + time | Full analytics
+**Selected**: Completion + time
+**Rationale**: Balances actionable insights with implementation cost (4 days vs 7)
+
+### Q2: Access Control (High)
+**Question**: spec.md:67 doesn't specify access control model. Which approach?
+**Options**: Simple (users/admins) | Role-based (RBAC)
+**Selected**: Role-based (RBAC)
+**Rationale**: Future-proof for additional roles
+
+## Deferred Assumptions
+
+### Export Format (Low)
+**Not asked** - Standard default exists
+**Assumption**: CSV format
+**Rationale**: Most compatible, industry standard
+**Override**: Specify in spec.md if JSON/Excel needed
+
+### Rate Limiting (Low)
+**Not asked** - Reasonable default
 **Assumption**: 100 requests/minute per user
-**Rationale**: Conservative limit prevents abuse, can increase based on usage
-**Override**: If higher limits needed, document in spec.md
-
-### Cache Duration
-**Not asked** (Medium priority - standard default exists)
-**Assumption**: 10-minute cache for dashboard data
-**Rationale**: Balances freshness with performance
-**Override**: Specify in spec.md if real-time updates required
+**Rationale**: Conservative, prevents abuse
+**Override**: Specify in spec.md if higher limits needed
 ```
 
-**Quality check**: All deferred questions documented with rationale.
+Add "Clarifications (Resolved)" section to spec.md:
 
----
-
-### Step 5: Create clarifications.md
-
-**Actions**:
-1. Render `clarifications.md` from template with:
-   - Question count and priority breakdown
-   - Structured questions (Critical + High only)
-   - Deferred questions section (Medium + Low)
-   - Instructions for user
-
-2. Add user instructions:
-   ```markdown
-   ## Instructions
-
-   Please answer the questions below by:
-   1. Selecting an option (A/B/C) or providing custom answer
-   2. Adding any additional context or constraints
-   3. Reviewing deferred assumptions (override if needed)
-
-   Once complete, run `/clarify continue` to integrate answers into spec.
-   ```
-
-**Quality check**: clarifications.md is clear and ready for user review.
-
----
-
-### Step 6: Wait for User Answers
-
-**Actions**:
-1. Present clarifications.md to user
-2. User reviews questions
-3. User provides answers (selects options A/B/C or custom)
-4. User signals completion
-
-**Example user responses**:
 ```markdown
-## Question 1: Dashboard Metrics Scope
-**Selected**: Option B (Completion + time spent)
-**Additional context**: Also include "last activity date" for staleness detection
-
-## Question 2: User Access Control
-**Selected**: Option C (Role-based access)
-**Additional context**: Need to add "Parent" role with view-only access to their children's data
-
-## Deferred Assumptions - Overrides
-**Rate Limiting**: Use 200 requests/minute instead of 100 (we have power users)
-```
-
-**Quality check**: User provided clear answers to all questions.
-
----
-
-### Step 7: Integrate Answers into spec.md
-
-**Actions**:
-1. For each answered question, update spec.md:
-   - Locate corresponding `[NEEDS CLARIFICATION]` marker
-   - Replace with concrete requirement based on answer
-   - Add details from "additional context"
-
-2. Remove all `[NEEDS CLARIFICATION]` markers
-
-3. Add "Clarifications (Resolved)" section to spec.md
-
-**Example integration**:
-
-**Before** (spec.md):
-```markdown
-## Requirements
-- Dashboard displays student progress [NEEDS CLARIFICATION: Which metrics?]
-- Users can access dashboard [NEEDS CLARIFICATION: Access control model?]
-```
-
-**After** (spec.md):
-```markdown
-## Requirements
-- Dashboard displays:
-  - Lesson completion rate (% of assigned lessons finished)
-  - Time spent per lesson (hours logged)
-  - Last activity date (to detect stale/inactive students)
-- User access control (role-based):
-  - Teachers: View assigned students only
-  - Admins: View all students
-  - Parents: View own children only (read-only)
-  - Students: View own progress only
-
 ## Clarifications (Resolved)
 
-### Q1: Dashboard Metrics Scope
-**Asked**: Which metrics should the dashboard display?
-**Options**: A) Completion only, B) Completion + time, C) Full analytics
-**Decision**: Option B - Completion rate + time spent + last activity date
-**Rationale**: Balances insights with implementation cost (4 days vs 7 for full analytics)
-**Additional**: Last activity date added for staleness detection
+Answered 2 questions on [date]:
+1. Dashboard metrics: Completion + time spent (4 days)
+2. Access control: Role-based RBAC (future-proof)
 
-### Q2: User Access Control
-**Asked**: What access control model should be used?
-**Options**: A) Simple (users/admins), B) Standard CRUD, C) Role-based
-**Decision**: Option C - Role-based access control
-**Rationale**: Future-proof for additional roles (e.g., counselors, district admins)
-**Additional**: Parent role added with read-only access to children's data
+Deferred assumptions: Export format (CSV), Rate limiting (100/min)
 
-### Deferred Assumptions - Overrides
-**Rate Limiting**: Changed from 100/min to 200/min (power users on platform)
+See clarifications.md for full details.
 ```
+</step>
 
-**Quality check**: All `[NEEDS CLARIFICATION]` markers removed, decisions documented.
+<step number="8">
+**Commit clarifications**
 
----
-
-### Step 8: Validate Integration
-
-**Actions**:
-1. Run checks:
-   ```bash
-   # Verify no markers remain
-   REMAINING=$(grep -c "\[NEEDS CLARIFICATION" specs/NNN-slug/spec.md)
-   if [ $REMAINING -gt 0 ]; then
-     echo "⚠️  Still has $REMAINING unresolved clarifications"
-     grep -n "\[NEEDS CLARIFICATION" specs/NNN-slug/spec.md
-     exit 1
-   fi
-
-   # Verify clarifications section added
-   if ! grep -q "## Clarifications (Resolved)" specs/NNN-slug/spec.md; then
-     echo "⚠️  Missing Clarifications section in spec.md"
-     exit 1
-   fi
-   ```
-
-2. Review spec.md for completeness:
-   - All requirements now concrete (no ambiguities)
-   - Decisions documented with rationale
-   - Ready for planning phase
-
-**Quality check**: spec.md is complete and unambiguous.
-
----
-
-### Step 9: Commit Clarifications
-
-**Actions**:
 ```bash
 git add specs/NNN-slug/clarifications.md specs/NNN-slug/spec.md
-git commit -m "docs: resolve clarifications for <feature-name>
+git commit -m "docs: resolve clarifications for [feature-name]
 
-Answered 2 critical questions:
-- Dashboard metrics scope: Completion + time + last activity (Option B)
-- User access control: Role-based (Option C) + Parent role
+Answered N questions:
+- [Q1 summary]: [Decision]
+- [Q2 summary]: [Decision]
 
 Deferred assumptions:
-- Export format: CSV (standard)
-- Rate limiting: 200/min (override: power users)
-- Cache duration: 10 min (standard)
+- [Topic]: [Choice] ([reason])
 
-All [NEEDS CLARIFICATION] markers removed from spec.md
-Ready for planning phase
-"
+All [NEEDS CLARIFICATION] markers removed
+Ready for planning phase"
 ```
 
-**Quality check**: Clarifications committed, workflow-state.yaml updated.
+Update workflow-state.yaml: `clarification.status = completed`
+</step>
+</workflow>
 
----
+<validation>
+After clarification phase, verify:
 
-## Common Mistakes to Avoid
+- All [NEEDS CLARIFICATION] markers removed from spec.md
+- ≤3 structured questions asked (Critical + High only)
+- Medium/Low priorities documented as assumptions
+- Answers integrated into spec.md Requirements section
+- Clarifications (Resolved) section added to spec.md
+- clarifications.md generated with user answers
+- workflow-state.yaml updated (clarification.status = completed)
+- Git commit created with descriptive message
+</validation>
 
-### 🚫 Too Many Clarification Questions (>3)
+<anti_patterns>
+<pitfall name="too_many_questions">
+**❌ Don't**: Ask >3 questions per feature (7+ questions for simple feature)
+**✅ Do**: Apply prioritization matrix strictly, keep only Critical/High, convert Medium/Low to assumptions
 
-**Impact**: Delays workflow, frustrates users, analysis paralysis
+**Why**: Delays workflow, frustrates users, causes analysis paralysis
+**Target**: ≤3 questions total after prioritization
 
-**Scenario**:
+**Example** (bad):
 ```
-Generated 7 questions for simple feature:
-1. What format for export? (CSV/JSON) → Has default (CSV)
-2. Which fields to include? → Critical, should ask
-3. Email notification? → Has default (optional)
-4. Rate limiting? → Has default (100/min)
-5. Max file size? → Has default (50MB)
-6. Retention period? → Has default (90 days)
-7. Compress files? → Has default (yes for >10MB)
-```
-
-**Prevention**:
-- Apply prioritization matrix strictly
-- Keep only Critical + High priority
-- Convert Medium/Low to informed guesses
-- Target: ≤3 questions
-
----
-
-### 🚫 Vague or Compound Questions
-
-**Impact**: Unclear answers, requires follow-up, wastes time
-
-**Bad examples**:
-```markdown
-❌ "What features should the dashboard have and how should it look?"
-   (Compound: mixes functionality + design)
-
-❌ "What should we do about errors?"
-   (Too vague: no context, no options)
-
-❌ "Do you want this to be good?"
-   (Subjective, not actionable)
+7 questions for export feature:
+1. Export format? (CSV/JSON) → Has default ❌
+2. Which fields? → Critical ✅
+3. Email notification? → Has default ❌
+4. Rate limiting? → Has default ❌
+5. Max file size? → Has default ❌
+6. Retention period? → Has default ❌
+7. Compress files? → Has default ❌
 ```
 
-**Good examples**:
-```markdown
-✅ Question 1: Dashboard Metrics Scope
-   Context: spec mentions "progress" but not which metrics
-   Options: A) Completion only, B) Completion + time, C) Full analytics
-   Impact: [quantified costs]
-   Recommendation: Option B
+Should be:
+```
+1 question (Critical):
+- Which fields to export? (no reasonable default)
 
-✅ Question 2: Error Handling Strategy
-   Context: Spec doesn't specify how to handle API failures
-   Options: A) Retry 3x then fail, B) Retry indefinitely, C) Circuit breaker
-   Impact: [quantified costs + user experience]
-   Recommendation: Option A
+6 deferred assumptions:
+- Format: CSV (standard)
+- Email: Optional (user preference)
+- Rate limit: 100/min (reasonable)
+- Max size: 50MB (standard)
+- Retention: 90 days (compliance standard)
+- Compression: Auto >10MB (performance)
+```
+</pitfall>
+
+<pitfall name="vague_compound_questions">
+**❌ Don't**: Ask vague or compound questions
+- "What features should dashboard have and how should it look?" (compound - mixes features + design)
+- "What should we do about errors?" (too vague, no context, no options)
+- "Do you want this to be good?" (subjective, not actionable)
+
+**✅ Do**: Use AskUserQuestion with clear context, 2-3 concrete options, quantified impacts
+
+**Why**: Unclear questions lead to ambiguous answers, require follow-up, waste time
+
+**Example** (good with AskUserQuestion):
+```javascript
+AskUserQuestion({
+  questions: [{
+    question: "spec.md:45 mentions 'progress' but doesn't specify which metrics to display. What should the dashboard show?",
+    header: "Metrics",
+    multiSelect: false,
+    options: [
+      {
+        label: "Completion only",
+        description: "% of lessons finished (2 days, basic insights)"
+      },
+      {
+        label: "Completion + time",
+        description: "Lessons finished + hours logged (4 days, actionable insights for identifying struggling students)"
+      },
+      {
+        label: "Full analytics",
+        description: "Completion + time + quiz scores + engagement (7 days, requires analytics infrastructure)"
+      }
+    ]
+  }]
+})
 ```
 
-**Prevention**: Use structured template (Context → Options → Impact → Recommendation)
+**Result**: Clear, specific options with quantified impacts - user can make informed decision.
+</pitfall>
 
----
+<pitfall name="missing_spec_integration">
+**❌ Don't**: Leave clarifications in separate file without updating spec.md
+**✅ Do**: Integrate all answers into spec.md Requirements, remove all [NEEDS CLARIFICATION] markers
 
-### 🚫 Missing Spec Integration
-
-**Impact**: Clarifications not reflected in spec, planning phase lacks context
-
-**Scenario**:
-```
-User answered 3 clarifications but:
-- spec.md still says "[NEEDS CLARIFICATION: Dashboard scope]"
-- plan.md can't proceed without knowing scope
-- Implementation phase guesses requirements
-```
-
-**Prevention**:
-1. Update spec.md Requirements section with concrete details
-2. Remove all `[NEEDS CLARIFICATION]` markers
-3. Add "Clarifications (Resolved)" section
-4. Run validation check before completing phase
+**Why**: Planning phase can't proceed without concrete requirements in spec
 
 **Validation**:
 ```bash
-# Must return 0
+# Must return 0 (no markers remain)
 grep -c "\[NEEDS CLARIFICATION" specs/NNN-slug/spec.md
 ```
+</pitfall>
 
----
+<pitfall name="no_deferred_assumptions">
+**❌ Don't**: Skip documenting Medium/Low questions
+**✅ Do**: Document all Medium/Low as assumptions with rationale in clarifications.md
 
-### 🚫 No Deferred Assumptions Documented
-
-**Impact**: User doesn't know what defaults were applied
-
-**Prevention**: Document all Medium/Low priority questions as assumptions with rationale
-
----
-
-### 🚫 Questions Without Options
-
-**Impact**: Open-ended answers, hard to integrate into spec
-
-**Bad example**:
-```markdown
-❌ Question 1: What should the dashboard show?
-   (No options, completely open-ended)
-```
-
-**Good example**:
-```markdown
-✅ Question 1: Dashboard Metrics Scope
-   Options: A, B, C (concrete choices with costs)
-```
-
-**Prevention**: Always provide 2-3 concrete options with quantified impacts
-
----
-
-## Best Practices
-
-### ✅ Structured Question Format
-
-**Template**:
-```markdown
-## Question N: [Short Title]
-
-**Context**: [Explain ambiguity + spec reference]
-
-**Options**:
-A. [Concrete option 1]
-B. [Concrete option 2]
-C. [Concrete option 3]
-
-**Impact**:
-- Option A: [Cost + value + tradeoffs]
-- Option B: [Cost + value + tradeoffs]
-- Option C: [Cost + value + tradeoffs]
-
-**Recommendation**: [Suggested option + rationale]
-
-**References**: [spec.md line number]
-```
-
-**Result**: Clear answers, faster decisions, easy spec integration
-
----
-
-### ✅ Prioritized Question List
-
-**Approach**:
-1. Categorize: Critical, High, Medium, Low
-2. Ask: Critical + High only
-3. Document: Medium + Low as assumptions
+**Why**: User doesn't know what defaults were applied, can't override if needed
 
 **Example**:
 ```markdown
-## Questions (Critical + High Priority)
-1. Dashboard scope (Critical)
-2. Access control model (High)
+## Deferred Assumptions
 
-## Deferred Assumptions (Medium + Low Priority)
-- Export format: CSV (Low - standard default)
-- Rate limit: 100/min (Low - reasonable default)
-- Refresh rate: 5 min (Medium - standard default)
+### Rate Limiting
+**Not asked** (Low priority - reasonable default)
+**Assumption**: 100 requests/minute per user
+**Rationale**: Prevents abuse, can increase based on usage
+**Override**: Specify in spec.md if higher limits needed
+```
+</pitfall>
+
+<pitfall name="questions_without_options">
+**❌ Don't**: Ask open-ended questions without concrete options
+- "What should the dashboard show?" (completely open)
+
+**✅ Do**: Provide 2-3 concrete options with quantified impacts
+- Options: A/B/C with implementation costs + user value
+
+**Why**: Open-ended answers are hard to integrate into spec, lead to follow-up questions
+</pitfall>
+</anti_patterns>
+
+<best_practices>
+<practice name="structured_format">
+Always use AskUserQuestion tool with structured format:
+- **question**: Full context with spec.md reference (e.g., "spec.md:45 mentions...")
+- **header**: Short label ≤12 chars (e.g., "Metrics", "Auth")
+- **options**: 2-3 concrete choices with implementation costs in description
+- **multiSelect**: false for single choice, true for subsystems/features
+
+Example:
+```javascript
+AskUserQuestion({
+  questions: [{
+    question: "spec.md:45 mentions 'metrics'. What should we display?",
+    header: "Metrics",
+    multiSelect: false,
+    options: [
+      { label: "Completion only", description: "2 days, basic" },
+      { label: "Completion + time", description: "4 days, actionable" },
+      { label: "Full analytics", description: "7 days, complex" }
+    ]
+  }]
+})
 ```
 
-**Result**: Focused user attention, faster responses, reasonable defaults
+Result: Clear answers, faster decisions, easy spec integration
+</practice>
 
----
+<practice name="prioritized_list">
+Categorize all clarifications:
+1. Critical → Ask always
+2. High → Ask if ambiguous
+3. Medium → Document as assumption
+4. Low → Document as assumption
 
-### ✅ Clarification Response Integration Checklist
+Target: ≤3 questions (Critical + High only)
 
-**After receiving answers**:
-- [ ] Update spec.md Requirements with concrete details
-- [ ] Remove all `[NEEDS CLARIFICATION]` markers
-- [ ] Add "Clarifications (Resolved)" section
-- [ ] Document rationale for each decision
-- [ ] Include additional context from user
-- [ ] Verify `grep "\[NEEDS CLARIFICATION" spec.md` returns nothing
+Result: Focused user attention, faster responses, reasonable defaults
+</practice>
+
+<practice name="integration_checklist">
+After receiving answers from AskUserQuestion:
+- [ ] Extract selected options from tool response (answers object)
+- [ ] Update spec.md Requirements with concrete details based on selections
+- [ ] Remove all [NEEDS CLARIFICATION] markers
+- [ ] Create clarifications.md record with questions + answers
+- [ ] Add "Clarifications (Resolved)" section to spec.md
+- [ ] Document deferred assumptions in clarifications.md
+- [ ] Verify `grep "\[NEEDS CLARIFICATION" spec.md` returns 0
 - [ ] Commit with descriptive message
 
----
+Result: Complete spec, ready for planning phase
+</practice>
+</best_practices>
 
-## Phase Checklist
+<success_criteria>
+Phase complete when:
 
-**Pre-phase checks**:
-- [ ] spec.md has `[NEEDS CLARIFICATION]` markers (otherwise skip)
-- [ ] Clarification count ≤5 (if >5, review spec phase)
-- [ ] Git working tree clean
-
-**During phase**:
-- [ ] Questions prioritized (Critical, High, Medium, Low)
-- [ ] Only Critical + High questions asked (target: ≤3)
-- [ ] Questions follow structured format (Context → Options → Impact)
-- [ ] Deferred questions documented as assumptions
+- [ ] All [NEEDS CLARIFICATION] markers removed from spec.md (grep returns 0)
+- [ ] ≤3 structured questions asked (Critical + High priority only)
+- [ ] Medium/Low questions documented as assumptions with rationale
 - [ ] User provided answers to all questions
+- [ ] Answers integrated into spec.md Requirements section
+- [ ] Clarifications (Resolved) section added to spec.md
+- [ ] clarifications.md generated with questions + answers
+- [ ] Deferred assumptions documented in clarifications.md
+- [ ] Git commit created with descriptive message
+- [ ] workflow-state.yaml updated (clarification.status = completed)
+- [ ] spec.md is complete and unambiguous (ready for /plan)
+</success_criteria>
 
-**Post-phase validation**:
-- [ ] spec.md Requirements updated with concrete details
-- [ ] All `[NEEDS CLARIFICATION]` markers removed
-- [ ] "Clarifications (Resolved)" section added to spec.md
-- [ ] Deferred assumptions documented
-- [ ] Clarifications committed
-- [ ] workflow-state.yaml updated
-
----
-
-## Quality Standards
-
-**Clarification quality targets**:
+<quality_standards>
+**Targets**:
 - Question count: ≤3 per feature
-- Question clarity: All follow structured format
+- Question clarity: 100% follow structured format (Context → Options → Impact)
 - Response integration: 100% (no remaining markers)
-- Time to resolution: ≤2 hours (user response time varies)
 - Follow-up questions: <10%
+- Time to resolution: ≤2 hours (excluding user response time)
 
-**What makes good clarifications**:
-- ≤3 questions (prioritized rigorously)
-- Structured format (Context → Options → Impact)
+**Good clarifications**:
+- ≤3 questions (rigorously prioritized)
+- Structured format (Context → Options → Impact → Recommendation)
 - Concrete options (2-3 specific choices, not open-ended)
 - Quantified impacts (implementation costs + user value)
 - Clear recommendations (suggested option with rationale)
 - Complete integration (all markers removed from spec)
 
-**What makes bad clarifications**:
+**Bad clarifications**:
 - >5 questions (didn't prioritize)
 - Vague questions ("What should we do?")
 - Compound questions (mixing multiple decisions)
 - No options (open-ended)
 - Missing integration (markers remain in spec)
+</quality_standards>
 
----
-
-## Completion Criteria
-
-**Phase is complete when**:
-- [ ] All pre-phase checks passed
-- [ ] All questions answered by user
-- [ ] spec.md updated with concrete requirements
-- [ ] All `[NEEDS CLARIFICATION]` markers removed
-- [ ] Clarifications committed
-- [ ] workflow-state.yaml shows `currentPhase: clarification` and `status: completed`
-
-**Ready to proceed to next phase** (`/plan`):
-- [ ] spec.md is complete and unambiguous
-- [ ] All decisions documented with rationale
-- [ ] No remaining ambiguities
-
----
-
-## Troubleshooting
-
+<troubleshooting>
 **Issue**: Too many questions (>3)
-**Solution**: Apply prioritization matrix more strictly, convert Medium/Low to assumptions
+**Solution**: Apply prioritization matrix strictly, convert Medium/Low to assumptions, batch related questions
 
 **Issue**: Questions are vague
-**Solution**: Use structured template (Context → Options → Impact), provide 2-3 concrete options
+**Solution**: Use AskUserQuestion format with clear context + spec reference, 2-3 concrete options, quantified impacts in description
 
 **Issue**: User can't choose between options
-**Solution**: Add more context about tradeoffs, strengthen recommendation with rationale
+**Solution**: Add more context to question text, include cost/benefit tradeoffs in option descriptions
 
-**Issue**: `[NEEDS CLARIFICATION]` markers remain after integration
-**Solution**: Review each marker, update spec.md with concrete details, run validation check
+**Issue**: AskUserQuestion header too long
+**Solution**: Keep header ≤12 chars (e.g., "Metrics" not "Dashboard Metrics Scope")
+
+**Issue**: [NEEDS CLARIFICATION] markers remain after integration
+**Solution**: Extract answers from AskUserQuestion response, update spec.md for each marker, run validation check
 
 **Issue**: Planning phase blocked due to ambiguity
-**Solution**: spec integration was incomplete, return to /clarify and complete integration
+**Solution**: Spec integration incomplete, verify answers mapped to spec requirements correctly
+</troubleshooting>
 
----
+<references>
+See references/ for:
+- Prioritization matrix (Critical/High/Medium/Low categorization rules)
+- Question bank (40+ example questions in AskUserQuestion format)
+- Execution workflow (detailed step-by-step with bash commands)
+- Question quality examples (good vs bad questions with AskUserQuestion)
 
-_This SOP guides the clarification phase. Refer to reference.md for prioritization details and examples.md for question patterns._
+See templates/ for:
+- clarification-template.md (clarifications.md record template)
+</references>

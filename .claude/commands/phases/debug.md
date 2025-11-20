@@ -1,297 +1,352 @@
 ---
-description: Debug errors and update error-log.md with systematic tracking
-version: 2.0
-updated: 2025-11-17
+name: debug
+description: Execute systematic debugging workflow via spec-cli.py, track failures in error-log.md, and generate session reports
+argument-hint: [feature-slug] [--from-optimize] [--issue-id=...] [--severity=...] [--type=...] [--component=...] [--non-interactive] [--json] [--deploy-diag] [--push]
+allowed-tools: [Bash(python .spec-flow/scripts/spec-cli.py:*), Read, Grep, Glob]
 ---
 
 # /debug — Systematic Error Resolution
 
-**Command**: `/debug [feature-slug] [flags]`
+<context>
+**User Input**: $ARGUMENTS
 
-**Purpose**: Diagnose errors, route to the right specialist, apply fixes, and update `error-log.md` plus a machine-readable session report.
+**Current Branch**: !`git branch --show-current 2>$null || echo "none"`
 
-**When to use**:
-- Test failures, build errors, runtime bugs, UI issues
-- Performance regressions
-- Auto-invoked by `/optimize` for code review issues
+**Feature Slug**: !`git branch --show-current 2>$null | sed 's/^feature\///' || basename $(pwd)`
 
-**Workflow position**: `implement → **debug** → optimize → preview → phase-1-ship`
+**Recent Debug Sessions**: !`ls -1t specs/*/debug-session.json 2>$null | head -3 || echo "none"`
 
----
+**Recent Errors**: !`tail -20 specs/*/error-log.md 2>$null | grep "^###" | head -3 || echo "none"`
 
-## MENTAL MODEL
+**Git Status**: !`git status --short 2>$null || echo "clean"`
 
-You are a **systematic debugger** with deterministic outputs and no interactive dead-ends.
+**Debug Session Artifacts** (after script execution):
+- @specs/*/debug-session.json
+- @specs/*/debug/run-XXXXXX/*.log
+- @specs/*/error-log.md
+</context>
+
+<objective>
+Systematically debug errors using spec-cli.py, track failures in error-log.md, and generate machine-readable session reports.
+
+Execute debugging workflow by:
+1. Running centralized debug script with arguments: $ARGUMENTS
+2. Analyzing verification status (lint, types, tests)
+3. Reading log files if verification failed
+4. Presenting results with actionable next steps
+5. Updating error knowledge base (error-log.md)
 
 **Modes**:
+- **Manual**: User specifies error type and component (non-interactive by default)
+- **Structured**: Auto-invoked by `/optimize` with issue metadata (--from-optimize)
 
-- **Manual**: You specify surface and error type (non-interactive by default)
-- **Structured**: Called from `/optimize` with `--from-optimize` and issue metadata
+**Philosophy**: Every error is a learning opportunity. Document failures, symptoms, root causes, and fixes. The error-log.md becomes the project's debugging knowledge base.
 
-**Philosophy**: Every error is a learning opportunity. Document failures, symptoms, root causes, and what was retired/corrected. The error-log.md becomes the project's debugging knowledge base.
+**Workflow position**: `implement → debug → optimize → preview → ship`
+</objective>
 
-**Outputs**:
-- `specs/<slug>/error-log.md` (human-readable postmortem)
-- `specs/<slug>/debug-session.json` (machine-readable session data)
-- `specs/<slug>/debug/run-XXXXXX/` (step logs per session)
+## Anti-Hallucination Rules
 
-**Token efficiency**: Delegate to specialists, emit structured artifacts, fail fast with actionable errors.
+**CRITICAL**: Follow these rules to prevent fabricating debug results.
 
----
+1. **Never claim script success without reading artifacts**
+   - Always Read debug-session.json to verify status
+   - Quote actual verification result: "passed" or "failed"
+   - Cite log files: "See specs/my-feature/debug/run-abc123/pytest.log:45"
 
-## FLAGS
+2. **Always read log files if verification failed**
+   - Don't guess at errors - read actual log content
+   - Quote verbatim error messages with file:line references
+   - Show stack traces or lint errors from logs
 
-```bash
-/debug [feature-slug] \
-  [--from-optimize] \
-  [--issue-id=CR### --severity=CRITICAL|HIGH|MEDIUM|LOW \
-   --category=Contract|KISS|DRY|Security|Type|Test|Database \
-   --file=path --line=N --description="..." --recommendation="..."] \
-  [--type=test|build|runtime|ui|performance] \
-  [--component=backend|frontend|database|integration] \
-  [--non-interactive] [--json] [--deploy-diag] [--push]
-```
+3. **Never invent fix recommendations**
+   - If script provides recommendation, quote it exactly
+   - If no recommendation, say "Manual investigation required"
+   - Don't suggest fixes without analyzing actual error output
 
-**Flags**:
+4. **Verify artifacts exist before claiming completion**
+   - Check error-log.md was updated (read latest entry)
+   - Confirm debug-session.json exists and is valid JSON
+   - Verify log directory created: specs/*/debug/run-XXXXXX/
 
-- `--from-optimize` — Structured mode (requires issue metadata)
-- `--issue-id=CR###` — Code review issue ID
-- `--severity=LEVEL` — CRITICAL|HIGH|MEDIUM|LOW
-- `--category=TYPE` — Contract|KISS|DRY|Security|Type|Test|Database
-- `--file=PATH` — File path with issue
-- `--line=N` — Line number
-- `--description="TEXT"` — Issue description
-- `--recommendation="TEXT"` — Suggested fix
-- `--type=TYPE` — Error type (test|build|runtime|ui|performance)
-- `--component=COMP` — Component (backend|frontend|database|integration)
-- `--non-interactive` — Never prompt; fail with actionable output
-- `--json` — Print machine-readable summary to stdout
-- `--deploy-diag` — Include optional platform diagnostics (slow)
-- `--push` — Git push current branch after committing fix
+5. **Never assume git operations succeeded**
+   - If --push flag used, verify with git log
+   - Check git status after script to confirm commits
+   - Quote actual commit message from git log
+
+**Why this matters**: Fabricated debug results hide real issues. Accurate artifact reading ensures debugging sessions are reproducible and errors are properly documented.
 
 ---
 
-<instructions>
-## USER INPUT
+<process>
 
-```text
-$ARGUMENTS
-```
+### Step 1: Execute Debug Script
 
-You **MUST** consider the user input before proceeding (if not empty).
-
-## Execute Debug Workflow
-
-Run the centralized spec-cli tool:
+Run the centralized spec-cli tool with user arguments:
 
 ```bash
 python .spec-flow/scripts/spec-cli.py debug "$ARGUMENTS"
 ```
 
-**What the script does:**
+**Script operations** (automated):
+1. Parse arguments (feature slug, flags, issue metadata)
+2. Load feature directory and validate existence
+3. Initialize error-log.md template if missing
+4. Show recent error log entries and past blockers (context)
+5. Reproduce & verify (runs lints, type checks, tests based on --type/--component)
+6. Optional: Deployment diagnostics (if --deploy-diag flag)
+7. Aggregate verification summary (lint_ok, types_ok, tests_ok)
+8. Update error-log.md with new timestamped entry
+9. Emit debug-session.json (machine-readable session data)
+10. Commit artifacts if verification passed (optional: --push to remote)
+11. Display summary (verification status, logs location, session path)
 
-1. **Parse arguments** — Extracts feature slug, flags, issue metadata
-2. **Load feature** — Validates feature directory exists
-3. **Create error log** — Initializes error-log.md template if missing
-4. **Load debug context** — Shows recent error log entries and past blockers
-5. **Reproduce & verify** — Runs lints, type checks, tests based on type/component
-6. **Deployment diagnostics** — Optional platform checks (Vercel, Railway, GitHub Actions)
-7. **Verification summary** — Aggregates lint_ok, types_ok, tests_ok status
-8. **Update error log** — Appends new entry with timestamp, failure, symptom, learning
-9. **Emit session JSON** — Creates debug-session.json with machine-readable data
-10. **Commit & push** — Commits error-log.md and session artifacts (if verification passed)
-11. **Output summary** — Displays verification status, logs location, session path
+### Step 2: Review Debug Session Results
 
-**After script completes, you (LLM) must:**
+**Read session artifacts** using Read tool:
+- `specs/*/debug-session.json` — Verification status, logs path, issue details
+- `specs/*/error-log.md` — Latest entry added by script
 
-## 1) Review Debug Session Results
-
-**Read session artifacts:**
-- `specs/*/debug-session.json` (verification status, logs path, issue details)
-- `specs/*/debug/run-XXXXXX/*.log` (test, lint, type check logs)
-- `specs/*/error-log.md` (updated with new entry)
-
-**Check verification status:**
+**Check verification status** from debug-session.json:
 ```json
 {
   "verification": "passed" | "failed",
-  "logs": "/path/to/debug/run-XXXXXX"
+  "logs": "/absolute/path/to/debug/run-XXXXXX",
+  "feature": "feature-slug",
+  "mode": "manual" | "structured"
 }
 ```
 
-## 2) Analyze Logs
+### Step 3: Analyze Logs (If Verification Failed)
 
-**If verification failed:**
-- Read log files in debug/run-XXXXXX/ directory
-- Identify root cause from test failures, lint errors, type errors
-- Determine fix strategy
+**If verification = "failed"**:
+1. Read log files in `specs/*/debug/run-XXXXXX/` directory
+2. Identify root cause from error messages
+3. Quote verbatim errors with file:line references
+4. Determine fix strategy
 
-**Common log files:**
+**Common log files**:
 - `ruff.log` — Backend linting errors
 - `mypy.log` — Backend type errors
 - `pytest.log` — Backend test failures
 - `eslint.log` — Frontend linting errors
 - `tsc.log` — Frontend type errors
 - `test.log` — Frontend test failures
-- `deploy-diag.txt` — Deployment platform diagnostics (if --deploy-diag used)
+- `deploy-diag.txt` — Deployment diagnostics (if --deploy-diag used)
 
-## 3) Present Results to User
+### Step 4: Present Results to User
 
-**Summary format:**
+**Summary format**:
 
 ```
 Debug Session Complete
 
-Feature: {slug}
-Mode: {manual|structured}
-Verification: {PASSED|FAILED}
+Feature: {slug from debug-session.json}
+Mode: {manual|structured from debug-session.json}
+Verification: {PASSED|FAILED from debug-session.json}
 
-Session logs: {path to debug/run-XXXXXX}
+Session logs: {logs path from debug-session.json}
 Session JSON: {path to debug-session.json}
-Error log: {path to error-log.md (entry #)}
+Error log: {path to error-log.md with entry number}
 
-{If structured mode}
-Issue: {issue_id}
+{If structured mode (--from-optimize)}
+Issue: {issue_id from debug-session.json}
 Severity: {severity}
 Category: {category}
 File: {file}:{line}
 ```
 
-## 4) Suggest Next Action
+### Step 5: Suggest Next Action
 
-**If verification passed:**
+**If verification = "passed"**:
 ```
 ✅ Debug session complete. Verification passed.
 
-Error log updated with entry #{entry_num}
-Session artifacts committed.
+Error log updated with entry #{entry_num from error-log.md}
+Session artifacts committed to git.
 
 {If --push flag used}
-⬆️ Changes pushed to {branch}
+⬆️ Changes pushed to {branch from git log}
 
 Next: Continue with /optimize or /implement
 ```
 
-**If verification failed:**
+**If verification = "failed"**:
 ```
 ❌ Verification failed
 
-Check logs: {path to debug/run-XXXXXX}
+Check logs: {logs path from debug-session.json}
 
 Issues found:
-  {List key errors from logs}
+{List key errors quoted from log files}
 
 Artifacts staged but not committed.
 Fix issues and re-run /debug.
 ```
 
-**If from /optimize:**
+**If from /optimize (--from-optimize flag)**:
 ```
 {Return control to /optimize with issue resolution status}
+Status: {verification status}
+Issue {issue_id}: {resolved|requires manual fix}
 ```
 
-</instructions>
+</process>
+
+<success_criteria>
+**Debug session successfully completed when:**
+
+1. **Script executed without errors**:
+   - Exit code 0 (verification passed and artifacts committed)
+   - OR exit code 2 (verification failed but artifacts created)
+   - Not exit code 1 (script error or bad arguments)
+
+2. **Artifacts created**:
+   - debug-session.json exists with valid JSON
+   - error-log.md updated with new timestamped entry
+   - Log directory created: specs/*/debug/run-XXXXXX/
+   - Log files present (ruff.log, pytest.log, etc.)
+
+3. **Verification status determined**:
+   - debug-session.json contains "verification": "passed" or "failed"
+   - Status matches actual log analysis
+
+4. **Results presented to user**:
+   - Summary displayed with feature, mode, verification status
+   - Log paths provided for failed verification
+   - Next action suggested based on verification outcome
+
+5. **Git operations completed** (if verification passed):
+   - error-log.md and debug-session.json committed
+   - If --push flag: changes pushed to remote branch
+   - Git status clean or only working tree changes remain
+
+6. **Structured mode completion** (if --from-optimize):
+   - Control returned to /optimize with resolution status
+   - Issue metadata preserved in debug-session.json
+</success_criteria>
+
+<verification>
+**Before marking debug session complete, verify:**
+
+1. **Read debug-session.json**:
+   ```bash
+   cat specs/*/debug-session.json
+   ```
+   Confirm valid JSON with verification status
+
+2. **Check error-log.md updated**:
+   ```bash
+   tail -20 specs/*/error-log.md
+   ```
+   Should show new entry with current timestamp
+
+3. **Verify log directory exists**:
+   ```bash
+   ls -la specs/*/debug/run-*/
+   ```
+   Should show recent run-XXXXXX directory with log files
+
+4. **Confirm git commits** (if verification passed):
+   ```bash
+   git log -1 --oneline
+   ```
+   Should show "debug: session complete" or similar commit
+
+5. **Validate log files** (if verification failed):
+   ```bash
+   ls specs/*/debug/run-XXXXXX/*.log
+   ```
+   Should contain relevant log files for component type
+
+6. **Check push status** (if --push flag used):
+   ```bash
+   git status
+   ```
+   Should show "Your branch is up to date" or ahead/behind status
+
+**Never claim completion without reading debug-session.json and error-log.md.**
+</verification>
+
+<output>
+**Files created/modified by this command:**
+
+**Debug artifacts** (specs/NNN-slug/):
+- error-log.md — Updated with new timestamped entry (### Entry N: YYYY-MM-DD)
+- debug-session.json — Machine-readable session data with verification status
+- debug/run-XXXXXX/ — Directory containing log files for this session
+
+**Log files** (specs/NNN-slug/debug/run-XXXXXX/):
+- ruff.log — Backend linting errors (if backend component)
+- mypy.log — Backend type errors (if backend component)
+- pytest.log — Backend test failures (if backend component)
+- eslint.log — Frontend linting errors (if frontend component)
+- tsc.log — Frontend type errors (if frontend component)
+- test.log — Frontend test failures (if frontend component)
+- deploy-diag.txt — Deployment diagnostics (if --deploy-diag flag)
+
+**Git commits** (if verification passed):
+- Commit message: "debug: session complete for [feature-slug]"
+- Changed files: error-log.md, debug-session.json
+
+**Console output**:
+- Verification summary (PASSED or FAILED)
+- Log paths for investigation
+- Next action recommendation
+</output>
 
 ---
 
-## EXIT CODES
+## Quick Reference
 
-- `0` — All verification passed or at least artifacts committed cleanly
+### Exit Codes
+- `0` — Verification passed, artifacts committed
 - `1` — Bad arguments, missing feature, or script error
-- `2` — Verification failed (lint/types/tests)
+- `2` — Verification failed (lint/types/tests), artifacts created but not committed
 
----
+### Common Usage Patterns
 
-## USAGE EXAMPLES
-
-**Manual, non-interactive backend test run**:
+**Manual backend test debugging**:
 ```bash
 /debug my-feature --type=test --component=backend --non-interactive
 ```
 
-**From optimize (structured mode)**:
+**From /optimize (structured mode)**:
 ```bash
 /debug --from-optimize --issue-id=CR031 --severity=HIGH \
-  --category=Type --file=apps/app/src/foo.ts --line=88 \
-  --description="Type mismatch..." --recommendation="Narrow union..." \
-  --non-interactive --json
+  --category=Type --file=src/foo.ts --line=88 \
+  --description="Type mismatch" --recommendation="Narrow union"
 ```
 
-**With deploy diagnostics and push**:
+**With deployment diagnostics**:
 ```bash
 /debug my-feature --type=build --component=frontend --deploy-diag --push
 ```
 
-**Auto-detect from branch**:
-```bash
-/debug --type=runtime --component=backend --non-interactive
-```
+### Available Flags
 
-**JSON output for CI**:
-```bash
-/debug my-feature --type=test --component=backend --json > debug-report.json
-```
+**Mode flags**:
+- `--from-optimize` — Structured mode (requires issue metadata)
+- `--non-interactive` — Never prompt; fail with actionable output
+- `--json` — Print machine-readable summary to stdout
 
----
+**Issue metadata** (required with --from-optimize):
+- `--issue-id=CR###` — Code review issue ID
+- `--severity=CRITICAL|HIGH|MEDIUM|LOW`
+- `--category=Contract|KISS|DRY|Security|Type|Test|Database`
+- `--file=PATH --line=N` — Issue location
+- `--description="TEXT"` — Issue description
+- `--recommendation="TEXT"` — Suggested fix
 
-## ERROR HANDLING
+**Debug options**:
+- `--type=test|build|runtime|ui|performance` — Error type
+- `--component=backend|frontend|database|integration` — Component to check
+- `--deploy-diag` — Include platform diagnostics (slower)
+- `--push` — Git push after successful commit
 
-**Missing feature**: Dies with actionable error message and usage hint
-
-**Missing tools (uv, pnpm, vercel, etc.)**: Warns in stderr, continues with available tools
-
-**Verification failures**: Documents in session JSON and error-log.md, exits with code 2
-
-**Git conflicts**: Aborts commit, instructs user to resolve conflicts first
-
-**No reproduction**: Documents attempted steps in error-log with "Unable to reproduce" note
-
----
-
-## OUTPUTS
-
-**error-log.md** (human-readable):
-```markdown
-### Entry 3: 2025-11-10 - [CR031] Type Fix
-
-**Failure**: Type mismatch in apps/app/src/foo.ts:88
-**Symptom**: See session logs in debug/run-abc123
-**Learning**: See delegation summary; root cause captured in session JSON
-**Ghost Context Cleanup**: None
-
-**From /optimize auto-fix** (Issue ID: CR031)
-```
-
-**debug-session.json** (machine-readable):
-```json
-{
-  "feature": "my-feature",
-  "mode": "structured",
-  "type": "test",
-  "component": "backend",
-  "verification": "passed",
-  "logs": "/absolute/path/to/debug/run-abc123",
-  "issue": {
-    "id": "CR031",
-    "severity": "HIGH",
-    "category": "Type",
-    "file": "apps/app/src/foo.ts",
-    "line": "88",
-    "description": "Type mismatch...",
-    "recommendation": "Narrow union..."
-  },
-  "timestamp": "2025-11-10T14:32:15Z"
-}
-```
-
----
-
-## CONSTRAINTS
-
-- ALWAYS update error-log.md (even if fix unsuccessful)
-- Include timestamps (ISO-8601 UTC)
+### Constraints
+- ALWAYS update error-log.md (even if verification fails)
+- Include ISO-8601 UTC timestamps
 - Redact secret-like values in logs
-- Commit error-log.md with fix (single atomic commit)
-- One debugging session per `/debug` invocation
-- In structured mode, return control to `/optimize` after completion
-- Non-interactive by default (use `--non-interactive` to enforce)
+- Single atomic commit per debugging session
+- In structured mode, return control to /optimize after completion

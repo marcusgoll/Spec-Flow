@@ -29,8 +29,22 @@ Thanks for helping improve the Spec-Flow Workflow Kit! This project documents a 
 - For scripts that touch the filesystem, support `-WhatIf` or dry-run flags when feasible.
 
 ## Release Process
-1. Update `CHANGELOG.md` with notable changes (add this file if missing).
-2. Tag releases as `vMAJOR.MINOR.PATCH` after merge.
-3. Publish a short thread on X.com summarizing improvements using the #SpecFlow hashtag.
+
+**Automated via `/release` command:**
+1. Run `/release` from main branch with clean working tree
+2. The command handles:
+   - Conventional commit analysis for version bump (MAJOR.MINOR.PATCH)
+   - CHANGELOG.md updates
+   - Git tags (vMAJOR.MINOR.PATCH)
+   - GitHub release creation
+   - npm publishing (requires NPM_TOKEN)
+   - Optional X announcement (with `--announce` flag)
+
+**Manual release process (if needed):**
+1. Update `CHANGELOG.md` with notable changes
+2. Tag releases as `vMAJOR.MINOR.PATCH` after merge
+3. Publish a short thread on X.com summarizing improvements using the #SpecFlow hashtag
+
+**See**: [/release command documentation](.claude/commands/internal/release.md) for complete automation details
 
 By contributing, you agree to abide by the `CODE_OF_CONDUCT.md`. Welcome aboard!

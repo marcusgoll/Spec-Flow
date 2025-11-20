@@ -1,32 +1,47 @@
 ---
-description: Orchestrate full feature workflow with isolated phase contexts (optimized)
-version: 2.0
-updated: 2025-11-17
+description: Execute feature development workflow from specification through production deployment with automated quality gates and manual approval checkpoints
+argument-hint: [description|slug|continue|next|epic:<name>|epic:<name>:sprint:<num>|sprint:<num>]
+allowed-tools: Bash(python .spec-flow/scripts/spec-cli.py:*), Bash(git:*), Read(specs/**), Read(workflow-state.yaml), Read(.github/**), SlashCommand(/spec), SlashCommand(/clarify), SlashCommand(/plan), SlashCommand(/tasks), SlashCommand(/design-*), SlashCommand(/analyze), SlashCommand(/implement), SlashCommand(/optimize), SlashCommand(/ship-staging), SlashCommand(/ship-prod), SlashCommand(/finalize), TodoWrite
+version: 2.1
+updated: 2025-11-20
 ---
 
-# /feature — Phase-Isolated Feature Orchestration
-
-**Purpose**: Deterministically deliver a feature through isolated phase agents with strict state tracking, explicit gates, and zero assumption drift.
+<objective>
+Orchestrate complete feature delivery through isolated phase agents with strict state tracking, explicit manual gates, and zero assumption drift.
 
 **Command**: `/feature [feature description | slug | continue | next | epic:<name> | epic:<name>:sprint:<num> | sprint:<num>]`
 
-**When to use**: From idea selection through deployment. Pauses only at manual gates or blocking failures.
+**When to use**: From idea selection through production deployment. Pauses only at manual gates or blocking failures.
 
----
+**Architecture**:
+- **Orchestrator** (`/feature`): Moves one phase at a time, updates `workflow-state.yaml`, never invents state
+- **Phase Commands**: `/spec`, `/plan`, `/tasks`, `/implement`, `/optimize`, `/ship` execute isolated phases
+- **Specialist Agents**: Implementation directly launches backend-dev, frontend-shipper, database-architect in parallel
 
-## Mental model
+**Benefits**: Smaller token budgets per phase, faster execution, quality preserved by same slash commands and gates
+</objective>
 
-**Architecture: Orchestrator + Phase Commands + Specialist Agents**
-- **Orchestrator** (`/feature`): moves one phase at a time, updates `workflow-state.yaml`, never invents state
-- **Phase Commands**: `/spec`, `/plan`, `/tasks`, `/implement`, `/optimize`, `/ship` execute phases
-- **Specialist Agents**: `/implement` directly launches backend-dev, frontend-shipper, database-architect in parallel (no wrapper)
+<context>
+**Current repository state**:
 
-**Benefits**: Smaller token budgets per phase; faster execution; quality preserved by the same slash-commands and gates.
+Git status:
+!`git status --short`
 
----
+Current branch:
+!`git branch --show-current`
 
-<instructions>
-## USER INPUT
+Recent features:
+!`ls -t specs/ 2>/dev/null | head -5`
+
+Active workflow state (if any):
+!`find specs -name "workflow-state.yaml" -exec grep -l "status: in_progress\|status: failed" {} \; 2>/dev/null | head -3`
+
+Deployment model detection:
+!`git branch -r | grep -q "staging" && echo "staging-prod" || (git remote -v | grep -q "origin" && echo "direct-prod" || echo "local-only")`
+</context>
+
+<process>
+## User Input Handling
 
 ```text
 $ARGUMENTS
@@ -54,81 +69,83 @@ python .spec-flow/scripts/spec-cli.py feature "$ARGUMENTS"
 3. **Feature slug generation** — Auto-generates from issue title or description
 4. **Project type detection** — Identifies project technology (fullstack, backend, frontend, etc.)
 5. **Branch management** — Creates feature branch or uses existing branch
-6. **Initialize workflow state** — Creates specs/NNN-slug/ directory and workflow-state.yaml
+6. **Initialize workflow state** — Creates `specs/NNN-slug/` directory and `workflow-state.yaml`
 7. **Generate feature CLAUDE.md** — Creates AI context navigation file
 
-**After script completes, you (LLM) must:**
+**After script completes:**
 
-## 1) Verify Feature Initialization
+1. Verify feature initialization (number, slug, branch, directory, GitHub issue)
+2. Execute workflow phases based on current state
+3. Handle manual gates appropriately
+4. Resume from correct phase if using `continue` mode
+</process>
 
-**Read initialization results:**
-- Feature number and slug
-- Branch name
-- Feature directory path
-- GitHub issue number (if applicable)
+<workflow>
+## Phase Sequence
 
-## 2) Execute Workflow Phases
-
-**Follow the phase sequence based on workflow state:**
-
-### Manual Approval Gates
-
-**Phase 0: Specification** (Manual Gate #1)
+### Phase 0: Specification (Manual Gate #1)
 ```bash
 /spec
 ```
-**PAUSE**: Review spec.md for completeness and accuracy. If approved, continue to planning.
 
-**Phase 0.5: Clarification** (conditional):
+**Pause Point**: Review `spec.md` for completeness and accuracy.
+- Verify all requirements captured
+- Check for ambiguities or missing context
+- Run `/feature continue` when approved to proceed to planning
+
+**If ambiguity detected**, conditional clarification phase:
 ```bash
 /clarify
 ```
 
-**Phase 1: Planning** (Manual Gate #2)
+### Phase 1: Planning (Manual Gate #2)
 ```bash
 /plan
 ```
-**PAUSE**: Review plan.md and research.md for technical approach. If approved, workflow proceeds automatically through implementation and optimization.
+
+**Pause Point**: Review `plan.md` and `research.md` for technical approach.
+- Verify architecture decisions
+- Check for code reuse opportunities
+- Validate technical feasibility
+- Run `/feature continue` when approved
+
+**After plan approval, workflow proceeds automatically through phases 2-6**
 
 ### Automatic Execution After Plan Approval
 
-Once planning is approved, the following phases execute automatically without manual gates:
-
-**Phase 2: Task Breakdown**:
+**Phase 2: Task Breakdown** (automatic):
 ```bash
 /tasks
 ```
 
-**Phase 2a-2c: Design Workflow** (UI features only):
+**Phase 2a-2c: Design Workflow** (UI features only, automatic):
 ```bash
 /design-variations
 /design-functional
 /design-polish
 ```
 
-**Phase 3: Cross-Artifact Analysis**:
+**Phase 3: Cross-Artifact Analysis** (automatic):
 ```bash
 /analyze
 ```
 
-**Phase 4: Implementation**:
+**Phase 4: Implementation** (automatic):
 ```bash
 /implement
 ```
 
-**Phase 5: Optimization**:
+**Phase 5: Optimization** (automatic):
 ```bash
 /optimize
 ```
-
-### Deployment & Testing (Fully Automated)
 
 **Phase 6: Deploy to Staging** (automatic):
 ```bash
 /ship-staging
 ```
 
-**Automated Validation**: Staging validation auto-generates report with E2E tests, Lighthouse scores, rollback test, and health checks. All testing happens in staging environment - no manual gates.
+**Automated Staging Validation**: Auto-generates validation report with E2E tests, Lighthouse scores, rollback test, and health checks. All testing happens in staging environment.
 
 **Phase 7: Deploy to Production** (automatic after validation):
 ```bash
@@ -139,62 +156,105 @@ Once planning is approved, the following phases execute automatically without ma
 ```bash
 /finalize
 ```
+</workflow>
 
-## 3) Handle Continue Mode
+<manual_gates>
+## Manual Approval Gates
 
-**When resuming with `/feature continue`:**
-- Read `workflow-state.yaml` to find current phase
-- Find first phase with status `in_progress` or `failed`
-- Resume from that phase
-- If manual gate was pending, proceed past it
+**Three explicit pause points requiring human approval:**
 
-## 4) Handle Manual Gates
+### Gate #1: Specification Review (after /spec)
+- Location: `specs/NNN-slug/spec.md`
+- Checklist:
+  - [ ] All requirements captured
+  - [ ] Acceptance criteria clear
+  - [ ] No ambiguities remaining
+- Resume: `/feature continue`
 
-**Specification gate** (after /spec):
-- Review spec.md for completeness
-- Verify all requirements captured
-- Run `/feature continue` when approved
+### Gate #2: Planning Review (after /plan)
+- Location: `specs/NNN-slug/plan.md`, `specs/NNN-slug/research.md`
+- Checklist:
+  - [ ] Technical approach sound
+  - [ ] Architecture decisions justified
+  - [ ] Code reuse opportunities identified
+  - [ ] Dependencies documented
+- Resume: `/feature continue`
+- **Note**: After this gate, phases 2-6 execute automatically
 
-**Planning gate** (after /plan):
-- Review plan.md and research.md
-- Verify technical approach
-- Check for code reuse opportunities
-- Run `/feature continue` when approved
-- **Workflow then proceeds automatically through implementation**
+### Gate #3: Staging Validation (after /ship-staging)
+- Location: Staging environment URL (from deployment)
+- Checklist:
+  - [ ] UI/UX tested across browsers and devices
+  - [ ] Accessibility verified (keyboard nav, screen readers)
+  - [ ] Performance acceptable (load times, responsiveness)
+  - [ ] Integration with existing features working
+  - [ ] Error handling and edge cases validated
+- Resume: `/feature continue` to promote to production
+</manual_gates>
 
-**Staging validation gate** (after /ship-staging):
-- Staging deployment complete
-- Test all functionality in staging environment:
-  - UI/UX across browsers and devices
-  - Accessibility (keyboard nav, screen readers)
-  - Performance (load times, responsiveness)
-  - Integration with existing features
-  - Error handling and edge cases
-- Run `/feature continue` when approved to promote to production
+<continue_mode>
+## Resuming Interrupted Features
 
-## 5) Error Handling
+When running `/feature continue`:
+
+1. Read `workflow-state.yaml` to find current phase
+2. Locate first phase with status `in_progress` or `failed`
+3. Resume from that phase
+4. If manual gate was pending, proceed past it
+5. Continue workflow execution
+
+**State verification required:**
+```bash
+# Always read and quote actual state
+cat specs/*/workflow-state.yaml
+```
+
+Never assume or fabricate phase status — always read the actual recorded state.
+</continue_mode>
+
+<error_handling>
+## Failure Handling
 
 **If any phase fails:**
-- Read error details from workflow-state.yaml
-- Check relevant log files in specs/NNN-slug/
-- Present clear error message with file paths
-- Suggest fixes based on error type
-- Tell user to fix and run `/feature continue`
+
+1. Read error details from `workflow-state.yaml`
+2. Check relevant log files in `specs/NNN-slug/`
+3. Present clear error message with file paths
+4. Suggest fixes based on error type
+5. Instruct user to fix and run `/feature continue`
 
 **Common failure modes:**
-- Spec ambiguity → run `/clarify`
-- Planning failures → check plan.md for missing context
-- Implementation errors → check error-log.md
-- Quality gate failures → check optimization-*.md reports
-- Deployment failures → check deployment logs
 
-</instructions>
+- **Spec ambiguity** → Run `/clarify` to resolve
+- **Planning failures** → Check `plan.md` for missing context, review research findings
+- **Implementation errors** → Check `error-log.md`, review task status in `tasks.md`
+- **Quality gate failures** → Review `optimization-*.md` reports for specific issues
+- **Deployment failures** → Check deployment logs, verify environment configuration
 
----
+**Anti-Hallucination Rules:**
 
-## Workflow Tracking
+1. **Never claim phase completion without quoting `workflow-state.yaml`**
+   - Always `Read` the file and print the actual recorded status
 
-All steps read/write `specs/<NNN-slug>/workflow-state.yaml`.
+2. **Cite agent outputs**
+   - When a phase finishes, paste the returned `{status, summary, stats}` keys
+
+3. **Do not skip phases unless state marks them disabled**
+   - Follow the recorded sequence; if required, run it
+
+4. **Detect deployment model from repo**
+   - Show evidence: `git branch -a`, presence of staging workflow files
+
+5. **No fabricated summaries**
+   - If an agent errors, show the error; don't invent success
+
+**Why**: This prevents silent quality gaps and makes the workflow auditable against real artifacts.
+</error_handling>
+
+<workflow_tracking>
+## State Management
+
+All phases read/write `specs/<NNN-slug>/workflow-state.yaml`.
 
 **Todo list example (staging-prod model):**
 
@@ -221,56 +281,28 @@ TodoWrite({
 ```
 
 **Rules**:
-- Exactly one phase is `in_progress`
-- **Manual gates**: Spec review (gate #1), Plan review (gate #2), Staging validation (gate #3)
-- **Auto-progression**: After plan approval, phases 2-6 execute automatically
+- Exactly one phase is `in_progress` at a time
+- Manual gates: Spec review (gate #1), Plan review (gate #2), Staging validation (gate #3)
+- Auto-progression: After plan approval, phases 2-6 execute automatically
 - Deployment phases adapt to model: `staging-prod`, `direct-prod`, or `local-only`
 - Any blocker (test failure, build error, quality gate) pauses workflow for user review
+</workflow_tracking>
 
----
+<success_criteria>
+Feature workflow is complete when:
 
-## Anti-Hallucination Rules
+- ✅ Feature initialized with unique slug and directory structure
+- ✅ All required phases executed in sequence
+- ✅ Manual gates approved by user (spec, plan, staging validation)
+- ✅ All quality gates passed (tests, optimization, security)
+- ✅ Feature deployed to production successfully
+- ✅ Documentation finalized and merged
+- ✅ `workflow-state.yaml` shows all phases with status `completed`
+- ✅ No blocking failures or errors in state file
+- ✅ GitHub issue updated to shipped status (if applicable)
+</success_criteria>
 
-1. **Never claim phase completion without quoting `workflow-state.yaml`**
-   Always `Read` the file and print the actual recorded status.
-
-2. **Cite agent outputs**
-   When a phase finishes, paste the returned `{status, summary, stats}` keys.
-
-3. **Do not skip phases unless state marks them disabled**
-   Follow the recorded sequence; if required, run it.
-
-4. **Detect the deployment model from the repo**
-   Show evidence: `git branch -a`, presence of staging workflow files.
-
-5. **No fabricated summaries**
-   If an agent errors, show the error; don't invent success.
-
-**Why**: This prevents silent quality gaps and makes the workflow auditable against real artifacts.
-
----
-
-## Reasoning Template
-
-Use when making orchestration decisions:
-
-```text
-<thinking>
-1) Current phase/status: [quote from workflow-state.yaml]
-2) Artifacts produced: [list with paths]
-3) Prerequisites for next phase: [check files/flags]
-4) Failures present: [list count + locations]
-5) Decision: [retry | proceed | abort] with justification
-</thinking>
-<answer>
-[One clear instruction for next action]
-</answer>
-```
-
-Use this template for: skipping clarify, choosing deployment path, retry logic, handling partial failures, continuing after gates.
-
----
-
+<examples>
 ## Usage Examples
 
 **Start next priority feature:**
@@ -298,39 +330,43 @@ Use this template for: skipping clarify, choosing deployment path, retry logic, 
 /feature "user authentication"
 ```
 
----
+**Start from feature description:**
+```bash
+/feature "Add dark mode toggle to settings"
+```
+</examples>
 
-## Philosophy
+<philosophy>
+## Design Principles
 
 **State truth lives in `workflow-state.yaml`**
-Never guess; always read, quote, and update atomically.
+- Never guess; always read, quote, and update atomically
+- State file is single source of truth for workflow status
 
 **Phases are isolated**
-Each agent reads context from disk (NOTES.md, tasks.md, spec.md) and returns structured JSON. No hidden handoffs.
+- Each agent reads context from disk (NOTES.md, tasks.md, spec.md)
+- Returns structured JSON with no hidden handoffs
+- Clear boundaries prevent state drift
 
 **Manual gates are explicit**
-Three manual gates pause workflow for human review:
-1. Spec review — Verify requirements before planning
-2. Plan review — Verify technical approach before implementation
-3. Staging validation — Test complete feature before production
+- Three manual gates pause workflow for human review
+- Each gate has clear checklist and resume command
+- No automatic progression past manual gates
 
 **Auto-progression after plan approval**
-After plan is approved, automatically execute: tasks → validate → implement → optimize → ship-staging
+- After plan review, automatically execute: tasks → validate → implement → optimize → ship-staging
+- Reduces manual intervention for execution phases
 
 **Test in staging, not locally**
-All UI/UX, accessibility, performance, and integration testing happens in staging environment. No local preview gate.
+- All UI/UX, accessibility, performance, and integration testing in staging
+- No local preview gate required
 
 **Deployment model adapts**
-Detect `staging-prod`, `direct-prod`, or `local-only` from actual repo structure; adjust phases accordingly.
+- Detect `staging-prod`, `direct-prod`, or `local-only` from repo structure
+- Adjust phases accordingly based on detected model
 
 **Fail fast, fail loud**
-Record failures in state; never pretend success. Any blocker (test failure, build error, quality gate) pauses workflow and requires `/feature continue` after fix.
-
----
-
-## References
-
-- [GitHub CLI manual](https://cli.github.com/manual) - Commands, auth, issues
-- [Trunk-Based Development](https://trunkbaseddevelopment.com) - Short-lived branches, frequent merges
-- [DORA Metrics](https://dora.dev/research/2018/dora-report/2018-dora-accelerate-state-of-devops-report.pdf) - Throughput and stability metrics
-- [OpenTelemetry Signals](https://opentelemetry.io/docs/concepts/signals) - Traces, metrics, logs
+- Record failures in state immediately
+- Never pretend success
+- Any blocker pauses workflow and requires `/feature continue` after fix
+</philosophy>

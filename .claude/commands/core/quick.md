@@ -1,409 +1,376 @@
 ---
-description: Quick implementation for small changes (skip spec/plan/tasks - KISS principle)
+name: quick
+description: Implement small bug fixes and features (<100 LOC) without full workflow. Use for single-file changes, bug fixes, refactors, and minor enhancements that can be completed in under 30 minutes.
+argument-hint: <description>
+allowed-tools: [Read, Grep, Glob, Bash(git *), Bash(pytest *), Bash(npm *), Bash(npx *), Task, AskUserQuestion]
 ---
 
-Implement small features, bug fixes, or refactors without full workflow.
+<objective>
+Execute quick implementations for small changes (bug fixes, refactors, minor enhancements) bypassing the full spec/plan/tasks workflow. Maintain quality standards (tests, commits) while prioritizing speed and simplicity. Target completion time: <30 minutes.
+</objective>
 
-## MENTAL MODEL
+<context>
+Current git status:
+!`git status --short`
 
-**Use when**: Bug fixes, small enhancements, refactors, <100 LOC changes, single-file updates
+Current branch:
+!`git branch --show-current`
 
-**Skip**: Full spec/plan/tasks workflow for speed
+Recent commits (last 3):
+!`git log -3 --oneline`
+</context>
 
-**Keep**: Tests, quality standards, commit hygiene
+<when_to_use>
+## ✅ Good Candidates (Use /quick)
 
-**Workflow**: Describe → Implement → Test → Commit (Goal: <30 minutes)
+- **Bug fixes**: UI glitches, logic errors, null checks
+- **Small refactors**: Rename variables, extract functions, simplify logic
+- **Internal improvements**: Logging, error messages, constants
+- **Documentation**: README updates, code comments, docstrings
+- **Style/formatting**: Whitespace, naming conventions, linting fixes
+- **Config tweaks**: Environment variables, build settings, tool configs
 
-**Pattern**: Direct implementation with minimal ceremony
+**Characteristics**: <100 LOC, <5 files, single concern, no breaking changes, can implement in one sitting
 
-## WHEN TO USE /quick
+## ❌ Do NOT Use (Use /feature Instead)
 
-✅ **Good candidates:**
-- Bug fixes (UI glitches, logic errors)
-- Small refactors (rename variable, extract function)
-- Internal improvements (logging, error messages)
-- Documentation updates
-- Style/formatting fixes
-- Config tweaks
+- **New features with UI components** - Needs design review and mockup approval
+- **Database schema changes** - Requires migration planning and zero-downtime strategy
+- **API contract changes** - Breaking changes need stakeholder review
+- **Security-sensitive code** - Auth, permissions, crypto need thorough review
+- **Changes affecting >5 files** - Coordination across modules needs planning
+- **Multi-step features** - Complex workflows need task breakdown
 
-❌ **Do NOT use for:**
-- New features with UI components (use `/feature`)
-- Database schema changes (use `/feature`)
-- API contract changes (use `/feature`)
-- Security-sensitive code (use `/feature`)
-- Changes affecting >5 files (use `/feature`)
-- Multi-step features requiring coordination
+**Rule of thumb**: If you need to pause and think about architecture, use `/feature`.
+</when_to_use>
 
-## PARSE ARGUMENTS
+<process>
+## 1. Validate Scope and Get Description
 
-**Get description:**
+**If $ARGUMENTS is empty:**
+- Use AskUserQuestion to request:
+  - **Question**: "What change would you like to implement?"
+  - **Options**: Provide examples (bug fix, refactor, doc update, config change)
+  - **Header**: "Quick Change"
 
-If `$ARGUMENTS` is empty, show usage:
-```
-Usage: /quick "description"
+**Store description in DESCRIPTION variable.**
 
-Examples:
-  /quick "Fix login button alignment on mobile"
-  /quick "Add email validation to signup form"
-  /quick "Refactor user service to use async/await"
-  /quick "Update README with new API endpoint"
+**Verify scope is appropriate:**
+- Check if description mentions database, schema, migration, API contract, auth, security
+- If YES: Recommend using `/feature` instead and explain why
+- If NO: Proceed with implementation
 
-Guidelines:
-  • Keep changes small (<100 LOC)
-  • Single concern/purpose
-  • No breaking changes
-  • Tests required if logic changes
-```
+## 2. Detect UI Changes and Load Style Guide (Conditional)
 
-Otherwise, set `DESCRIPTION = $ARGUMENTS`
+**Check if DESCRIPTION contains UI-related keywords:**
+- Keywords: UI, component, button, form, card, layout, design, style, CSS, Tailwind, color, spacing, font, typography, gradient, shadow, border
 
-## CHECK IF UI CHANGE (Load Style Guide)
+**If UI change detected:**
+1. Read `docs/project/style-guide.md` (if exists)
+2. Read `design/systems/tokens.json` (if exists)
+3. Note: "UI change detected - enforcing style guide compliance"
+4. Set STYLE_GUIDE_MODE = true
 
-**Detect UI/design-related changes and load style guide:**
+**If files not found:**
+- Warn: "Style guide not found. Consider running `/init-project --with-design` for UI consistency rules."
+- Continue without style guide (note this in output)
 
-```bash
-# Check if description mentions UI-related terms
-if [[ "$DESCRIPTION" =~ (UI|component|button|form|card|layout|design|style|CSS|Tailwind|color|spacing|font|typography) ]]; then
-  STYLE_GUIDE_MODE=true
+**If non-UI change:**
+- Set STYLE_GUIDE_MODE = false
+- Skip style guide loading
 
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "🎨 UI CHANGE DETECTED"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "Loading style guide for consistency enforcement..."
-  echo ""
+## 3. Create Lightweight Branch
 
-  # Required files
-  STYLE_GUIDE="docs/project/style-guide.md"
-  TOKENS="design/systems/tokens.json"
-  UI_INVENTORY="design/systems/ui-inventory.md"
+**Generate branch name:**
+- Slugify DESCRIPTION to create branch name: `quick/[slug]`
+- Use only lowercase, numbers, hyphens
+- Truncate to 50 characters
 
-  # Validate style guide exists
-  if [ ! -f "$STYLE_GUIDE" ]; then
-    echo "❌ Style guide not found: $STYLE_GUIDE"
-    echo ""
-    echo "Run /init-project first to generate project documentation."
-    echo "Or create style-guide.md manually."
-    echo ""
-    exit 1
-  fi
+**Create or checkout branch:**
+- Run: `git checkout -b quick/[slug]`
+- If branch already exists: `git checkout quick/[slug]` and note "Using existing branch"
 
-  # Validate tokens exist (non-blocking)
-  if [ ! -f "$TOKENS" ]; then
-    echo "⚠️  Design tokens not found: $TOKENS"
-    echo "   Using style guide rules without token values."
-    echo ""
-  fi
+## 4. Implement Changes
 
-  # UI inventory is optional
-  if [ ! -f "$UI_INVENTORY" ]; then
-    echo "ℹ️  UI inventory not found (optional): $UI_INVENTORY"
-    echo ""
-  fi
+**Determine implementation agent:**
+- Backend/API/Python → Use Task tool with `backend-dev` agent
+- Frontend/UI/React/TypeScript → Use Task tool with `frontend-shipper` agent
+- Tests only → Use Task tool with `qa-test` agent
+- Documentation only → Implement directly (no agent needed)
 
-  echo "✅ Style guide loaded"
-  echo ""
-else
-  STYLE_GUIDE_MODE=false
-  echo "ℹ️  Non-UI change detected - skipping style guide"
-  echo ""
-fi
-```
-
-## CREATE LIGHTWEIGHT BRANCH
-
-**Generate simple branch name:**
-
-```bash
-# Slugify description
-SLUG=$(echo "$DESCRIPTION" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | cut -c1-50)
-BRANCH="quick/$SLUG"
-
-# Check if branch exists
-if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
-  echo "⚠️  Branch already exists: $BRANCH"
-  echo "Checking out existing branch..."
-  git checkout "$BRANCH"
-else
-  git checkout -b "$BRANCH"
-  echo "✅ Created branch: $BRANCH"
-fi
-
-echo ""
-```
-
-## IMPLEMENT DIRECTLY (NO SPEC)
-
-**Use `/route-agent` to delegate implementation:**
-
-Determine agent based on description:
-- Backend/API changes → `backend-dev`
-- Frontend/UI changes → `frontend-shipper`
-- Test-only changes → `qa-test`
-- Documentation → `general-purpose` (use Task tool directly)
-
-**Prompt for agent:**
+**Agent prompt format:**
 
 ```
-You are implementing a quick change (no spec required).
+Implement quick change without full workflow (no spec required).
 
 ## Description
 {DESCRIPTION}
 
-{IF STYLE_GUIDE_MODE=true, INCLUDE:}
+{IF STYLE_GUIDE_MODE = true:}
+## Style Guide Requirements (UI CHANGE)
 
-## Style Guide Context (UI CHANGE)
+Read and enforce ALL rules from docs/project/style-guide.md:
 
-Read and follow ALL rules from: docs/project/style-guide.md
-
-**Core 9 Rules** (always enforce):
-1. Text line length: 50-75 chars (600-700px max-width)
-2. Use bullet points with icons when listing
-3. 8pt grid spacing (all values divisible by 4/8)
-4. Layout rules: baseline value, double spacing between groups
+**Core 9 Rules** (non-negotiable):
+1. Text line length: 50-75 chars (max-w-[600px] or max-w-[700px])
+2. Use bullet points with icons for lists
+3. 8pt grid spacing (all values divisible by 4/8 - no arbitrary px values)
+4. Layout spacing: baseline value + double between groups
 5. Letter-spacing: Display -1px, Body 0px, CTAs +1px
 6. Font superfamilies (matching character sizes)
-7. OKLCH colors (never hex)
-8. Subtle design elements (gradients <20% opacity, soft shadows)
-9. Squint test hierarchy (CTAs/headlines must stand out)
+7. OKLCH colors only (never hex/rgb/hsl)
+8. Subtle design (gradients <20% opacity, soft shadows)
+9. Squint test hierarchy (CTAs and headlines must stand out)
 
-**Context-Aware Token Mapping:**
+**Token Usage:**
 - CTAs/interactive → bg-brand-primary
-- Headings/structure → text-neutral-900
+- Headings → text-neutral-900
 - Body text → text-neutral-700
 - Feedback → semantic-success/error/warning/info
 - Backgrounds → neutral-50/100
 
 **Component Strategy:**
-1. Check ui-inventory.md first (if exists)
-2. Use shadcn/ui components (don't create custom)
-3. Compose primitives (don't build from scratch)
-4. Follow lightweight guidelines in style guide Section 6
+1. Check design/systems/ui-inventory.md first (reuse existing)
+2. Use shadcn/ui components (no custom primitives)
+3. Compose from existing patterns
 
 **Validation Checklist:**
-- [ ] All colors from tokens.json (no hex/rgb/hsl)
-- [ ] All spacing on 8pt grid (no arbitrary [Npx])
-- [ ] Components from ui-inventory.md (no custom primitives)
-- [ ] Shadows for depth (borders only for dividers)
-- [ ] Typography hierarchy (2:1 ratio, correct letter-spacing)
-- [ ] Text line length 50-75 chars (max-w-[700px])
+- [ ] All colors from tokens.json (no hardcoded hex/rgb/hsl)
+- [ ] All spacing on 8pt grid (space-4, space-8, etc.)
+- [ ] Components from ui-inventory.md (no new custom components)
+- [ ] Shadows for depth (avoid borders except dividers)
+- [ ] Typography hierarchy with correct letter-spacing
+- [ ] Text line length 50-75 chars
 - [ ] Keyboard navigation (focus:ring-2)
 - [ ] WCAG AA contrast (4.5:1 minimum)
 
 {END IF}
 
 ## Implementation Rules
-1. **KISS Principle**: Make minimal changes to achieve the goal
-2. **Follow Existing Patterns**: Match surrounding code style and architecture
-3. **Add/Update Tests**: If logic changes, update relevant tests
-4. **Update Comments/Docstrings**: Keep documentation accurate
-5. **No Breaking Changes**: Maintain backward compatibility
-6. **Single Concern**: Fix/implement only what's described
+1. **KISS Principle**: Minimal changes to achieve goal
+2. **Follow Existing Patterns**: Match surrounding code style
+3. **Add/Update Tests**: If logic changes, update tests
+4. **No Breaking Changes**: Maintain backward compatibility
+5. **Single Concern**: Only implement what's described
+6. **Quality Standards**: Maintain existing code quality
 
 ## Process
-1. Identify files to modify
-2. Make changes following existing patterns
-3. Run relevant tests
-4. Verify changes work as expected
+1. Identify files to modify (read existing code first)
+2. Make targeted changes following existing patterns
+3. Run relevant tests to verify changes
+4. Ensure no regressions introduced
 
-## Output Format
+## Output Required
 After implementation, provide:
-- **Files changed**: List of modified files
-- **Summary**: 2-3 sentences describing what was done
-- **Tests**: Status of test runs (pass/fail)
-{IF STYLE_GUIDE_MODE: - **Style guide adherence**: Which rules followed, any violations}
+- **Files changed**: List of modified files with line counts
+- **Summary**: 2-3 sentences describing changes
+- **Test results**: Pass/fail status with command output
+{IF STYLE_GUIDE_MODE: - **Style guide compliance**: Rules followed, any violations}
 
 ## Constraints
 - No new dependencies unless absolutely necessary
 - No architectural changes
-- Keep diff small and focused
-{IF STYLE_GUIDE_MODE: - Follow style guide rules (non-negotiable)}
+- Keep diff small and focused (<100 LOC)
+{IF STYLE_GUIDE_MODE: - Style guide rules are non-negotiable}
 ```
 
-Execute agent delegation via `/route-agent` with appropriate agent selection.
+**Execute agent delegation** via Task tool with appropriate subagent_type.
 
-## VERIFY CHANGES
+## 5. Run Tests (If Applicable)
 
-**Run tests if applicable:**
+**Detect test framework and run tests:**
 
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Running tests..."
-echo ""
+**Backend (Python):**
+- If `pytest.ini` or `tests/` directory exists with `.py` files
+- Run: `pytest tests/ -v --tb=short`
+- Capture output and pass/fail status
 
-# Detect test framework and run tests
-TEST_FAILED=0
+**Frontend (Node):**
+- If `package.json` exists with test script
+- Run: `npm test -- --run` or `npm run test:ci`
+- Capture output and pass/fail status
 
-# Backend tests (Python)
-if [ -d "api" ] || [ -d "backend" ] || [ -f "pytest.ini" ]; then
-  if command -v pytest &> /dev/null; then
-    echo "Running pytest..."
-    pytest tests/ -v --tb=short || TEST_FAILED=1
-  fi
-fi
+**Handle test failures:**
+- If tests fail: Display output, ask user if they want to:
+  1. Fix failing tests before committing
+  2. Skip tests (document why in commit message)
+  3. Abort and investigate failures
 
-# Frontend tests (Node)
-if [ -d "apps" ] || [ -d "frontend" ] || [ -f "package.json" ]; then
-  if command -v npm &> /dev/null; then
-    echo "Running npm tests..."
-    npm test -- --run || TEST_FAILED=1
-  fi
-fi
+## 6. Validate Style Guide Compliance (UI Changes Only)
 
-if [ $TEST_FAILED -eq 1 ]; then
-  echo ""
-  echo "⚠️  Some tests failed - review output above"
-  echo "Fix tests before committing, or skip if intentional (document why)"
-fi
+**If STYLE_GUIDE_MODE = true:**
 
-echo ""
+Run automated validation checks:
+
+**1. Check for hardcoded colors:**
+- Grep for: `#[0-9a-fA-F]{3,6}`, `rgb(`, `hsl(` in modified files
+- Exclude: node_modules, .next, build directories
+- Exclude: oklch() declarations (these are valid)
+- If found: List violations with file:line references
+
+**2. Check for arbitrary spacing:**
+- Grep for: `[Npx]` patterns in modified files (e.g., `[17px]`, `[23px]`)
+- Exclude: max-w-[600px] and max-w-[700px] (these are allowed for text line length)
+- If found: List violations, suggest 8pt grid alternatives
+
+**3. Check for focus states:**
+- Grep for: `onClick`, `onPress`, `button`, `Button` without `focus:` in same file
+- If many missing: Warn about potential accessibility issues
+
+**Report validation results:**
+- ✅ All checks passed
+- ⚠️ N warning(s) found (non-blocking but should be addressed)
+- List specific violations with remediation steps
+
+## 7. Commit Changes
+
+**Stage all changes:**
+- Run: `git add .`
+
+**Check if there are changes to commit:**
+- Run: `git diff --staged --quiet`
+- If no changes: Display "No changes to commit" and exit
+- If changes exist: Proceed with commit
+
+**Generate commit message:**
 ```
-
-## VALIDATE STYLE GUIDE (UI Changes Only)
-
-**Run style guide validation if UI change:**
-
-```bash
-if [ "$STYLE_GUIDE_MODE" = true ]; then
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "Validating style guide compliance..."
-  echo ""
-
-  # Basic validation checks (automated)
-  VALIDATION_WARNINGS=0
-
-  # Check for hardcoded colors (hex, rgb, hsl)
-  echo "Checking for hardcoded colors..."
-  HARDCODED_COLORS=$(grep -rE "#[0-9a-fA-F]{3,6}|rgb\(|hsl\(" apps/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" 2>/dev/null | grep -v "node_modules\|.next\|oklch" | wc -l)
-
-  if [ "$HARDCODED_COLORS" -gt 0 ]; then
-    echo "⚠️  Found $HARDCODED_COLORS hardcoded color(s)"
-    echo "   Replace with design tokens from tokens.json"
-    VALIDATION_WARNINGS=$((VALIDATION_WARNINGS + 1))
-  else
-    echo "✅ No hardcoded colors detected"
-  fi
-
-  # Check for arbitrary spacing (not on 8pt grid)
-  echo "Checking spacing (8pt grid)..."
-  ARBITRARY_SPACING=$(grep -rE "\[[0-9]+px\]" apps/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" 2>/dev/null | grep -v "node_modules\|.next\|max-w-\[700px\]\|max-w-\[600px\]" | wc -l)
-
-  if [ "$ARBITRARY_SPACING" -gt 0 ]; then
-    echo "⚠️  Found $ARBITRARY_SPACING arbitrary spacing value(s)"
-    echo "   Use 8pt grid system (space-1, space-2, space-4, etc.)"
-    VALIDATION_WARNINGS=$((VALIDATION_WARNINGS + 1))
-  else
-    echo "✅ Spacing on 8pt grid"
-  fi
-
-  # Check for focus states on interactive elements
-  echo "Checking focus states..."
-  MISSING_FOCUS=$(grep -rE "onClick|onPress|button|Button" apps/ --include="*.tsx" --include="*.jsx" 2>/dev/null | grep -v "focus:" | grep -v "node_modules" | wc -l)
-
-  if [ "$MISSING_FOCUS" -gt 5 ]; then
-    echo "⚠️  Some interactive elements may be missing focus states"
-    echo "   Add focus:ring-2 focus:ring-brand-primary to buttons"
-    VALIDATION_WARNINGS=$((VALIDATION_WARNINGS + 1))
-  else
-    echo "✅ Focus states present"
-  fi
-
-  echo ""
-
-  if [ $VALIDATION_WARNINGS -gt 0 ]; then
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "⚠️  $VALIDATION_WARNINGS style guide warning(s)"
-    echo ""
-    echo "Warnings are non-blocking but should be addressed."
-    echo "Review style guide: docs/project/style-guide.md"
-    echo ""
-  else
-    echo "✅ All style guide checks passed"
-    echo ""
-  fi
-fi
-```
-
-## COMMIT CHANGES
-
-**Stage and commit:**
-
-```bash
-echo "Creating commit..."
-echo ""
-
-# Stage all changes
-git add .
-
-# Check if there are changes to commit
-if git diff --staged --quiet; then
-  echo "⚠️  No changes to commit"
-  exit 0
-fi
-
-# Generate commit message
-COMMIT_MSG="quick: ${DESCRIPTION}
+quick: {DESCRIPTION}
 
 Implemented via /quick command.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>"
-
-# Create commit
-git commit -m "$COMMIT_MSG"
-
-echo "✅ Changes committed"
-echo ""
+Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
-## SHOW SUMMARY
+**Create commit:**
+- Run: `git commit -m "[commit message]"`
+- Display commit SHA and summary
 
-**Display completion info:**
+## 8. Show Summary
 
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ Quick change complete!"
-echo ""
-echo "Branch: $BRANCH"
-echo "Files changed: $(git diff --name-only HEAD~1 | wc -l)"
-echo "Commit: $(git rev-parse --short HEAD)"
-echo ""
-echo "Changes:"
-git diff --stat HEAD~1
-echo ""
-echo "Next steps:"
-echo "  • Review changes: git show"
-echo "  • Run app locally to verify: npm run dev / pytest"
-echo "  • Merge to main: git checkout main && git merge $BRANCH"
-echo "  • Push (if remote): git push origin main"
-echo "  • Delete branch: git branch -d $BRANCH"
-echo ""
+**Display completion information:**
+- Branch name: `quick/[slug]`
+- Files changed: Count from `git diff --name-only HEAD~1`
+- Commit SHA: Short SHA from `git rev-parse --short HEAD`
+- Changes summary: `git diff --stat HEAD~1`
+
+**Next steps:**
 ```
+✅ Quick change complete!
 
-## LIMITATIONS & GUARDRAILS
+Branch: quick/[slug]
+Files changed: N
+Commit: [sha]
 
-**This command is NOT suitable for:**
+Next steps:
+  • Review changes: git show
+  • Run app locally: npm run dev (or pytest)
+  • Merge to main: git checkout main && git merge quick/[slug]
+  • Push (if remote): git push origin main
+  • Delete branch: git branch -d quick/[slug]
+```
+</process>
 
-1. **Multi-file features** - Use `/feature` for coordinated changes across many files
-2. **Database migrations** - Schema changes need full spec/plan/review
-3. **API contract changes** - Breaking changes need stakeholder review
-4. **Security features** - Auth, permissions, crypto need thorough review
-5. **Performance-critical code** - Needs benchmarking in `/optimize` phase
-6. **UI redesigns** - Visual changes need design review via `/design-variations`
+<success_criteria>
+Quick implementation is complete when:
+- Changes implemented in <30 minutes
+- All relevant tests pass (or failures documented)
+- Changes committed to `quick/[slug]` branch
+- Summary displayed with files changed and next steps
+- If UI change: Style guide validation results shown
+- No breaking changes introduced
+- Code follows existing patterns and conventions
+- Single concern addressed (no scope creep)
+</success_criteria>
 
-**If you're unsure, use `/feature` instead.** The full workflow ensures quality gates for complex changes.
+<comparison_table>
+## /quick vs /feature
 
-## COMPARISON WITH /feature
+Use this table to decide which command to use:
 
 | Aspect | /quick | /feature |
-|--------|--------|-------|
+|--------|--------|----------|
 | **Duration** | <30 min | 2-8 hours |
-| **Artifacts** | Commit only | spec.md, plan.md, tasks.md, reports |
-| **Review** | Self-review | Multi-phase review (/analyze, /optimize) |
-| **Scope** | <100 LOC, <5 files | Unlimited |
+| **Scope** | <100 LOC, <5 files | Unlimited scope |
 | **Planning** | None | Full spec/plan/tasks |
-| **Testing** | Existing tests | New tests required |
-| **Deployment** | Manual | Automated (staging → prod) |
+| **Artifacts** | Commit only | spec.md, plan.md, tasks.md, reports |
+| **Review** | Self-review | Multi-phase (/analyze, /optimize) |
+| **Testing** | Run existing tests | Create new test coverage |
+| **Deployment** | Manual merge | Automated (staging → prod) |
+| **Quality gates** | Basic (tests pass) | Comprehensive (security, performance, accessibility) |
+| **Best for** | Bug fixes, refactors, tweaks | New features, API changes, migrations |
 
-**Rule of thumb**: If you can implement it in one sitting without pausing to think about architecture, use `/quick`. Otherwise, use `/feature`.
+**Decision rule**: If you can implement it in one sitting without pausing to think about architecture, use `/quick`. If you need to plan, coordinate, or consider impacts, use `/feature`.
+</comparison_table>
+
+<examples>
+**Example 1: Bug Fix**
+```
+/quick "Fix login button alignment on mobile - button is cut off on screens <375px width"
+```
+- Agent identifies CSS issue in login component
+- Adds responsive media query or Flexbox fix
+- Tests on mobile viewport sizes
+- Commits to `quick/fix-login-button-alignment-on-mobile`
+
+**Example 2: Refactor**
+```
+/quick "Refactor user service to use async/await instead of promises"
+```
+- Agent converts `.then()` chains to `async/await`
+- Updates error handling to use try/catch
+- Runs existing tests to verify behavior unchanged
+- Commits to `quick/refactor-user-service-to-use-async-await`
+
+**Example 3: Documentation**
+```
+/quick "Update README with new /quick command usage and examples"
+```
+- No agent needed (direct implementation)
+- Adds section to README with command syntax
+- Includes examples and comparison table
+- Commits to `quick/update-readme-with-new-quick-command`
+
+**Example 4: UI Change with Style Guide**
+```
+/quick "Add success message toast after user signup with proper design tokens"
+```
+- UI change detected → loads style guide
+- Agent uses semantic-success color from tokens.json
+- Ensures 8pt grid spacing and proper typography
+- Validates WCAG AA contrast
+- Style guide validation checks pass
+- Commits to `quick/add-success-message-toast-after-user-signup`
+</examples>
+
+<error_handling>
+**If description is too complex for /quick:**
+- Recommend using `/feature` instead
+- Explain why (e.g., "Database migrations require full workflow for zero-downtime planning")
+- Provide command to start: `/feature "[description]"`
+
+**If tests fail:**
+- Display test output with failures highlighted
+- Ask user: Fix now, skip with justification, or abort?
+- If skip: Require justification in commit message
+
+**If style guide files missing (UI change):**
+- Warn user: "Style guide not found - consider running `/init-project --with-design`"
+- Continue without style guide enforcement
+- Note in summary: "Style guide validation skipped (files not found)"
+
+**If no changes to commit:**
+- Display: "No changes detected - verify implementation completed successfully"
+- Show `git status` output
+- Do not create empty commit
+
+**If branch already exists:**
+- Checkout existing branch
+- Warn: "Using existing branch quick/[slug] - previous work may exist"
+- Show existing commits on branch: `git log main..HEAD --oneline`
+
+**If git not initialized:**
+- Error: "Git repository not found - initialize with `git init` first"
+- Abort command execution
+</error_handling>

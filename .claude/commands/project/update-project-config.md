@@ -1,206 +1,339 @@
-# Update Project Configuration
+---
+name: update-project-config
+description: Update project configuration settings (deployment model, scale tier, quick changes policy) with atomic commits
+argument-hint: <configuration change description>
+allowed-tools: [Read, Edit, Write, Grep, Bash(git add:*), Bash(git commit:*), Bash(date:*)]
+---
 
-**Command**: `/update-project-config`
+# /update-project-config — Update Project Configuration
 
-**Purpose**: Update project-specific configuration settings (deployment model, scale tier, quick changes policy).
+<context>
+**User Input**: $ARGUMENTS
+
+**Current Git Branch**: !`git branch --show-current 2>$null || echo "none"`
+
+**Configuration File Exists**: !`test -f docs/project/project-configuration.md && echo "Yes" || echo "No"`
+
+**Configuration File**: @docs/project/project-configuration.md
+
+**Capacity Planning File**: @docs/project/capacity-planning.md
+
+**Current Deployment Model**: !`grep -A1 "^\*\*Current\*\*:" docs/project/project-configuration.md 2>$null | grep -v "Current" | sed 's/.*\`//' | sed 's/\`.*//' || echo "Not set"`
+</context>
+
+<objective>
+Update project-specific configuration settings (deployment model, scale tier, quick changes policy) in `docs/project/project-configuration.md` with atomic commits and metadata updates.
+
+**Purpose**: Customize workflow behavior for your project by overriding auto-detected settings.
 
 **When to use**: When changing deployment model, adjusting scale tier, or updating project-level configuration.
 
 **Workflow position**: Project setup command (updates user's project configuration)
 
----
-
-## MENTAL MODEL
-
-You are updating **project configuration** - user-editable settings that control workflow behavior.
-
 **Philosophy**: Project configuration is auto-detected but can be overridden by users. This command helps users customize workflow behavior for their project.
+</objective>
+
+## Anti-Hallucination Rules
+
+**CRITICAL**: Follow these rules to prevent configuration errors.
+
+1. **Never modify config file without reading it first**
+   - Always Read docs/project/project-configuration.md before making changes
+   - Verify file structure matches expected format
+   - Quote current values when analyzing changes
+
+2. **Verify file existence before proceeding**
+   - Check if docs/project/project-configuration.md exists
+   - If not found, instruct user to run /init-project first
+   - Don't assume file structure - read and verify
+
+3. **Parse arguments precisely**
+   - Extract intent from $ARGUMENTS (deployment model change, scale tier update, policy change)
+   - If unclear, ask user for clarification using AskUserQuestion
+   - Never guess at configuration values
+
+4. **Validate configuration values**
+   - Deployment model must be: staging-prod, direct-prod, or local-only
+   - Scale tier must be valid tier from capacity planning
+   - Confirm changes with user before applying
+
+5. **Verify git operations succeeded**
+   - Check git commit with git log after committing
+   - Confirm file staged with git status
+   - Quote actual commit message in output
+
+**Why this matters**: Configuration file governs workflow behavior. Incorrect changes break automation and deployment processes.
 
 ---
 
-## EXECUTION
+<process>
 
-### Check Project Documentation
+### Step 1: Verify Prerequisites
 
-**Verify project documentation exists:**
+**Check that configuration file exists:**
+1. Read docs/project/project-configuration.md
+2. If not found, display error:
+   ```
+   ❌ Project configuration not found: docs/project/project-configuration.md
 
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "UPDATE PROJECT CONFIGURATION"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+   Run /init-project first to create project documentation.
+   ```
+3. If found, confirm:
+   ```
+   ✅ Project configuration found
+   ```
 
-CONFIG_FILE="docs/project/project-configuration.md"
+### Step 2: Display Current Configuration
 
-if [ ! -f "$CONFIG_FILE" ]; then
-  echo "❌ Project configuration not found: $CONFIG_FILE"
-  echo ""
-  echo "Run /init-project first to create project documentation."
-  exit 1
-fi
+**Show current settings to user:**
+1. Extract current deployment model from configuration file
+2. Extract scale tier from capacity-planning.md if it exists
+3. Display:
+   ```
+   Current configuration:
+     Deployment Model: {current value}
+     Scale Tier: {current value from capacity-planning.md}
+   ```
 
-echo "✅ Project configuration found"
-echo ""
+### Step 3: Parse Arguments
+
+**Understand what user wants to change:**
+
+**If $ARGUMENTS is empty**, display usage:
+```
+Usage: /update-project-config <configuration change description>
+
+Examples:
+  /update-project-config Set deployment model to staging-prod
+  /update-project-config Change to direct-prod model
+  /update-project-config Enable quick changes for all bug fixes
 ```
 
----
+**If $ARGUMENTS provided**, analyze the request:
+1. Parse change description from $ARGUMENTS
+2. Detect intent:
+   - Deployment model change? (keywords: deploy, staging, production, local)
+   - Scale tier change? (keywords: scale, tier, capacity)
+   - Quick changes policy? (keywords: quick, policy, bug)
+3. Display:
+   ```
+   Configuration change requested:
+     {$ARGUMENTS}
+   ```
 
-### Display Current Configuration
+### Step 4: Guide User Through Update
 
-**Show current settings:**
+**Interactive configuration update using AskUserQuestion:**
 
-```bash
-echo "Current configuration:"
-echo ""
+**If deployment model change detected**:
+1. Use AskUserQuestion to present options:
+   - Question: "Which deployment model would you like to use?"
+   - Options:
+     - staging-prod: "Full staging validation before production (recommended)"
+     - direct-prod: "Direct production deployment without staging"
+     - local-only: "Local builds only, no remote deployment"
+2. Get user's choice
+3. Display:
+   ```
+   Updating deployment model to: {choice}
+   ```
 
-# Extract current deployment model
-DEPLOY_MODEL=$(grep -A1 "^\*\*Current\*\*:" "$CONFIG_FILE" | grep -v "Current" | sed 's/.*`//' | sed 's/`.*//' || echo "Not set")
+**If scale tier change detected**:
+1. Read capacity-planning.md to get available tiers
+2. Use AskUserQuestion to present tier options
+3. Get user's choice
 
-echo "  Deployment Model: $DEPLOY_MODEL"
+**If quick changes policy detected**:
+1. Use AskUserQuestion to ask about policy preference
+2. Get user's choice
 
-# Extract scale tier from capacity-planning.md if it exists
-if [ -f "docs/project/capacity-planning.md" ]; then
-  SCALE=$(grep -A1 "Scale Tier" "docs/project/capacity-planning.md" | tail -1 || echo "Not set")
-  echo "  Scale Tier: $SCALE"
-fi
+### Step 5: Apply Configuration Changes
 
-echo ""
+**Update the configuration file using Edit tool:**
+
+**For deployment model change**:
+1. Locate the line with pattern: `**Current**: [deployment-model]`
+2. Use Edit tool to replace with new value
+3. Verify edit succeeded
+
+**For scale tier change**:
+1. Update docs/project/capacity-planning.md
+2. Use Edit tool to replace scale tier value
+3. Verify edit succeeded
+
+**For quick changes policy**:
+1. Locate quick changes policy section
+2. Update policy description
+3. Verify edit succeeded
+
+### Step 6: Update Metadata
+
+**Update last modified timestamp:**
+1. Get current date in ISO format (YYYY-MM-DD)
+2. Locate "Last Updated" line in configuration file
+3. Use Edit tool to update date
+4. Display:
+   ```
+   ✅ Metadata updated: {current date}
+   ```
+
+### Step 7: Commit Changes
+
+**Create atomic commit:**
+
+1. Stage the updated file:
+   ```bash
+   git add docs/project/project-configuration.md
+   ```
+
+2. If capacity-planning.md was updated, stage it too:
+   ```bash
+   git add docs/project/capacity-planning.md
+   ```
+
+3. Commit with descriptive message:
+   ```bash
+   git commit -m "config: $ARGUMENTS
+
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>"
+   ```
+
+4. Verify commit succeeded:
+   ```bash
+   git log -1 --oneline
+   ```
+
+5. Display commit confirmation:
+   ```
+   ✅ Configuration committed: {commit hash}
+   ```
+
+### Step 8: Display Summary and Next Steps
+
+**Output summary to user:**
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONFIGURATION UPDATE COMPLETE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Updated: docs/project/project-configuration.md
+Change: {$ARGUMENTS}
+Commit: {hash}
+
+### 💾 Next Steps
+
+1. Review changes: Read docs/project/project-configuration.md
+2. Future features will use updated configuration
+3. {If deployment model changed} Next /ship will use {new model} workflow
 ```
 
----
+</process>
 
-### Parse Arguments
+<success_criteria>
+**Configuration update successfully completed when:**
 
-**Get configuration change from arguments:**
+1. **Configuration file modified correctly**:
+   - File read before modifications
+   - Changes applied according to user's intent
+   - File structure remains valid after changes
+   - No syntax errors in markdown
 
-```bash
-if [ -z "$ARGUMENTS" ]; then
-  echo "Usage: /update-project-config [changes description]"
-  echo ""
-  echo "Examples:"
-  echo "  /update-project-config Set deployment model to staging-prod"
-  echo "  /update-project-config Change to direct-prod model"
-  echo "  /update-project-config Enable quick changes for all bug fixes"
-  echo ""
-  exit 1
-fi
+2. **Metadata updated**:
+   - Last Updated field shows current date
+   - All modified sections properly updated
 
-CHANGE_DESCRIPTION="$ARGUMENTS"
+3. **Git operations successful**:
+   - Configuration file(s) committed
+   - Commit hash retrieved and displayed
+   - Working tree clean after commit
 
-echo "Configuration change requested:"
-echo "  $CHANGE_DESCRIPTION"
-echo ""
-```
+4. **Validation passed**:
+   - Deployment model is valid value (staging-prod, direct-prod, or local-only)
+   - Scale tier matches available tiers (if updated)
+   - File structure remains valid
 
----
+5. **User informed**:
+   - Summary displayed with file path, change description, commit hash
+   - Next steps provided
+   - No errors or warnings
+</success_criteria>
 
-### Interactive Update
+<verification>
+**Before marking configuration update complete, verify:**
 
-**Guide user through configuration update:**
+1. **Read updated configuration file**:
+   ```bash
+   cat docs/project/project-configuration.md
+   ```
+   Should show applied changes
 
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "CONFIGURATION UPDATE"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+2. **Check deployment model is valid**:
+   ```bash
+   grep "**Current**:" docs/project/project-configuration.md
+   ```
+   Should show one of: staging-prod, direct-prod, local-only
 
-# Detect if user wants to change deployment model
-if [[ "$CHANGE_DESCRIPTION" =~ deploy|staging|production|local ]]; then
-  echo "Deployment model change detected."
-  echo ""
-  echo "Select new deployment model:"
-  echo "  1. staging-prod - Full staging validation before production (recommended)"
-  echo "  2. direct-prod - Direct production deployment without staging"
-  echo "  3. local-only - Local builds only, no remote deployment"
-  echo ""
-  read -p "Choice (1-3): " DEPLOY_CHOICE
+3. **Verify git commit**:
+   ```bash
+   git log -1 --oneline
+   ```
+   Should show "config:" commit
 
-  case "$DEPLOY_CHOICE" in
-    1) NEW_DEPLOY_MODEL="staging-prod" ;;
-    2) NEW_DEPLOY_MODEL="direct-prod" ;;
-    3) NEW_DEPLOY_MODEL="local-only" ;;
-    *)
-      echo "❌ Invalid choice"
-      exit 1
-      ;;
-  esac
+4. **Check commit hash**:
+   ```bash
+   git rev-parse --short HEAD
+   ```
+   Should return valid hash
 
-  echo ""
-  echo "Updating deployment model to: $NEW_DEPLOY_MODEL"
-  echo ""
+5. **Validate working tree**:
+   ```bash
+   git status
+   ```
+   Should show clean working tree
 
-  # Update the file
-  # Claude Code: Edit docs/project/project-configuration.md
-  # Find the line: **Current**: [DEPLOY_MODEL]
-  # Replace with: **Current**: $NEW_DEPLOY_MODEL
-fi
+**Never claim completion without reading the updated file and verifying commit hash.**
+</verification>
 
-# Open file for manual editing if needed
-echo "Opening configuration file for editing..."
-echo ""
+<output>
+**Files created/modified by this command:**
 
-if command -v code &> /dev/null; then
-  code --wait "$CONFIG_FILE"
-else
-  echo "Edit manually: $CONFIG_FILE"
-  read -p "Press Enter when done..."
-fi
+**Configuration files**:
+- docs/project/project-configuration.md — Updated with configuration changes
+- docs/project/capacity-planning.md — Updated if scale tier changed
 
-echo ""
-echo "✅ Configuration updated"
-echo ""
-```
+**Git commits**:
+- Atomic commit: "config: {$ARGUMENTS}"
 
----
-
-### Update Metadata
-
-**Update last modified date:**
-
-```bash
-TODAY=$(date +%Y-%m-%d)
-
-# Claude Code: Edit docs/project/project-configuration.md
-# Update the "Last Updated" line with today's date
-
-echo "✅ Metadata updated: $TODAY"
-echo ""
-```
+**Console output**:
+- Current configuration display
+- Change confirmation
+- Commit hash confirmation
+- Next steps recommendation
+</output>
 
 ---
 
-### Summary
-
-**Display changes and next steps:**
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "CONFIGURATION UPDATE COMPLETE"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-echo "Updated: $CONFIG_FILE"
-echo "Change: $CHANGE_DESCRIPTION"
-echo ""
-
-echo "### 💾 Next Steps"
-echo ""
-echo "1. Review changes: cat $CONFIG_FILE"
-echo "2. Commit changes: git add $CONFIG_FILE && git commit -m \"config: $CHANGE_DESCRIPTION\""
-echo "3. Future features will use updated configuration"
-echo ""
-```
-
----
-
-## NOTES
+## Notes
 
 **Configuration vs Principles:**
 - `project-configuration.md` - Deployment model, scale tier (this command)
-- `engineering-principles.md` - 8 core engineering standards (different file)
+- `engineering-principles.md` - 8 core engineering standards (`/constitution` command)
 
 **Auto-Detection**: Deployment model is auto-detected on first `/feature` run, but can be overridden here.
 
 **Scale Tier**: Set in `capacity-planning.md`, referenced here for convenience.
 
 **Quick Changes**: Policy for when to use `/quick` vs `/feature` workflow.
+
+**Available Deployment Models**:
+- **staging-prod**: Full staging validation before production (recommended)
+  - Git remote + staging branch + `.github/workflows/deploy-staging.yml`
+  - Workflow: /ship-staging → validate → /ship-prod
+- **direct-prod**: Direct production deployment without staging
+  - Git remote + no staging branch
+  - Workflow: /deploy-prod
+- **local-only**: Local builds only, no remote deployment
+  - No git remote
+  - Workflow: /build-local

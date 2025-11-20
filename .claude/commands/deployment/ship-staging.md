@@ -1,1656 +1,434 @@
 ---
-description: Ship feature to staging with auto-merge
+description: Create PR to main with auto-merge, triggering staging deployment via CI/CD pipeline with health checks and deployment metadata capture
+allowed-tools: [Read, Write, Bash(git *), Bash(gh *), Bash(curl *), Bash(date *), Bash(grep *), Bash(jq *), Bash(yq *), Bash(test *), Bash(sleep *), Bash(source *)]
+argument-hint: [feature-slug] (optional - defaults to current branch)
 internal: true
 ---
 
 > **⚠️  INTERNAL COMMAND**: This command is called automatically by `/ship`.
 > Most users should use `/ship` instead of calling this directly.
 
-Ship feature to staging.
-
-## MENTAL MODEL
-
-**Workflow**:\spec-flow → clarify → plan → tasks → analyze → implement → optimize → preview → **phase-1-ship** → validate-staging → phase-2-ship
-
-**State machine:**
-- Validate → Create PR → Enable auto-merge → Wait for CI → Report → Next
-
-**Auto-suggest:**
-- After auto-merge → `/validate-staging`
-- If CI fails → `/checks pr [number]`
-
-## LOAD FEATURE
-
-**Get feature from argument or current branch:**
-
-```bash
-if [ -n "$ARGUMENTS" ]; then
-  SLUG="$ARGUMENTS"
-else
-  SLUG=$(git branch --show-current)
-fi
-
-FEATURE_DIR="specs/$SLUG"
-```
-
-**Validate feature exists:**
-
-```bash
-if [ ! -d "$FEATURE_DIR" ]; then
-  echo "❌ Feature not found: $FEATURE_DIR"
-  exit 1
-fi
-```
-n# Start timing for ship-staging phase
-source .spec-flow/scripts/bash/workflow-state.sh
-start_phase_timing "$FEATURE_DIR" "ship:phase-1-ship"
-
-**Validate on feature branch:**
-
-```bash
-CURRENT_BRANCH=$(git branch --show-current)
-
-if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "staging" ]; then
-  echo "❌ Cannot ship from $CURRENT_BRANCH branch"
-  echo "phase-1-ship runs from feature branches only"
-  echo ""
-  echo "To promote staging → production: /ship-prod (called via /ship)"
-  exit 1
-fi
-
-echo "✅ Feature loaded: $SLUG"
-echo "✅ Branch: $CURRENT_BRANCH"
-echo ""
-```
-
-## PRE-FLIGHT VALIDATION
-
-### Check Remote Repository
-
-```bash
-echo "Checking remote repository configuration..."
-echo ""
-
-# Check if remote origin exists
-if ! git remote -v | grep -q "origin"; then
-  echo "❌ No remote repository configured"
-  echo ""
-  echo "This command requires a remote repository with staging workflow."
-  echo ""
-  echo "Options:"
-  echo "  1. Add remote repository:"
-  echo "     git remote add origin <repository-url>"
-  echo "     git push -u origin main"
-  echo ""
-  echo "  2. For local-only projects:"
-  echo "     Use manual deployment (see /feature output for instructions)"
-  echo ""
-  echo "  3. Update project configuration:"
-  echo "     See .spec-flow/memory/constitution.md"
-  exit 1
-fi
-
-# Check if staging branch exists
-if ! git show-ref --verify --quiet refs/heads/staging && \
-   ! git show-ref --verify --quiet refs/remotes/origin/staging; then
-  echo "❌ No 'staging' branch found"
-  echo ""
-  echo "Create staging branch for deployment workflow:"
-  echo "  git checkout -b staging main"
-  echo "  git push -u origin staging"
-  echo ""
-  echo "Or use direct-to-main workflow (skip staging):"
-  echo "  git checkout main && git merge $SLUG"
-  exit 1
-fi
-
-echo "✅ Remote repository configured"
-echo "✅ Staging branch exists"
-echo ""
-```
-
-### Check Clean Working Tree
-
-```bash
-if [ -n "$(git status --porcelain)" ]; then
-  echo "❌ Uncommitted changes detected"
-  echo "Commit or stash changes before shipping"
-  exit 1
-fi
-
-echo "✅ Clean working tree"
-echo ""
-```
-
-### Check Optimization Complete
-
-```bash
-echo "Validating optimization status..."
-echo ""
-
-# Check optimize ran
-if ! grep -q "✅ Phase 5 (Optimize): Completed" "$FEATURE_DIR/NOTES.md" 2>/dev/null; then
-  echo "❌ Optimization not complete"
-  echo "Run /optimize before shipping"
-  exit 1
-fi
-
-echo "✅ Optimization completed"
-
-# Check for blockers in optimization report
-if [ -f "$FEATURE_DIR/optimization-report.md" ]; then
-  BLOCKERS=$(grep -c "❌ BLOCKER" "$FEATURE_DIR/optimization-report.md" || echo 0)
-  CRITICAL=$(grep "Critical:" "$FEATURE_DIR/optimization-report.md" | grep -oE "[0-9]+" | head -1 || echo 0)
-
-  if [ "$BLOCKERS" -gt 0 ]; then
-    echo "❌ Found $BLOCKERS blocker(s) in optimization report"
-    echo ""
-    echo "Blockers:"
-    grep "❌ BLOCKER" "$FEATURE_DIR/optimization-report.md" | sed 's/^/  /'
-    echo ""
-    echo "Fix blockers before shipping"
-    exit 1
-  fi
-
-  if [ "$CRITICAL" -gt 0 ]; then
-    echo "⚠️  Found $CRITICAL critical issue(s)"
-    echo ""
-    read -p "Ship with critical issues? (y/N): " SHIP_ANYWAY
-    if [ "$SHIP_ANYWAY" != "y" ]; then
-      echo "Cancelled. Fix issues first."
-      exit 1
-    fi
-  fi
-
-  echo "✅ No blocking issues"
-else
-  echo "⚠️  optimization-report.md not found"
-  echo "Recommend running /optimize before shipping"
-  echo ""
-  read -p "Continue without optimization report? (y/N): " CONTINUE
-  if [ "$CONTINUE" != "y" ]; then
-    exit 1
-  fi
-fi
-
-echo ""
-```
-
-### Run Pre-Flight Smoke Tests
-
-```bash
-echo "Running pre-flight smoke tests..."
-echo ""
-
-if [ -d "tests/smoke" ]; then
-  # Frontend smoke tests
-  if [ -d "apps/app" ]; then
-    echo "Frontend smoke tests..."
-    cd apps/app
-    pnpm playwright test -g "@smoke" --headed=false
-    FRONTEND_RESULT=$?
-    cd ../..
-
-    if [ $FRONTEND_RESULT -ne 0 ]; then
-      echo "❌ Frontend smoke tests failed"
-      echo ""
-      read -p "Ship anyway? (y/N): " SHIP_ANYWAY
-      if [ "$SHIP_ANYWAY" != "y" ]; then
-        exit 1
-      fi
-    else
-      echo "✅ Frontend smoke tests passed"
-    fi
-  fi
-
-  # Backend smoke tests
-  if [ -d "api" ]; then
-    echo "Backend smoke tests..."
-    cd api
-    pytest -m smoke
-    BACKEND_RESULT=$?
-    cd ..
-
-    if [ $BACKEND_RESULT -ne 0 ]; then
-      echo "❌ Backend smoke tests failed"
-      echo ""
-      read -p "Ship anyway? (y/N): " SHIP_ANYWAY
-      if [ "$SHIP_ANYWAY" != "y" ]; then
-        exit 1
-      fi
-    else
-      echo "✅ Backend smoke tests passed"
-    fi
-  fi
-
-  echo ""
-else
-  echo "⚠️  No smoke tests found (tests/smoke/)"
-  echo "Recommendation: Add smoke tests for critical flows"
-  echo ""
-fi
-```
-
-### Run Mandatory Preflight Check
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Mandatory Pre-Flight Validation"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-echo "Running preflight checks to catch deployment failures before CI..."
-echo ""
-
-# Check if preflight script exists
-if [ ! -f ".spec-flow/scripts/bash/preflight-check.sh" ]; then
-  echo "⚠️  Preflight script not found"
-  echo "   Creating basic preflight check..."
-
-  # Basic inline preflight for backward compatibility
-  PREFLIGHT_FAILED=false
-
-  # Check environment variables
-  echo "Checking environment variables..."
-
-  if [ -f ".env.example" ]; then
-    REQUIRED_VARS=$(grep -v "^#" .env.example | grep "=" | cut -d= -f1)
-    MISSING_COUNT=0
-
-    for var in $REQUIRED_VARS; do
-      if [ -z "${!var}" ] && [[ "$var" != *"PUBLIC"* ]]; then
-        ((MISSING_COUNT++))
-      fi
-    done
-
-    if [ "$MISSING_COUNT" -gt 0 ]; then
-      echo "  ⚠️  $MISSING_COUNT environment variable(s) missing (will be set in CI)"
-    else
-      echo "  ✅ Environment variables present"
-    fi
-  fi
-
-  echo ""
-  echo "Testing production builds..."
-
-  # Test marketing build
-  if [ -d "apps/marketing" ]; then
-    echo "Building marketing..."
-    cd apps/marketing
-    pnpm install --silent 2>/dev/null || true
-    pnpm build >/tmp/preflight-marketing.log 2>&1
-    MARKETING_BUILD=$?
-    cd ../..
-
-    if [ $MARKETING_BUILD -ne 0 ]; then
-      echo "  ❌ Marketing build failed"
-      tail -10 /tmp/preflight-marketing.log | grep -i "error" | head -5 | sed 's/^/    /'
-      PREFLIGHT_FAILED=true
-    else
-      echo "  ✅ Marketing build succeeded"
-    fi
-  fi
-
-  # Test app build
-  if [ -d "apps/app" ]; then
-    echo "Building app..."
-    cd apps/app
-    pnpm install --silent 2>/dev/null || true
-    pnpm build >/tmp/preflight-app.log 2>&1
-    APP_BUILD=$?
-    cd ../..
-
-    if [ $APP_BUILD -ne 0 ]; then
-      echo "  ❌ App build failed"
-      tail -10 /tmp/preflight-app.log | grep -i "error" | head -5 | sed 's/^/    /'
-      PREFLIGHT_FAILED=true
-    else
-      echo "  ✅ App build succeeded"
-    fi
-  fi
-
-  # Test API Docker build (if Dockerfile exists)
-  if [ -f "api/Dockerfile" ] && command -v docker &>/dev/null; then
-    echo "Testing API Docker build..."
-    docker build -t api-preflight-test -f api/Dockerfile . >/tmp/preflight-docker.log 2>&1
-    DOCKER_BUILD=$?
-
-    if [ $DOCKER_BUILD -ne 0 ]; then
-      echo "  ❌ Docker build failed"
-      tail -10 /tmp/preflight-docker.log | sed 's/^/    /'
-      PREFLIGHT_FAILED=true
-    else
-      echo "  ✅ Docker image builds"
-      docker rmi api-preflight-test 2>/dev/null || true
-    fi
-  fi
-
-  echo ""
-
-  if [ "$PREFLIGHT_FAILED" = true ]; then
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "❌ PRE-FLIGHT FAILED"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "Deployment blocked: Fix build errors before shipping"
-    echo ""
-    echo "Build logs:"
-    echo "  - Marketing: /tmp/preflight-marketing.log"
-    echo "  - App: /tmp/preflight-app.log"
-    echo "  - Docker: /tmp/preflight-docker.log"
-    echo ""
-    echo "Fix issues and re-run /ship-staging"
-    exit 1
-  else
-    echo "✅ Pre-flight checks passed"
-  fi
-else
-  # Run full preflight script if available
-  bash .spec-flow/scripts/bash/preflight-check.sh
-
-  if [ $? -ne 0 ]; then
-    echo "❌ Pre-flight validation failed"
-    echo ""
-    echo "Fix issues and re-run /ship-staging"
-    exit 1
-  fi
-
-  echo "✅ Pre-flight checks passed"
-fi
-
-echo ""
-```
-
-### Check for Existing PR
-
-```bash
-EXISTING_PR=$(gh pr list --head "$CURRENT_BRANCH" --json number,url -q '.[0]')
-
-if [ -n "$EXISTING_PR" ]; then
-  PR_NUMBER=$(echo "$EXISTING_PR" | yq eval '.number')
-  PR_URL=$(echo "$EXISTING_PR" | yq eval '.url')
-
-  echo "⚠️  PR already exists for this branch"
-  echo "   #$PR_NUMBER: $PR_URL"
-  echo ""
-  echo "Options:"
-  echo "  A) Use existing PR (skip to auto-merge)"
-  echo "  B) Close and create new PR"
-  echo "  C) Cancel"
-  echo ""
-  read -p "Choose (A/B/C): " OPTION
-
-  case "$OPTION" in
-    A|a)
-      echo "Using existing PR #$PR_NUMBER"
-      USE_EXISTING=true
-      ;;
-    B|b)
-      echo "Closing PR #$PR_NUMBER..."
-      gh pr close "$PR_NUMBER"
-      echo "Creating new PR..."
-      USE_EXISTING=false
-      ;;
-    *)
-      echo "Cancelled"
-      exit 0
-      ;;
-  esac
-
-  echo ""
-fi
-```
-
-## PRE-DEPLOYMENT CHECKS
-
-### Check Deployment Budget
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Pre-Deployment Validation"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-# Run deployment budget check
-echo "Checking deployment quota..."
-echo ""
-
-# Count staging deployments (last 24 hours)
-RECENT_DEPLOYS=$(gh run list \
-  --workflow=deploy-staging.yml \
-  --created="$(date -d '24 hours ago' -Iseconds 2>/dev/null || date -u -v-24H -Iseconds)" \
-  --json conclusion \
-  --jq 'length' 2>/dev/null || echo 0)
-
-QUOTA_REMAINING=$((100 - RECENT_DEPLOYS))
-
-echo "Deployment quota (24h):"
-echo "  Used: $RECENT_DEPLOYS / 100"
-echo "  Remaining: $QUOTA_REMAINING"
-echo ""
-
-# Check if quota is critical
-if [ "$QUOTA_REMAINING" -lt 5 ]; then
-  echo "🚨 CRITICAL: Only $QUOTA_REMAINING deployments remaining"
-  echo ""
-  echo "Options:"
-  echo "  A) Wait for quota reset (run /deployment-budget for details)"
-  echo "  B) Use preview mode (doesn't count toward quota)"
-  echo "  C) Continue with staging (not recommended)"
-  echo ""
-  read -p "Choose (A/B/C): " QUOTA_CHOICE
-
-  case "$QUOTA_CHOICE" in
-    A|a)
-      echo "Cancelled. Run /deployment-budget for reset time."
-      exit 0
-      ;;
-    B|b)
-      echo "Forcing preview mode due to low quota"
-      FORCE_PREVIEW=true
-      ;;
-    *)
-      echo "⚠️  Proceeding with low quota (not recommended)"
-      ;;
-  esac
-
-  echo ""
-fi
-```
-
----
-
-### Run Environment Check
-
-```bash
-# Check environment variables for staging
-echo "Validating environment variables..."
-echo ""
-
-if [ -f ".env.example" ]; then
-  EXPECTED_VARS=$(grep -v "^#" .env.example | grep "=" | cut -d= -f1 | wc -l)
-  echo "Expected variables: $EXPECTED_VARS"
-
-  # Quick check for critical vars
-  CRITICAL_VARS=(
-    "NEXT_PUBLIC_API_URL"
-    "DATABASE_URL"
-    "CLERK_SECRET_KEY"
-  )
-
-  for var in "${CRITICAL_VARS[@]}"; do
-    # Check if var exists in environment (will be set in CI)
-    if [ -z "${!var}" ]; then
-      echo "  ⚠️  $var not set locally (should be set in CI)"
-    fi
-  done
-
-  echo ""
-  echo "✅ Environment variables will be validated in CI"
-  echo "   To validate now: /check-env staging"
-  echo ""
-else
-  echo "⚠️  .env.example not found"
-  echo ""
-fi
-```
-
----
-
-## DEPLOYMENT MODE SELECTION
-
-**Select deployment mode based on quota:**
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Deployment Mode Selection"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-# Determine default mode based on quota
-if [ "$FORCE_PREVIEW" = true ]; then
-  DEFAULT_MODE="preview"
-  echo "Mode: preview (forced due to low quota)"
-  echo ""
-elif [ "$QUOTA_REMAINING" -lt 20 ]; then
-  DEFAULT_MODE="preview"
-  echo "⚠️  LOW QUOTA: $QUOTA_REMAINING deployments remaining"
-  echo "   Defaulting to preview mode (unlimited)"
-elif [ "$QUOTA_REMAINING" -lt 50 ]; then
-  DEFAULT_MODE="preview"
-  echo "⚠️  MEDIUM QUOTA: $QUOTA_REMAINING deployments remaining"
-  echo "   Defaulting to preview mode (recommended)"
-else
-  DEFAULT_MODE="staging"
-  echo "✅ NORMAL QUOTA: $QUOTA_REMAINING deployments remaining"
-  echo "   Defaulting to staging mode"
-fi
-
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Deployment Mode Options"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "1. preview"
-echo "   - Tests deployment workflow"
-echo "   - Does NOT update staging.cfipros.com"
-echo "   - Unlimited quota (doesn't count toward 100/day)"
-echo "   - Use for: CI testing, workflow debugging"
-echo ""
-echo "2. staging"
-echo "   - Updates staging.cfipros.com"
-echo "   - Uses production quota (counts toward 100/day)"
-echo "   - Use for: Actual staging deployment"
-echo ""
-echo "3. skip"
-echo "   - Creates PR without triggering any deployment"
-echo "   - Manual workflow trigger required"
-echo "   - Use for: Draft PRs, work in progress"
-echo ""
-
-read -p "Select mode [$DEFAULT_MODE]: " SELECTED_MODE
-DEPLOYMENT_MODE="${SELECTED_MODE:-$DEFAULT_MODE}"
-
-echo ""
-
-case "$DEPLOYMENT_MODE" in
-  preview)
-    echo "✅ Preview mode selected"
-    echo "   - CI testing only"
-    echo "   - No staging domain update"
-    echo "   - Quota: Unlimited"
-    ;;
-  staging)
-    echo "✅ Staging mode selected"
-    echo "   - Will update staging.cfipros.com"
-    echo "   - Uses 2 deployments (marketing + app)"
-    echo "   - Remaining after: $((QUOTA_REMAINING - 2))"
-    ;;
-  skip)
-    echo "✅ Skip mode selected"
-    echo "   - PR created without deployment"
-    ;;
-  *)
-    echo "❌ Invalid mode: $DEPLOYMENT_MODE"
-    exit 1
-    ;;
-esac
-
-echo ""
-```
-
-**Rate limit prevention checklist:**
-
-- [ ] Run `pnpm run ci:validate` locally before shipping (0 deployments)
-- [ ] Use preview mode for CI testing and workflow debugging
-- [ ] Reserve staging mode for actual staging deployment
-- [ ] Reference: `docs/CI-CD-GUIDE.md` (CI Debugging Without Burning Deployments)
-
-## LOAD METADATA
-
-```bash
-if [ "$USE_EXISTING" != true ]; then
-  # Extract feature info from spec.md
-  TITLE=$(grep "^# " "$FEATURE_DIR/spec.md" | head -1 | sed 's/^# //')
-  SUMMARY=$(sed -n '/## Summary/,/^## /p' "$FEATURE_DIR/spec.md" | grep -v "^## ")
-
-  # Load optimization results
-  if [ -f "$FEATURE_DIR/optimization-report.md" ]; then
-    OPT_PERF=$(grep "Backend p95:" "$FEATURE_DIR/optimization-report.md" | head -1)
-    OPT_SECURITY=$(grep "Critical vulnerabilities:" "$FEATURE_DIR/optimization-report.md" | head -1)
-    OPT_A11Y=$(grep "WCAG level:" "$FEATURE_DIR/optimization-report.md" | head -1)
-  else
-    OPT_PERF="Performance: Not validated"
-    OPT_SECURITY="Security: Not validated"
-    OPT_A11Y="A11y: Not validated"
-  fi
-fi
-```
-
-## CREATE PULL REQUEST
-
-**Generate PR body:**
-
-```bash
-if [ "$USE_EXISTING" != true ]; then
-  cat > /tmp/pr-body-$SLUG.md <<EOF
-## 🚀 Phase 1: Merge to Main (Deploy to Staging)
-
-**Feature**: $TITLE
-
-### Summary
-
-$SUMMARY
-
-### Optimization Results
-
-- $OPT_PERF
-- $OPT_SECURITY
-- $OPT_A11Y
-
-### Deployment Mode
-
-**Mode**: $DEPLOYMENT_MODE
-
-$(if [ "$DEPLOYMENT_MODE" = "staging" ]; then
-  echo "After merge to **main**, automatically deploys to **staging environment**:"
-  echo "- Marketing: https://staging.cfipros.com"
-  echo "- App: https://app.staging.cfipros.com"
-  echo "- API: https://api.staging.cfipros.com"
-elif [ "$DEPLOYMENT_MODE" = "preview" ]; then
-  echo "Preview mode: Tests deployment workflow without updating staging domain"
-  echo "- CI testing only"
-  echo "- Does not count toward production quota"
-else
-  echo "Skip mode: PR created without triggering deployment"
-fi)
-
-### CI/CD Checks
-
-Auto-merge enabled. PR merges automatically when:
-- ✅ Deploy to staging succeeds (if staging mode)
-- ✅ Smoke tests pass
-- ✅ Lighthouse CI passes (Performance ≥90, A11y ≥95)
-- ✅ E2E tests pass
-
-### Next Steps
-
-1. ✅ Auto-merge to main when checks pass
-2. Manual validation: \`/validate-staging\`
-3. Production: \`/ship-prod\` (called via \`/ship\`)
-
----
-🤖 Generated with [Claude Code](https://claude.ai/claude-code)
-EOF
-fi
-```
-
-**Push branch and create PR:**
-
-```bash
-if [ "$USE_EXISTING" != true ]; then
-  # Push branch
-  echo "Pushing branch to origin..."
-  git push -u origin "$CURRENT_BRANCH"
-
-  if [ $? -ne 0 ]; then
-    echo "❌ Failed to push branch"
-    exit 1
-  fi
-
-  echo "✅ Branch pushed"
-  echo ""
-
-  # Create PR
-  echo "Creating pull request..."
-
-  gh pr create \
-    --title "feat: $TITLE" \
-    --body-file /tmp/pr-body-$SLUG.md \
-    --base main \
-    --head "$CURRENT_BRANCH"
-
-  if [ $? -ne 0 ]; then
-    echo "❌ Failed to create PR"
-    echo ""
-    echo "Branch pushed but PR creation failed"
-    echo "Options:"
-    echo "  A) Retry PR creation: gh pr create --base main --head $CURRENT_BRANCH"
-    echo "  B) Create manually: https://github.com/cfipros/monorepo/compare/main...$CURRENT_BRANCH"
-    echo "  C) Delete remote branch: git push origin --delete $CURRENT_BRANCH"
-    exit 1
-  fi
-
-  # Get PR details
-  PR_NUMBER=$(gh pr view --json number -q .number)
-  PR_URL=$(gh pr view --json url -q .url)
-
-  echo "✅ PR created: #$PR_NUMBER"
-  echo "   URL: $PR_URL"
-  echo ""
-
-  # Cleanup
-  rm /tmp/pr-body-$SLUG.md
-fi
-```
-
-**Set deployment mode via PR label:**
-
-```bash
-case "$DEPLOYMENT_MODE" in
-  preview)
-    gh pr edit "$PR_NUMBER" --add-label "deploy:preview" 2>/dev/null || true
-    ;;
-  staging)
-    gh pr edit "$PR_NUMBER" --add-label "deploy:staging" 2>/dev/null || true
-    ;;
-  skip)
-    gh pr edit "$PR_NUMBER" --add-label "deploy:skip" 2>/dev/null || true
-    ;;
-esac
-
-echo "✅ Deployment mode set: $DEPLOYMENT_MODE"
-echo ""
-```
-
-## WAIT FOR REQUIRED CHECKS TO REGISTER
-
-**Ensure all critical checks are registered before enabling auto-merge:**
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Waiting for Required CI Checks to Register"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-echo "Ensuring all critical checks start before enabling auto-merge..."
-echo "This prevents race conditions where auto-merge triggers before checks complete."
-echo ""
-
-# Define required checks based on deployment mode
-REQUIRED_CHECKS=()
-
-# Common checks for all modes
-REQUIRED_CHECKS+=("Lint")
-REQUIRED_CHECKS+=("Type Check")
-REQUIRED_CHECKS+=("Test")
-
-# Deployment-specific checks
-if [ "$DEPLOYMENT_MODE" = "staging" ] || [ "$DEPLOYMENT_MODE" = "preview" ]; then
-  REQUIRED_CHECKS+=("Build")
-  REQUIRED_CHECKS+=("Verify Build Artifacts")
-  REQUIRED_CHECKS+=("Deploy to Staging")
-fi
-
-echo "Required checks (${#REQUIRED_CHECKS[@]} total):"
-for check in "${REQUIRED_CHECKS[@]}"; do
-  echo "  - $check"
-done
-echo ""
-
-# Poll for checks to register
-REGISTRATION_TIMEOUT=300  # 5 minutes
-REGISTRATION_ELAPSED=0
-POLL_INTERVAL=10
-ALL_REGISTERED=false
-
-echo "Polling for check registration..."
-echo ""
-
-while [ $REGISTRATION_ELAPSED -lt $REGISTRATION_TIMEOUT ]; do
-  # Get current checks
-  CURRENT_CHECKS=$(gh pr checks "$PR_NUMBER" --json name -q '.[].name' 2>/dev/null || echo "")
-
-  if [ -z "$CURRENT_CHECKS" ]; then
-    echo "[$(date +%H:%M:%S)] No checks registered yet. Waiting..."
-  else
-    # Count how many required checks are registered
-    REGISTERED_COUNT=0
-
-    for required in "${REQUIRED_CHECKS[@]}"; do
-      if echo "$CURRENT_CHECKS" | grep -qi "$required"; then
-        ((REGISTERED_COUNT++))
-      fi
-    done
-
-    echo "[$(date +%H:%M:%S)] Registered: $REGISTERED_COUNT / ${#REQUIRED_CHECKS[@]}"
-
-    # Check if all required checks are registered
-    if [ "$REGISTERED_COUNT" -eq "${#REQUIRED_CHECKS[@]}" ]; then
-      echo ""
-      echo "✅ All required checks registered!"
-      echo ""
-
-      # Show registered checks
-      echo "Registered checks:"
-      echo "$CURRENT_CHECKS" | sed 's/^/  - /'
-      echo ""
-
-      ALL_REGISTERED=true
-      break
-    fi
-  fi
-
-  # Wait before next poll
-  sleep $POLL_INTERVAL
-  REGISTRATION_ELAPSED=$((REGISTRATION_ELAPSED + POLL_INTERVAL))
-done
-
-if [ "$ALL_REGISTERED" != true ]; then
-  echo ""
-  echo "⏱️  Timeout: Required checks did not register within 5 minutes"
-  echo ""
-
-  if [ -n "$CURRENT_CHECKS" ]; then
-    echo "Checks that registered:"
-    echo "$CURRENT_CHECKS" | sed 's/^/  - /'
-    echo ""
-  fi
-
-  echo "This may indicate:"
-  echo "  - CI workflow configuration issues"
-  echo "  - GitHub Actions not triggering"
-  echo "  - Branch protection rules missing"
-  echo ""
-  echo "Check CI configuration and try again"
-
-  read -p "Continue anyway? (y/N): " FORCE_CONTINUE
-  if [ "$FORCE_CONTINUE" != "y" ]; then
-    exit 1
-  fi
-
-  echo ""
-  echo "⚠️  Proceeding without full check registration (not recommended)"
-else
-  echo "Safe to enable auto-merge (all checks running)"
-fi
-
-echo ""
-```
-
-## ENABLE AUTO-MERGE
-
-**Enable auto-merge via GitHub CLI:**
-
-```bash
-echo "Enabling auto-merge on PR #$PR_NUMBER..."
-
-gh pr merge "$PR_NUMBER" \
-  --auto \
-  --squash \
-  --delete-branch
-
-if [ $? -eq 0 ]; then
-  echo "✅ Auto-merge enabled"
-  echo "   PR will merge automatically when all checks pass"
-  echo ""
-else
-  echo "⚠️  Auto-merge failed"
-  echo "   PR will require manual merge"
-  echo ""
-fi
-```
-
-## WAIT FOR CI CHECKS
-
-**Poll for CI completion:**
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "⏳ Waiting for CI checks to complete"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "PR: $PR_URL"
-echo ""
-echo "Polling every 30s (max 20 minutes)..."
-echo ""
-
-TIMEOUT=1200  # 20 minutes
-ELAPSED=0
-POLL_INTERVAL=30
-CI_PASSED=false
-
-while [ $ELAPSED -lt $TIMEOUT ]; do
-  # Get check status
-  CHECK_STATUS=$(gh pr checks "$PR_NUMBER" --json state -q '.[].state' | sort -u)
-
-  # Count status types
-  PENDING=$(echo "$CHECK_STATUS" | grep -c "PENDING" || echo 0)
-  SUCCESS=$(echo "$CHECK_STATUS" | grep -c "SUCCESS" || echo 0)
-  FAILURE=$(echo "$CHECK_STATUS" | grep -c "FAILURE" || echo 0)
-
-  TOTAL_CHECKS=$(echo "$CHECK_STATUS" | wc -l)
-
-  echo "[$(date +%H:%M:%S)] Status: $SUCCESS/$TOTAL_CHECKS passed, $PENDING pending, $FAILURE failed"
-
-  # Check if all passed
-  if [ "$PENDING" -eq 0 ] && [ "$FAILURE" -eq 0 ] && [ "$SUCCESS" -gt 0 ]; then
-    echo ""
-    echo "✅ All CI checks passed!"
-    echo ""
-
-    # Check if auto-merge completed
-    PR_STATE=$(gh pr view "$PR_NUMBER" --json state -q .state)
-
-    if [ "$PR_STATE" = "MERGED" ]; then
-      echo "✅ PR auto-merged to main"
-      echo ""
-      CI_PASSED=true
-      break
-    else
-      echo "⏳ Waiting for auto-merge..."
-    fi
-  fi
-
-  # Check if any failed
-  if [ "$FAILURE" -gt 0 ]; then
-    echo ""
-    echo "❌ CI checks failed"
-    echo ""
-
-    # Show failed checks
-    gh pr checks "$PR_NUMBER" --json name,state -q '.[] | select(.state=="FAILURE") | .name' | \
-      sed 's/^/  ❌ /'
-
-    echo ""
-    echo "Next: /checks pr $PR_NUMBER (debug failures)"
-    exit 1
-  fi
-
-  # Wait before next poll
-  sleep $POLL_INTERVAL
-  ELAPSED=$((ELAPSED + POLL_INTERVAL))
-done
-
-if [ "$CI_PASSED" != true ]; then
-  echo ""
-  echo "⏱️  Timeout: CI checks taking >20 minutes"
-  echo "Check manually: $PR_URL"
-  exit 1
-fi
-```
-
-## VERIFY BUILD ARTIFACTS
-
-**Verify that builds actually succeeded and artifacts were created:**
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Verifying Build Artifacts"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-echo "Ensuring builds succeeded and artifacts were created..."
-echo ""
-
-ARTIFACTS_VALID=true
-
-# Find the workflow run for the merged commit
-MERGE_COMMIT=$(git rev-parse origin/main)
-echo "Merged commit: $(git rev-parse --short $MERGE_COMMIT)"
-echo ""
-
-# Get the "Verify Build Artifacts" check specifically
-echo "Checking 'Verify Build Artifacts' status..."
-VERIFY_CHECK=$(gh pr checks "$PR_NUMBER" --json name,conclusion -q '.[] | select(.name | test("Verify.*Build.*Artifacts"; "i"))' 2>/dev/null)
-
-if [ -n "$VERIFY_CHECK" ]; then
-  VERIFY_CONCLUSION=$(echo "$VERIFY_CHECK" | jq -r '.conclusion')
-
-  if [ "$VERIFY_CONCLUSION" = "SUCCESS" ]; then
-    echo "  ✅ Verify Build Artifacts: PASSED"
-  else
-    echo "  ❌ Verify Build Artifacts: $VERIFY_CONCLUSION"
-    ARTIFACTS_VALID=false
-  fi
-else
-  echo "  ⚠️  Verify Build Artifacts check not found"
-  echo "     This check should validate:"
-  echo "       - Build outputs exist"
-  echo "       - No build warnings"
-  echo "       - Bundle sizes acceptable"
-  echo ""
-
-  # Fallback: Check if Build check passed
-  BUILD_CHECK=$(gh pr checks "$PR_NUMBER" --json name,conclusion -q '.[] | select(.name | test("Build"; "i"))' | head -1 2>/dev/null)
-
-  if [ -n "$BUILD_CHECK" ]; then
-    BUILD_CONCLUSION=$(echo "$BUILD_CHECK" | jq -r '.conclusion')
-
-    if [ "$BUILD_CONCLUSION" = "SUCCESS" ]; then
-      echo "  ✅ Build check: PASSED (artifact validation unavailable)"
-    else
-      echo "  ❌ Build check: $BUILD_CONCLUSION"
-      ARTIFACTS_VALID=false
-    fi
-  else
-    echo "  ⚠️  No build validation checks found"
-    ARTIFACTS_VALID=false
-  fi
-fi
-
-echo ""
-
-# Additional validation: Check for deployment artifacts in workflow logs if in staging/preview mode
-if [ "$DEPLOYMENT_MODE" = "staging" ] || [ "$DEPLOYMENT_MODE" = "preview" ]; then
-  echo "Checking deployment workflow..."
-
-  # Find deploy workflow run
-  DEPLOY_RUN=$(gh run list \
-    --workflow=deploy-staging.yml \
-    --branch=main \
-    --limit=5 \
-    --json databaseId,headSha,conclusion \
-    --jq ".[] | select(.headSha==\"$MERGE_COMMIT\") | .databaseId" 2>/dev/null | head -1)
-
-  if [ -n "$DEPLOY_RUN" ]; then
-    echo "  Found deployment run: #$DEPLOY_RUN"
-
-    # Get workflow conclusion
-    DEPLOY_CONCLUSION=$(gh run view "$DEPLOY_RUN" --json conclusion -q '.conclusion' 2>/dev/null)
-
-    if [ "$DEPLOY_CONCLUSION" = "success" ]; then
-      echo "  ✅ Deployment workflow: SUCCESS"
-
-      # Quick scan of logs for error indicators
-      echo "  Scanning logs for errors..."
-      DEPLOY_LOGS=$(gh run view "$DEPLOY_RUN" --log 2>/dev/null || echo "")
-
-      ERROR_COUNT=$(echo "$DEPLOY_LOGS" | grep -ci "error\|failed\|fatal" || echo 0)
-
-      if [ "$ERROR_COUNT" -gt 10 ]; then
-        echo "  ⚠️  Found $ERROR_COUNT error mentions in logs (may be normal)"
-      else
-        echo "  ✅ No major errors in deployment logs"
-      fi
-    elif [ "$DEPLOY_CONCLUSION" = "failure" ]; then
-      echo "  ❌ Deployment workflow: FAILED"
-      ARTIFACTS_VALID=false
-
-      # Get failure details
-      echo ""
-      echo "Failed jobs:"
-      gh run view "$DEPLOY_RUN" --json jobs -q '.jobs[] | select(.conclusion=="failure") | "  - \(.name)"' 2>/dev/null
-      echo ""
-    else
-      echo "  ⏳ Deployment workflow: $DEPLOY_CONCLUSION"
-    fi
-  else
-    echo "  ⚠️  Deployment workflow not found yet"
-    echo "     Deployments may still be in progress"
-  fi
-
-  echo ""
-fi
-
-if [ "$ARTIFACTS_VALID" != true ]; then
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "❌ ARTIFACT VERIFICATION FAILED"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "Build artifacts are missing or invalid!"
-  echo ""
-  echo "This indicates:"
-  echo "  - Builds may have reported success but produced no output"
-  echo "  - Artifact validation check failed"
-  echo "  - Deployment workflow failed"
-  echo ""
-  echo "⚠️  CRITICAL: This PR merged but may not be deployable!"
-  echo ""
-  echo "Recommended actions:"
-  echo "  1. Check workflow logs: gh run view $DEPLOY_RUN --log"
-  echo "  2. Verify build outputs exist in deployment"
-  echo "  3. Consider reverting merge if artifacts invalid:"
-  echo "     git revert -m 1 $MERGE_COMMIT"
-  echo "     git push origin main"
-  echo ""
-
-  read -p "Continue despite artifact validation failure? (y/N): " CONTINUE_ANYWAY
-  if [ "$CONTINUE_ANYWAY" != "y" ]; then
-    echo ""
-    echo "Stopping. Fix build artifacts before proceeding to validation."
-    exit 1
-  fi
-
-  echo ""
-  echo "⚠️  Proceeding with unverified artifacts (HIGH RISK)"
-else
-  echo "✅ Build artifacts verified"
-fi
-
-echo ""
-```
-
-## EXTRACT DEPLOYMENT IDS (API-Based)
-
-**Extract deployment IDs using platform APIs for reliable rollback capability:**
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Extracting Deployment IDs"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-# Detect deployment platform
-DEPLOY_PLATFORM="${DEPLOY_PLATFORM:-vercel}"
-
-echo "Fetching deployment IDs via $DEPLOY_PLATFORM API..."
-echo ""
-
-# Initialize variables
-MARKETING_ID=""
-APP_ID=""
-API_IMAGE=""
-RAILWAY_ID=""
-NETLIFY_ID=""
-
-case "$DEPLOY_PLATFORM" in
-  vercel)
-    # Use Vercel API
-    if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
-      VERCEL_RESPONSE=$(curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" \
-        "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&limit=10&target=preview" 2>/dev/null)
-
-      APP_ID=$(echo "$VERCEL_RESPONSE" | jq -r '.deployments[0].uid // empty' 2>/dev/null)
-
-      if [ -n "$VERCEL_MARKETING_PROJECT_ID" ]; then
-        MARKETING_RESPONSE=$(curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" \
-          "https://api.vercel.com/v6/deployments?projectId=$VERCEL_MARKETING_PROJECT_ID&limit=5&target=preview" 2>/dev/null)
-        MARKETING_ID=$(echo "$MARKETING_RESPONSE" | jq -r '.deployments[0].uid // empty' 2>/dev/null)
-      fi
-
-      echo "✅ Vercel API response received"
-    else
-      echo "⚠️  VERCEL_TOKEN or VERCEL_PROJECT_ID not set"
-    fi
-    ;;
-
-  railway)
-    # Use Railway API
-    if [ -n "$RAILWAY_TOKEN" ] && [ -n "$RAILWAY_SERVICE_ID" ]; then
-      RAILWAY_RESPONSE=$(curl -sS -H "Authorization: Bearer $RAILWAY_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "{\"query\": \"query { service(id: \\\"$RAILWAY_SERVICE_ID\\\") { deployments(first: 5) { edges { node { id createdAt } } } } }\"}" \
-        "https://backboard.railway.app/graphql" 2>/dev/null)
-
-      RAILWAY_ID=$(echo "$RAILWAY_RESPONSE" | jq -r '.data.service.deployments.edges[0].node.id // empty' 2>/dev/null)
-      echo "✅ Railway API response received"
-    else
-      echo "⚠️  RAILWAY_TOKEN or RAILWAY_SERVICE_ID not set"
-    fi
-    ;;
-
-  netlify)
-    # Use Netlify API
-    if [ -n "$NETLIFY_AUTH_TOKEN" ] && [ -n "$NETLIFY_SITE_ID" ]; then
-      NETLIFY_RESPONSE=$(curl -sS -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
-        "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys?per_page=5" 2>/dev/null)
-
-      NETLIFY_ID=$(echo "$NETLIFY_RESPONSE" | jq -r '.[0].id // empty' 2>/dev/null)
-      echo "✅ Netlify API response received"
-    else
-      echo "⚠️  NETLIFY_AUTH_TOKEN or NETLIFY_SITE_ID not set"
-    fi
-    ;;
-
-  docker|custom)
-    # Docker images from GitHub Container Registry
-    API_IMAGE=$(gh api "/repos/$(gh repo view --json nameWithOwner -q .nameWithOwner)/packages?package_type=container" \
-      --jq '.[0].name' 2>/dev/null || echo "")
-    ;;
-esac
-
-echo ""
-echo "Extracted deployment IDs:"
-echo "  Marketing: ${MARKETING_ID:-[not found]}"
-echo "  App: ${APP_ID:-[not found]}"
-echo "  API: ${API_IMAGE:-[not found]}"
-echo "  Railway: ${RAILWAY_ID:-[not found]}"
-echo "  Netlify: ${NETLIFY_ID:-[not found]}"
-echo ""
-
-# Verify we got required IDs
-MISSING_IDS=()
-case "$DEPLOY_PLATFORM" in
-  vercel)
-    [ -z "$APP_ID" ] && MISSING_IDS+=("app")
-    ;;
-  railway)
-    [ -z "$RAILWAY_ID" ] && MISSING_IDS+=("railway")
-    ;;
-  netlify)
-    [ -z "$NETLIFY_ID" ] && MISSING_IDS+=("netlify")
-    ;;
-  docker|custom)
-    [ -z "$API_IMAGE" ] && MISSING_IDS+=("API")
-    ;;
-esac
-
-if [ ${#MISSING_IDS[@]} -gt 0 ]; then
-  echo "⚠️  Missing deployment IDs: ${MISSING_IDS[*]}"
-  echo ""
-  echo "Ensure platform credentials are configured in GitHub Secrets:"
-  echo "  - Vercel: VERCEL_TOKEN, VERCEL_PROJECT_ID"
-  echo "  - Railway: RAILWAY_TOKEN, RAILWAY_SERVICE_ID"
-  echo "  - Netlify: NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID"
-  echo ""
-  echo "⚠️  Continuing with incomplete rollback metadata"
-  echo ""
-else
-  echo "✅ All deployment IDs captured"
-  echo ""
-
-  # Store in workflow state if state management is available
-  if [ -f ".spec-flow/scripts/bash/workflow-state.sh" ]; then
-    source .spec-flow/scripts/bash/workflow-state.sh
-
-    # Update deployment state
-    update_deployment_state "$FEATURE_DIR" "staging" "$(git rev-parse origin/main)" "$STAGING_RUN"
-    update_deployment_ids "$FEATURE_DIR" "staging" "$MARKETING_ID" "$APP_ID" "$API_IMAGE"
-
-    echo "✅ Deployment IDs saved to workflow-state.yaml"
-    echo ""
-  fi
-
-  # Store in separate JSON file for easy rollback reference
-  cat > "$FEATURE_DIR/deployment-metadata.json" <<EOF
-{
-  "staging": {
-    "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-    "commit_sha": "$(git rev-parse origin/main)",
-    "run_id": "$STAGING_RUN",
-    "pr_number": "$PR_NUMBER",
-    "deployments": {
-      "marketing": "$MARKETING_ID",
-      "app": "$APP_ID",
-      "api": "$API_IMAGE"
-    },
-    "urls": {
-      "marketing": "https://staging.cfipros.com",
-      "app": "https://app.staging.cfipros.com",
-      "api": "https://api.staging.cfipros.com"
-    }
-  }
-}
-EOF
-
-  echo "✅ Rollback metadata saved: $FEATURE_DIR/deployment-metadata.json"
-  echo ""
-fi
-
-# Regenerate project-level CLAUDE.md to reflect feature in staging
-echo "Regenerating project CLAUDE.md..."
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-  pwsh -NoProfile -File .spec-flow/scripts/powershell/generate-project-claude-md.ps1 2>/dev/null || echo "⚠️  Could not regenerate project CLAUDE.md (non-blocking)"
-else
-  .spec-flow/scripts/bash/generate-project-claude-md.sh 2>/dev/null || echo "⚠️  Could not regenerate project CLAUDE.md (non-blocking)"
-fi
-echo ""
-```
-
----
-
-## VERIFY STAGING DEPLOYMENT HEALTH
-
-**Validate that staging deployment is actually working:**
-
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Staging Deployment Health Check"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-if [ "$DEPLOYMENT_MODE" != "staging" ]; then
-  echo "Skipping health checks (deployment mode: $DEPLOYMENT_MODE)"
-  echo ""
-else
-  echo "Waiting for staging deployment to become healthy..."
-  echo ""
-
-  # Define staging URLs (customize for your project)
-  STAGING_MARKETING="https://staging.cfipros.com"
-  STAGING_APP="https://app.staging.cfipros.com"
-  STAGING_API="https://api.staging.cfipros.com/api/v1/health/healthz"
-
-  # Wait for DNS propagation and deployment
-  echo "Waiting 2 minutes for deployment propagation..."
-  sleep 120
-
-  HEALTH_PASSED=true
-  HEALTH_CHECKS_DONE=0
-  HEALTH_CHECKS_PASSED=0
-
-  # Check marketing site
-  echo "Checking marketing site..."
-  ((HEALTH_CHECKS_DONE++))
-
-  if curl -sf --max-time 10 "$STAGING_MARKETING" > /dev/null 2>&1; then
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$STAGING_MARKETING" 2>/dev/null)
-
-    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
-      echo "  ✅ Marketing: $HTTP_CODE"
-      ((HEALTH_CHECKS_PASSED++))
-    else
-      echo "  ❌ Marketing: HTTP $HTTP_CODE (expected 200)"
-      HEALTH_PASSED=false
-    fi
-  else
-    echo "  ❌ Marketing: Not responding"
-    echo "     URL: $STAGING_MARKETING"
-    HEALTH_PASSED=false
-  fi
-
-  # Check app
-  echo "Checking app..."
-  ((HEALTH_CHECKS_DONE++))
-
-  if curl -sf --max-time 10 "$STAGING_APP" > /dev/null 2>&1; then
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$STAGING_APP" 2>/dev/null)
-
-    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
-      echo "  ✅ App: $HTTP_CODE"
-      ((HEALTH_CHECKS_PASSED++))
-    else
-      echo "  ❌ App: HTTP $HTTP_CODE (expected 200)"
-      HEALTH_PASSED=false
-    fi
-  else
-    echo "  ❌ App: Not responding"
-    echo "     URL: $STAGING_APP"
-    HEALTH_PASSED=false
-  fi
-
-  # Check API health endpoint
-  echo "Checking API health..."
-  ((HEALTH_CHECKS_DONE++))
-
-  if curl -sf --max-time 10 "$STAGING_API" 2>/dev/null | grep -qi "healthy\|ok\|status.*ok"; then
-    echo "  ✅ API: Healthy"
-    ((HEALTH_CHECKS_PASSED++))
-  else
-    echo "  ❌ API: Health check failed"
-    echo "     URL: $STAGING_API"
-    HEALTH_PASSED=false
-  fi
-
-  # Check for immediate errors (first 60 seconds of logs)
-  if [ -n "$DEPLOY_RUN" ]; then
-    echo ""
-    echo "Checking for immediate errors in logs..."
-
-    # Wait a bit more for logs to populate
-    sleep 15
-
-    # Get recent logs
-    RECENT_LOGS=$(gh run view "$DEPLOY_RUN" --log 2>/dev/null | tail -100 || echo "")
-
-    # Count critical errors
-    CRITICAL_ERRORS=$(echo "$RECENT_LOGS" | grep -ci "error\|exception\|fatal\|crashed" || echo 0)
-
-    if [ "$CRITICAL_ERRORS" -gt 5 ]; then
-      echo "  ⚠️  Found $CRITICAL_ERRORS critical error mentions in recent logs"
-      echo "     Review logs: gh run view $DEPLOY_RUN --log"
-      HEALTH_PASSED=false
-    else
-      echo "  ✅ No critical errors in initial logs"
-    fi
-  fi
-
-  echo ""
-  echo "Health check results: $HEALTH_CHECKS_PASSED / $HEALTH_CHECKS_DONE passed"
-  echo ""
-
-  if [ "$HEALTH_PASSED" != true ]; then
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "❌ STAGING HEALTH CHECK FAILED"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "Staging deployment is not healthy!"
-    echo ""
-    echo "Failed checks:"
-    echo "  - Marketing responding: $([[ "$STAGING_MARKETING" == *"200"* ]] && echo "✅" || echo "❌")"
-    echo "  - App responding: $([[ "$STAGING_APP" == *"200"* ]] && echo "✅" || echo "❌")"
-    echo "  - API health: $([[ "$STAGING_API" == *"healthy"* ]] && echo "✅" || echo "❌")"
-    echo ""
-    echo "⚠️  CRITICAL: Staging deployment may be broken!"
-    echo ""
-    echo "Recommended actions:"
-    echo "  1. Check deployment logs: gh run view $DEPLOY_RUN --log"
-    echo "  2. Test URLs manually:"
-    echo "     - $STAGING_MARKETING"
-    echo "     - $STAGING_APP"
-    echo "     - $STAGING_API"
-    echo "  3. Revert if broken:"
-    echo "     git revert -m 1 $MERGE_COMMIT"
-    echo "     git push origin main"
-    echo ""
-
-    read -p "Continue despite health check failure? (y/N): " CONTINUE_UNHEALTHY
-    if [ "$CONTINUE_UNHEALTHY" != "y" ]; then
-      echo ""
-      echo "Stopping. Fix staging health before proceeding."
-      echo ""
-      echo "Next steps:"
-      echo "  1. Debug staging deployment"
-      echo "  2. Revert merge if necessary"
-      echo "  3. Fix issues on feature branch"
-      echo "  4. Re-run /ship-staging"
-      exit 1
-    fi
-
-    echo ""
-    echo "⚠️  Proceeding with unhealthy deployment (HIGH RISK)"
-  else
-    echo "✅ Staging deployment is healthy"
-  fi
-fi
-
-echo ""
-```
-
----
-
-## CREATE STAGING SHIP REPORT
-
-**Generate report with deployment metadata:**
-
-```bash
-cat > "$FEATURE_DIR/staging-ship-report.md" <<EOF
-# Staging Deployment Report
-
-**Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-**Feature**: $TITLE
-**PR**: #$PR_NUMBER ($PR_URL)
-**Branch**: $CURRENT_BRANCH → main
-
----
-
-## Deployment
-
-**Status**: ✅ Merged to main, deployed to staging
-**Mode**: $DEPLOYMENT_MODE
-
-**Staging URLs**:
-- Marketing: https://staging.cfipros.com
-- App: https://app.staging.cfipros.com
-- API: https://api.staging.cfipros.com
-
-**Deployment IDs** (for rollback):
-- Marketing: ${MARKETING_ID:-[Extraction failed - see logs]}
-- App: ${APP_ID:-[Extraction failed - see logs]}
-- API: ${API_IMAGE:-[Extraction failed - see logs]}
-
-**Rollback metadata**: $FEATURE_DIR/deployment-metadata.json
-**GitHub Actions logs**: $PR_URL/checks
-
----
-
-## CI/CD Results
-
-**Auto-merge**: ✅ Enabled
-**Merged at**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-**CI duration**: $((ELAPSED / 60)) minutes
-
-### Checks Passed
-
-$(gh pr checks "$PR_NUMBER" --json name,state -q '.[] | "- ✅ \(.name)"')
-
----
-
-## Optimization Summary
-
-$(if [ -f "$FEATURE_DIR/optimization-report.md" ]; then
-  sed -n '/## Performance/,/## Security/p' "$FEATURE_DIR/optimization-report.md" | head -n -1
-else
-  echo "No optimization report available"
-fi)
-
----
-
-## Next Steps
-
-1. **Wait for deployment**: ~5-10 minutes for staging deployment to complete
-2. **Manual validation**: Run \`/validate-staging\` to test feature in staging
-3. **Production deploy**: After validation passes, run \`/ship\` (which calls \`/ship-prod\`)
-
----
-
-## Rollback Information
-
-**If deployment fails or issues found:**
-
-\`\`\`bash
-# Get deploy IDs from GitHub Actions logs
-# Then rollback using 3-command procedure (see runbook/rollback.md)
-
-# 1. Revert merge commit
-git revert -m 1 <merge-commit-sha>
-git push origin main
-
-# 2. Set Vercel alias to previous deploy
-vercel alias set <previous-deploy-id> staging.cfipros.com
-
-# 3. Update Railway API image
-railway service update --image ghcr.io/.../api:<previous-sha>
-\`\`\`
-
----
-Generated by \`/ship-staging\` at $(date -Iseconds)
-EOF
-
-echo "✅ Staging ship report created"
-echo "   Location: $FEATURE_DIR/staging-ship-report.md"
-echo ""
-```
-
-## UPDATE NOTES.MD
-
-**Add phase checkpoint with deployment metadata:**
-
-```bash
-# Source the template
-source \spec-flow/templates/notes-update-template.sh
-
-# Add Phase 7 checkpoint
-update_notes_checkpoint "$FEATURE_DIR" "7" "Ship to Staging" \
-  "PR: #$PR_NUMBER" \
-  "Branch: $CURRENT_BRANCH → main" \
-  "Auto-merge: Enabled" \
-  "CI duration: $((ELAPSED / 60)) minutes" \
-  "Deployment mode: $DEPLOYMENT_MODE" \
-  "Merged at: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
-
-# Add Deployment Metadata section (custom section, not part of template)
-cat >> "$FEATURE_DIR/NOTES.md" <<EOF
-
-## Deployment Metadata
-
-**Staging Deploy** ($(date -u +"%Y-%m-%d")):
-
-| Service | Deploy ID | Status |
-|---------|-----------|--------|
-| Marketing | [See GitHub Actions] | Deployed |
-| App | [See GitHub Actions] | Deployed |
-| API | [See GitHub Actions] | Deployed |
-
-**Staging URLs**:
-- Marketing: https://staging.cfipros.com
-- App: https://app.staging.cfipros.com
-- API: https://api.staging.cfipros.com
-
-**GitHub Actions Logs**: $PR_URL/checks
-
-**Rollback Commands** (if needed):
-\`\`\`bash
-# See runbook/rollback.md for full procedure
-git revert -m 1 <merge-commit-sha>
-vercel alias set <previous-deploy-id> staging.cfipros.com
-railway service update --image ghcr.io/.../api:<previous-sha>
-\`\`\`
-EOF
-
-update_notes_timestamp "$FEATURE_DIR"
-
-echo "✅ NOTES.md updated with deployment metadata"
-echo ""
-```
-
-## GIT COMMIT
-
-```bash
-git add "$FEATURE_DIR/"
-git commit -m "integration:ship-staging: merge to main, deploy to staging
-
-PR: #$PR_NUMBER
-Auto-merge: Enabled
-CI checks: Passed ($((ELAPSED / 60)) minutes)
-Merged to: main
-Deployment mode: $DEPLOYMENT_MODE
-Deployed to: staging.cfipros.com
-
-Next: Manual validation via /validate-staging
-
-🤖 Generated with Claude Code
-Co-Authored-By: Claude <noreply@anthropic.com>"
-
-git push origin "$CURRENT_BRANCH"
-```
-
-## RETURN
-
-Brief summary:
+<context>
+Feature slug argument: @ $ARGUMENTS
+
+Current branch: !`git branch --show-current`
+
+Git status (short): !`git status --short | head -5`
+
+Remote repository exists: !`git remote -v | grep -q origin && echo "✅ Yes" || echo "❌ No"`
+
+Staging branch exists: !`git show-ref --verify --quiet refs/heads/staging || git show-ref --verify --quiet refs/remotes/origin/staging && echo "✅ Yes" || echo "❌ No"`
+
+Optimization report exists: !`SLUG=$([ -n "$ARGUMENTS" ] && echo "$ARGUMENTS" || git branch --show-current); test -f "specs/$SLUG/optimization-report.md" && echo "✅ Found" || echo "❌ Missing"`
+
+GitHub CLI authenticated: !`gh auth status >/dev/null 2>&1 && echo "✅ Yes" || echo "❌ No"`
+
+Deployment quota remaining: !`SINCE=$(date --version 2>/dev/null | grep -q GNU && date -d '24 hours ago' -Iseconds || date -u -v-24H -Iseconds); USED=$(gh run list --workflow=deploy-staging.yml --created="$SINCE" --json conclusion --jq 'length' 2>/dev/null || echo 0); echo $((100 - USED))`
+</context>
+
+<objective>
+Ship feature to staging environment by creating a pull request with auto-merge enabled, triggering the CI/CD pipeline deployment.
+
+**What it does:**
+1. Validates pre-flight conditions (remote, clean tree, optimization complete)
+2. Runs pre-deployment checks (quota, environment variables)
+3. Selects deployment mode (staging or preview)
+4. Creates pull request to main branch
+5. Enables auto-merge with squash commit
+6. Monitors CI pipeline execution
+7. Runs health checks after deployment
+8. Captures deployment metadata for rollback
+9. Generates staging-ship-report.md with deployment details
+
+**Operating constraints:**
+- **Internal Command** — Called by `/ship`, not directly by users
+- **Feature Branch Only** — Cannot ship from main or staging branches
+- **Auto-Merge** — Automatically merges when CI passes
+- **Health Checks** — Validates deployment success
+- **Quota Aware** — Checks Vercel quota before deploying
+
+**Dependencies:**
+- Git repository with remote origin configured
+- Staging branch exists (local or remote)
+- GitHub CLI authenticated
+- Optimization phase complete (/optimize)
+- Clean working tree (no uncommitted changes)
+</objective>
+
+<process>
+1. **Load feature slug**:
+   - Use $ARGUMENTS if provided, otherwise current branch name
+   - Set FEATURE_DIR="specs/$SLUG"
+   - Validate feature directory exists
+
+2. **Validate on feature branch**:
+   - Get current branch name
+   - Ensure NOT on main or staging:
+     ```
+     ❌ Cannot ship from main branch
+     phase-1-ship runs from feature branches only
+     ```
+
+3. **Run pre-flight validation** (6 checks):
+
+   **Check 1: Remote repository**
+   - Verify git remote origin exists
+   - Verify staging branch exists (local or remote)
+   - If missing, display setup instructions
+
+   **Check 2: Clean working tree**
+   - Run `git status --porcelain`
+   - If uncommitted changes, prompt user to commit or stash
+
+   **Check 3: Optimization complete**
+   - Verify optimization-report.md exists in specs/{slug}/
+   - Verify quality gates passed
+   - If missing, require `/optimize` first
+
+   **Check 4: Pre-flight smoke tests**
+   - Run quick local validation (type-check, lint)
+   - Execute fast unit tests subset
+   - Validate build if applicable
+
+   **Check 5: Deployment budget**
+   - Count Vercel deployments in last 24h
+   - Calculate remaining quota: 100 - used
+   - If < 10 remaining: Block deployment, suggest preview mode
+   - If < 20 remaining: Warn, suggest careful deployment
+
+   **Check 6: Environment variables**
+   - Verify .env.staging exists (if required)
+   - Check required variables are set
+
+4. **Select deployment mode**:
+   - **Staging mode**: Updates staging.{domain}.com, consumes quota (2 deployments)
+   - **Preview mode**: CI testing only, no quota cost, unlimited usage
+   - Prompt user to select mode:
+     ```
+     Deployment mode:
+       1) Staging (updates staging environment) - Consumes quota
+       2) Preview (CI testing only) - Free, unlimited
+
+     Select mode (1/2):
+     ```
+
+5. **Load metadata**:
+   - Read feature title from spec.md
+   - Extract implementation highlights
+   - Get current commit SHA
+   - Generate PR title: `feat: {title} ({slug})`
+
+6. **Create pull request**:
+   - Create PR with title and body
+   - Base: main, Head: current feature branch
+   - Body includes:
+     - Summary from spec.md
+     - Implementation highlights
+     - Testing notes
+     - Deployment mode
+     - Next steps (/validate-staging)
+   - Command:
+     ```bash
+     gh pr create \
+       --base main \
+       --head "$CURRENT_BRANCH" \
+       --title "$PR_TITLE" \
+       --body "$PR_BODY" \
+       --assignee "@me"
+     ```
+
+7. **Enable auto-merge**:
+   - Get PR number: `gh pr view --json number --jq '.number'`
+   - Enable auto-merge with squash commit:
+     ```bash
+     gh pr merge "$PR_NUMBER" \
+       --auto \
+       --squash \
+       --delete-branch
+     ```
+   - Display PR URL and auto-merge status
+
+8. **Monitor CI pipeline**:
+   - Wait 10 seconds for CI to trigger
+   - Check CI status every 30 seconds
+   - Timeout after 10 minutes
+   - If CI fails: Display error and suggest `/checks pr [number]`
+   - If CI passes: Continue to health checks
+
+9. **Run health checks** (after deployment completes):
+
+   **Check 1: URL accessibility**
+   - Marketing: `curl -sS -o /dev/null -w "%{http_code}" https://staging.{domain}.com`
+   - App: `curl -sS -o /dev/null -w "%{http_code}" https://app.staging.{domain}.com`
+   - Expected: 200 OK
+
+   **Check 2: API health endpoint**
+   - `curl -sS https://app.staging.{domain}.com/api/health | jq`
+   - Expected: `{"status":"ok","database":"connected"}`
+
+   **Check 3: Deployment metadata**
+   - Verify Vercel deployment IDs exist
+   - Check build timestamps
+
+10. **Capture deployment metadata**:
+    - Get Vercel deployment IDs (marketing, app)
+    - Capture commit SHA, PR number, timestamp
+    - Update workflow-state.yaml:
+      ```yaml
+      deployment:
+        staging:
+          deployed: true
+          timestamp: {ISO 8601}
+          commit_sha: {SHA}
+          pr_number: {number}
+          deployment_ids:
+            marketing: {vercel-url}
+            app: {vercel-url}
+      ```
+    - Create deployment-metadata.json with rollback info
+
+11. **Generate staging-ship-report.md**:
+    - Create report in specs/{slug}/staging-ship-report.md
+    - Sections:
+      - Deployment Summary (status, timestamp, commit, PR)
+      - Deployment Details (URLs, IDs, health checks)
+      - Quality Gates (pre-flight, CI status)
+      - Rollback Metadata (previous commit, commands)
+      - Next Steps (validation checklist, /ship-prod)
+
+12. **Update workflow state**:
+    - Mark ship:phase-1-ship as completed
+    - Set next phase: ship:validate-staging
+    - Update last_updated timestamp
+    - Commit state changes to git
+
+13. **Display summary and next steps**:
+    ```
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ✅ Staging Deployment Complete
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    🚀 Deployed to Staging
+
+    PR: #{number}
+    Commit: {SHA}
+    Mode: {staging|preview}
+
+    URLs:
+      Marketing: https://staging.{domain}.com
+      App: https://app.staging.{domain}.com
+
+    Health Checks:
+      ✅ HTTP Status: 200 OK
+      ✅ API Health: Connected
+      ✅ Database: Connected
+
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    Next Steps:
+
+    1. Validate Staging Environment:
+       /validate-staging
+
+    2. Manual Testing:
+       - Test critical user flows
+       - Verify database operations
+       - Check API responses
+       - Test error handling
+
+    3. Production Deployment:
+       After validation complete:
+       /ship-prod
+
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ```
+
+See `.claude/skills/ship-staging/references/reference.md` for detailed pre-flight validation procedures, health check protocols, deployment metadata capture, and rollback procedures.
+</process>
+
+<verification>
+Before completing, verify:
+- Pre-flight checks all passed (6/6)
+- Deployment mode selected (staging or preview)
+- Pull request created successfully
+- Auto-merge enabled
+- CI pipeline completed (or timeout)
+- Health checks passed (HTTP, API, database)
+- Deployment metadata captured (IDs, URLs, timestamps)
+- staging-ship-report.md generated
+- workflow-state.yaml updated
+- Git state committed
+- Summary displayed with next steps
+</verification>
+
+<success_criteria>
+**Pre-flight validation:**
+- Remote repository configured
+- Staging branch exists
+- Working tree clean (no uncommitted changes)
+- Optimization report exists and passed
+- Deployment quota sufficient (or preview mode selected)
+- Environment variables validated
+
+**Pull request:**
+- PR created with proper title format: `feat: {title} ({slug})`
+- PR body includes summary, highlights, testing notes, next steps
+- Auto-merge enabled with squash commit
+- Delete branch after merge configured
+
+**CI pipeline:**
+- CI triggered within 10 seconds
+- CI status monitored every 30 seconds
+- CI completed within 10-minute timeout
+- CI passed all required checks
+
+**Health checks:**
+- Marketing URL returns 200 OK
+- App URL returns 200 OK
+- API health endpoint returns {"status":"ok"}
+- Database connectivity confirmed
+
+**Deployment metadata:**
+- Vercel deployment IDs captured (marketing, app)
+- Commit SHA recorded
+- PR number stored
+- Timestamp in ISO 8601 format
+- URLs saved
+- workflow-state.yaml updated correctly
+
+**Report generation:**
+- staging-ship-report.md created in specs/{slug}/
+- Contains all required sections (summary, details, gates, rollback, next)
+- Rollback commands documented
+- Validation checklist provided
+
+**Workflow state:**
+- ship:phase-1-ship marked completed
+- Next phase set to ship:validate-staging
+- last_updated timestamp current
+- State committed to git
+
+**User presentation:**
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ Phase 1: Feature → Staging Complete
+✅ Staging Deployment Complete
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Feature: $TITLE
-PR: #$PR_NUMBER
-URL: $PR_URL
-n# Complete timing for ship-staging phase
-complete_phase_timing "$FEATURE_DIR" "ship:phase-1-ship"
+🚀 Deployed to Staging
 
-Status:
-✅ Auto-merge enabled
-✅ CI checks passed ($((ELAPSED / 60)) minutes)
-✅ Merged to main
-✅ Deployed to staging
+PR: #{number}
+Commit: {SHA}
+Mode: {mode}
 
-Staging URLs:
-🌐 Marketing: https://staging.cfipros.com
-🌐 App: https://app.staging.cfipros.com
-🌐 API: https://api.staging.cfipros.com
+URLs:
+  Marketing: {url}
+  App: {url}
 
-Reports:
-📋 Ship report: $FEATURE_DIR/staging-ship-report.md
-📊 Deployment logs: $PR_URL/checks
+Health Checks:
+  ✅ HTTP Status: 200 OK
+  ✅ API Health: Connected
+  ✅ Database: Connected
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⏳ Wait for Deployment (~5-10 minutes)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Staging deployment in progress. Wait for:
-- Vercel deployments to complete
-- Railway API to restart
-- DNS propagation (if needed)
-
-Check status: $PR_URL/checks
+Next Steps:
+1. /validate-staging
+2. Manual testing checklist
+3. /ship-prod when ready
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 NEXT: /validate-staging
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+</success_criteria>
 
-/validate-staging will:
-1. Test feature in staging environment
-2. Run manual QA checklist
-3. Verify all user flows work
-4. Check for regressions
-5. Generate validation report
+<standards>
+**Industry Standards:**
+- **Semantic Versioning**: [semver.org](https://semver.org/) for version tagging
+- **Conventional Commits**: [conventionalcommits.org](https://www.conventionalcommits.org/) for commit messages
+- **Health Check Patterns**: [Health Check Response Format](https://inadarei.github.io/rfc-healthcheck/) for API health endpoints
+- **Deployment Best Practices**: [The Twelve-Factor App](https://12factor.net/) for deployment methodology
 
-After validation passes:
-→ /phase-2-ship (promote staging → production)
+**Workflow Standards:**
+- Auto-merge with squash commit (clean history)
+- Delete feature branch after merge
+- Health checks after deployment
+- Deployment metadata capture for rollback capability
+- Staging environment validation before production
+- Quota-aware deployment (check before consuming)
+- Non-destructive preview mode for testing
+</standards>
 
-If issues found:
-→ Fix on feature branch, /ship-staging again
+<notes>
+**Command location**: `.claude/commands/deployment/ship-staging.md`
+
+**Reference documentation**: Pre-flight validation procedures (6 checks), deployment mode selection, PR creation workflow, auto-merge configuration, health check procedures (3 checks), deployment metadata capture, staging ship report structure, error conditions, and rollback procedures are in `.claude/skills/ship-staging/references/reference.md`.
+
+**Version**: v2.0 (2025-11-20) — Refactored to XML structure, added dynamic context, tool restrictions
+
+**Internal command**: Called by `/ship` parent orchestrator, not intended for direct user invocation
+
+**Workflow position**:
+```
+/feature → /clarify → /plan → /tasks → /analyze → /implement →
+/optimize → /preview → **/ship-staging** → /validate-staging → /ship-prod
 ```
 
+**Deployment modes:**
+- **Staging**: Updates staging.{domain}.com, consumes Vercel quota (2 deployments per ship)
+- **Preview**: CI testing only, no quota cost, unlimited usage, preview URL expires after 7 days
+
+**Auto-merge behavior:**
+- Enabled by default
+- Merges when all CI checks pass
+- Squash commit (combines all feature commits)
+- Deletes feature branch after merge
+
+**Health checks:**
+- Run automatically after deployment completes
+- Validates HTTP accessibility (200 OK)
+- Checks API health endpoint
+- Verifies database connectivity
+
+**Deployment metadata:**
+- Captured for rollback capability
+- Includes Vercel deployment IDs, commit SHA, PR number, timestamps
+- Stored in workflow-state.yaml and deployment-metadata.json
+- Enables quick rollback if issues discovered
+
+**Quota management:**
+- Pre-flight check verifies sufficient quota (>= 2 remaining for staging mode)
+- < 10 remaining: Blocks deployment, suggests preview mode
+- < 20 remaining: Warns, suggests careful deployment
+- Preview mode: 0 quota cost, unlimited usage
+
+**Related commands:**
+- `/ship` - Parent orchestrator (calls ship-staging automatically)
+- `/optimize` - Quality gates (must run before shipping)
+- `/preview` - Local testing (recommended before shipping)
+- `/validate-staging` - Manual staging validation (run after shipping)
+- `/ship-prod` - Production deployment (run after validation)
+- `/checks pr [number]` - CI failure investigation
+- `/deployment-budget` - Check quota before shipping
+
+**Error handling:**
+- **No remote**: Display setup instructions for adding remote and creating staging branch
+- **Uncommitted changes**: Prompt to commit or stash before continuing
+- **Optimization missing**: Require `/optimize` before proceeding
+- **Low quota**: Block or warn based on remaining quota, suggest preview mode
+- **CI failure**: Display error, suggest `/checks pr [number]` for investigation
+- **Health check failure**: Report failure, provide troubleshooting steps
+
+**Rollback capability:**
+- Previous commit SHA captured
+- Rollback commands documented in report
+- Revert via new PR or direct git revert + push
+- Vercel deployment promotion for immediate rollback
+
+**Best practices:**
+- Always run `/optimize` before shipping
+- Check `/deployment-budget` to avoid quota exhaustion
+- Use preview mode for testing without quota cost
+- Monitor CI progress for failures
+- Run health checks after deployment
+- Validate staging before production deployment
+- Document any issues in validation report
+</notes>

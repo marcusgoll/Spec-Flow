@@ -1,408 +1,340 @@
 ---
 name: task-breakdown-phase
-description: "Standard Operating Procedure for /tasks phase. Covers task sizing, acceptance criteria definition, and TDD-first task sequencing."
-allowed-tools: Read, Write, Edit, Grep, Bash
+description: Standard Operating Procedure for /tasks phase. Covers task sizing, acceptance criteria definition, and TDD-first task sequencing. (project)
 ---
 
-# Task Breakdown Phase: Standard Operating Procedure
+<objective>
+Transform plan.md into 20-30 concrete, right-sized tasks with TDD workflow, explicit dependencies, and measurable acceptance criteria. Ensures implementation phase has clear, testable tasks that enforce test-first development.
 
-> **Training Guide**: Step-by-step procedures for executing the `/tasks` command with emphasis on right-sized tasks and clear acceptance criteria.
+This skill orchestrates the /tasks phase, producing tasks.md with:
+- Right-sized tasks (0.5-1 day each, 4-8 hours)
+- TDD workflow (test → implement → refactor triplet for all components)
+- Clear acceptance criteria (2-4 testable checkboxes per task)
+- Explicit dependencies (task numbers, critical path, parallel opportunities)
+- Implementation hints (reuse patterns, file paths, references to plan.md)
 
-**Supporting references**:
-- [reference.md](reference.md) - Task sizing guidelines, acceptance criteria templates, sequencing patterns
-- [examples.md](examples.md) - Good tasks (0.5-1 day, clear AC) vs bad tasks (>2 days, vague AC)
+Inputs: plan.md (architecture, components, reuse strategy)
+Outputs: tasks.md (20-30 tasks sequenced by dependencies)
+Expected duration: 30-60 minutes
+</objective>
 
----
+<quick_start>
+Execute /tasks workflow in 12 steps:
 
-## Phase Overview
+1. **Parse plan.md** - Extract architecture components, reuse patterns, data models, API endpoints, UI components
+2. **Generate foundation tasks** - Database migrations, model definitions, configuration setup (3-5 tasks)
+3. **Generate business logic tasks** - TDD triplet (test → implement → refactor) for each service/utility (2-4 tasks per component)
+4. **Generate API tasks** - TDD for controllers/routes (test → implement per endpoint)
+5. **Generate UI tasks** - TDD for components (test → implement per screen/component) if HAS_UI
+6. **Generate integration tasks** - E2E tests, smoke tests, integration validation (2-3 tasks)
+7. **Map dependencies** - Build dependency graph, identify critical path, mark parallel opportunities
+8. **Size tasks** - Validate 0.5-1 day per task (split if >1.5 days, combine if <0.5 day)
+9. **Write acceptance criteria** - 2-4 testable checkboxes per task using AC templates
+10. **Add implementation notes** - Reuse hints, file paths, plan.md references for complex tasks
+11. **Generate tasks.md** - Render with task summary (total, duration, critical path, distribution)
+12. **Validate and commit** - Check 20-30 tasks total, all AC clear, TDD followed, dependencies explicit
 
-**Purpose**: Transform implementation plan into concrete, test-driven tasks with clear acceptance criteria and proper sequencing.
+Key principle: Every task is test-driven with measurable acceptance criteria.
+</quick_start>
 
-**Inputs**:
-- `specs/NNN-slug/plan.md` - Implementation plan
-- `specs/NNN-slug/spec.md` - Feature specification
-- Architecture and component definitions
+<prerequisites>
+Before beginning task breakdown:
+- Planning phase completed (plan.md exists)
+- Architecture components defined (data layer, business logic, API layer, UI layer)
+- Reuse strategy documented (existing services/components to leverage)
+- Git working tree clean (no uncommitted changes)
 
-**Outputs**:
-- `specs/NNN-slug/tasks.md` - Detailed task breakdown (20-30 tasks)
-- Updated `workflow-state.yaml`
+If prerequisites not met, return to /plan phase.
+</prerequisites>
 
-**Expected duration**: 10-20 minutes
+<workflow>
+<step number="1">
+**Parse plan.md**
 
----
+Extract all implementation components from plan.md:
 
-## Prerequisites
+**Architecture components to extract**:
+- Data layer: models, schemas, migrations
+- Business logic: services, utilities, helpers
+- API layer: controllers, routes, middleware
+- UI layer: components, screens, forms (if HAS_UI)
+- Testing: integration points, E2E scenarios
 
-**Environment checks**:
-- [ ] Planning phase completed (`plan.md` exists)
-- [ ] Architecture components defined
-- [ ] Reuse strategy documented
-- [ ] Git working tree clean
+**Reuse patterns to identify**:
+- Existing services/utilities referenced in plan.md
+- Shared components/libraries to leverage
+- Established patterns to follow (e.g., BaseService, repository pattern)
 
-**Knowledge requirements**:
-- Task sizing guidelines (0.5-1 day per task)
-- Acceptance criteria best practices
-- TDD workflow (test-first development)
-- Task sequencing (dependencies and parallel paths)
+**Quality check**: All components from plan.md extracted, reuse opportunities documented.
 
----
+See reference.md for component extraction examples.
+</step>
 
-## Execution Steps
+<step number="2">
+**Generate Foundation Tasks**
 
-### Step 1: Analyze Plan and Architecture
+Create infrastructure setup tasks (first to execute, all others depend on these).
 
-**Actions**:
-1. Read `plan.md` to extract:
-   - Components to implement
-   - Data model changes
-   - API endpoints
-   - UI components (if HAS_UI=true)
-   - Testing requirements
+**Foundation task categories**:
+1. Database migration task (create tables, indexes, constraints)
+2. Model definition tasks (data models, schemas, validation)
+3. Configuration tasks (environment setup, dependency installation)
 
-2. Map dependencies:
-   - Which components depend on others?
-   - What must be implemented first?
-   - What can be parallelized?
+**Example foundation task**:
+```
+Task 1: Create database migration for student progress tables
 
-**Quality check**: Do you understand all components that need tasks?
+Complexity: Small (2-4 hours)
 
----
+Steps:
+1. Create migration file (alembic revision --autogenerate)
+2. Define students table (id, name, grade_level, created_at)
+3. Define lessons table (id, student_id, subject, duration_mins)
+4. Add indexes (student_id, created_at)
+5. Add foreign key constraints
 
-### Step 2: Generate Foundation Tasks
-
-**Actions**:
-Create tasks for foundational work that other tasks depend on:
-
-1. **Database tasks** (if needed):
-   - Task: Create database migration for [tables]
-   - Task: Add indexes for performance
-   - Task: Create seed data for development/testing
-
-2. **Model/Schema tasks**:
-   - Task: Implement [ModelName] with base fields
-   - Task: Add validation rules to [ModelName]
-   - Task: Write unit tests for [ModelName]
-
-3. **Configuration tasks** (if HAS_DEPLOYMENT_IMPACT):
-   - Task: Add environment variables to .env.example
-   - Task: Update deployment configuration
-   - Task: Document new configuration in README
-
-**Task template**:
-```markdown
-### Task N: Create Database Migration for Time Logs
-
-**Complexity**: Low (2-4 hours)
-
-**Description**: Create Alembic migration to add `time_logs` table with student_id, lesson_id, time_spent fields.
-
-**Implementation steps**:
-1. Generate migration file
-2. Define table schema with foreign keys
-3. Add indexes on (student_id, lesson_id)
-4. Test migration up/down locally
-
-**Acceptance criteria**:
+Acceptance criteria:
 - [ ] Migration runs successfully on clean database
-- [ ] Foreign keys enforce referential integrity
 - [ ] Rollback works without errors
-- [ ] Migration documented in migrations/README.md
+- [ ] Indexes improve query performance (measured)
+- [ ] Foreign keys enforce referential integrity
 
-**Dependencies**: None
-**Blocks**: Task 4 (StudentProgress model)
+Dependencies: None (foundation task)
+Blocks: Task 4 (model definitions)
 ```
 
-**Quality check**: Foundation tasks have no dependencies and are clearly testable.
+**Quality check**: 3-5 foundation tasks created, all have clear dependencies.
 
----
+See reference.md for foundation task templates.
+</step>
 
-### Step 3: Generate Business Logic Tasks (TDD-First)
+<step number="3">
+**Generate Business Logic Tasks (TDD-First)**
 
-**Actions**:
-For each service/utility in the plan, create tasks using TDD workflow:
+For each service/utility in plan.md, create TDD triplet (test → implement → refactor).
 
 **TDD task structure** (3 tasks per component):
 1. **Task N: Write tests for [Component]** ← RED phase
 2. **Task N+1: Implement [Component]** ← GREEN phase
 3. **Task N+2: Refactor [Component]** ← REFACTOR phase
 
-**Example**:
-```markdown
-### Task 8: Write Unit Tests for StudentProgressService
+**Example TDD triplet**:
+```
+Task 8: Write unit tests for StudentProgressService
+→ Task 9: Implement StudentProgressService to pass tests
+→ Task 10: Refactor StudentProgressService
 
-**Complexity**: Medium (4-6 hours)
-
-**Description**: Write comprehensive unit tests for StudentProgressService before implementation.
-
-**Test cases to implement**:
-1. calculateProgress() with valid student (expects completion rate)
-2. calculateProgress() with no lessons (expects 0%)
-3. calculateProgress() with student not found (expects error)
-4. getRecentActivity() returns last 10 activities
-5. getRecentActivity() with no activity (expects empty array)
-
-**Acceptance criteria**:
+Task 8 acceptance criteria:
 - [ ] 5 test cases implemented (all failing initially)
 - [ ] Tests cover happy path + edge cases
-- [ ] Mocks used for Student/Lesson/TimeLog models
+- [ ] Mocks used for Student/Lesson models
 - [ ] Test coverage ≥90% for service interface
 
-**Dependencies**: Task 4 (models created)
-**Blocks**: Task 9 (implementation)
+Task 9 acceptance criteria:
+- [ ] All 5 tests from Task 8 pass
+- [ ] calculateProgress() returns completion rate
+- [ ] Response time <100ms for 500 lessons
+- [ ] Follows service pattern from plan.md
 
----
-
-### Task 9: Implement StudentProgressService
-
-**Complexity**: Medium (6-8 hours)
-
-**Description**: Implement StudentProgressService to make tests pass.
-
-**Implementation steps**:
-1. Create service class with calculateProgress() method
-2. Query time_logs with student_id filter
-3. Calculate completion rate = completed / total lessons
-4. Implement getRecentActivity() with limit 10
-5. Run tests until all pass
-
-**Acceptance criteria**:
-- [ ] All 5 unit tests from Task 8 pass
-- [ ] No code duplication (reuses existing utilities)
-- [ ] Follows existing service patterns (see BaseService)
-- [ ] Type hints on all methods
-
-**Dependencies**: Task 8 (tests written)
-**Blocks**: Task 10 (refactor)
+Task 10 acceptance criteria:
+- [ ] All tests still pass after refactor
+- [ ] Cyclomatic complexity <10 (all methods)
+- [ ] No code duplication (DRY violations <2)
+- [ ] Clear method names, extracted constants
 ```
 
-**Quality check**: Every business logic component has test → implement → refactor tasks.
+**Quality check**: Every business logic component has TDD triplet, test task always before implement task.
 
----
+See examples.md for complete TDD triplet examples.
+</step>
 
-### Step 4: Generate API Endpoint Tasks (TDD-First)
+<step number="4">
+**Generate API Tasks (TDD)**
 
-**Actions**:
-For each API endpoint in plan, create test-first tasks:
+For each API endpoint in plan.md, create test + implement tasks.
 
-```markdown
-### Task 15: Write Integration Tests for Progress API Endpoint
+**API task structure** (2 tasks per endpoint):
+1. **Task N: Write integration tests for [Endpoint]** ← RED
+2. **Task N+1: Implement [Endpoint]** ← GREEN
 
-**Complexity**: Medium (4-6 hours)
+**Example API task pair**:
+```
+Task 14: Write integration tests for GET /api/v1/students/{id}/progress
+→ Task 15: Implement GET /api/v1/students/{id}/progress
 
-**Description**: Write integration tests for GET /api/v1/students/{id}/progress before implementation.
+Task 14 acceptance criteria:
+- [ ] Test: Returns 200 with completion_rate field
+- [ ] Test: Returns 404 for invalid student ID
+- [ ] Test: Requires authentication (401 without token)
+- [ ] Test: Response time <500ms (95th percentile)
 
-**Test scenarios**:
-1. Valid student ID returns 200 with progress data
-2. Invalid student ID returns 404
-3. Unauthorized user returns 403
-4. Invalid period parameter returns 400
-5. Response schema validation
+Task 15 acceptance criteria:
+- [ ] All 4 integration tests from Task 14 pass
+- [ ] Follows OpenAPI schema from plan.md
+- [ ] Error responses include error codes (RFC 7807)
+- [ ] API versioning enforced (/api/v1/)
 
-**Acceptance criteria**:
-- [ ] 5 integration tests implemented (all failing initially)
-- [ ] Tests use real database (test fixtures)
-- [ ] Authentication tested (valid token, invalid token, missing token)
-- [ ] Response matches OpenAPI schema
-
-**Dependencies**: Task 9 (StudentProgressService implemented)
-**Blocks**: Task 16 (endpoint implementation)
-
----
-
-### Task 16: Implement GET /api/v1/students/{id}/progress
-
-**Complexity**: Medium (4-6 hours)
-
-**Description**: Implement API endpoint to make integration tests pass.
-
-**Implementation steps**:
-1. Create route in routes/students.py
-2. Add authentication decorator
-3. Validate path/query parameters
-4. Call StudentProgressService.calculateProgress()
-5. Format response per schema
-6. Handle errors (404, 403, 400)
-
-**Acceptance criteria**:
-- [ ] All 5 integration tests from Task 15 pass
-- [ ] Response time <500ms (95th percentile with 500 lessons)
-- [ ] Follows API versioning convention (/api/v1/)
-- [ ] Error responses include error codes + messages
-
-**Dependencies**: Task 15 (tests written), Task 9 (service ready)
+Dependencies: Task 14 (API tests), Task 9 (StudentProgressService)
+Blocks: Task 22 (UI component consuming this API)
 ```
 
-**Quality check**: All endpoints have test → implement task pairs.
+**Quality check**: Every API endpoint has test task before implement task.
 
----
+See reference.md for API task templates.
+</step>
 
-### Step 5: Generate UI Component Tasks (if HAS_UI=true, TDD-First)
+<step number="5">
+**Generate UI Tasks (TDD)** - If HAS_UI
 
-**Actions**:
-For each UI component, create test-first tasks:
+For each screen/component in plan.md, create test + implement tasks.
 
-```markdown
-### Task 22: Write Component Tests for ProgressDashboard
+**UI task structure** (2 tasks per component):
+1. **Task N: Write component tests for [Component]** ← RED
+2. **Task N+1: Implement [Component]** ← GREEN
 
-**Complexity**: Medium (4-6 hours)
+**Example UI task pair**:
+```
+Task 21: Write tests for StudentProgressDashboard component
+→ Task 22: Implement StudentProgressDashboard component
 
-**Description**: Write React Testing Library tests for ProgressDashboard before implementation.
+Task 21 acceptance criteria:
+- [ ] Test: Renders progress chart with student data
+- [ ] Test: Loading state displays spinner
+- [ ] Test: Error state displays error message
+- [ ] Test: Empty state displays "No data" message
 
-**Test scenarios**:
-1. Renders loading state while fetching data
-2. Renders progress chart with valid data
-3. Renders error message on API failure
-4. Date filter updates chart data
-5. Accessibility: keyboard navigation works
-
-**Acceptance criteria**:
-- [ ] 5 component tests implemented (all failing initially)
-- [ ] Tests use MSW to mock API responses
-- [ ] Tests check ARIA labels for accessibility
-- [ ] Tests verify chart renders (mocked with jest.mock)
-
-**Dependencies**: Task 16 (API endpoint ready)
-**Blocks**: Task 23 (component implementation)
-
----
-
-### Task 23: Implement ProgressDashboard Component
-
-**Complexity**: Medium (6-8 hours)
-
-**Description**: Implement ProgressDashboard React component to make tests pass.
-
-**Implementation steps**:
-1. Create component file src/pages/ProgressDashboard.tsx
-2. Add useApiData hook for data fetching
-3. Render ProgressChart component (reuse from library)
-4. Add date filter dropdown
-5. Handle loading/error states
-6. Add ARIA labels for accessibility
-
-**Acceptance criteria**:
-- [ ] All 5 component tests from Task 22 pass
+Task 22 acceptance criteria:
+- [ ] All 4 tests from Task 21 pass
 - [ ] Lighthouse accessibility score ≥95
-- [ ] Reuses ProgressChart from shared components
-- [ ] Date filter persists in URL query params
+- [ ] Reuses ProgressChart from shared library
+- [ ] Fetches data from GET /api/v1/students/{id}/progress
 
-**Dependencies**: Task 22 (tests written)
+Dependencies: Task 21 (component tests), Task 15 (API endpoint)
 ```
 
-**Quality check**: All UI components have test → implement task pairs.
+**Quality check**: Every UI component has test task, accessibility validated.
 
----
+**Skip if**: No UI changes in this feature (HAS_UI=false).
 
-### Step 6: Generate Integration and E2E Test Tasks
+See reference.md for UI task templates.
+</step>
 
-**Actions**:
-Create tasks for higher-level testing:
+<step number="6">
+**Generate Integration Tasks**
 
-```markdown
-### Task 27: Write E2E Test for Progress Dashboard Flow
+Create end-to-end and integration validation tasks.
 
-**Complexity**: Medium (4-6 hours)
+**Integration task types**:
+- E2E tests (complete user workflows)
+- Integration tests (multi-component interactions)
+- Smoke tests (critical path validation)
 
-**Description**: Write Playwright E2E test for complete user journey.
+**Example integration task**:
+```
+Task 27: Write E2E test for student progress workflow
 
-**Test flow**:
-1. User logs in as teacher
-2. Navigates to student list
-3. Clicks "View Progress" for student
-4. Sees progress dashboard load
-5. Filters by 7-day period
-6. Verifies chart updates
+Complexity: Medium (4-6 hours)
 
-**Acceptance criteria**:
-- [ ] E2E test runs in headless mode
-- [ ] Test passes on local dev server
-- [ ] Screenshots captured on failure
-- [ ] Test completes in <30 seconds
+Steps:
+1. Set up test database with seed data
+2. Simulate teacher login
+3. Navigate to student progress dashboard
+4. Verify progress data displays correctly
+5. Test filtering and date range selection
+6. Verify API calls and response times
 
-**Dependencies**: All implementation tasks (18-26)
+Acceptance criteria:
+- [ ] Complete workflow tested (login → dashboard → filters)
+- [ ] All API calls succeed (200 responses)
+- [ ] UI updates correctly on filter changes
+- [ ] Test runs in <30 seconds
+
+Dependencies: All UI tasks (21-26), all API tasks (14-20)
 ```
 
-**Quality check**: E2E tests cover top 3 user journeys from spec.
+**Quality check**: 2-3 integration tasks created, cover critical paths.
 
----
+See reference.md for integration task patterns.
+</step>
 
-### Step 7: Sequence Tasks by Dependencies
+<step number="7">
+**Map Dependencies**
 
-**Actions**:
-1. Create dependency graph:
-   - List tasks with dependencies
-   - Identify parallel paths
-   - Mark critical path (longest dependency chain)
+Build dependency graph, identify critical path, mark parallel opportunities.
 
-2. Assign task numbers based on sequence:
-   - Foundation tasks: 1-5
-   - Data layer: 6-10
-   - Business logic: 11-15
-   - API layer: 16-20
-   - UI layer: 21-26 (if HAS_UI)
-   - Integration/E2E: 27-30
-
-**Example dependency graph**:
+**Dependency mapping**:
 ```
-Task 1 (Migration) → Task 4 (Models) → Task 8 (Service Tests) → Task 9 (Service) → Task 15 (API Tests) → Task 16 (API)
-                                                                                                               ↓
-                                                                                          Task 22 (UI Tests) → Task 23 (UI) → Task 27 (E2E)
+Foundation (Tasks 1-3) → Sequential (no parallel work)
+  ↓
+Data layer (Tasks 4-7) → Sequential (model definitions depend on migrations)
+  ↓
+Business logic (Tasks 8-13) → Parallel work possible (independent services)
+  ↓
+API layer (Tasks 14-20) → Parallel work possible (independent endpoints)
+  ↓
+UI layer (Tasks 21-26) → Parallel work possible (independent components)
+  ↓
+Integration (Tasks 27-28) → Sequential (depends on all above)
 ```
 
-**Quality check**: No circular dependencies, clear parallel paths identified.
+**Critical path identification**:
+```
+Critical path: Tasks 1 → 4 → 8 → 9 → 14 → 15 → 21 → 22 → 27 (15 hours)
+Parallel paths: API tasks (14-20) can run parallel to UI tasks (21-26)
+```
 
----
+**Quality check**: All dependencies explicit (task numbers listed), critical path identified.
 
-### Step 8: Validate Task Sizes
+See reference.md for dependency graph examples.
+</step>
 
-**Actions**:
-For each task, verify size is 0.5-1 day (4-8 hours):
+<step number="8">
+**Size Tasks**
 
-**Too large (>1 day)**: Split into subtasks
-```markdown
-❌ Task: Implement entire progress dashboard feature (3 days)
+Validate all tasks are 0.5-1 day (4-8 hours).
+
+**Sizing validation**:
+- **Target**: 90% of tasks are 0.5-1 day
+- **If task >1.5 days**: Split into subtasks using TDD triplet
+- **If task <0.5 day**: Consider grouping related small tasks
+
+**Example task splitting**:
+```
+❌ Task: Implement entire student progress dashboard (3 days)
 
 ✅ Split into:
-- Task 22: Write component tests (4-6 hours)
-- Task 23: Implement dashboard layout (6-8 hours)
-- Task 24: Add chart integration (4-6 hours)
-- Task 25: Add filter controls (4-6 hours)
+Task 21: Write tests for dashboard component (4 hours)
+Task 22: Implement dashboard component (6 hours)
+Task 23: Write tests for progress chart (3 hours)
+Task 24: Implement progress chart (5 hours)
 ```
 
-**Too small (<2 hours)**: Combine with related tasks
-```markdown
-❌ Task: Add ARIA label to button (30 minutes)
+**Quality check**: All tasks ≤1.5 days, most 0.5-1 day.
 
-✅ Combine into:
-- Task 23: Implement dashboard component (includes accessibility)
+See reference.md for task sizing guidelines.
+</step>
+
+<step number="9">
+**Write Acceptance Criteria**
+
+Add 2-4 testable checkboxes per task using AC templates.
+
+**AC quality standards**:
+- All AC are testable (not vague like "code works")
+- Use Given-When-Then format where helpful
+- Include success metrics (response time, coverage %, score)
+- Reference schemas/patterns from plan.md
+
+**Good acceptance criteria examples**:
 ```
-
-**Quality check**: 90% of tasks are 0.5-1 day, no tasks >1.5 days.
-
----
-
-### Step 9: Define Clear Acceptance Criteria
-
-**Actions**:
-For each task, add 2-4 testable acceptance criteria:
-
-**Good acceptance criteria**:
-- [ ] Specific and measurable
-- [ ] Can be verified by tests
-- [ ] Include success metrics where applicable
-- [ ] Cover happy path + edge cases
-
-**Example**:
-```markdown
-**Acceptance criteria**:
-- [ ] API returns 200 with valid student ID (tested)
-- [ ] Response time <500ms for 500 lessons (measured)
-- [ ] Returns 404 for invalid student ID (tested)
-- [ ] Follows API schema from plan.md (validated)
+✅ [ ] API returns 200 with completion_rate field (tested)
+✅ [ ] Response time <500ms with 500 lessons (measured)
+✅ [ ] Returns 404 for invalid student ID (tested)
+✅ [ ] Follows API schema from plan.md (validated)
 ```
 
 **Bad acceptance criteria to avoid**:
-```markdown
+```
 ❌ [ ] Code works correctly
 ❌ [ ] API is implemented
 ❌ [ ] Tests pass
@@ -410,372 +342,267 @@ For each task, add 2-4 testable acceptance criteria:
 
 **Quality check**: Every task has 2-4 checkboxes, all are testable.
 
----
+See reference.md for AC templates (API, UI, database, service).
+</step>
 
-### Step 10: Add Implementation Notes
+<step number="10">
+**Add Implementation Notes**
 
-**Actions**:
-For complex tasks, add implementation hints:
+For complex tasks, add implementation hints without over-specifying.
 
-```markdown
-**Implementation notes**:
+**Implementation notes examples**:
+```
+Implementation notes:
 - Reuse BaseService pattern (see api/app/services/base.py)
 - Follow TDD: Write test first, implement minimal code, refactor
 - Use existing time_spent calculation utility
 - Refer to plan.md section "StudentProgressService" for details
 ```
 
-**Quality check**: Complex tasks have helpful hints without over-specifying.
+**Quality check**: Complex tasks have helpful hints, don't prescribe exact implementation.
 
----
+See reference.md for implementation note patterns.
+</step>
 
-### Step 11: Generate tasks.md
+<step number="11">
+**Generate tasks.md**
 
-**Actions**:
-1. Render `tasks.md` from template with:
-   - Overview (total tasks, estimated duration)
-   - Task list (numbered, sequenced by dependencies)
-   - Each task includes: Complexity, Description, Steps, AC, Dependencies
+Render tasks.md from template with task summary.
 
-2. Add summary section:
-   ```markdown
-   ## Task Summary
+**Task summary format**:
+```
+## Task Summary
 
-   **Total tasks**: 28
-   **Estimated duration**: 4-5 days
-   **Critical path**: Tasks 1 → 4 → 8 → 9 → 15 → 16 → 22 → 23 → 27 (15 hours)
-   **Parallel paths**: UI tasks (21-26) can run parallel to API tasks (16-20)
+**Total tasks**: 28
+**Estimated duration**: 4-5 days
+**Critical path**: Tasks 1 → 4 → 8 → 9 → 15 → 16 → 22 → 23 → 27 (15 hours)
+**Parallel paths**: UI tasks (21-26) can run parallel to API tasks (16-20)
 
-   **Task distribution**:
-   - Foundation: 3 tasks
-   - Data layer: 4 tasks
-   - Business logic: 6 tasks (TDD: test + implement + refactor)
-   - API layer: 6 tasks (TDD: test + implement)
-   - UI layer: 6 tasks (TDD: test + implement)
-   - Testing: 3 tasks (integration + E2E)
-   ```
+**Task distribution**:
+- Foundation: 3 tasks
+- Data layer: 4 tasks
+- Business logic: 6 tasks (TDD: test + implement + refactor)
+- API layer: 6 tasks (TDD: test + implement)
+- UI layer: 6 tasks (TDD: test + implement)
+- Testing: 3 tasks (integration + E2E)
+```
 
 **Quality check**: tasks.md is complete and ready for /implement phase.
 
----
+See reference.md for tasks.md template.
+</step>
 
-### Step 12: Validate and Commit
+<step number="12">
+**Validate and Commit**
 
-**Actions**:
-1. Run validation checks:
-   - [ ] 20-30 tasks total (appropriate for feature complexity)
-   - [ ] All tasks ≤1.5 days (most 0.5-1 day)
-   - [ ] All tasks have 2-4 acceptance criteria
-   - [ ] TDD workflow followed (test-first tasks)
-   - [ ] Dependencies clearly documented
-   - [ ] No circular dependencies
+Run validation checks and commit tasks to git.
 
-2. Commit tasks:
-   ```bash
-   git add specs/NNN-slug/tasks.md
-   git commit -m "feat: add task breakdown for <feature-name>
+**Validation checks**:
+- [ ] 20-30 tasks total (appropriate for feature complexity)
+- [ ] All tasks ≤1.5 days (most 0.5-1 day)
+- [ ] All tasks have 2-4 acceptance criteria
+- [ ] TDD workflow followed (test-first tasks)
+- [ ] Dependencies clearly documented
+- [ ] No circular dependencies
 
-   Generated 28 tasks with TDD workflow:
-   - Foundation: 3 tasks
-   - Data layer: 4 tasks
-   - Business logic: 6 tasks
-   - API layer: 6 tasks
-   - UI layer: 6 tasks
-   - Testing: 3 tasks
+**Commit tasks**:
+```bash
+git add specs/NNN-slug/tasks.md
+git commit -m "feat: add task breakdown for <feature-name>
 
-   Estimated duration: 4-5 days
-   ```
+Generated 28 tasks with TDD workflow:
+- Foundation: 3 tasks
+- Data layer: 4 tasks
+- Business logic: 6 tasks
+- API layer: 6 tasks
+- UI layer: 6 tasks
+- Testing: 3 tasks
+
+Estimated duration: 4-5 days"
+```
 
 **Quality check**: Tasks committed, workflow-state.yaml updated to tasks phase completed.
+</step>
+</workflow>
 
----
+<validation>
+After task breakdown phase, verify:
 
-## Common Mistakes to Avoid
+- [ ] 20-30 tasks created (adjust for feature complexity)
+- [ ] All tasks ≤1.5 days (90% are 0.5-1 day)
+- [ ] All tasks have 2-4 testable acceptance criteria
+- [ ] TDD workflow followed (test tasks before implementation tasks)
+- [ ] Dependencies explicitly documented (task numbers listed)
+- [ ] Critical path identified in task summary
+- [ ] Parallel work opportunities marked
+- [ ] Implementation notes added for complex tasks
+- [ ] tasks.md committed to git
+- [ ] workflow-state.yaml updated (tasks phase completed)
 
-### 🚫 Tasks Too Large (>1 Day)
+If validation fails, return to workflow steps to fix issues.
+</validation>
 
-**Impact**: Blocks progress, unclear completion, hard to estimate
+<anti_patterns>
+<pitfall name="tasks_too_large">
+**❌ Don't**: Create tasks >1.5 days (unclear completion, blocks progress)
+**✅ Do**: Target 0.5-1 day per task, split large tasks using TDD triplet
 
-**Scenario**:
+**Why**: Large tasks are hard to estimate, test incrementally, and track progress.
+
+**Example** (bad):
 ```
 Task: Implement entire student progress dashboard
 Complexity: Very High (3 days)
 Result: Unclear when 50% complete, hard to test incrementally
 ```
 
-**Prevention**:
-- **Target**: 0.5-1 day per task (4-8 hours)
-- **If task >1 day**: Decompose into subtasks
-- **Use TDD**: Separate test/implement/refactor into distinct tasks
+**Example** (good):
+```
+Task 21: Write tests for dashboard component (4 hours)
+Task 22: Implement dashboard component (6 hours)
+Task 23: Refactor dashboard component (3 hours)
+Result: Clear progress, testable increments, easy to estimate
+```
+</pitfall>
 
-**If encountered**: Split into smaller tasks (e.g., test task + implement task)
+<pitfall name="vague_acceptance_criteria">
+**❌ Don't**: Use vague AC like "code works", "feature done", "tests pass"
+**✅ Do**: Use measurable, testable AC with success metrics
 
----
-
-### 🚫 Missing or Vague Acceptance Criteria
-
-**Impact**: Unclear when done, rework risk, merge conflicts
+**Why**: Vague AC causes unclear completion, rework risk, merge conflicts.
 
 **Bad examples**:
-```markdown
+```
 ❌ [ ] Code works correctly
 ❌ [ ] Feature is implemented
 ❌ [ ] Tests pass
 ```
 
 **Good examples**:
-```markdown
+```
 ✅ [ ] API returns 200 with completion_rate field (tested)
 ✅ [ ] Response time <500ms with 500 lessons (measured)
 ✅ [ ] Returns 404 for invalid student ID (tested)
 ```
+</pitfall>
 
-**Prevention**:
-- Each task has 2-4 testable acceptance criteria
-- Use "Given-When-Then" format for clarity
-- Include success metrics where applicable (response time, coverage %)
+<pitfall name="no_tdd_workflow">
+**❌ Don't**: Write implementation tasks before test tasks
+**✅ Do**: Always create test task before implementation task (TDD)
 
----
-
-### 🚫 Not Following TDD Workflow
-
-**Impact**: Tests written after code, poor test coverage, missed edge cases
+**Why**: Tests written after code leads to poor coverage, missed edge cases.
 
 **Bad task order**:
-```markdown
+```
 Task 8: Implement StudentProgressService
 Task 9: Write tests for StudentProgressService
 ```
 
 **Good task order** (TDD):
-```markdown
+```
 Task 8: Write unit tests for StudentProgressService (RED)
 Task 9: Implement StudentProgressService to pass tests (GREEN)
 Task 10: Refactor StudentProgressService (REFACTOR)
 ```
+</pitfall>
+</anti_patterns>
 
-**Prevention**: Always create test task before implementation task
+<best_practices>
+<practice name="tdd_triplet_pattern">
+For every component, create 3 tasks: test → implement → refactor.
 
----
-
-### 🚫 Unclear Dependencies
-
-**Impact**: Tasks blocked, parallel work impossible, critical path unclear
-
-**Bad example**:
-```markdown
-Task 15: Implement API endpoint
-Dependencies: Other tasks
+**TDD triplet example**:
 ```
-
-**Good example**:
-```markdown
-Task 15: Implement GET /api/v1/students/{id}/progress
-Dependencies: Task 9 (StudentProgressService), Task 14 (API tests)
-Blocks: Task 22 (UI component)
-```
-
-**Prevention**: Explicitly list task numbers for dependencies and blocked tasks
-
----
-
-### 🚫 Mixing Implementation Details in Acceptance Criteria
-
-**Impact**: Couples task to specific implementation, reduces flexibility
-
-**Bad example**:
-```markdown
-❌ [ ] Uses Redis for caching
-❌ [ ] Implements with React hooks
-❌ [ ] Uses PostgreSQL indexes
-```
-
-**Good example** (outcome-focused):
-```markdown
-✅ [ ] Cache hit rate >80% for repeat requests
-✅ [ ] Component re-renders <3 times on filter change
-✅ [ ] Query executes in <100ms with 10k records
-```
-
-**Prevention**: Focus on outcomes, not implementation mechanisms
-
----
-
-### 🚫 No Task Sequencing
-
-**Impact**: Developers unsure what to start with, dependencies unclear
-
-**Prevention**:
-- Number tasks in dependency order
-- Mark critical path
-- Identify parallel work opportunities
-- Document dependencies explicitly
-
----
-
-## Best Practices
-
-### ✅ Right-Sized Task Example
-
-**Good task structure**:
-```markdown
-### Task 15: Implement GET /api/v1/students/{id}/progress
-
-**Complexity**: Medium (6-8 hours)
-
-**Description**: Implement API endpoint to make integration tests from Task 14 pass.
-
-**Implementation steps**:
-1. Create route in routes/students.py
-2. Add authentication decorator (@require_teacher)
-3. Validate student_id and period parameters
-4. Call StudentProgressService.calculateProgress()
-5. Format response per OpenAPI schema
-6. Handle errors (404, 403, 400)
-
-**Acceptance criteria**:
-- [ ] All 5 integration tests from Task 14 pass
-- [ ] Response time <500ms (95th percentile, 500 lessons)
-- [ ] Follows API versioning (/api/v1/)
-- [ ] Error responses include error codes
-
-**Dependencies**: Task 14 (API tests), Task 9 (StudentProgressService)
-**Blocks**: Task 22 (UI component)
-**Files**: api/app/routes/students.py
-```
-
-**Why it's good**:
-- Clear scope (single endpoint)
-- Sized appropriately (6-8 hours)
-- Test-driven (depends on test task 14)
-- Measurable AC (4 checkboxes, all testable)
-- Dependencies explicit
-
----
-
-### ✅ TDD Task Triplet Pattern
-
-**For every component, create 3 tasks**:
-
-1. **RED**: Write failing tests
-2. **GREEN**: Implement to pass tests
-3. **REFACTOR**: Clean up while keeping tests green
-
-**Example**:
-```markdown
 Task 8: Write unit tests for StudentProgressService
-→ Task 9: Implement StudentProgressService
-→ Task 10: Refactor StudentProgressService
+  → Tests all failing initially (RED)
+  → Acceptance: 5 test cases, ≥90% coverage
+
+Task 9: Implement StudentProgressService
+  → Make all tests pass with minimal code (GREEN)
+  → Acceptance: All 5 tests pass, <100ms response time
+
+Task 10: Refactor StudentProgressService
+  → Clean up while keeping tests green (REFACTOR)
+  → Acceptance: Tests still pass, complexity <10, DRY violations <2
 ```
 
-**Result**: Enforces TDD discipline, ensures test coverage, encourages refactoring
+**Result**: Enforces TDD discipline, ensures test coverage, encourages refactoring.
 
----
+See examples.md for complete TDD triplet examples.
+</practice>
 
-### ✅ Acceptance Criteria Templates
+<practice name="acceptance_criteria_templates">
+Use consistent AC templates for different task types.
 
-**Use consistent format**:
-
-**API endpoint AC**:
-```markdown
+**API endpoint AC template**:
+```
 - [ ] Returns {status_code} with {field} in response (tested)
 - [ ] Response time <{threshold}ms (measured)
 - [ ] Returns {error_code} for {error_condition} (tested)
 - [ ] Follows {schema} from plan.md (validated)
 ```
 
-**UI component AC**:
-```markdown
+**UI component AC template**:
+```
 - [ ] Renders {element} with {prop} (tested)
 - [ ] {interaction} updates {state} (tested)
 - [ ] Lighthouse accessibility score ≥{threshold}
 - [ ] Reuses {component} from shared library
 ```
 
-**Database migration AC**:
-```markdown
+**Database migration AC template**:
+```
 - [ ] Migration runs successfully on clean database
 - [ ] Rollback works without errors
 - [ ] Indexes improve query performance (measured)
 - [ ] Foreign keys enforce referential integrity
 ```
 
----
+**Result**: Consistent, testable AC across all tasks, speeds up task creation.
 
-## Phase Checklist
+See reference.md for complete AC template library.
+</practice>
+</best_practices>
 
-**Pre-phase checks**:
-- [ ] Planning phase completed (`plan.md` exists)
-- [ ] Architecture components defined
-- [ ] Reuse strategy documented
-- [ ] Git working tree clean
-
-**During phase**:
-- [ ] Foundation tasks created (database, models, config)
-- [ ] Business logic tasks follow TDD (test → implement → refactor)
-- [ ] API tasks follow TDD (test → implement)
-- [ ] UI tasks follow TDD (test → implement) - if HAS_UI
-- [ ] Integration/E2E tasks created
-- [ ] Task sizes validated (90% are 0.5-1 day)
-- [ ] Acceptance criteria clear (2-4 per task, all testable)
-- [ ] Dependencies documented
-- [ ] Tasks sequenced by dependencies
-
-**Post-phase validation**:
-- [ ] `tasks.md` created with 20-30 tasks
-- [ ] Task summary includes totals and critical path
-- [ ] All tasks ≤1.5 days
-- [ ] All tasks have clear AC
-- [ ] TDD workflow followed
-- [ ] Tasks committed to git
-- [ ] workflow-state.yaml updated
-
----
-
-## Quality Standards
-
-**Task breakdown quality targets**:
-- Total tasks: 20-30 (adjust for feature complexity)
-- Avg task size: 0.5-1 day (4-8 hours)
-- Tasks with clear AC: 100%
-- Tasks following TDD: 100% for business logic + API + UI
-- Task rework rate: <5%
-
-**What makes a good task breakdown**:
-- Right-sized tasks (0.5-1 day each)
+<quality_standards>
+**Good task breakdown**:
+- Right-sized tasks (0.5-1 day each, 90% of tasks)
 - Clear, testable acceptance criteria (2-4 per task)
 - TDD workflow (test tasks before implementation tasks)
-- Explicit dependencies (task numbers listed)
-- Helpful implementation notes (without over-specifying)
+- Explicit dependencies (task numbers listed, critical path identified)
+- Helpful implementation notes (reuse patterns, file paths, plan.md references)
 
-**What makes a bad task breakdown**:
+**Bad task breakdown**:
 - Tasks >1.5 days (too large, hard to estimate)
 - Vague AC ("code works", "feature done")
 - No TDD workflow (tests after implementation)
 - Unclear dependencies ("depends on other tasks")
 - Missing implementation hints for complex tasks
 
----
+**Quality targets**:
+- Total tasks: 20-30 (adjust for feature complexity)
+- Avg task size: 0.5-1 day (4-8 hours)
+- Tasks with clear AC: 100%
+- Tasks following TDD: 100% for business logic + API + UI
+- Task rework rate: <5%
+</quality_standards>
 
-## Completion Criteria
+<success_criteria>
+Task breakdown phase complete when:
 
-**Phase is complete when**:
-- [ ] All pre-phase checks passed
-- [ ] All execution steps completed
-- [ ] All post-phase validations passed
-- [ ] Tasks committed to git
-- [ ] workflow-state.yaml shows `currentPhase: tasks` and `status: completed`
+- [ ] 20-30 concrete tasks defined (right-sized, 0.5-1 day each)
+- [ ] All tasks have 2-4 testable acceptance criteria
+- [ ] TDD workflow established (test tasks before implementation tasks)
+- [ ] Dependencies mapped (task numbers, critical path, parallel opportunities)
+- [ ] Implementation notes added for complex tasks
+- [ ] Task summary generated (total, duration, distribution, critical path)
+- [ ] tasks.md committed to git
+- [ ] workflow-state.yaml updated (currentPhase: tasks, status: completed)
 
-**Ready to proceed to next phase** (`/implement`):
-- [ ] 20-30 concrete tasks defined
-- [ ] All tasks have clear AC
-- [ ] Dependencies mapped
-- [ ] TDD workflow established
+Ready to proceed to /implement phase with clear, testable tasks.
+</success_criteria>
 
----
-
-## Troubleshooting
-
+<troubleshooting>
 **Issue**: Tasks too large (>1.5 days)
 **Solution**: Split into subtasks using TDD triplet (test + implement + refactor)
 
@@ -791,6 +618,18 @@ Task 8: Write unit tests for StudentProgressService
 **Issue**: Too many tasks (>40)
 **Solution**: Review for granularity, combine trivial tasks, verify feature scope
 
----
+**Issue**: No TDD workflow
+**Solution**: Ensure test task always before implementation task for all components
+</troubleshooting>
 
-_This SOP guides the task breakdown phase. Refer to reference.md for sizing guidelines and examples.md for task patterns._
+<reference_guides>
+Task breakdown detailed guides:
+- Task Sizing Guidelines (reference.md) - 0.5-1 day target, split/combine strategies
+- AC Templates (reference.md) - API, UI, database, service AC patterns
+- Component Extraction (reference.md) - How to parse plan.md for all components
+- Dependency Graphing (reference.md) - Critical path, parallel work identification
+- TDD Triplet Examples (examples.md) - Complete test → implement → refactor examples
+
+Next phase:
+After task breakdown completes → /implement (execute tasks with TDD workflow)
+</reference_guides>

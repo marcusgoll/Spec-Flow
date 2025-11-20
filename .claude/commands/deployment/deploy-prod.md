@@ -1,118 +1,162 @@
 ---
-description: Direct production deployment without staging
+name: deploy-prod
+description: Deploy feature directly to production by triggering GitHub Actions workflow, monitoring deployment, extracting rollback IDs, and verifying health
 internal: true
+argument-hint: (automatically called by /ship)
+allowed-tools: [Read, Write, Edit, Grep, Bash(git *), Bash(gh *), Bash(yq *), Bash(jq *), Bash(curl *), Bash(python .spec-flow/*), Bash(sleep *), Bash(ls *), Bash(cat *), Bash(test *), Bash(grep *), TodoWrite]
 ---
 
-> **⚠️  INTERNAL COMMAND**: This command is called automatically by `/ship` when deployment model is `direct-prod`.
+> **⚠️ INTERNAL COMMAND**: This command is automatically called by `/ship` when deployment model is `direct-prod`.
 > Most users should use `/ship` instead of calling this directly.
 
 # /deploy-prod - Direct Production Deployment
 
-**Purpose**: Deploy directly to production for projects without staging environments. This command is called by `/ship` when deployment model is `direct-prod`.
+<context>
+**Current Feature Directory**: !`find specs/ -maxdepth 1 -type d -name "[0-9]*" | sort -n | tail -1 2>$null || echo "none"`
 
-**When to Use**:
-- Projects without staging branch or workflow
-- Single-environment deployments
-- Simple applications with minimal infrastructure
+**Workflow State**: @specs/*/workflow-state.yaml
 
-**Risk Level**: 🔴 HIGH - deploys directly to production without staging validation
+**Current Git Branch**: !`git branch --show-current 2>$null || echo "none"`
 
-**Prerequisites**:
+**Git Status**: !`git status --short 2>$null || echo "clean"`
+
+**Uncommitted Changes**: !`git diff --quiet && git diff --cached --quiet && echo "none" || echo "DETECTED"`
+
+**Production Workflows**:
+- deploy-production.yml: !`test -f .github/workflows/deploy-production.yml && echo "exists" || echo "missing"`
+- deploy.yml: !`test -f .github/workflows/deploy.yml && echo "exists" || echo "missing"`
+
+**GitHub CLI Status**: !`gh auth status 2>$null | head -1 || echo "not authenticated"`
+
+**Previous Phases**:
+- Pre-flight: !`yq eval '.quality_gates.pre_flight.passed' specs/*/workflow-state.yaml 2>$null || echo "unknown"`
+- Optimize: !`yq eval '.phases.optimize.status' specs/*/workflow-state.yaml 2>$null || echo "unknown"`
+
+**Platform Detection**:
+- Vercel: !`test -f vercel.json && echo "yes" || test -f .vercel && echo "yes" || echo "no"`
+- Netlify: !`test -f netlify.toml && echo "yes" || echo "no"`
+- Railway: !`test -f railway.json && echo "yes" || echo "no"`
+</context>
+
+<objective>
+Deploy feature directly to production without staging validation for projects using the `direct-prod` deployment model.
+
+**Purpose**: Single-environment deployment for simple applications or projects without staging infrastructure.
+
+**Risk Level**: 🔴 HIGH - Deploys directly to production without staging validation
+
+**When Used**: Automatically called by `/ship` when:
+- Git remote exists
+- No staging branch configured
+- No `.github/workflows/deploy-staging.yml` present
+
+**Prerequisites** (verified before execution):
 - `/implement` phase complete
 - `/optimize` phase complete
-- `/preview` manual gate approved
 - Pre-flight validation passed
+- Production workflow file exists with `workflow_dispatch` trigger
+
+**Deployment Flow**:
+1. Pre-deployment safety checks
+2. Trigger GitHub Actions production workflow
+3. Monitor deployment progress
+4. Extract deployment IDs for rollback capability
+5. Verify production health checks
+6. Generate production report with rollback instructions
+
+**Timing**: 5-10 minutes (depends on deployment platform and build time)
+</objective>
+
+## Anti-Hallucination Rules
+
+**CRITICAL**: Follow these rules to prevent production deployment failures.
+
+1. **Never assume production workflow file location**
+   - Check both `.github/workflows/deploy-production.yml` and `.github/workflows/deploy.yml`
+   - If neither exists, FAIL with clear error message
+   - Don't proceed with deployment without confirmed workflow file
+
+2. **Verify uncommitted changes before deploying**
+   - Always run `git diff --quiet && git diff --cached --quiet`
+   - If uncommitted changes detected, FAIL immediately
+   - Production must deploy from clean working tree
+
+3. **Extract actual deployment IDs from platform output**
+   - Parse deployment IDs from actual `gh run view` or platform API output
+   - Never fabricate deployment IDs (needed for rollback)
+   - If ID extraction fails, record as "unknown" in report (don't invent)
+
+4. **Quote actual health check responses**
+   - Run actual `curl` commands to verify endpoints
+   - Report actual HTTP status codes from responses
+   - Don't claim "200 OK" without actual curl verification
+
+5. **Read workflow-state.yaml for prerequisite verification**
+   - Check actual `quality_gates.pre_flight.passed` value
+   - Check actual `phases.optimize.status` value
+   - If prerequisites not met, FAIL with specific missing requirement
+
+6. **Generate production report from actual data**
+   - Production URL from actual deployment output (not guessed)
+   - Deployment ID from actual platform response (not fabricated)
+   - Health check results from actual curl output (not assumed)
+   - Rollback instructions based on actual platform detected (not generic)
+
+**Why this matters**: False assumptions in production deployment cause outages. Accurate verification of actual state prevents production incidents.
 
 ---
 
-## Phase DP.1: Pre-Deployment Checks
+<process>
 
-**Purpose**: Final safety checks before production deployment
+### Step 1: Load Feature Context and Verify Prerequisites
+
+**Load feature directory**:
+```bash
+FEATURE_DIR=$(find specs/ -maxdepth 1 -type d -name "[0-9]*" | sort -n | tail -1)
+```
+
+**Verify workflow state file exists**:
+```bash
+test -f "$FEATURE_DIR/workflow-state.yaml" || (echo "❌ No workflow state found" && exit 1)
+```
+
+**Update workflow phase to in_progress**:
+```bash
+python .spec-flow/scripts/bash/workflow-state.sh update_workflow_phase "$FEATURE_DIR" "ship:deploy-prod" "in_progress"
+```
+
+**Display deployment banner**:
+```
+🚀 Direct Production Deployment
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  WARNING: Deploying directly to production
+   No staging environment for validation
+```
+
+### Step 2: Run Pre-Deployment Safety Checks
+
+**Purpose**: Final safety verification before production deployment
+
+**Check 1: Pre-flight validation passed**
+```bash
+yq eval '.quality_gates.pre_flight.passed == true' "$FEATURE_DIR/workflow-state.yaml"
+```
+- If not true: Display "❌ Pre-flight validation not completed or failed" and EXIT
+
+**Check 2: Optimize phase completed**
+```bash
+yq eval '.phases.optimize.status == "completed"' "$FEATURE_DIR/workflow-state.yaml"
+```
+- If not completed: Display "❌ Optimization phase not completed" and EXIT
+
+**Check 3: Production workflow exists**
+
+Check for workflow files in this order:
+1. `.github/workflows/deploy-production.yml`
+2. `.github/workflows/deploy.yml`
 
 ```bash
-#!/usr/bin/env bash
-set -Eeuo pipefail
-
-# Error trap to ensure proper cleanup on failure
-on_error() {
-  echo "⚠️  Error in /deploy-prod. Marking phase as failed."
-  complete_phase_timing "$FEATURE_DIR" "ship:deploy-prod" 2>/dev/null || true
-  update_workflow_phase "$FEATURE_DIR" "ship:deploy-prod" "failed" 2>/dev/null || true
-}
-trap on_error ERR
-
-# Always start at repo root
-cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-
-# Tool preflight checks
-need() {
-  command -v "$1" >/dev/null 2>&1 || {
-    echo "❌ Missing required tool: $1"
-    echo "   Install via: brew install $1  # or appropriate package manager"
-    exit 1
-  }
-}
-
-need git
-need yq
-need jq
-need gh
-need curl
-
-# Source state management functions
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-  source "$(dirname "${BASH_SOURCE[0]}")/../../.spec-flow/scripts/bash/workflow-state.sh"
-else
-  source .spec-flow/scripts/bash/workflow-state.sh
-fi
-
-# Find feature directory
-FEATURE_DIR=$(ls -td specs/*/ 2>/dev/null | head -1)
-STATE_FILE="$FEATURE_DIR/workflow-state.yaml"
-
-if [ ! -f "$STATE_FILE" ]; then
-  echo "❌ No workflow state found"
-  exit 1
-fi
-
-# Update phase
-update_workflow_phase "$FEATURE_DIR" "ship:deploy-prod" "in_progress"
-# Start timing for deploy-prod phase
-start_phase_timing "$FEATURE_DIR" "ship:deploy-prod"
-
-echo "🚀 Direct Production Deployment"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "⚠️  WARNING: Deploying directly to production"
-echo "   No staging environment for validation"
-echo ""
-
-# Verify prerequisites
-echo "📋 Pre-Deployment Checklist"
-echo "─────────────────────────────────────────────"
-
-CHECKS_PASSED=true
-
-# Check 1: Pre-flight validation completed
-if ! yq eval '.quality_gates.pre_flight.passed == true' "$STATE_FILE" > /dev/null 2>&1; then
-  echo "❌ Pre-flight validation not completed or failed"
-  CHECKS_PASSED=false
-else
-  echo "✅ Pre-flight validation passed"
-fi
-
-# Check 2: Optimize phase completed
-if ! test_phase_completed "$FEATURE_DIR" "ship:optimize"; then
-  echo "❌ Optimization phase not completed"
-  CHECKS_PASSED=false
-else
-  echo "✅ Optimization complete"
-fi
-
-# Preview phase removed - all testing now happens in staging
-
-# Check 4: Production workflow exists
-PROD_WORKFLOW=""
 if [ -f ".github/workflows/deploy-production.yml" ]; then
   PROD_WORKFLOW="deploy-production.yml"
 elif [ -f ".github/workflows/deploy.yml" ]; then
@@ -120,849 +164,505 @@ elif [ -f ".github/workflows/deploy.yml" ]; then
 else
   echo "❌ No production deployment workflow found"
   echo "   Expected: .github/workflows/deploy-production.yml or .github/workflows/deploy.yml"
-  CHECKS_PASSED=false
-fi
-
-# Check 5: Workflow has workflow_dispatch trigger
-if [ -n "$PROD_WORKFLOW" ]; then
-  if ! grep -q "workflow_dispatch:" ".github/workflows/$PROD_WORKFLOW"; then
-    echo "❌ Workflow missing 'on: workflow_dispatch' trigger"
-    echo "   Required for manual deployment via gh CLI"
-    CHECKS_PASSED=false
-  else
-    echo "✅ Production workflow found with dispatch trigger"
-  fi
-fi
-
-echo ""
-
-if [ "$CHECKS_PASSED" = false ]; then
-  echo "❌ Pre-deployment checks failed"
-  update_workflow_phase "$FEATURE_DIR" "ship:deploy-prod" "failed"
   exit 1
 fi
-
-echo "✅ All pre-deployment checks passed"
-echo ""
 ```
 
-**Blocking Conditions**:
-- Pre-flight validation failed
-- Optimization not complete
-- Preview not approved
-- No production workflow file
-- Workflow missing `workflow_dispatch` trigger
+**Check 4: Workflow has workflow_dispatch trigger**
+```bash
+grep -q "workflow_dispatch:" ".github/workflows/$PROD_WORKFLOW"
+```
+- If not found: Display "❌ Workflow missing 'on: workflow_dispatch' trigger" and EXIT
+- Required for manual deployment via gh CLI
 
-**Changes from v1.x**:
-- ✅ Added strict bash mode (`set -Eeuo pipefail`)
-- ✅ Added error trap for cleanup
-- ✅ Added tool preflight checks
-- ✅ Fixed typo on line 54 (`n#` → `#`)
-- ✅ Added workflow_dispatch verification
+**Check 5: No uncommitted changes**
+```bash
+git diff --quiet && git diff --cached --quiet
+```
+- If changes detected:
+  ```
+  ❌ Uncommitted changes detected
 
----
+  Production deployments must be from a clean working tree.
 
-## Phase DP.2: Trigger Production Deployment
+  Fix options:
+    1. Commit changes: git add . && git commit -m 'chore: prepare for deployment'
+    2. Stash changes: git stash
+    3. Discard changes: git restore .
+  ```
+  EXIT immediately
+
+**If all checks pass**:
+```
+✅ Pre-flight validation passed
+✅ Optimization complete
+✅ Production workflow found with dispatch trigger
+✅ Working tree clean
+
+✅ All pre-deployment checks passed
+```
+
+**If any check fails**: Update workflow phase to "failed" and EXIT
+
+### Step 3: Trigger Production Deployment
 
 **Purpose**: Trigger GitHub Actions workflow for production deployment
 
+**Get current branch**:
 ```bash
-echo "🔧 Phase DP.2: Trigger Production Deployment"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-echo "Production workflow: $PROD_WORKFLOW"
-echo ""
-
-# Get current branch
 CURRENT_BRANCH=$(git branch --show-current)
 echo "Current branch: $CURRENT_BRANCH"
+```
 
-# Fail fast if uncommitted changes detected (non-interactive)
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "❌ Uncommitted changes detected"
-  echo ""
-  echo "Production deployments must be from a clean working tree."
-  echo ""
-  echo "Fix options:"
-  echo "  1. Commit changes: git add . && git commit -m 'chore: prepare for deployment'"
-  echo "  2. Stash changes: git stash"
-  echo "  3. Discard changes: git restore ."
-  echo ""
-  exit 1
-fi
-
-# Push to remote if needed
-REMOTE_BRANCH="origin/$CURRENT_BRANCH"
-if ! git rev-parse "$REMOTE_BRANCH" >/dev/null 2>&1; then
-  echo ""
+**Push to remote if needed**:
+```bash
+git rev-parse "origin/$CURRENT_BRANCH" >/dev/null 2>&1
+```
+- If remote branch doesn't exist:
+  ```bash
   echo "📤 Pushing branch to remote..."
   git push -u origin "$CURRENT_BRANCH"
-else
-  LOCAL_SHA=$(git rev-parse HEAD)
-  REMOTE_SHA=$(git rev-parse "$REMOTE_BRANCH")
+  ```
 
-  if [ "$LOCAL_SHA" != "$REMOTE_SHA" ]; then
-    echo ""
-    echo "📤 Pushing updates to remote..."
-    git push
-  fi
-fi
-
-echo ""
+**Trigger GitHub Actions workflow**:
+```bash
 echo "🚀 Triggering production deployment workflow..."
+gh workflow run "$PROD_WORKFLOW" --ref "$CURRENT_BRANCH"
+```
 
-# Trigger workflow
-gh workflow run "$PROD_WORKFLOW" \
-  --ref "$CURRENT_BRANCH" \
-  --field feature="$(yq eval '.feature.slug' "$STATE_FILE")" \
-  --field deployment_type="production"
-
-# Wait for workflow to start (give GitHub a few seconds)
-echo "⏳ Waiting for workflow to start..."
+**Wait for workflow run to appear** (GitHub API delay):
+```bash
+echo "⏳ Waiting for workflow run to start..."
 sleep 5
+```
 
-# Find the workflow run
-PROD_RUN=$(gh run list \
-  --workflow="$PROD_WORKFLOW" \
-  --branch="$CURRENT_BRANCH" \
-  --limit=1 \
-  --json databaseId,status,conclusion \
-  --jq '.[0].databaseId')
+**Get workflow run ID**:
+```bash
+RUN_ID=$(gh run list --workflow="$PROD_WORKFLOW" --branch="$CURRENT_BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId')
 
-if [ -z "$PROD_RUN" ]; then
-  echo "❌ Could not find workflow run"
-  echo "Check GitHub Actions manually: gh run list"
+if [ -z "$RUN_ID" ]; then
+  echo "❌ Failed to get workflow run ID"
+  echo "   Check GitHub Actions: https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions"
   exit 1
 fi
 
-echo "✅ Workflow started: Run ID $PROD_RUN"
-echo ""
-echo "📊 View workflow: gh run view $PROD_RUN --web"
-echo ""
+echo "Workflow run ID: $RUN_ID"
+echo "Monitoring: https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions/runs/$RUN_ID"
 ```
 
-**Actions**:
-1. Detect production workflow file
-2. **Fail fast** if uncommitted changes (non-interactive)
-3. Push to remote if needed
-4. Trigger GitHub Actions workflow
-5. Record run ID for monitoring
+### Step 4: Monitor Deployment Progress
 
-**Changes from v1.x**:
-- ✅ Removed interactive `read -p "Commit changes?"` prompt
-- ✅ Fail fast with actionable error messages
-- ✅ CI-safe (no human intervention required)
+**Purpose**: Watch GitHub Actions workflow until completion
 
----
-
-## Phase DP.3: Monitor Deployment
-
-**Purpose**: Wait for production deployment to complete and monitor progress
-
+**Monitor workflow run**:
 ```bash
-echo "⏳ Phase DP.3: Monitor Production Deployment"
+echo ""
+echo "📊 Monitoring deployment progress..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Watch workflow run
-gh run watch "$PROD_RUN" --exit-status || {
+gh run watch "$RUN_ID" --exit-status
+DEPLOY_EXIT_CODE=$?
+```
+
+**If deployment fails** (exit code != 0):
+```bash
+if [ "$DEPLOY_EXIT_CODE" -ne 0 ]; then
   echo ""
   echo "❌ Production deployment FAILED"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
-  echo "View logs: gh run view $PROD_RUN --log"
+  echo "View logs: gh run view $RUN_ID --log"
+  echo "Workflow URL: https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions/runs/$RUN_ID"
+
+  # Update workflow state
+  python .spec-flow/scripts/bash/workflow-state.sh update_workflow_phase "$FEATURE_DIR" "ship:deploy-prod" "failed"
+
+  # Generate failure report
+  python .spec-flow/scripts/spec-cli.py generate-failure-report \
+    --feature-dir "$FEATURE_DIR" \
+    --phase "deploy-prod" \
+    --run-id "$RUN_ID"
+
   echo ""
+  echo "Failure report: $FEATURE_DIR/production-deployment-failure.md"
 
-  # Update state
-  update_workflow_phase "$FEATURE_DIR" "ship:deploy-prod" "failed"
-
-  # Save failure information
-  cat > "$FEATURE_DIR/deploy-prod-failure.md" <<EOF
-# Production Deployment Failure
-
-**Run ID**: $PROD_RUN
-**Timestamp**: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-**Branch**: $CURRENT_BRANCH
-
-## View Logs
-
-\`\`\`bash
-gh run view $PROD_RUN --log
-\`\`\`
-
-## Retry Deployment
-
-After fixing the issue, retry with:
-
-\`\`\`bash
-/ship continue
-\`\`\`
-
-## Manual Rollback (Platform-Specific)
-
-If the deployment partially succeeded and broke production:
-
-### Vercel Rollback
-
-1. **Find previous deployment ID**:
-   \`\`\`bash
-   vercel ls --token=\$VERCEL_TOKEN
-   \`\`\`
-
-2. **Alias previous deployment to production URL**:
-   \`\`\`bash
-   vercel alias set <previous-deployment-id> <production-url> --token=\$VERCEL_TOKEN
-   # Example: vercel alias set app-abc123.vercel.app myapp.com --token=\$VERCEL_TOKEN
-   \`\`\`
-
-### Railway Rollback
-
-1. Go to Railway dashboard: https://railway.app
-2. Select your project
-3. Click "Deployments" tab
-4. Select previous successful deployment
-5. Click "Redeploy" button
-
-### Netlify Rollback
-
-1. **Find previous deployment ID**:
-   \`\`\`bash
-   netlify sites:list
-   netlify deploys:list --site=<site-id>
-   \`\`\`
-
-2. **Restore previous deployment**:
-   \`\`\`bash
-   netlify deploy:restore <previous-deploy-id> --site=<site-id>
-   \`\`\`
-
-### Git-Based Rollback (Universal)
-
-\`\`\`bash
-# Revert the git commit (safe, creates new commit)
-git revert $(git rev-parse HEAD)
-git push
-
-# OR reset to previous commit (destructive, rewrites history)
-git reset --hard HEAD~1
-git push --force
-\`\`\`
-
-## Debug Workflow
-
-\`\`\`bash
-# View full workflow output
-gh run view $PROD_RUN --log > production-deploy-logs.txt
-
-# Check workflow configuration
-cat .github/workflows/$PROD_WORKFLOW
-
-# Verify environment secrets
-gh secret list
-
-# Check environment variables in GitHub Actions
-gh variable list
-\`\`\`
-EOF
-
-  echo "💾 Failure report saved: $FEATURE_DIR/deploy-prod-failure.md"
   exit 1
-}
-
-echo ""
-echo "✅ Production deployment workflow completed successfully"
-echo ""
-```
-
-**Monitoring**:
-- Live output from GitHub Actions
-- Automatic failure detection
-- Failure report generation with platform-specific rollback instructions
-- Exit on deployment failure
-
-**Changes from v1.x**:
-- ✅ Added concrete Vercel rollback commands
-- ✅ Added concrete Railway rollback steps
-- ✅ Added concrete Netlify rollback commands
-- ✅ Added git-based universal rollback
-
----
-
-## Phase DP.4: Extract Deployment IDs
-
-**Purpose**: Extract deployment IDs using platform APIs for rollback capability
-
-```bash
-echo "🔍 Phase DP.4: Extract Deployment IDs"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-# Detect deployment platform from environment or config
-DEPLOY_PLATFORM="${DEPLOY_PLATFORM:-vercel}"  # Default to Vercel
-
-echo "Fetching deployment IDs via $DEPLOY_PLATFORM API..."
-echo ""
-
-# Initialize deployment ID variables
-MARKETING_ID=""
-APP_ID=""
-API_IMAGE=""
-RAILWAY_ID=""
-NETLIFY_ID=""
-
-case "$DEPLOY_PLATFORM" in
-  vercel)
-    # Use Vercel API to get recent deployments
-    if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
-      VERCEL_RESPONSE=$(curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" \
-        "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&limit=10&target=production" 2>/dev/null)
-
-      # Extract most recent production deployment ID
-      APP_ID=$(echo "$VERCEL_RESPONSE" | jq -r '.deployments[0].uid // empty' 2>/dev/null)
-
-      # If multiple projects, extract marketing deployment
-      if [ -n "$VERCEL_MARKETING_PROJECT_ID" ]; then
-        MARKETING_RESPONSE=$(curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" \
-          "https://api.vercel.com/v6/deployments?projectId=$VERCEL_MARKETING_PROJECT_ID&limit=5&target=production" 2>/dev/null)
-        MARKETING_ID=$(echo "$MARKETING_RESPONSE" | jq -r '.deployments[0].uid // empty' 2>/dev/null)
-      fi
-
-      echo "Vercel API response received"
-    else
-      echo "⚠️  VERCEL_TOKEN or VERCEL_PROJECT_ID not set - falling back to log parsing"
-      # Fallback to log parsing if API credentials missing
-      DEPLOY_LOGS=$(gh run view "$PROD_RUN" --log 2>/dev/null || echo "")
-      APP_ID=$(echo "$DEPLOY_LOGS" | grep -oE "dpl_[a-zA-Z0-9]{24}" | head -1)
-    fi
-    ;;
-
-  railway)
-    # Use Railway API
-    if [ -n "$RAILWAY_TOKEN" ] && [ -n "$RAILWAY_SERVICE_ID" ]; then
-      RAILWAY_RESPONSE=$(curl -sS -H "Authorization: Bearer $RAILWAY_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "{\"query\": \"query { service(id: \\\"$RAILWAY_SERVICE_ID\\\") { deployments(first: 5) { edges { node { id createdAt } } } } }\"}" \
-        "https://backboard.railway.app/graphql" 2>/dev/null)
-
-      RAILWAY_ID=$(echo "$RAILWAY_RESPONSE" | jq -r '.data.service.deployments.edges[0].node.id // empty' 2>/dev/null)
-      echo "Railway API response received"
-    else
-      echo "⚠️  RAILWAY_TOKEN or RAILWAY_SERVICE_ID not set - falling back to log parsing"
-      DEPLOY_LOGS=$(gh run view "$PROD_RUN" --log 2>/dev/null || echo "")
-      RAILWAY_ID=$(echo "$DEPLOY_LOGS" | grep -oE "railway-[a-z0-9-]+" | head -1)
-    fi
-    ;;
-
-  netlify)
-    # Use Netlify API
-    if [ -n "$NETLIFY_AUTH_TOKEN" ] && [ -n "$NETLIFY_SITE_ID" ]; then
-      NETLIFY_RESPONSE=$(curl -sS -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
-        "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys?per_page=5" 2>/dev/null)
-
-      NETLIFY_ID=$(echo "$NETLIFY_RESPONSE" | jq -r '.[0].id // empty' 2>/dev/null)
-      echo "Netlify API response received"
-    else
-      echo "⚠️  NETLIFY_AUTH_TOKEN or NETLIFY_SITE_ID not set - falling back to log parsing"
-      DEPLOY_LOGS=$(gh run view "$PROD_RUN" --log 2>/dev/null || echo "")
-      NETLIFY_ID=$(echo "$DEPLOY_LOGS" | grep -oE "https://[a-z0-9-]+--[a-z0-9-]+\.netlify\.app" | head -1)
-    fi
-    ;;
-
-  docker|custom)
-    # Docker images - extract from GitHub Container Registry
-    API_IMAGE=$(gh api "/repos/$(gh repo view --json nameWithOwner -q .nameWithOwner)/packages?package_type=container" \
-      --jq '.[0].name' 2>/dev/null || echo "")
-
-    if [ -z "$API_IMAGE" ]; then
-      # Fallback to log parsing
-      DEPLOY_LOGS=$(gh run view "$PROD_RUN" --log 2>/dev/null || echo "")
-      API_IMAGE=$(echo "$DEPLOY_LOGS" | grep -oE "ghcr\.io/[^/]+/[^:]+:[a-f0-9]{7,40}" | head -1)
-    fi
-    ;;
-esac
-
-echo ""
-echo "Extracted deployment IDs:"
-
-if [ -n "$MARKETING_ID" ]; then
-  echo "  Marketing (Vercel): $MARKETING_ID"
-fi
-
-if [ -n "$APP_ID" ]; then
-  echo "  App (Vercel): $APP_ID"
-fi
-
-if [ -n "$API_IMAGE" ]; then
-  echo "  API (Docker): $API_IMAGE"
-fi
-
-if [ -n "$RAILWAY_ID" ]; then
-  echo "  Railway: $RAILWAY_ID"
-fi
-
-if [ -n "$NETLIFY_ID" ]; then
-  echo "  Netlify: $NETLIFY_ID"
-fi
-
-# Check if we got at least one ID
-if [ -z "$MARKETING_ID" ] && [ -z "$APP_ID" ] && [ -z "$API_IMAGE" ] && [ -z "$RAILWAY_ID" ] && [ -z "$NETLIFY_ID" ]; then
-  echo ""
-  echo "⚠️  WARNING: Could not extract deployment IDs via API"
-  echo "   Ensure platform credentials are configured:"
-  echo "   - Vercel: VERCEL_TOKEN, VERCEL_PROJECT_ID"
-  echo "   - Railway: RAILWAY_TOKEN, RAILWAY_SERVICE_ID"
-  echo "   - Netlify: NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID"
-  echo ""
-  echo "   Rollback may require manual ID lookup"
-  echo ""
-
-  # Continue anyway - not a fatal error
-fi
-
-# Store deployment metadata
-cat > "$FEATURE_DIR/deployment-metadata.json" <<EOF
-{
-  "production": {
-    "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-    "commit_sha": "$(git rev-parse HEAD)",
-    "run_id": "$PROD_RUN",
-    "branch": "$CURRENT_BRANCH",
-    "deployments": {
-      "marketing": "${MARKETING_ID:-}",
-      "app": "${APP_ID:-}",
-      "api": "${API_IMAGE:-}",
-      "railway": "${RAILWAY_ID:-}",
-      "netlify": "${NETLIFY_ID:-}"
-    }
-  }
-}
-EOF
-
-echo ""
-echo "💾 Deployment metadata saved: $FEATURE_DIR/deployment-metadata.json"
-echo ""
-
-# Update workflow state
-update_deployment_state "$FEATURE_DIR" "production" "$(git rev-parse HEAD)" "$PROD_RUN"
-
-# Store individual IDs in state
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-  # Windows - use PowerShell for state update
-  pwsh -Command "
-    Import-Module '.spec-flow/scripts/powershell/workflow-state.ps1'
-    Update-DeploymentIds -FeatureDir '$FEATURE_DIR' -Environment 'production' \
-      -MarketingId '$MARKETING_ID' -AppId '$APP_ID' -ApiImage '$API_IMAGE'
-  "
-else
-  # Unix - use bash function
-  update_deployment_ids "$FEATURE_DIR" "production" "$MARKETING_ID" "$APP_ID" "$API_IMAGE"
 fi
 ```
 
-**Extracted Information**:
-- Vercel deployment URLs (marketing, app)
-- Docker image references (API)
-- Railway deployment IDs
-- Netlify deployment IDs
-- Git commit SHA
-- GitHub Actions run ID
+**If deployment succeeds**:
+```
+✅ Production deployment completed successfully
+```
 
-**Storage**:
-- `deployment-metadata.json` - Human-readable metadata
-- `workflow-state.yaml` - Machine-readable state for rollback
+### Step 5: Extract Deployment IDs for Rollback
 
----
+**Purpose**: Extract platform-specific deployment IDs needed for rollback operations
 
-## Phase DP.5: Verify Production Health
-
-**Purpose**: Basic health checks on production deployment
-
+**Get deployment logs**:
 ```bash
-echo "🏥 Phase DP.5: Production Health Checks"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+gh run view "$RUN_ID" --log > "$FEATURE_DIR/production-deploy.log"
+```
 
-# Try to determine production URL from deployment IDs or workflow logs
-PROD_URL=""
+**Platform-specific ID extraction**:
 
-if [ -n "$APP_ID" ]; then
-  PROD_URL="https://$APP_ID"
-elif [ -n "$NETLIFY_ID" ]; then
-  PROD_URL="$NETLIFY_ID"
-else
-  # Try to extract from workflow logs
-  PROD_URL=$(echo "$DEPLOY_LOGS" | grep -oE "https://[a-z0-9-]+\.(vercel\.app|netlify\.app|railway\.app)" | head -1)
-fi
+**If Vercel detected** (vercel.json exists):
+```bash
+# Extract deployment URL from Vercel output
+PROD_URL=$(grep -oP 'https://[a-zA-Z0-9-]+\.vercel\.app' "$FEATURE_DIR/production-deploy.log" | tail -1)
 
-if [ -z "$PROD_URL" ]; then
-  echo "⚠️  Could not determine production URL"
-  echo "   Manual health check required"
-  echo ""
-else
+# Extract deployment ID from URL (before .vercel.app)
+DEPLOYMENT_ID=$(echo "$PROD_URL" | grep -oP 'https://\K[a-zA-Z0-9-]+(?=\.vercel\.app)')
+
+if [ -n "$DEPLOYMENT_ID" ]; then
+  echo "Vercel Deployment ID: $DEPLOYMENT_ID"
   echo "Production URL: $PROD_URL"
+else
+  echo "⚠️  Could not extract Vercel deployment ID from logs"
+  DEPLOYMENT_ID="unknown"
+  PROD_URL="unknown"
+fi
+```
+
+**If Netlify detected** (netlify.toml exists):
+```bash
+# Extract Netlify deploy ID from logs
+DEPLOYMENT_ID=$(grep -oP 'Deploy ID: \K[a-f0-9]+' "$FEATURE_DIR/production-deploy.log" | tail -1)
+
+# Extract production URL
+PROD_URL=$(grep -oP 'https://[a-zA-Z0-9-]+\.netlify\.app' "$FEATURE_DIR/production-deploy.log" | tail -1)
+
+if [ -n "$DEPLOYMENT_ID" ]; then
+  echo "Netlify Deployment ID: $DEPLOYMENT_ID"
+  echo "Production URL: $PROD_URL"
+else
+  echo "⚠️  Could not extract Netlify deployment ID from logs"
+  DEPLOYMENT_ID="unknown"
+  PROD_URL="unknown"
+fi
+```
+
+**If Railway detected** (railway.json exists):
+```bash
+# Extract Railway deployment ID
+DEPLOYMENT_ID=$(grep -oP 'Deployment: \K[a-f0-9-]+' "$FEATURE_DIR/production-deploy.log" | tail -1)
+
+# Railway doesn't always expose deployment ID in logs
+if [ -z "$DEPLOYMENT_ID" ]; then
+  echo "⚠️  Railway deployment ID not available in logs"
+  DEPLOYMENT_ID="unknown"
+fi
+
+PROD_URL="See Railway dashboard"
+```
+
+**If custom platform** (no recognized config):
+```bash
+echo "ℹ️  Custom deployment platform detected"
+echo "   Manual extraction of deployment ID may be required"
+DEPLOYMENT_ID="see-logs"
+PROD_URL="see-workflow-output"
+```
+
+**Save deployment metadata to workflow-state.yaml**:
+```bash
+yq eval -i ".deployment.production.url = \"$PROD_URL\"" "$FEATURE_DIR/workflow-state.yaml"
+yq eval -i ".deployment.production.deployment_id = \"$DEPLOYMENT_ID\"" "$FEATURE_DIR/workflow-state.yaml"
+yq eval -i ".deployment.production.workflow_run_id = \"$RUN_ID\"" "$FEATURE_DIR/workflow-state.yaml"
+yq eval -i ".deployment.production.deployed_at = \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"" "$FEATURE_DIR/workflow-state.yaml"
+```
+
+### Step 6: Verify Production Health Checks
+
+**Purpose**: Verify production deployment is responding correctly
+
+**If production URL is known** (not "unknown" or "see-*"):
+
+**Test production endpoint**:
+```bash
+if [[ "$PROD_URL" != "unknown" && "$PROD_URL" != "see-"* ]]; then
   echo ""
+  echo "🏥 Running health checks..."
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-  # Wait for DNS propagation
-  echo "⏳ Waiting 30 seconds for DNS propagation..."
-  sleep 30
+  # Wait for deployment to fully propagate
+  sleep 10
 
-  # Health check
-  echo "Running health check..."
-
+  # Test root endpoint
   HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL" || echo "000")
 
-  if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "304" ]; then
-    echo "✅ Production site is accessible (HTTP $HTTP_STATUS)"
-  elif [ "$HTTP_STATUS" = "000" ]; then
-    echo "⚠️  Could not reach production site (connection failed)"
-    echo "   This may be due to DNS propagation delay"
+  if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "301" ] || [ "$HTTP_STATUS" = "302" ]; then
+    echo "✅ Production endpoint responding: $HTTP_STATUS"
   else
-    echo "⚠️  Production site returned HTTP $HTTP_STATUS"
-    echo "   Manual verification recommended"
+    echo "⚠️  Production endpoint returned: $HTTP_STATUS (expected 200/301/302)"
+    echo "   URL: $PROD_URL"
+    echo "   This may indicate deployment issues - investigate immediately"
   fi
 
+  # Save health check result
+  yq eval -i ".deployment.production.health_check.status = $HTTP_STATUS" "$FEATURE_DIR/workflow-state.yaml"
+  yq eval -i ".deployment.production.health_check.checked_at = \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"" "$FEATURE_DIR/workflow-state.yaml"
+else
   echo ""
-
-  # Check for errors in browser console (if we can parse HTML)
-  echo "Checking for JavaScript errors..."
-
-  HTML_CONTENT=$(curl -s "$PROD_URL" || echo "")
-
-  if echo "$HTML_CONTENT" | grep -qi "error"; then
-    echo "⚠️  Potential errors detected in page content"
-    echo "   Manual verification recommended"
-  else
-    echo "✅ No obvious errors in page content"
-  fi
-
-  echo ""
+  echo "ℹ️  Skipping automated health checks (production URL not extracted)"
+  echo "   Manually verify deployment in platform dashboard"
 fi
-
-# Store health check results
-HEALTH_PASSED=true
-[ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "304" ] || HEALTH_PASSED=false
-
-cat > "$FEATURE_DIR/production-health-check.json" <<EOF
-{
-  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "url": "${PROD_URL:-unknown}",
-  "http_status": "${HTTP_STATUS:-unknown}",
-  "passed": $HEALTH_PASSED
-}
-EOF
-
-echo "💾 Health check results: $FEATURE_DIR/production-health-check.json"
-echo ""
 ```
 
-**Health Checks**:
-- HTTP status code verification
-- DNS propagation wait
-- Basic content validation
-- Error detection in HTML
+**If health check fails with 5xx error**:
+- Don't fail the deployment (deployment succeeded, app may be starting)
+- Warn user to investigate
+- Include warning in production report
 
-**Non-Blocking**: Health check failures don't stop deployment (production is already live)
+### Step 7: Generate Production Deployment Report
 
----
+**Purpose**: Create comprehensive deployment report with rollback instructions
 
-## Phase DP.6: Generate Production Report
-
-**Purpose**: Create comprehensive production deployment report
-
+**Use centralized report generator**:
 ```bash
-echo "📝 Phase DP.6: Production Deployment Report"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-# Generate report
-FEATURE_SLUG=$(yq eval '.feature.slug' "$STATE_FILE")
-FEATURE_TITLE=$(yq eval '.feature.title' "$STATE_FILE")
-
-cat > "$FEATURE_DIR/production-ship-report.md" <<EOF
-# Production Deployment Report
-
-**Feature**: $FEATURE_TITLE
-**Slug**: $FEATURE_SLUG
-**Deployed**: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-**Branch**: $CURRENT_BRANCH
-**Commit**: $(git rev-parse HEAD)
-
----
-
-## Deployment Summary
-
-**Model**: Direct-to-Production
-**Workflow**: $PROD_WORKFLOW
-**Run ID**: $PROD_RUN
-**Status**: ✅ SUCCESS
-
-### Production URL
-
-EOF
-
-if [ -n "$PROD_URL" ]; then
-  echo "$PROD_URL" >> "$FEATURE_DIR/production-ship-report.md"
-else
-  echo "_URL not detected - check deployment logs_" >> "$FEATURE_DIR/production-ship-report.md"
-fi
-
-cat >> "$FEATURE_DIR/production-ship-report.md" <<EOF
-
----
-
-## Deployment IDs (for rollback)
-
-EOF
-
-if [ -n "$MARKETING_ID" ]; then
-  echo "- **Marketing**: $MARKETING_ID" >> "$FEATURE_DIR/production-ship-report.md"
-fi
-
-if [ -n "$APP_ID" ]; then
-  echo "- **App**: $APP_ID" >> "$FEATURE_DIR/production-ship-report.md"
-fi
-
-if [ -n "$API_IMAGE" ]; then
-  echo "- **API**: $API_IMAGE" >> "$FEATURE_DIR/production-ship-report.md"
-fi
-
-if [ -n "$RAILWAY_ID" ]; then
-  echo "- **Railway**: $RAILWAY_ID" >> "$FEATURE_DIR/production-ship-report.md"
-fi
-
-if [ -n "$NETLIFY_ID" ]; then
-  echo "- **Netlify**: $NETLIFY_ID" >> "$FEATURE_DIR/production-ship-report.md"
-fi
-
-if [ -z "$MARKETING_ID" ] && [ -z "$APP_ID" ] && [ -z "$API_IMAGE" ] && [ -z "$RAILWAY_ID" ] && [ -z "$NETLIFY_ID" ]; then
-  echo "_No deployment IDs extracted - manual lookup required for rollback_" >> "$FEATURE_DIR/production-ship-report.md"
-fi
-
-cat >> "$FEATURE_DIR/production-ship-report.md" <<EOF
-
----
-
-## Health Check
-
-**Status**: $([ "$HEALTH_PASSED" = true ] && echo "✅ PASSED" || echo "⚠️  REQUIRES VERIFICATION")
-**HTTP Status**: ${HTTP_STATUS:-unknown}
-**Checked**: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-
----
-
-## Rollback Instructions
-
-If issues arise, rollback using the deployment IDs above.
-
-### Vercel Rollback
-
-\`\`\`bash
-# Find previous deployments
-vercel ls --token=\$VERCEL_TOKEN
-
-# Rollback app to previous deployment
-vercel alias set <previous-deployment-id> <production-url> --token=\$VERCEL_TOKEN
-
-# Example:
-# vercel alias set app-abc123.vercel.app myapp.com --token=\$VERCEL_TOKEN
-\`\`\`
-
-### Railway Rollback
-
-1. Go to Railway dashboard: https://railway.app
-2. Select your project
-3. Click "Deployments" tab
-4. Select previous successful deployment
-5. Click "Redeploy" button
-
-### Netlify Rollback
-
-\`\`\`bash
-# Find previous deployments
-netlify sites:list
-netlify deploys:list --site=<site-id>
-
-# Restore previous deployment
-netlify deploy:restore <previous-deploy-id> --site=<site-id>
-\`\`\`
-
-### Git-Based Rollback (Universal)
-
-\`\`\`bash
-# Revert the git commit (safe, creates new commit)
-git revert $(git rev-parse HEAD)
-git push
-
-# OR reset to previous commit (destructive, rewrites history)
-git reset --hard HEAD~1
-git push --force
-\`\`\`
-
----
-
-## Post-Deployment Tasks
-
-- [ ] Monitor error logs for issues
-- [ ] Check analytics/metrics for anomalies
-- [ ] Verify all features working in production
-- [ ] Update release notes or changelog
-- [ ] Notify stakeholders of deployment
-
----
-
-## Artifacts
-
-- Deployment logs: \`gh run view $PROD_RUN --log\`
-- Deployment metadata: \`deployment-metadata.json\`
-- Health check: \`production-health-check.json\`
-- Workflow state: \`workflow-state.yaml\`
-
----
-
-**Generated**: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-EOF
-
-echo "📄 Production report created: $FEATURE_DIR/production-ship-report.md"
-echo ""
-# Complete timing for deploy-prod phase
-complete_phase_timing "$FEATURE_DIR" "ship:deploy-prod"
-
-# Update workflow state
-update_workflow_phase "$FEATURE_DIR" "ship:deploy-prod" "completed"
-
-# Store production URL in state if found
-if [ -n "$PROD_URL" ]; then
-  STATE_TEMP="${STATE_FILE}.tmp"
-  jq --arg url "$PROD_URL" '.deployment.production.url = $url' "$STATE_FILE" > "$STATE_TEMP"
-  mv "$STATE_TEMP" "$STATE_FILE"
-fi
-
-# Regenerate project-level CLAUDE.md to reflect deployed feature
-echo "Regenerating project CLAUDE.md..."
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-  pwsh -NoProfile -File .spec-flow/scripts/powershell/generate-project-claude-md.ps1 2>/dev/null || echo "⚠️  Could not regenerate project CLAUDE.md (non-blocking)"
-else
-  .spec-flow/scripts/bash/generate-project-claude-md.sh 2>/dev/null || echo "⚠️  Could not regenerate project CLAUDE.md (non-blocking)"
-fi
-
-echo "✅ Production deployment complete!"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🎉 Feature Deployed to Production"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-if [ -n "$PROD_URL" ]; then
-  echo "🚀 Live at: $PROD_URL"
-  echo ""
-fi
-
-echo "📊 Full report: $FEATURE_DIR/production-ship-report.md"
-echo "📦 Deployment IDs: $FEATURE_DIR/deployment-metadata.json"
-echo ""
-echo "⚠️  IMPORTANT: Monitor production for the next 24 hours"
-echo "   - Watch error logs"
-echo "   - Check user feedback"
-echo "   - Monitor performance metrics"
-echo ""
-
-if [ -n "$MARKETING_ID" ] || [ -n "$APP_ID" ] || [ -n "$API_IMAGE" ]; then
-  echo "🔄 Rollback available via deployment IDs (see report)"
-else
-  echo "⚠️  Rollback IDs not detected - use git revert if needed"
-fi
-
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+python .spec-flow/scripts/spec-cli.py generate-production-report \
+  --feature-dir "$FEATURE_DIR" \
+  --prod-url "$PROD_URL" \
+  --deployment-id "$DEPLOYMENT_ID" \
+  --workflow-run-id "$RUN_ID"
 ```
 
-**Report Contents**:
-- Deployment summary with timestamps
-- Production URL
-- Deployment IDs for rollback
+**Report includes**:
+- Production URL and deployment timestamp
+- Deployment ID (for rollback)
+- GitHub Actions workflow run link
 - Health check results
-- **Platform-specific rollback instructions** (Vercel, Railway, Netlify, Git)
-- Post-deployment task checklist
-- Links to all artifacts
+- Platform-specific rollback instructions
+- Emergency rollback commands
 
-**State Updates**:
-- Mark `ship:deploy-prod` as completed
-- Store production URL
-- Record deployment timestamp
+**Display report location**:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ PRODUCTION DEPLOYMENT COMPLETE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Changes from v1.x**:
-- ✅ Added concrete Vercel rollback commands with examples
-- ✅ Added step-by-step Railway rollback instructions
-- ✅ Added Netlify rollback commands
-- ✅ Added git-based universal rollback
-- ✅ Fixed typo on line 669 (`n#` → `#`)
+Production URL: $PROD_URL
+Deployment ID: $DEPLOYMENT_ID
+Workflow Run: https://github.com/{owner}/{repo}/actions/runs/$RUN_ID
 
----
+Health Check: ✅ Passed (HTTP $HTTP_STATUS)
 
-## Error Recovery
+📋 Production Report: $FEATURE_DIR/production-deployment-report.md
 
-**Common Failures**:
+⚠️  IMPORTANT: Review rollback instructions in the report
+   Keep deployment ID for emergency rollback if needed
 
-1. **Workflow not found**
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Update workflow phase to completed**:
+```bash
+python .spec-flow/scripts/bash/workflow-state.sh update_workflow_phase "$FEATURE_DIR" "ship:deploy-prod" "completed"
+python .spec-flow/scripts/bash/workflow-state.sh complete_phase_timing "$FEATURE_DIR" "ship:deploy-prod"
+```
+
+</process>
+
+<success_criteria>
+**Production deployment successfully completed when:**
+
+1. **Pre-deployment checks passed**:
+   - Pre-flight validation marked as passed in workflow-state.yaml
+   - Optimize phase completed
+   - Production workflow file exists with workflow_dispatch trigger
+   - Working tree clean (no uncommitted changes)
+
+2. **Deployment triggered successfully**:
+   - GitHub Actions workflow run started
+   - Workflow run ID obtained from gh CLI
+   - Workflow monitoring initiated
+
+3. **Deployment completed without errors**:
+   - `gh run watch` exited with status 0
+   - No deployment failures in GitHub Actions logs
+   - Platform-specific deployment succeeded
+
+4. **Deployment metadata extracted**:
+   - Production URL extracted from actual deployment output (or marked "unknown")
+   - Deployment ID extracted from actual platform output (or marked "unknown")
+   - Workflow run ID recorded
+   - Deployment timestamp recorded
+
+5. **Health checks completed** (if URL available):
+   - Production endpoint responding with 2xx or 3xx status
+   - Health check results recorded in workflow-state.yaml
+   - Health check timestamp recorded
+
+6. **Production report generated**:
+   - Report file created at `$FEATURE_DIR/production-deployment-report.md`
+   - Report contains actual deployment data (not placeholders)
+   - Rollback instructions included for detected platform
+
+7. **Workflow state updated**:
+   - Phase marked as "completed" in workflow-state.yaml
+   - Deployment metadata saved in workflow-state.yaml
+   - Phase timing recorded
+
+8. **User informed**:
+   - Production URL displayed (or warning if unknown)
+   - Deployment ID displayed (needed for rollback)
+   - Health check results displayed
+   - Report location displayed
+   - Rollback instructions highlighted
+</success_criteria>
+
+<verification>
+**Before marking deploy-prod complete, verify:**
+
+1. **Check workflow state file updated**:
    ```bash
-   # Check workflow files
-   ls -la .github/workflows/
-   # Look for deploy-production.yml or deploy.yml
+   yq eval '.phases.ship:deploy-prod.status' "$FEATURE_DIR/workflow-state.yaml"
+   # Should show: completed
+
+   yq eval '.deployment.production.url' "$FEATURE_DIR/workflow-state.yaml"
+   # Should show actual URL or "unknown" (not empty)
+
+   yq eval '.deployment.production.deployment_id' "$FEATURE_DIR/workflow-state.yaml"
+   # Should show actual ID or "unknown" (not empty)
    ```
 
-2. **Deployment failed**
+2. **Verify production report exists**:
    ```bash
-   # View logs
-   gh run view <run-id> --log
-   # Check for:
-   # - Missing environment variables
-   # - Build failures
-   # - Deployment platform errors
+   test -f "$FEATURE_DIR/production-deployment-report.md" && echo "exists" || echo "MISSING"
+   # Should show: exists
    ```
 
-3. **Health check failed**
+3. **Verify deployment artifacts not fabricated**:
    ```bash
-   # Manual check
-   curl -I <production-url>
-   # Check DNS
-   dig <your-domain>
-   # Wait for DNS propagation (can take 5-30 minutes)
+   # Check production URL is from actual logs, not guessed
+   grep "$PROD_URL" "$FEATURE_DIR/production-deploy.log"
+   # Should find URL in actual deployment logs (if not "unknown")
+
+   # Check deployment ID is from actual output, not invented
+   grep "$DEPLOYMENT_ID" "$FEATURE_DIR/production-deploy.log"
+   # Should find ID in actual logs (if not "unknown")
    ```
 
-4. **Rollback IDs missing**
+4. **Verify health check was actually performed** (if URL not "unknown"):
    ```bash
-   # Manual extraction from logs
-   gh run view <run-id> --log > deploy-logs.txt
-   grep -E "vercel|railway|netlify" deploy-logs.txt
+   yq eval '.deployment.production.health_check.status' "$FEATURE_DIR/workflow-state.yaml"
+   # Should show actual HTTP status code (200, 301, 302, 404, 500, etc.)
    ```
 
-**Recovery Steps**:
-- Fix the issue causing failure
-- Run `/ship continue` to retry
-- If production is broken, use platform-specific rollback instructions from the failure report
-- Check workflow logs for detailed error messages
+5. **Verify GitHub Actions workflow succeeded**:
+   ```bash
+   gh run view "$RUN_ID" --json conclusion -q .conclusion
+   # Should show: success
+   ```
 
----
+6. **Verify working tree remains clean**:
+   ```bash
+   git status --short
+   # Should be empty (no modified files)
+   ```
 
-## Success Criteria
+**Never claim deployment complete without:**
+- Actual production URL (or "unknown" with justification)
+- Actual deployment ID (or "unknown" with justification)
+- Actual health check status code (if URL available)
+- Actual GitHub Actions workflow success confirmation
+- Production report file exists and contains real data
+</verification>
 
-- ✅ Pre-deployment checks passed
-- ✅ Production workflow triggered successfully
-- ✅ Deployment completed without errors
-- ✅ Deployment IDs extracted (or manual rollback documented)
-- ✅ Production health check passed (or manual verification noted)
-- ✅ Production report generated
-- ✅ State updated to completed
+<output>
+**Files created/modified by this command:**
+
+**Deployment artifacts**:
+- `$FEATURE_DIR/production-deploy.log` - Full GitHub Actions workflow logs
+- `$FEATURE_DIR/production-deployment-report.md` - Comprehensive deployment report with rollback instructions
+- `$FEATURE_DIR/production-deployment-failure.md` - Generated only if deployment fails (contains recovery steps)
+
+**Workflow state**:
+- `$FEATURE_DIR/workflow-state.yaml` - Updated with:
+  - `phases.ship:deploy-prod.status = "completed"` (or "failed")
+  - `deployment.production.url` - Production URL from deployment output
+  - `deployment.production.deployment_id` - Platform-specific deployment ID for rollback
+  - `deployment.production.workflow_run_id` - GitHub Actions run ID
+  - `deployment.production.deployed_at` - ISO 8601 timestamp
+  - `deployment.production.health_check.status` - HTTP status code from health check
+  - `deployment.production.health_check.checked_at` - ISO 8601 timestamp
+
+**Git operations**:
+- Branch pushed to remote: `git push -u origin $CURRENT_BRANCH` (if remote branch didn't exist)
+
+**GitHub Actions**:
+- Workflow run triggered: Production deployment workflow via `gh workflow run`
+- Workflow run ID obtained for monitoring and rollback reference
+
+**Console output**:
+- Pre-deployment check results (pre-flight, optimize, workflow file, uncommitted changes)
+- Deployment trigger confirmation (workflow name, branch, run ID)
+- Deployment progress monitoring (from `gh run watch`)
+- Deployment ID extraction (platform-specific)
+- Health check results (HTTP status code)
+- Production deployment summary (URL, deployment ID, workflow run link, health status)
+- Report location and rollback instructions reminder
+</output>
 
 ---
 
 ## Notes
 
-- **No staging validation**: This deployment goes straight to production
-- **Risk level**: Higher than staging-prod model
-- **Best for**: Simple applications, solo developers, rapid iteration
-- **Rollback**: Critical to extract and store deployment IDs
-- **Monitoring**: Manual monitoring more important without staging gate
-- **Recovery**: Platform-specific rollback procedures documented in failure report
+**Deployment Model Detection**:
+- `direct-prod` model detected when: Git remote exists + no staging branch + no `.github/workflows/deploy-staging.yml`
+- Automatically selected by `/ship` - users should not call `/deploy-prod` directly
 
-This command is automatically called by `/ship` when deployment model is `direct-prod`.
+**Platform Support**:
+- **Vercel**: First-class support (deployment ID and URL extraction from logs)
+- **Netlify**: First-class support (deployment ID and URL extraction from logs)
+- **Railway**: Partial support (URL extraction limited, deployment ID may be unavailable)
+- **Custom platforms**: Supported via GitHub Actions (manual ID extraction may be required)
+
+**GitHub Actions Requirements**:
+- Production workflow file must exist: `.github/workflows/deploy-production.yml` OR `.github/workflows/deploy.yml`
+- Workflow must have `workflow_dispatch` trigger for manual execution via gh CLI
+- Workflow must output deployment URL and/or deployment ID in logs for extraction
+
+**Rollback Capability**:
+- Deployment IDs extracted and saved for emergency rollback
+- Platform-specific rollback instructions included in production report
+- Previous deployment IDs preserved in workflow state for rollback reference
+
+**Health Check Logic**:
+- Automated if production URL extracted from deployment logs
+- Skipped if URL is "unknown" or platform doesn't expose URLs
+- Non-blocking: Deployment marked successful even if health check fails (warns user to investigate)
+- Acceptable status codes: 200 (OK), 301 (redirect), 302 (redirect)
+
+**Failure Handling**:
+- If any pre-deployment check fails: Exit immediately, mark phase as "failed"
+- If GitHub Actions workflow fails: Generate failure report with recovery steps
+- If deployment ID extraction fails: Mark as "unknown" in report (don't fabricate)
+- If health check fails: Warn user but don't fail deployment (app may be starting)
+
+**Error Recovery**:
+- Failure report generated at `$FEATURE_DIR/production-deployment-failure.md`
+- Includes GitHub Actions logs link for debugging
+- Lists specific recovery steps based on failure type
+- Provides rollback commands if previous deployment available
+
+**Timing**:
+- Pre-deployment checks: <1 minute
+- Workflow trigger + start: ~5-10 seconds
+- Deployment execution: 3-8 minutes (platform-dependent)
+- Health checks: ~10 seconds
+- Report generation: <5 seconds
+- Total: 5-10 minutes typical
+
+**Security**:
+- Tool restrictions enforce only deployment-related bash commands
+- Production deployments require clean working tree (no uncommitted changes)
+- GitHub CLI authentication required (verified in pre-checks)
+- No arbitrary bash execution allowed (restricted to git, gh, yq, jq, curl)
+
+**Troubleshooting**:
+- If workflow run ID not found: Check GitHub Actions UI manually, may be API delay
+- If deployment URL not extracted: Check deployment logs in `$FEATURE_DIR/production-deploy.log`
+- If health check fails: Manually verify deployment in platform dashboard
+- If rollback needed: Use commands in production report (platform-specific)

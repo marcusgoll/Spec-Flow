@@ -26,25 +26,11 @@
     "spec-flow": "bin/cli.js"
   },
   "files": [
-    ".claude/agents/",
-    ".claude/commands/**",
-    "!.claude/commands/internal/**",
-    "!.claude/commands/x-announce.md",
-    ".claude/settings.example.json",
-    ".claude/settings.local.json",
-    ".claude/skills/",
-    "!.claude/skills/x-announcement.md",
-    ".spec-flow/",
-    ".github/ISSUE_TEMPLATE/",
-    ".github/workflows/",
-    "CLAUDE.md",
-    "bin/",
-    "docs/",
-    "LICENSE",
-    "README.md",
-    "QUICKSTART.md"
+    "dist/"
   ],
   "scripts": {
+    "build": "node scripts/build-dist.js",
+    "prepublishOnly": "npm run build",
     "postinstall": "node bin/postinstall.js",
     "setup:roadmap": "node bin/setup-roadmap.js",
     "setup:roadmap:labels": "bash .spec-flow/scripts/bash/setup-github-labels.sh || pwsh -File .spec-flow/scripts/powershell/setup-github-labels.ps1"
@@ -63,8 +49,7 @@
     "commander": "^11.1.0",
     "fs-extra": "^11.2.0",
     "inquirer": "^8.2.6",
-    "ora": "^5.4.1",
-    "spec-flow": "file:6.8.0"
+    "ora": "^5.4.1"
   },
   "devDependencies": {
     "@types/node": "^20.10.6"

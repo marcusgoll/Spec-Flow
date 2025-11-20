@@ -1,45 +1,48 @@
 ---
-description: Reduce spec ambiguity via targeted questions (planning is 80% of success)
-version: 3.0
-updated: 2025-11-17
+name: clarify
+description: Reduce spec ambiguity via targeted questions with adaptive auto-invocation (planning is 80% of success)
+argument-hint: [spec-identifier or empty for auto-detect]
+allowed-tools: [Read, Edit, Write, Grep, Glob, Bash, AskUserQuestion]
+version: 5.0
+updated: 2025-11-19
 ---
 
 # /clarify — Specification Clarifier
 
-Clarify ambiguities in specification: `$ARGUMENTS`
-
 <context>
+**User Input**: $ARGUMENTS
 
-## User Input
+**Feature Directory**: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>$null | jq -r '.FEATURE_DIR'`
 
-```text
-$ARGUMENTS
-```
+**Current Spec**: @specs/*/spec.md
 
-You **MUST** consider the user input above before proceeding (if not empty).
+**Question Bank**: @.claude/skills/clarify/references/question-bank.md
 
-## Mental Model
+**Coverage Analysis**: !`python .spec-flow/scripts/spec-cli.py clarify "$ARGUMENTS" 2>&1 | grep -A 20 "Coverage analysis" || echo "Run script to analyze"`
 
-**Flow:** spec-flow → **clarify** → plan → tasks → analyze → implement → optimize → debug → preview → phase-1-ship → validate-staging → phase-2-ship
+**Remaining Ambiguities**: !`grep -c "\[NEEDS CLARIFICATION\]" specs/*/spec.md 2>$null || echo "0"`
 
-**State machine:**
-
-1. Run prerequisite script → 2) Load spec → 3) Scan for ambiguities (10-category coverage) → 4) Build coverage map →
-5. Generate questions (quote spec lines with numbers) → 6) Ask up to 5 at a time →
-7. Apply each answer atomically (checkpoint → update → validate) → 8) Commit → 9) Suggest next (/plan if clear)
-
-**Auto-suggest:** when no outstanding ambiguities remain → `/plan`
-
-**Operating Constraints**
-
-* **Question cap:** max **10** per session; show **5** at a time.
-* **Recommended answers:** provide, backed by repo precedents when available.
-* **Incremental saves:** atomic update after each answer.
-* **Git safety:** checkpoint before each file write; rollback on failure.
-
+**Git Status**: !`git status --short specs/*/spec.md 2>$null || echo "clean"`
 </context>
 
-<constraints>
+<objective>
+Reduce specification ambiguity through targeted, interactive questions with adaptive auto-invocation.
+
+Transform ambiguous specifications into clear, implementable requirements by:
+1. Analyzing spec.md across 10 coverage categories
+2. Mapping ambiguities to centralized question bank templates
+3. Using interactive AskUserQuestion for structured clarification (batches of 3)
+4. Applying each answer atomically with git safety checkpoints
+5. Providing repo precedents to inform technical decisions
+
+**Key principle**: Planning is 80% of success — thorough clarification prevents costly rework during implementation.
+
+**Operating Constraints**:
+- Question cap: max 10 per session; show 3-5 at a time
+- Recommended answers backed by repo precedents when available
+- Incremental saves: atomic update after each answer
+- Git safety: checkpoint before each file write; rollback on failure
+</objective>
 
 ## Anti-Hallucination Rules
 
@@ -99,11 +102,109 @@ Let me analyze this ambiguity:
 
 **Benefits**: Explicit reasoning reduces unnecessary questions by 30-40% and improves question quality.
 
-</constraints>
+---
 
-<instructions>
+<process>
 
-## Execute Clarification Workflow
+### Step 0: AUTO-INVOCATION DETECTION (New in v5.0)
+
+**When called from /epic workflow:**
+
+The /epic command may auto-invoke /clarify based on ambiguity detection. This section determines if clarification is needed.
+
+### Ambiguity Score Calculation
+
+**Analyze epic-spec.xml or spec.md:**
+```javascript
+const ambiguityScore = calculateAmbiguityScore({
+  missing_subsystems: epic_spec.subsystems.filter(s => s.involved === 'unknown').length,
+  vague_objectives: epic_spec.objective.business_value.includes('[NEEDS CLARIFICATION]') ? 10 : 0,
+  missing_success_metrics: epic_spec.objective.success_metrics === '' ? 15 : 0,
+  unclear_technical_approach: epic_spec.clarifications.length === 0 && epic_spec.constraints === '' ? 10 : 0,
+  placeholder_count: countPlaceholders(epic_spec) * 5
+});
+
+// Score interpretation:
+// 0-30: Clear (2-3 questions)
+// 31-60: Moderate ambiguity (4-5 questions)
+// 61+: High ambiguity (6-10 questions)
+```
+
+### Auto-Invoke Decision
+
+```javascript
+if (ambiguityScore > 30) {
+  log('🔍 Ambiguity detected (score: ' + ambiguityScore + ') - Auto-invoking /clarify');
+  // Proceed with clarification workflow
+} else if (ambiguityScore > 0 && ambiguityScore <= 30) {
+  // Use AskUserQuestion to confirm
+  AskUserQuestion({
+    questions: [{
+      question: `Minor ambiguities detected (score: ${ambiguityScore}). Clarify now or proceed?`,
+      header: "Clarification",
+      multiSelect: false,
+      options: [
+        {
+          label: "Clarify now",
+          description: `Ask ${Math.ceil(ambiguityScore / 10)} questions to resolve ambiguities`
+        },
+        {
+          label: "Skip for now",
+          description: "Proceed to planning, may need to backtrack later"
+        }
+      ]
+    }]
+  });
+
+  if (userChoice === "Skip for now") {
+    log('⏭️  Skipping clarification - proceeding to planning');
+    return { skipped: true, reason: 'User opted to skip' };
+  }
+} else {
+  log('✅ No ambiguities detected - skipping clarification phase');
+  return { skipped: true, reason: 'No ambiguities detected' };
+}
+```
+
+### Adaptive Question Count
+
+Based on ambiguity score, adjust question count:
+- **Score 0-30**: Ask 2-3 questions max
+- **Score 31-60**: Ask 4-5 questions
+- **Score 61+**: Ask 6-10 questions
+
+Store in variable for use in question generation phase:
+```javascript
+const maxQuestions = ambiguityScore <= 30 ? 3 : ambiguityScore <= 60 ? 5 : 10;
+```
+
+### Load Question Bank
+
+**Before generating questions**, load the centralized question bank:
+
+```bash
+# Read question bank for reference
+cat .claude/skills/clarify/references/question-bank.md
+```
+
+**Purpose**: The question bank contains 40+ pre-structured questions organized by category. Use these templates to construct AskUserQuestion calls with consistent format, precedent visibility, and multiSelect support.
+
+**Categories available:**
+- Universal (baseline, user stories)
+- Architecture (component placement, integration, scale)
+- Data Model (entities, persistence, migration)
+- Technical Approach (technology, libraries, patterns)
+- API Design (endpoints, contracts, auth, errors)
+- UI/UX (screens, components, responsive, accessibility)
+- Security (data sensitivity, encryption, authorization)
+- Testing (coverage, test data)
+- Performance (targets, caching)
+- Deployment (model, rollback)
+- Dependencies (external deps, reliability)
+
+---
+
+### Step 1: Execute Prerequisite Script
 
 Run the centralized spec-cli tool to perform analysis and prepare environment:
 
@@ -151,52 +252,207 @@ Categories to analyze:
 
 **After script completes, you (LLM) must:**
 
-## 1) Read spec.md
+### Step 2: Read spec.md
 
 Use the Read tool to load the full specification from the feature directory.
 
-## 2) Generate Prioritized Questions
+### Step 3: Identify Ambiguities and Map to Question Bank
 
-**Priority:** Architecture/Domain > UX > NFR > Integration > Edge > Constraints > Terminology > Completion > Placeholders
+**Scan spec.md for ambiguities** using the 10 categories from script output.
 
-**Rules:**
-- **Max 10** total; present **up to 5** now
-- **Each question** must include a **verbatim quote** with **line numbers** from `spec.md`
-- Provide **2–3 options** + one **short answer** slot (≤ 5 words)
-- If recommending an option, cite a **repo precedent**; if none, mark **"no precedent; research needed"**
+For each ambiguous section:
 
-**Template (per question):**
+1. **Quote verbatim with line numbers**: `spec.md:120-126: "[exact quote]"`
+2. **Categorize the ambiguity**: Architecture, Data Model, API Design, UI/UX, Security, etc.
+3. **Map to question bank template**: Find matching question in `.claude/skills/clarify/references/question-bank.md`
+4. **Check for repo precedents**: Search codebase for existing patterns using Grep/Glob
+5. **Customize options with precedents**: Update option descriptions with "Used in specs/NNN-feature per plan.md:45"
 
-```markdown
-### Q1 (ARCHITECTURE)
+**Priority order:** Architecture/Domain > UX > NFR > Integration > Edge > Constraints > Terminology > Completion > Placeholders
 
-**spec.md:L120-126:**
-> [quoted lines verbatim]
+**Output:** List of ambiguities with:
+- Spec quote + line numbers
+- Category
+- Question bank template to use
+- Repo precedents found (if any)
+- Priority score (1-10, based on implementation impact)
 
-**Why it's ambiguous:** [one sentence]
+**Sort by priority score** (highest first), limit to `maxQuestions` calculated earlier.
 
-**Options:**
-- A — [description]  *(Recommended: because [repo evidence path:line])*
-- B — [description]
-- C — [description]
-- Short — [≤5 words]
+### Step 4: Interactive Clarification Loop (AskUserQuestion-Driven)
 
-**Impact:** [1 sentence on scope/effort]
+**IMPORTANT**: Use AskUserQuestion tool extensively for all clarification questions.
+
+### Batch Questions by Category
+
+**Group related questions** (max 3 per batch) to improve UX:
+
+```javascript
+// Example: Group architecture questions together
+const batches = [
+  [
+    { category: "Architecture", question: questionBank.architecture.component_placement, ambiguity: spec_line_120 },
+    { category: "Architecture", question: questionBank.architecture.integration_pattern, ambiguity: spec_line_145 },
+    { category: "Architecture", question: questionBank.architecture.scalability_requirements, ambiguity: spec_line_180 }
+  ],
+  [
+    { category: "Data Model", question: questionBank.data_model.entity_identification, ambiguity: spec_line_200 },
+    { category: "Data Model", question: questionBank.data_model.persistence_strategy, ambiguity: spec_line_220 }
+  ]
+  // ... more batches
+];
 ```
 
-## 3) Ask Questions Sequentially
+**Batching rules:**
+- Max 3 questions per AskUserQuestion call
+- Group by category when possible (Architecture, Data Model, etc.)
+- High-priority questions in earlier batches
+- Show progress: "Questions 1-3 of 8"
 
-For each question:
+### Execute Interactive Loop
 
-1. **Display question** using template above
-2. **Use AskUserQuestion tool** to get response (A/B/C/Short/Skip)
-3. **Validate response** (not empty, recognized option)
-4. **Apply answer atomically** using the workflow below
-5. **Move to next question**
+For each batch:
 
-### Atomic Update Workflow
+1. **Show progress indicator**: `🔍 Clarifying spec (Questions 1-3 of 8)`
+2. **Customize question bank templates** with:
+   - Spec quote + line numbers in question text
+   - Repo precedents in option descriptions
+   - multiSelect flag if applicable
+3. **Use AskUserQuestion tool** with the batch
+4. **Process responses** (handle "Other" custom answers)
+5. **Apply each answer atomically** (see section 4)
+6. **Show completion**: `✅ Applied answers for Architecture questions`
 
-For each answer:
+### Interactive Question Format
+
+**Example: Architecture question**
+```javascript
+AskUserQuestion({
+  questions: [{
+    question: "spec.md:120-126 is ambiguous about authentication approach. Which should we use?",
+    header: "Authentication",
+    multiSelect: false,
+    options: [
+      {
+        label: "JWT tokens",
+        description: "Stateless, scales horizontally. Used in specs/002-auth per plan.md:45"
+      },
+      {
+        label: "Session-based",
+        description: "Server-side sessions with Redis. Used in specs/005-admin"
+      },
+      {
+        label: "OAuth 2.1",
+        description: "Delegate to external provider (Google, GitHub, etc.)"
+      },
+      {
+        label: "Other",
+        description: "I'll provide a custom answer"
+      }
+    ]
+  }]
+});
+```
+
+**Example: Data model question**
+```javascript
+AskUserQuestion({
+  questions: [{
+    question: "spec.md:45-50 mentions 'users can edit profiles' but doesn't specify permission model. What approach?",
+    header: "Permissions",
+    multiSelect: false,
+    options: [
+      {
+        label: "Owner-only",
+        description: "Users can only edit their own profile"
+      },
+      {
+        label: "RBAC (Role-Based)",
+        description: "Admins can edit any profile, users only their own"
+      },
+      {
+        label: "ACL (Access Control Lists)",
+        description: "Fine-grained per-user permissions"
+      },
+      {
+        label: "Other",
+        description: "I'll provide a custom answer"
+      }
+    ]
+  }]
+});
+```
+
+**Example: Multi-question batch**
+```javascript
+// Ask up to 3 related questions at once
+AskUserQuestion({
+  questions: [
+    {
+      question: "What database should we use?",
+      header: "Database",
+      multiSelect: false,
+      options: [
+        { label: "PostgreSQL", description: "Relational, ACID, used in 3 other features" },
+        { label: "MongoDB", description: "Document store, flexible schema" },
+        { label: "Other", description: "Custom answer" }
+      ]
+    },
+    {
+      question: "How should we handle file uploads?",
+      header: "File Storage",
+      multiSelect: false,
+      options: [
+        { label: "Local filesystem", description: "Simple, no external deps" },
+        { label: "S3/CloudStorage", description: "Scalable, CDN-friendly" },
+        { label: "Database BLOBs", description: "Keep everything in DB" },
+        { label: "Other", description: "Custom answer" }
+      ]
+    },
+    {
+      question: "What's the expected scale?",
+      header: "Scale",
+      multiSelect: false,
+      options: [
+        { label: "< 1K users", description: "Optimize for simplicity" },
+        { label: "1K-10K users", description: "Plan for horizontal scaling" },
+        { label: "10K+ users", description: "Distributed architecture needed" },
+        { label: "Other", description: "Custom answer" }
+      ]
+    }
+  ]
+});
+```
+
+### Handling User Responses
+
+**Process each answer from the batch:**
+
+```javascript
+const answers = userResponse.answers;
+
+// Iterate through answers from the batch
+for (const [questionHeader, selectedOption] of Object.entries(answers)) {
+  // Show progress
+  console.log(`📝 Applying answer for ${questionHeader}...`);
+
+  // Handle "Other" custom answers
+  if (selectedOption === "Other") {
+    const customAnswer = answers[`${questionHeader}_custom`];
+    applyAnswerAtomically(questionHeader, customAnswer, specQuote, lineNumbers);
+  } else {
+    applyAnswerAtomically(questionHeader, selectedOption, specQuote, lineNumbers);
+  }
+
+  console.log(`✅ Applied: ${questionHeader} → ${selectedOption}`);
+}
+```
+
+**Important:** Each answer must be applied atomically using the workflow below (Step 5).
+
+### Step 5: Atomic Update Workflow
+
+For each answer (called from response handler above):
 
 ```bash
 # 1. Checkpoint
@@ -225,9 +481,14 @@ A: [answer]
 Co-Authored-By: Claude <noreply@anthropic.com>" --no-verify
 ```
 
-## 4) Coverage Summary
+**Progress tracking:** After each answer is applied, update the user:
+- `✅ Applied: Architecture → Backend API`
+- `✅ Applied: Database → PostgreSQL`
+- `📊 Progress: 3 of 8 questions answered`
 
-After completing all questions, display:
+### Step 6: Coverage Summary
+
+After completing all interactive question batches, display coverage analysis:
 
 ```markdown
 | Category | Status | Notes |
@@ -244,7 +505,7 @@ After completing all questions, display:
 | Placeholders & Ambiguity | ✅ Resolved | Sufficient detail |
 ```
 
-## 5) Decision Tree
+### Step 7: Decision Tree
 
 Count remaining ambiguities:
 
@@ -286,7 +547,7 @@ grep -c "\[NEEDS CLARIFICATION\]" specs/*/spec.md
    Location: Verify all clarifications are correct
 ```
 
-## 6) Update NOTES.md
+### Step 8: Update NOTES.md
 
 Append checkpoint using Bash tool:
 
@@ -311,7 +572,122 @@ cat >> "$FEATURE_DIR/NOTES.md" <<EOF
 EOF
 ```
 
-</instructions>
+</process>
+
+<success_criteria>
+**Clarification successfully completed when:**
+
+1. **All ambiguities addressed**:
+   - `[NEEDS CLARIFICATION]` markers resolved or documented
+   - Remaining ambiguity count = 0 OR explicitly deferred with justification
+   - All high-priority categories (Architecture, Data Model) have sufficient detail
+
+2. **Interactive questions completed**:
+   - All question batches processed (max 10 questions total)
+   - User answers recorded in spec.md Clarifications section
+   - Each answer applied atomically with git commit
+
+3. **Coverage analysis shows progress**:
+   - Clear: ≥8/10 categories
+   - Partial: ≤2/10 categories
+   - Missing: 0/10 categories
+   - Coverage summary table generated
+
+4. **Git safety maintained**:
+   - All changes committed atomically (checkpoint + apply pattern)
+   - Git history shows individual Q/A commits
+   - No uncommitted changes in specs/*/spec.md
+
+5. **Documentation updated**:
+   - spec.md has ## Clarifications section with session header
+   - NOTES.md checkpoint appended with summary
+   - Remaining ambiguities count recorded
+
+6. **Next step identified**:
+   - Decision tree executed
+   - User informed of recommendation (/plan if clear, /clarify if ambiguities remain)
+</success_criteria>
+
+<verification>
+**Before marking clarification complete, verify:**
+
+1. **Count remaining ambiguities**:
+   ```bash
+   grep -c "\[NEEDS CLARIFICATION\]" specs/*/spec.md || echo 0
+   ```
+   Should be 0 or explicit deferred markers with justification
+
+2. **Check Clarifications section exists**:
+   ```bash
+   grep "## Clarifications" specs/*/spec.md
+   ```
+   Should return section with session header and Q/A entries
+
+3. **Verify git commits**:
+   ```bash
+   git log --oneline --grep="clarify" -10
+   ```
+   Should show checkpoint commits and Q/A application commits
+
+4. **Validate NOTES.md updated**:
+   ```bash
+   grep -A 10 "Phase 0.5: Clarify" specs/*/NOTES.md
+   ```
+   Should show checkpoint with question count and remaining ambiguities
+
+5. **Check coverage summary displayed**:
+   Ensure coverage table was shown to user with 10 categories
+
+6. **Confirm decision tree executed**:
+   User should see next step recommendation based on remaining ambiguities
+
+**Never claim completion without these verification checks passing.**
+</verification>
+
+<output>
+**Files created/modified by this command:**
+
+**Feature spec** (specs/NNN-slug/):
+- spec.md — Updated with Clarifications section (session-dated Q/A entries)
+- spec.md — Ambiguous sections updated with answers applied
+- NOTES.md — Phase 0.5 checkpoint appended
+
+**Git commits** (atomic):
+- Multiple commits: `clarify: checkpoint Q[N]` (before each update)
+- Multiple commits: `clarify: apply Q/A for [topic]` (after each answer)
+
+**Console output**:
+- Coverage analysis table (10 categories)
+- Progress indicators during question batches
+- Decision tree with next step recommendation
+</output>
+
+---
+
+## Question Bank Benefits (v5.0)
+
+**Why centralized question bank approach?**
+
+1. **Consistency** — All features use the same question format, options, and terminology
+2. **Precedent visibility** — Repo-specific examples automatically shown ("Used in specs/002-auth")
+3. **Better UX** — Interactive AskUserQuestion with structured options vs free-text responses
+4. **Faster clarification** — 3-5x faster than passive markdown Q&A (batched questions, instant responses)
+5. **Maintainability** — Update question templates once, affects all future features
+6. **Learning system** — Question bank can evolve based on project patterns
+7. **Reduced ambiguity** — Structured options prevent vague or ambiguous free-text answers
+
+**Comparison to previous approach:**
+
+| Aspect | Old (Passive) | New (Interactive) |
+|--------|---------------|-------------------|
+| Question format | Free-form markdown | Structured YAML templates |
+| User response | Free-text typing | Select from options |
+| Batch size | 1 question at a time | 3 questions per batch |
+| Precedent visibility | Manual citation | Automatic from question bank |
+| Time per question | ~2-3 min | ~30 sec |
+| Ambiguous answers | Common (free-text) | Rare (structured options) |
+
+**Expected velocity improvement:** 3-5x faster clarification phase
 
 ---
 

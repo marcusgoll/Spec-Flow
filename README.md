@@ -780,8 +780,155 @@ Spec-Flow now features an **optimized orchestrator** (`/feature`) that runs each
 ```
 
 **Choose your workflow:**
-- **`/feature "feature"`** - Full feature workflow (recommended)
+- **`/epic "large project"`** - Epic-level orchestration with parallel sprint execution (v5.0+)
+- **`/feature "feature"`** - Full feature workflow (recommended for single features)
 - **`/quick "fix"`** - Fast path for small changes (<100 LOC)
+
+---
+
+## 🚀 Epic Workflow (v5.0) - NEW!
+
+**For large, complex projects:** Use `/epic` to orchestrate multi-sprint workflows with 3-5x velocity improvement through parallel execution.
+
+### When to Use /epic vs /feature
+
+| Criteria | Use /epic | Use /feature |
+|----------|-----------|--------------|
+| **Estimated Work** | >16 hours | ≤16 hours |
+| **Subsystems** | Multiple (backend + frontend + testing) | Single subsystem |
+| **Sprints** | 2-5 sprints | 1 sprint |
+| **API Endpoints** | >5 endpoints | ≤5 endpoints |
+| **Database Tables** | >3 tables | ≤3 tables |
+| **Velocity Gain** | 3-5x (parallel execution) | 1x (sequential) |
+
+### Epic Workflow Quick Start
+
+```bash
+# 1. Start an epic (from project root)
+/epic "User authentication with OAuth 2.1"
+
+# 2. Epic orchestrator will:
+#    - Generate epic-spec.xml
+#    - Auto-invoke /clarify if ambiguities detected (score > 30)
+#    - Run research → plan via meta-prompting (isolated sub-agents)
+#    - Break down into sprints with dependency graph
+#    - Lock API contracts before parallel work
+#    - Execute sprints in parallel layers
+#    - Run quality gates + workflow audit
+#    - Generate comprehensive walkthrough
+
+# 3. Self-Improvement
+#    - /audit-workflow runs automatically after implementation
+#    - Detects bottlenecks, calculates velocity, suggests improvements
+#    - /heal-workflow applies approved improvements
+#    - Pattern detection after 2-3 epics generates custom automation
+
+# 4. Monitor Progress
+/workflow-health  # Aggregate metrics across all epics
+```
+
+### Example Epic Flow
+
+```
+Input: "User authentication with OAuth 2.1"
+
+→ Epic Specification (epic-spec.xml)
+  - Ambiguity Score: 45/100 → Auto-invoke /clarify
+  - 5 questions asked via AskUserQuestion
+
+→ Meta-Prompting Pipeline
+  - Research: OAuth 2.1 best practices → research.xml
+  - Planning: Architecture + API contracts → plan.xml
+
+→ Sprint Breakdown (sprint-plan.xml)
+  - S01: Backend API + Database (18h)
+  - S02: Frontend UI Components (16h, depends on S01)
+  - S03: Integration + E2E Tests (14h, depends on S01+S02)
+  - Dependency Graph: Layer 1 (S01) → Layer 2 (S02) → Layer 3 (S03)
+  - Contracts Locked: contracts/api/auth-v1.yaml
+
+→ Parallel Execution
+  - Layer 1: S01 executes (backend-dev agent)
+  - Layer 2: S02 executes (frontend-shipper agent)
+  - Layer 3: S03 executes (test-architect agent)
+  - Duration: 48h sequential → 18h actual (2.7x faster)
+
+→ Quality Gates + Audit
+  - Performance, Security, Accessibility, Code Review: PASSED
+  - Workflow Audit: 87/100, 2 bottlenecks detected
+  - Recommendations: 3 immediate improvements
+
+→ Walkthrough Generation
+  - Velocity: 2.7x (saved 30h)
+  - What Worked: Contract-first prevented integration bugs
+  - What Struggled: S02 underestimated (16h → 20h)
+  - Lesson: Frontend tasks need 1.25x estimation multiplier
+```
+
+### Epic Features
+
+**Parallel Sprint Execution:**
+- Automatic dependency graph analysis
+- Layer-based execution (Layer 1 → Layer 2 → Layer 3)
+- Contract-first development (lock APIs before parallel work)
+- Real-time progress monitoring across sprints
+
+**Meta-Prompting (LLM-to-LLM):**
+- Isolated sub-agents prevent context pollution
+- Research → Plan pipeline with confidence levels
+- XML output for machine-parseable artifacts
+
+**Adaptive Workflow:**
+- Auto-clarification when ambiguity score > 30
+- Auto-skip preview for backend-only epics
+- Adaptive question count (2-10 based on ambiguity)
+
+**Self-Healing:**
+- /audit-workflow after implementation (bottleneck detection)
+- /heal-workflow applies improvements with user approval
+- Pattern detection after 2-3 epics (generates custom automation)
+
+**Comprehensive Documentation:**
+- walkthrough.md with velocity metrics, lessons learned
+- All artifacts in XML for LLM parsing (60% token reduction)
+- audit-report.xml with actionable recommendations
+
+### Epic Commands
+
+```bash
+# Core orchestration
+/epic "goal"              # Start epic workflow
+/clarify                  # Auto-invoked if ambiguities (score > 30)
+/feature continue         # Resume most recent epic
+
+# Self-improvement
+/audit-workflow           # Analyze effectiveness (auto after /implement)
+/heal-workflow            # Apply improvements with approval
+/workflow-health          # Aggregate metrics across all epics
+
+# Meta-prompting (used internally)
+/create-prompt            # Generate optimized prompts for sub-agents
+/run-prompt              # Execute prompts in isolated context
+```
+
+### Expected Outcomes
+
+**Velocity:**
+- 3-5x faster than sequential execution
+- Time saved: 30-60 hours for large epics
+- Critical path optimization
+
+**Quality:**
+- Zero integration bugs (contract-first development)
+- 85%+ audit scores
+- Comprehensive walkthrough for learning
+
+**Adaptability:**
+- Workflow learns from each epic
+- Pattern detection generates custom automation
+- Self-healing prevents workflow drift
+
+---
 
 ## 🚀 Quick Start
 

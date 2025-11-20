@@ -2,8 +2,10 @@
 # Files to exclude from npm publish (even if committed to git)
 
 # Internal workflow development files
+.claude/commands/internal/
 .claude/commands/release.md
-.claude/skills/x-announcement.md
+.claude/commands/meta/announce-release.md
+.claude/skills/x-announcement/
 
 # Archived files (deprecated/legacy)
 .claude/commands/archive/

@@ -1,23 +1,70 @@
 ---
-description: Update project engineering principles (the 8 core standards that govern feature development)
-version: 2.2
-updated: 2025-11-10
-command: /constitution
-scripts:
-  sh: scripts/bash/check-prerequisites.sh --json --paths-only
-  ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
+name: constitution
+description: Add, update, or remove engineering principles in docs/project/engineering-principles.md with atomic versioned commits
+argument-hint: "<action>: <description>" (e.g., "add: A11Y - Accessibility | policy=...")
+allowed-tools: [Read, Edit, Write, Grep, Glob, Bash(git add:*), Bash(git commit:*), Bash(git rev-parse:*), Bash(git status:*), Bash(date:*)]
 ---
 
 # /constitution — Update Engineering Principles
 
-**Purpose**: Update the canonical engineering principles file and bump metadata in a controlled, reviewable way.
+<context>
+**User Input**: $ARGUMENTS
+
+**Current Git Status**: !`git status --short 2>$null || echo "clean"`
+
+**Current Branch**: !`git branch --show-current 2>$null || echo "none"`
+
+**Principles File Exists**: !`test -f docs/project/engineering-principles.md && echo "Yes" || echo "No"`
+
+**Principles File**: @docs/project/engineering-principles.md
+
+**Recent Constitution Commits**: !`git log --oneline --grep="constitution:" -5 2>$null || echo "none"`
+</context>
+
+<objective>
+Update the canonical engineering principles file (docs/project/engineering-principles.md) with atomic, auditable changes to the 8 core standards that govern feature development.
+
+**Purpose**: Modify quality gates, add/update/remove principles, and maintain governance metadata with version control.
 
 **When to use**:
 - Add, remove, or revise a principle
-- Tighten quality gates (security, a11y, perf, tests)
+- Tighten quality gates (security, accessibility, performance, tests)
 - Align standards with new evidence or incidents
+- Bump principle document version
 
-**Workflow slot**: Project governance command. Downstream gates (`/optimize`, `/validate`, `/ship`) enforce these principles.
+**Workflow position**: Project governance command. Downstream gates (`/optimize`, `/validate`, `/ship`) enforce these principles.
+</objective>
+
+## Anti-Hallucination Rules
+
+**CRITICAL**: Follow these rules to prevent implementation errors.
+
+1. **Never modify the file without reading it first**
+   - Always Read docs/project/engineering-principles.md before making changes
+   - Verify file structure matches canonical template
+   - Quote current content when analyzing changes
+
+2. **Verify file existence before proceeding**
+   - Use Grep to check file exists
+   - If not found, instruct user to run /init-project first
+   - Don't assume file structure - read and verify
+
+3. **Validate principle structure after changes**
+   - Check for required headers (## Principles)
+   - Verify principle IDs match pattern: `### [ID] Title`
+   - Ensure all required fields present (Policy, Rationale, Measurable checks, Evidence, Last updated)
+
+4. **Quote arguments exactly**
+   - Parse $ARGUMENTS precisely without adding interpretation
+   - If arguments unclear, show usage examples and ask for clarification
+   - Never guess at action types or field values
+
+5. **Verify git operations succeeded**
+   - Check git commit with rev-parse after committing
+   - Confirm file staged with git status
+   - Quote actual commit hash in output
+
+**Why this matters**: Principles file governs all quality gates. Incorrect changes break downstream automation and enforce wrong standards.
 
 ---
 
@@ -27,42 +74,38 @@ You are modifying the **8 core standards** that every feature must satisfy. Chan
 
 - **Source of truth**: `docs/project/engineering-principles.md`
 - **Principles must be**:
-  - **Named** (short ID)
-  - **Policy** (project rule)
-  - **Rationale** (why)
-  - **Measurable checks** (how we verify)
+  - **Named** (short ID like `[A11Y]` or `[SECURITY]`)
+  - **Policy** (project rule statement)
+  - **Rationale** (why this matters)
+  - **Measurable checks** (how we verify compliance)
   - **Evidence/links** (standards or internal ADRs)
   - **Last updated** (ISO date)
 
 ---
 
-## Execution
+<process>
 
-### 1) Preconditions
+### Step 1: Verify Prerequisites
 
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "UPDATE ENGINEERING PRINCIPLES"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+**Check that principles file exists:**
+1. Read docs/project/engineering-principles.md
+2. If not found, display error:
+   ```
+   ❌ Not found: docs/project/engineering-principles.md
 
-PRINCIPLES_FILE="docs/project/engineering-principles.md"
+   Run /init-project first or create the file with the canonical structure.
+   See "Canonical File Structure" section below.
+   ```
+3. If found, confirm:
+   ```
+   ✅ Found: docs/project/engineering-principles.md
+   ```
 
-if [ ! -f "$PRINCIPLES_FILE" ]; then
-  echo "❌ Not found: $PRINCIPLES_FILE"
-  echo "Run /init-project first or create the file with the canonical structure."
-  exit 1
-fi
+### Step 2: Parse Arguments
 
-echo "✅ Found: $PRINCIPLES_FILE"
-echo ""
+**If $ARGUMENTS is empty**, display usage:
+
 ```
-
-### 2) Parse Arguments
-
-```bash
-if [ -z "$ARGUMENTS" ]; then
-  cat <<USAGE
 Usage: /constitution "<action>: <description>"
 
 Actions:
@@ -77,101 +120,288 @@ Examples:
   /constitution "update: SECURITY | policy=OWASP ASVS L2 | metrics=threat model per feature; SAST; DAST | evidence=link:ASVS"
   /constitution "remove: DO-NOT-OVERENGINEER"
   /constitution "set: version=minor"
-USAGE
-  exit 1
-fi
-
-CHANGE_SPEC="$ARGUMENTS"
-echo "Change request:"
-echo "  $CHANGE_SPEC"
-echo ""
 ```
 
-### 3) Change Types (Deterministic)
+**If $ARGUMENTS provided**, parse the action type:
+- Extract action: `add`, `update`, `remove`, or `set`
+- Extract principle ID if applicable
+- Extract field values (policy, metrics, evidence) from pipe-delimited format
+- Display parsed change request:
+  ```
+  Change request:
+    {$ARGUMENTS}
+  ```
+
+### Step 3: Determine Change Type
 
 **Supported actions:**
 
-* **add**: Create a new principle block if ID not present
-* **update**: Replace fields on existing ID
-* **remove**: Delete principle by ID
-* **set: version**: Bump doc version (SemVer)
-* **set: owner**: Update governance metadata
+- **add**: Create a new principle block if ID not already present
+  - Check if principle ID exists using Grep
+  - If exists, display error and stop
+  - If not, proceed to add new principle section
+
+- **update**: Replace fields on existing principle ID
+  - Locate principle by ID using Grep
+  - If not found, display error and stop
+  - Update specified fields only (policy, metrics, evidence)
+  - Preserve other fields unchanged
+
+- **remove**: Delete entire principle block by ID
+  - Locate principle by ID
+  - Remove from `### [ID]` to next `---` separator or next principle
+  - Decrease principle count in header
+
+- **set: version**: Bump document version (SemVer)
+  - Parse version field in file header
+  - Apply major/minor/patch increment
+  - Update version field
+
+- **set: owner**: Update governance metadata
+  - Update Owner field in file header
 
 **Idempotency**: Re-running the same command yields no diff.
 
-### 4) Edit Engine (LLM applies; script guards and validates)
+### Step 4: Create Git Checkpoint
 
-```bash
-# 4.1 Checkpoint for safe rollback
-git add "$PRINCIPLES_FILE" >/dev/null 2>&1 || true
-git commit -m "constitution: checkpoint before update" --no-verify >/dev/null 2>&1 || true
+**Before making changes:**
+1. Stage the current principles file:
+   ```bash
+   git add docs/project/engineering-principles.md
+   ```
 
-# 4.2 Apply change (LLM edits the Markdown per schema below)
-# The LLM will:
-# - Parse the action (add/update/remove/set)
-# - Locate or create the principle block
-# - Update fields according to canonical structure
-# - Validate the file structure
+2. Create checkpoint commit (allow failure if no changes):
+   ```bash
+   git commit -m "constitution: checkpoint before update" --no-verify
+   ```
+   *(Ignore errors if nothing to commit)*
 
-# 4.3 Validate structure minimally
-grep -q "^## Principles" "$PRINCIPLES_FILE" || echo "⚠️ Header mismatch (expected '## Principles')"
-rg -n "^### \[[A-Z0-9\-]+\] " "$PRINCIPLES_FILE" >/dev/null || { echo "❌ No principles found"; exit 1; }
+### Step 5: Apply Changes to File
 
-echo "✅ File structure validated"
-echo ""
+**Edit docs/project/engineering-principles.md using Edit tool:**
+
+**For `add` action:**
+1. Locate the `## Principles` section
+2. Add new principle block before the last principle or at end:
+   ```markdown
+   ### [{ID}] {Title}
+
+   **Policy**:
+   {policy value from arguments}
+
+   **Rationale**:
+   {rationale - infer or ask user}
+
+   **Measurable checks**:
+   {metrics value from arguments, formatted as bullet list}
+
+   **Evidence/links**:
+   {evidence value from arguments}
+
+   **Last updated**: {current date YYYY-MM-DD}
+
+   ---
+   ```
+3. Increment principle count in header if present
+
+**For `update` action:**
+1. Locate principle by ID: `### [{ID}]`
+2. Update specified fields only:
+   - If `policy=` provided, replace **Policy**: section
+   - If `metrics=` provided, replace **Measurable checks**: section
+   - If `evidence=` provided, replace **Evidence/links**: section
+3. Update **Last updated**: to current date
+
+**For `remove` action:**
+1. Locate principle block by ID
+2. Delete from `### [{ID}]` to next `---` separator
+3. Decrement principle count in header
+
+**For `set: version` action:**
+1. Locate version field in header: `**Version**: X.Y.Z`
+2. Apply SemVer bump (major/minor/patch)
+3. Update version field
+
+**For `set: owner` action:**
+1. Locate owner field in header: `**Owner**: @team`
+2. Update owner value
+
+### Step 6: Validate File Structure
+
+**After applying changes, validate:**
+
+1. Check for required header:
+   ```bash
+   grep -q "^## Principles" docs/project/engineering-principles.md
+   ```
+   If missing, display warning: `⚠️ Header mismatch (expected '## Principles')`
+
+2. Check for principle IDs:
+   ```bash
+   grep -E "^### \[[A-Z0-9\-]+\] " docs/project/engineering-principles.md
+   ```
+   If no matches, display error: `❌ No principles found` and stop
+
+3. Display confirmation:
+   ```
+   ✅ File structure validated
+   ```
+
+### Step 7: Update Metadata
+
+**Update Last Updated timestamp:**
+1. Get current date in ISO format (YYYY-MM-DD)
+2. Update header metadata:
+   - **Last Updated**: {current date}
+3. If `set: version` was specified, version already updated in Step 5
+
+**Add CHANGELOG entry** (if file has Change Log section):
+1. Locate `## Change Log` section
+2. Add entry at top:
+   ```markdown
+   - {current date} — **{Added|Changed|Removed}**: {brief description of change}
+   ```
+
+Display confirmation:
+```
+✅ Metadata updated: {current date}
 ```
 
-### 5) Metadata Bump
+### Step 8: Commit Changes Atomically
 
-**Update version and date:**
+**Create atomic commit:**
 
-```bash
-TODAY=$(date +%F)
+1. Stage the updated file:
+   ```bash
+   git add docs/project/engineering-principles.md
+   ```
 
-# Update "Last Updated" in file header
-# If "set: version=<x>" given, bump SemVer accordingly
-# Add a CHANGELOG entry in the file's "Change Log" section (Keep a Changelog format)
-
-echo "✅ Metadata updated: $TODAY"
-echo ""
-```
-
-### 6) Commit (Atomic)
-
-```bash
-git add "$PRINCIPLES_FILE"
-git commit -m "constitution: $CHANGE_SPEC
+2. Commit with descriptive message:
+   ```bash
+   git commit -m "constitution: $ARGUMENTS
 
 🤖 Generated with Claude Code
 Co-Authored-By: Claude <noreply@anthropic.com>" --no-verify
+   ```
 
-# Verify commit succeeded
-COMMIT_HASH=$(git rev-parse --short HEAD)
-echo ""
-echo "✅ Committed update: $COMMIT_HASH"
-echo ""
+3. Verify commit succeeded and get hash:
+   ```bash
+   git rev-parse --short HEAD
+   ```
+
+4. Display commit confirmation:
+   ```
+   ✅ Committed update: {commit hash}
+   ```
+
+### Step 9: Display Next Steps
+
+**Output summary to user:**
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ENGINEERING PRINCIPLES UPDATE COMPLETE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Updated: docs/project/engineering-principles.md
+Change: {$ARGUMENTS}
+Commit: {hash}
+
+### 💾 Next Steps
+
+1. Review changes: Read docs/project/engineering-principles.md
+2. Run /validate to check policy compliance across features
+3. Run /optimize to auto-fix trivial violations
+4. Future /ship gates will enforce updated principles
 ```
 
-### 7) Output Next Steps
+</process>
 
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "ENGINEERING PRINCIPLES UPDATE COMPLETE"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+<success_criteria>
+**Constitution update successfully completed when:**
 
-echo "Updated: $PRINCIPLES_FILE"
-echo "Change: $CHANGE_SPEC"
-echo ""
+1. **Principles file modified correctly**:
+   - File read before modifications
+   - Changes applied according to action type (add/update/remove/set)
+   - File structure validated after changes
+   - No syntax errors in markdown
 
-echo "### 💾 Next Steps"
-echo ""
-echo "1. Review changes: cat $PRINCIPLES_FILE"
-echo "2. Run /validate to check policy compliance"
-echo "3. Run /optimize to auto-fix trivial violations"
-echo "4. Future /ship gates will enforce updated principles"
-echo ""
-```
+2. **Metadata updated**:
+   - Last Updated field shows current date
+   - Version bumped if `set: version` specified
+   - CHANGELOG entry added (if section exists)
+
+3. **Git operations successful**:
+   - Checkpoint commit created (or gracefully skipped)
+   - Final commit created with atomic changes
+   - Commit hash retrieved and displayed
+   - Working tree clean after commit
+
+4. **Validation passed**:
+   - `## Principles` header present
+   - Principle IDs match pattern `### [ID] Title`
+   - All modified principles have required fields
+   - File structure remains valid
+
+5. **User informed**:
+   - Summary displayed with file path, change description, commit hash
+   - Next steps provided
+   - No errors or warnings (unless expected)
+</success_criteria>
+
+<verification>
+**Before marking constitution update complete, verify:**
+
+1. **Read updated file**:
+   ```bash
+   cat docs/project/engineering-principles.md
+   ```
+   Should show applied changes
+
+2. **Check file structure**:
+   ```bash
+   grep "^## Principles" docs/project/engineering-principles.md
+   grep -E "^### \[[A-Z0-9\-]+\] " docs/project/engineering-principles.md
+   ```
+   Both should return matches
+
+3. **Verify git commit**:
+   ```bash
+   git log -1 --oneline
+   ```
+   Should show "constitution:" commit
+
+4. **Check commit hash**:
+   ```bash
+   git rev-parse --short HEAD
+   ```
+   Should return valid hash
+
+5. **Validate working tree**:
+   ```bash
+   git status
+   ```
+   Should show clean working tree or only unrelated changes
+
+**Never claim completion without reading the updated file and verifying commit hash.**
+</verification>
+
+<output>
+**Files created/modified by this command:**
+
+**Principles file**:
+- docs/project/engineering-principles.md — Updated with principle changes
+
+**Git commits**:
+- Checkpoint commit (optional, may skip if no changes)
+- Final atomic commit: "constitution: {$ARGUMENTS}"
+
+**Console output**:
+- Verification status (file found, structure validated)
+- Change summary (action type, principle affected)
+- Commit hash confirmation
+- Next steps recommendation
+</output>
 
 ---
 
@@ -368,7 +598,7 @@ Reduces maintenance burden, improves velocity.
 
 ## Notes
 
-**The 8 Core Principles:**
+### The 8 Core Principles
 
 1. **SPEC-FIRST** — Specification First
 2. **TESTS** — Testing Standards
@@ -379,19 +609,19 @@ Reduces maintenance burden, improves velocity.
 7. **DOCS** — Documentation & Changelog
 8. **SIMPLICITY** — Simplicity, not Overengineering
 
-**Principles vs Configuration:**
+### Principles vs Configuration
 
 - `engineering-principles.md` — Quality standards (this command)
 - `project-configuration.md` — Deployment model, scale tier (`/update-project-config`)
 
-**Principles Guide Quality Gates:**
+### Principles Guide Quality Gates
 
 - `/optimize` enforces these principles
 - `/validate` checks violations
 - Code review uses these as criteria
 - `/ship` gates fail if principles regress
 
-**Standards Referenced:**
+### Standards Referenced
 
 - **Accessibility**: [WCAG 2.2 AA](https://www.w3.org/TR/WCAG22/)
 - **Security**: [OWASP ASVS Level 2](https://owasp.org/www-project-application-security-verification-standard/)
@@ -411,16 +641,6 @@ Reduces maintenance burden, improves velocity.
 **Policy tiers**: Add "Min" and "Target" levels for each principle so new teams meet baseline quickly and ratchet up over time.
 
 **Contextual overrides**: Allow per-service overrides (e.g., perf SLOs) in `docs/services/<svc>/principles.override.md`, with a linter that rejects weaker policies without an ADR.
-
----
-
-## Action Plan
-
-1. Replace current `constitution.md` with this version
-2. Convert current `engineering-principles.md` to canonical structure above
-3. Wire `/validate` to check measurable checks for each principle
-4. Enforce Conventional Commits + Keep a Changelog + SemVer across updates
-5. Add CI to fail merges when principles regress or file structure deviates
 
 ---
 

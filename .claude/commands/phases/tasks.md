@@ -1,171 +1,295 @@
 ---
-description: Generate concrete TDD tasks from design artifacts (no generic placeholders)
-version: 2.0
-updated: 2025-11-17
+description: Generate TDD task breakdown from plan.md with test-first sequencing and mockup-first mode (--ui-first)
+allowed-tools: [Read, Grep, Glob, Bash(python .spec-flow/scripts/spec-cli.py tasks:*), Bash(git add:*), Bash(git commit:*), Bash(git status:*), Bash(git branch:*), Bash(jq:*), Bash(ls:*), Bash(wc:*)]
+argument-hint: [--ui-first] (optional flag for mockup-first workflow)
 ---
 
-# /tasks — Task Generation from Design
-
-Create tasks from: specs/$SLUG/plan.md
-
 <context>
-## MENTAL MODEL
+Current git status: !`git status --short | head -10`
 
-**Workflow**: spec → clarify → plan → tasks → implement → optimize → preview → ship
+Current branch: !`git branch --show-current`
 
-**State machine**: Load design artifacts → Extract user stories → Map to tasks → Generate by story priority
+Feature spec exists: !`ls specs/*/spec.md 2>/dev/null | wc -l` file(s)
 
-**Philosophy**:
-- **Traceable**: Every task links to exact source lines in plan/spec
-- **Deterministic**: Same inputs always produce same outputs
-- **Verifiable**: All paths checked via git, all sections checked via grep
-- **User story organization**: One phase per story for clear progress tracking
+Plan exists: !`ls specs/*/plan.md 2>/dev/null | wc -l` file(s)
 
-**Auto-suggest**: When complete → `/validate`
+Feature workspace: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>/dev/null | jq -r '.FEATURE_DIR // "Not initialized"'`
 
-**Prerequisites**:
-- Git repository
-- jq installed (JSON parsing)
-- Feature spec and plan completed (spec.md, plan.md exist)
+Workspace type: !`test -f epics/*/epic-spec.xml && echo "epic" || echo "feature"`
 </context>
 
-<constraints>
-## ANTI-HALLUCINATION RULES
+<objective>
+Generate concrete TDD tasks from design artifacts with test-first sequencing.
 
+**Mode detection:**
+- **Epic workflows**: Auto-generates sprint breakdown with dependency graph and contract locking (multiple sprints for >16h work or 2+ subsystems)
+- **Feature workflows**: Generates 20-30 tasks organized by user story priority
+- **UI-first mode** (--ui-first flag): Generates HTML mockup tasks first, blocks implementation until approval
+
+This ensures traceable, deterministic task generation that prevents hallucinated tasks referencing non-existent code.
+
+**Dependencies**:
+- Git repository initialized
+- Feature spec (spec.md) and plan (plan.md) completed
+- Required tools: git, jq
+
+**Flags**:
+- `--ui-first` : Generate HTML mockup tasks before implementation (sets manual gate for mockup approval)
+</objective>
+
+<process>
+1. **Execute task generation workflow** via spec-cli.py:
+   ```bash
+   python .spec-flow/scripts/spec-cli.py tasks "$ARGUMENTS"
+   ```
+
+   The tasks-workflow.sh script performs:
+
+   a. **Detect workspace type**: Epic vs Feature
+      - Epic: If `epics/*/epic-spec.xml` exists
+      - Feature: Otherwise
+
+   b. **Epic workflows only** (Sprint breakdown):
+      - Analyze plan complexity (subsystems, hours, endpoints, tables)
+      - Create sprint boundaries (Backend + DB = S01, Frontend = S02, Integration = S03)
+      - Build dependency graph with execution layers
+      - Lock API contracts (OpenAPI 3.0 specs in contracts/)
+      - Generate sprint-plan.xml with critical path analysis
+      - Generate tasks.md for each sprint in sprints/{S01,S02,S03}/
+      - Commit sprint plan with summary
+
+   c. **Feature workflows** (Traditional task generation):
+      - Load artifacts (spec.md, plan.md, research.md)
+      - Extract user stories from spec.md
+      - Generate 20-30 tasks with deterministic IDs (T001-T030)
+      - Map tasks to user story priority
+      - UI-first mode: Generate HTML mockup tasks if --ui-first
+      - TDD sequence: Order as spec → test → impl → refactor
+      - Parallel batching: Detect independent tasks (frontend vs backend)
+      - Git commit with task summary
+
+   d. **UI-first mode** (if --ui-first flag):
+      - Detect multi-screen workflow (≥3 screens in spec.md)
+      - Generate mockup tasks: navigation hub (index.html) + individual screens
+      - Create mockup-approval-checklist.md
+      - Set manual gate in workflow-state.yaml (blocks /implement)
+      - Tasks include: hub, screens, navigation wiring, approval checklist
+
+2. **Read generated artifacts**:
+   - Epic: `sprint-plan.xml`, `contracts/*.yaml`, `sprints/*/tasks.md`
+   - Feature: `tasks.md`
+   - UI-first: `tasks.md` with mockup tasks, `mockup-approval-checklist.md`
+
+3. **Present task summary** to user with task count, story breakdown, TDD coverage
+
+4. **Suggest next action** based on workflow type
+</process>
+
+<verification>
+Before completing, verify:
+- Workspace type correctly detected (epic vs feature)
+- Epic workflows: sprint-plan.xml validates, contracts locked, tasks.md per sprint
+- Feature workflows: tasks.md has 20-30 tasks, organized by user story
+- UI-first: mockup tasks generated, manual gate set in workflow-state.yaml
+- Git commit successful with task summary
+- Next-step suggestions presented
+</verification>
+
+<success_criteria>
+**Epic workflows**:
+- sprint-plan.xml exists and validates
+- Dependency graph shows execution layers
+- API contracts locked in contracts/
+- Per-sprint tasks.md files created
+- Critical path calculated
+
+**Feature workflows**:
+- tasks.md has 20-30 tasks
+- Tasks organized by user story priority
+- TDD sequence followed (test → impl → refactor)
+- Parallel batches identified
+- Each task has: ID, Title, Depends On, Acceptance Criteria, Source (line numbers)
+
+**UI-first mode**:
+- Mockup tasks generated (hub + screens if multi-screen)
+- mockup-approval-checklist.md created
+- workflow-state.yaml manual gate set
+- Implementation tasks blocked until approval
+
+**All workflows**:
+- Anti-hallucination rules followed (no tasks for non-existent code)
+- Tasks trace to plan.md/spec.md source lines
+- Dependencies verified (no circular dependencies)
+- Git commit created
+- User knows next action
+</success_criteria>
+
+<mental_model>
+**Workflow state machine**:
+```
+Setup
+  ↓
+[WORKSPACE TYPE] (epic vs feature)
+  ↓
+{IF epic}
+  → Sprint Breakdown
+    → Lock Contracts
+    → Generate Per-Sprint Tasks
+{ELSE IF feature + --ui-first}
+  → Generate Mockup Tasks
+    → Set Manual Gate (blocks /implement)
+{ELSE}
+  → Generate Traditional Tasks (20-30)
+{ENDIF}
+  ↓
+Git Commit
+  ↓
+[SUGGEST NEXT STEP]
+```
+
+**Next steps after tasks**:
+- Feature: `/validate` (recommended) or `/implement`
+- Epic: `/implement` (parallel sprint execution)
+- UI-first: `/implement` → Generate mockups → Approval → `/implement --continue`
+</mental_model>
+
+<anti_hallucination_rules>
 **CRITICAL**: Follow these rules to prevent creating impossible tasks.
 
 1. **Never create tasks for code you haven't verified exists**
    - ❌ BAD: "T001: Update the UserService.create_user method"
    - ✅ GOOD: First search for UserService, then create task based on what exists
-   - Use Glob to find files before creating file modification tasks
 
 2. **Cite plan.md when deriving tasks**
    - Each task should trace to plan.md section
    - Example: "T001 implements data model from plan.md:45-60"
-   - Don't create tasks not mentioned in the plan
 
 3. **Verify test file locations before creating test tasks**
    - Before task "Add test_user_service.py", check if tests/ directory exists
    - Use Glob to find test patterns: `**/test_*.py` or `**/*_test.py`
-   - Don't assume test structure matches your expectations
 
 4. **Quote acceptance criteria from spec.md exactly**
    - Copy user story acceptance criteria verbatim to task AC
    - Don't paraphrase or add unstated criteria
-   - If criteria missing, flag: "[NEEDS: Acceptance criteria for...]"
 
 5. **Verify dependencies between tasks**
    - Before marking T002 depends on T001, confirm T001 creates what T002 needs
    - Don't create circular dependencies
-   - Check plan.md for intended sequence
 
 **Why this matters**: Hallucinated tasks create impossible work. Tasks referencing non-existent code waste implementation time. Clear, verified tasks reduce implementation errors by 50-60%.
-</constraints>
 
-<instructions>
-## USER INPUT
+See `.claude/skills/task-breakdown-phase/reference.md` for full anti-hallucination rules and examples.
+</anti_hallucination_rules>
 
-```text
-$ARGUMENTS
+<epic_sprint_breakdown>
+**Epic workflows only** (detected via `epics/*/epic-spec.xml`):
+
+When tasks detects an epic workflow, it performs sprint breakdown with parallel execution planning.
+
+### Complexity Analysis
+
+**Decision criteria for multiple sprints:**
+- Subsystems ≥ 2 (e.g., frontend + backend)
+- Estimated hours > 16 (more than 2 work days)
+- API endpoints > 5 (large API surface)
+- Database tables > 3 (complex data model)
+
+### Sprint Boundaries
+
+**Typical sprint structure:**
+- **S01**: Backend + Database (API contracts, business logic)
+- **S02**: Frontend (UI components, state management) - depends on S01
+- **S03**: Integration + Testing (E2E tests) - depends on S01 + S02
+
+### Contract Locking
+
+**Before parallel work:**
+- Identify API contracts from plan.xml
+- Generate OpenAPI 3.0 specs in `contracts/`
+- Producer sprint (S01) locks contract
+- Consumer sprint (S02) consumes contract
+- No integration surprises (contract violations caught early)
+
+### Generated Artifacts
+
+**sprint-plan.xml structure:**
+```xml
+<sprint_plan>
+  <metadata>...</metadata>
+  <sprints>...</sprints>
+  <execution_layers>...</execution_layers>
+  <critical_path>...</critical_path>
+</sprint_plan>
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
+**Benefits:**
+- Parallel execution reduces critical path duration
+- Locked contracts enable independent frontend/backend work
+- Dependency graph prevents blocking work
+- Velocity multiplier: 2-3x speedup for independent layers
 
-## Execute Task Generation Workflow
+See `.claude/skills/task-breakdown-phase/reference.md` for full epic sprint breakdown workflow (Steps 1-9).
+</epic_sprint_breakdown>
 
-Run the centralized spec-cli tool:
+<ui_first_mode>
+**Trigger**: `--ui-first` flag passed to /tasks
 
-```bash
-python .spec-flow/scripts/spec-cli.py tasks "$ARGUMENTS"
-```
-
-**What the script does:**
-
-1. **Preflight checks** — Validates git, jq installed
-2. **Setup** — Discovers feature paths via check-prerequisites
-3. **Load artifacts** — Reads spec.md, plan.md, research.md
-4. **Extract user stories** — Parses spec.md for story sections
-5. **Generate task IDs** — Creates deterministic IDs (T001, T002, ...)
-6. **Map tasks to stories** — Groups tasks by user story priority
-7. **UI-first mode** — If --ui-first flag, generates HTML mockup tasks first
-8. **TDD sequence** — Orders tasks: spec → test → impl → refactor
-9. **Parallel batching** — Detects independent tasks for parallel execution
-10. **Git commit** — Commits tasks.md with 20-30 atomic tasks
-
-**UI-first mode (--ui-first flag):**
+**Behavior:**
 - Generates HTML mockup tasks before implementation
-- Creates multi-screen navigation hub (index.html) if ≥3 screens
+- Creates multi-screen navigation hub (index.html) if ≥3 screens detected
 - Creates individual screen mockups with state switching (S key)
-- Creates mockup-approval-checklist.md with multi-screen flow criteria
-- Sets manual gate in workflow-state.yaml
-- Blocks /implement until mockups approved
+- Creates mockup-approval-checklist.md
+- Sets manual gate in workflow-state.yaml (blocks /implement)
 
-**After script completes, you (LLM) must:**
+### Multi-Screen Detection
 
-## 1) Read Generated Tasks
+**Auto-detected when:**
+- ≥3 distinct screens mentioned in spec.md user stories
+- Navigation keywords detected ("navigate to", "redirects to", "shows modal")
+- Multi-step flows identified ("wizard", "onboarding", "checkout process")
 
-**Load task file:**
-- `specs/*/tasks.md` (generated by script)
-
-**Verify structure:**
-- 20-30 tasks organized by user story
-- Each task has: ID, Title, Depends On, Acceptance Criteria, Source
-- Parallel batches identified for independent tasks
-- TDD sequence followed within each task
-
-## 2) Present to User
-
-**Summary format:**
-
+**Mockup structure (≥3 screens):**
 ```
-Task Generation Complete
-
-Feature: {slug}
-Total tasks: {count}
-User stories: {count}
-Parallel batches: {count}
-
-Task breakdown:
-  Story 1 ({title}): {task_count} tasks
-  Story 2 ({title}): {task_count} tasks
-  Story 3 ({title}): {task_count} tasks
-
-TDD coverage:
-  Test tasks: {count}
-  Implementation tasks: {count}
-  Refactoring tasks: {count}
-
-Next: /validate (recommended) or /implement
+specs/NNN-slug/mockups/
+├── index.html                   # Navigation hub
+├── screen-01-[name].html        # Individual screens
+├── screen-02-[name].html
+├── screen-03-[name].html
+├── _shared/
+│   ├── navigation.js            # Keyboard shortcuts (H=hub, 1-9=screens)
+│   └── state-switcher.js        # State cycling (S key)
+└── mockup-approval-checklist.md
 ```
 
-## 3) Suggest Next Action
-
+**Mockup structure (1-2 screens):**
 ```
-✅ Tasks generated successfully!
-
-Recommended next steps:
-  1. /validate - Check artifact consistency before implementation (recommended)
-  2. /implement - Start task execution immediately
+specs/NNN-slug/mockups/
+├── [screen-name].html
+└── mockup-approval-checklist.md
 ```
 
-**If UI-first mode:**
-```
-✅ HTML mockup tasks generated!
+### Mockup Approval Process
 
-Next steps:
-  1. /implement - Generate mockups
-  2. Review mockups in browser (specs/{slug}/mockups/*.html)
-  3. Update mockup-approval-checklist.md
-  4. Approve in workflow-state.yaml
-  5. /implement --continue - Convert mockups to production code
-```
+**After mockup generation:**
+1. Open navigation hub: `specs/NNN-slug/mockups/index.html`
+2. Review each screen (press 1-9 to navigate, S to cycle states)
+3. Complete mockup-approval-checklist.md
+4. Update workflow-state.yaml: `manual_gates.mockup_approval.status = approved`
+5. Continue implementation: `/feature continue` or `/implement`
 
-</instructions>
+### Quality Gates
 
----
+**Before approval:**
+- Multi-screen flow: All screens accessible via keyboard (1-9)
+- State completeness: All 4 states (Success, Loading, Error, Empty)
+- Design system compliance: Colors/spacing from tokens.css
+- Component reuse: Match ui-inventory.md patterns
+- Accessibility: Contrast ≥4.5:1, touch targets ≥24x24px
 
-## TASK STRUCTURE
+See `.claude/skills/task-breakdown-phase/reference.md` for full multi-screen mockup workflow.
+</ui_first_mode>
 
+<task_structure>
 **Each task includes:**
 - **ID**: T001, T002, ... (deterministic, sequential)
 - **Title**: Clear, actionable description
@@ -191,429 +315,43 @@ Next steps:
 - Reuse existing migration template from api/migrations/
 ```
 
-## PARALLEL BATCHING
+**TDD sequencing:**
+1. Test task (write failing tests)
+2. Implementation task (make tests pass)
+3. Refactor task (improve code quality, optional)
 
-**Independent tasks grouped for parallel execution:**
+**Parallel batching:**
 - Batch 1: Frontend tasks (no backend dependencies)
 - Batch 2: Backend tasks (no frontend dependencies)
-- Batch 3: Integration tasks (requires both frontend + backend)
-
-**Dependencies respected:**
-- Test tasks depend on implementation tasks
-- Integration tasks depend on both frontend and backend
-- Refactoring tasks depend on working implementation
-
----
-
-## MULTI-SCREEN MOCKUP WORKFLOW
-
-**When to use multi-screen mockups** (auto-detected by script):
-- Feature has ≥3 distinct screens/pages
-- Screens have navigation relationships (flow between screens)
-- User journey involves multiple steps (onboarding, checkout, settings)
-
-**Script auto-detection logic:**
-1. Counts screen mentions in spec.md user stories (e.g., "login screen", "dashboard page")
-2. Detects navigation keywords ("navigate to", "redirects to", "shows modal")
-3. Identifies multi-step flows ("wizard", "onboarding", "checkout process")
-4. If ≥3 screens detected → Enable multi-screen mode
-
-### Generated Mockup Structure
-
-**For features with ≥3 screens:**
-
-```
-specs/NNN-slug/mockups/
-├── index.html                   # Navigation hub (entry point)
-├── screen-01-[name].html        # Individual screen with state switching
-├── screen-02-[name].html
-├── screen-03-[name].html
-├── _shared/
-│   ├── navigation.js            # Keyboard shortcuts (H=hub, 1-9=screens)
-│   └── state-switcher.js        # State cycling (S key)
-└── mockup-approval-checklist.md # Review criteria
-```
-
-**For features with 1-2 screens:**
-
-```
-specs/NNN-slug/mockups/
-├── [screen-name].html           # Single screen with state switching
-└── mockup-approval-checklist.md # Review criteria
-```
-
-### LLM Responsibilities (After script generates task list)
-
-When /implement executes mockup generation tasks, you (LLM) must:
-
-**1. Read Templates:**
-- `.spec-flow/templates/mockups/index.html` (navigation hub)
-- `.spec-flow/templates/mockups/screen.html` (individual screen)
-- `.spec-flow/templates/mockups/_shared/*.js` (already complete, copy as-is)
-
-**2. Detect Multi-Screen Mode:**
-- Read `plan.md` section "Design System Constraints" for screen list
-- Count screens in user stories from `spec.md`
-- If ≥3 screens → Create navigation hub + individual screens
-- If 1-2 screens → Create individual screens only (no hub)
-
-**3. Generate Navigation Hub (if multi-screen):**
-
-Copy `.spec-flow/templates/mockups/index.html` and customize:
-
-**Replace placeholders:**
-- `[FEATURE_NAME]` → Feature title from spec.md
-- `[FLOW_DIAGRAM]` → ASCII art user flow from plan.md
-- `[SCREEN_FILE]`, `[SCREEN_TITLE]`, `[SCREEN_DESCRIPTION]` → For each screen
-- Badge colors: `primary` (main screens), `authenticated` (requires login), `public` (no auth)
-
-**Example screen card:**
-```html
-<a href="screen-02-dashboard.html" class="screen-card" role="listitem" data-screen="2" tabindex="0">
-  <div>
-    <h3>02. Dashboard</h3>
-    <p>Main application dashboard with navigation and data overview</p>
-  </div>
-  <div class="meta">
-    <span class="badge authenticated">Authenticated</span>
-    <span>States: Success, Loading, Error, Empty</span>
-  </div>
-</a>
-```
-
-**4. Generate Individual Screen Mockups:**
-
-For each screen, copy `.spec-flow/templates/mockups/screen.html` and customize:
-
-**Replace placeholders:**
-- `[SCREEN_TITLE]` → Screen name (e.g., "Login", "Dashboard", "Settings")
-- `[FEATURE_NAME]` → Feature title
-- Implement all 4 states (Success, Loading, Error, Empty)
-
-**State implementation checklist:**
-- ✅ Success state: Happy path with data populated
-- ✅ Loading state: Spinner + "Loading..." text
-- ✅ Error state: Alert component with error message + retry action
-- ✅ Empty state: Empty state component + CTA button
-
-**Use design tokens from tokens.css:**
-- Colors: `--color-brand-primary`, `--color-semantic-error`, etc.
-- Spacing: `--space-4`, `--space-6`, `--space-8` (16px, 24px, 32px)
-- Typography: `--text-sm`, `--text-base`, `--text-lg`
-- Shadows: `--shadow-sm`, `--shadow-md`, `--shadow-lg`
-- Border radius: `--radius-sm`, `--radius-md`, `--radius-lg`
-
-**Reuse components from ui-inventory.md:**
-- Check plan.md "Design System Constraints" section for component reuse suggestions
-- Use existing components before creating new ones
-- Follow approved patterns from previous features
-
-**5. Wire Multi-Screen Navigation:**
-
-**In index.html:**
-- Each screen card has `data-screen` attribute (1-9)
-- Number keys 1-9 navigate to respective screens
-
-**In screen-NN-[name].html:**
-- Breadcrumb links back to hub: `<a href="index.html">← Hub</a>`
-- Interactive elements (buttons, links) navigate to other screens
-- Example: Login success → Dashboard screen
-
-**Navigation patterns:**
-```html
-<!-- Button navigates to next screen -->
-<button class="button primary" onclick="window.location.href='screen-02-dashboard.html'">
-  Continue to Dashboard
-</button>
-
-<!-- Link returns to hub -->
-<a href="index.html" class="button secondary">Back to Hub</a>
-```
-
-**6. Copy Shared Scripts:**
-
-Copy without modification:
-```bash
-cp .spec-flow/templates/mockups/_shared/navigation.js specs/NNN-slug/mockups/_shared/
-cp .spec-flow/templates/mockups/_shared/state-switcher.js specs/NNN-slug/mockups/_shared/
-```
-
-These scripts are complete and require no customization.
-
-### Keyboard Shortcuts (Automatic)
-
-**Provided by navigation.js:**
-- `H` key → Return to hub (index.html)
-- `1`-`9` keys → Jump to screen by number
-- `Esc` → Close modals/dialogs
-
-**Provided by state-switcher.js:**
-- `S` key → Cycle state (Success → Loading → Error → Empty → Success)
-- State persists in sessionStorage during review
-
-### Mockup Approval Process
-
-**After mockup generation:**
-
-1. **Run automated design lint** (recommended):
-
-   **Use Task tool to launch design-lint agent:**
-   ```
-   Task tool with subagent_type="design-lint"
-   Prompt: "Scan mockups in specs/NNN-slug/mockups/ for design violations.
-
-   Check:
-   1. Color contrast (WCAG 2.1 AA)
-   2. Touch target sizes (≥24x24px)
-   3. Design token usage (hardcoded values)
-   4. Component reuse (vs ui-inventory.md)
-   5. Accessibility baseline (semantic HTML, ARIA labels)
-   6. 8pt grid compliance
-
-   Generate design-lint-report.md with critical issues, warnings, and quick fixes."
-   ```
-
-   **Agent generates:** `specs/NNN-slug/design-lint-report.md`
-
-   **If critical issues found:**
-   - ❌ Block approval
-   - Show quick fixes in report
-   - Fix issues and re-run lint
-
-   **If warnings only:**
-   - ⚠️ Allow approval with justification
-   - Document warnings in mockup-approval-checklist.md
-
-   **If all pass:**
-   - ✅ Proceed to manual review
-
-2. **Open navigation hub** in browser:
-   ```bash
-   open specs/NNN-slug/mockups/index.html
-   ```
-
-3. **Review each screen** (manual validation):
-   - Press number keys 1-9 to navigate
-   - Press S to cycle through all states
-   - Verify design token usage (check against lint report)
-   - Check component reuse (matches ui-inventory.md)
-   - Validate accessibility (contrast, touch targets, keyboard nav)
-
-4. **Complete approval checklist:**
-   - Fill out `mockup-approval-checklist.md`
-   - Include design-lint-report.md results
-   - Mark each screen as approved
-   - Note any changes needed
-
-5. **Update workflow state:**
-   ```yaml
-   # In specs/NNN-slug/workflow-state.yaml
-   manual_gates:
-     mockup_approval:
-       status: approved  # or needs_changes
-       approved_at: "2025-11-17T14:30:00Z"
-       approved_by: "user@example.com"
-       critical_issues: 0
-       warnings: [N]
-       component_reuse_rate: "[X]%"
-       token_compliance: "[X]%"
-   ```
-
-6. **Continue implementation:**
-   ```bash
-   /feature continue
-   # or
-   /implement
-   ```
-
-### Quality Gates for Mockups
-
-**Before mockup approval, verify:**
-
-✅ **Automated design lint** (design-lint agent):
-- **Color contrast**: ≥4.5:1 for normal text, ≥3:1 for large text (WCAG 2.1 AA)
-- **Touch targets**: ≥24x24px for all interactive elements
-- **Token compliance**: 95%+ (minimal hardcoded colors, spacing, shadows)
-- **Component reuse**: 85%+ (existing components used where applicable)
-- **Accessibility score**: 100% (semantic HTML, ARIA labels, alt text)
-- **8pt grid**: All spacing divisible by 4px or 8px
-
-**Automated checks generate:** `design-lint-report.md`
-**Critical issues = 0** (blocking), **Warnings < 5 per screen** (non-blocking)
-
-✅ **Multi-screen flow** (manual review):
-- All screens accessible via keyboard shortcuts (1-9)
-- Navigation wiring matches user flow diagram
-- Breadcrumbs link back to hub
-
-✅ **State completeness** (manual review):
-- All 4 states implemented (Success, Loading, Error, Empty)
-- S key cycles through states correctly
-- Loading spinners use CSS animations (no GIFs)
-
-✅ **Design system compliance** (verified by lint + manual):
-- All colors from tokens.css (no hardcoded hex codes)
-- All spacing from 8pt grid (multiples of 4px or 8px)
-- Typography uses scale (text-sm, text-base, text-lg)
-- Shadows use scale (shadow-sm, shadow-md, shadow-lg)
-
-✅ **Component reuse** (verified by lint + manual):
-- Suggested components from plan.md used where applicable
-- New components justified in Design System Constraints section
-- Components match ui-inventory.md patterns
-- No duplicate implementations detected
-
-✅ **Accessibility baseline** (verified by lint + manual):
-- Touch targets ≥24x24px (44x44px preferred)
-- Color contrast ≥4.5:1 for text (lint verified)
-- Focus indicators visible (2px outline, 4.5:1 contrast)
-- Semantic HTML (<button> not <div onclick>)
-- ARIA labels on icon-only buttons
-- Form labels associated with inputs (for/id)
-- Keyboard navigation works (Tab, Enter, Esc)
-
-✅ **Consistency** (manual review):
-- Matches approved patterns from previous features
-- No deviations without justification
-- Card padding, form layouts, header styles consistent
-
-### Example Task Breakdown (Multi-Screen Feature)
-
-**Feature: User Onboarding (4 screens)**
-
-```markdown
-## Phase 1: Mockup Generation
-
-### T001: Create mockup navigation hub
-**Depends On**: T000
-**Source**: plan.md:120-135
-
-**Acceptance Criteria**:
-- [ ] index.html created from template
-- [ ] 4 screen cards with descriptions
-- [ ] User flow diagram includes: Welcome → Sign Up → Profile Setup → Dashboard
-- [ ] Keyboard shortcuts documented (1-4 navigate, H returns to hub)
-
-### T002: Create welcome screen mockup
-**Depends On**: T001
-**Source**: spec.md:45-52 (User Story 1)
-
-**Acceptance Criteria**:
-- [ ] screen-01-welcome.html created from template
-- [ ] Success state: Hero section + CTA button
-- [ ] Loading state: Skeleton loader for hero
-- [ ] Empty state: N/A (welcome always has content)
-- [ ] Error state: N/A (static welcome page)
-- [ ] Breadcrumb links to hub
-- [ ] CTA button navigates to screen-02-signup.html
-
-### T003: Create signup screen mockup
-**Depends On**: T001
-**Source**: spec.md:53-60 (User Story 2)
-
-**Acceptance Criteria**:
-- [ ] screen-02-signup.html created from template
-- [ ] Success state: Form (email, password, name) + submit button
-- [ ] Loading state: Form disabled + spinner in submit button
-- [ ] Error state: Alert with validation errors + retry
-- [ ] Success submission navigates to screen-03-profile-setup.html
-- [ ] Uses Form, Input, Label, Button components (from ui-inventory.md)
-
-### T004: Create profile setup screen mockup
-**Depends On**: T001
-**Source**: spec.md:61-68 (User Story 3)
-
-**Acceptance Criteria**:
-- [ ] screen-03-profile-setup.html created from template
-- [ ] Success state: Avatar upload + bio textarea + interests checkboxes
-- [ ] Loading state: Skeleton for avatar + disabled form
-- [ ] Error state: Alert with upload error + retry
-- [ ] Empty state: N/A (optional fields)
-- [ ] Submit navigates to screen-04-dashboard.html
-
-### T005: Create dashboard screen mockup
-**Depends On**: T001
-**Source**: spec.md:69-76 (User Story 4)
-
-**Acceptance Criteria**:
-- [ ] screen-04-dashboard.html created from template
-- [ ] Success state: Welcome message + onboarding progress + next steps
-- [ ] Loading state: Skeleton cards for dashboard widgets
-- [ ] Error state: Alert for data fetch failure + retry
-- [ ] Empty state: "Complete your profile" prompt
-- [ ] Sidebar navigation with active state indicator
-
-### T006: Wire multi-screen navigation
-**Depends On**: T002, T003, T004, T005
-**Source**: plan.md:160-170
-
-**Acceptance Criteria**:
-- [ ] All screen links functional (welcome → signup → profile → dashboard)
-- [ ] Keyboard shortcuts work (1=welcome, 2=signup, 3=profile, 4=dashboard, H=hub)
-- [ ] Breadcrumbs on all screens link to hub
-- [ ] User flow matches diagram in index.html
-
-### T007: Complete mockup approval checklist
-**Depends On**: T006
-**Source**: mockup-approval-checklist.md
-
-**Acceptance Criteria**:
-- [ ] All screens reviewed in browser
-- [ ] All states tested (S key cycles correctly)
-- [ ] Design tokens verified (no hardcoded colors)
-- [ ] Component reuse verified (matches ui-inventory.md)
-- [ ] WCAG 2.1 AA contrast checked
-- [ ] Touch targets measured (≥24x24px)
-- [ ] Checklist submitted in specs/NNN-onboarding/mockup-approval-checklist.md
-- [ ] workflow-state.yaml updated: manual_gates.mockup_approval.status = approved
-
-## Phase 2: Implementation (Blocked until T007 approved)
-
-### T008: Convert welcome screen to Next.js component
-[Implementation tasks follow after mockup approval...]
-```
-
-### Anti-Patterns to Avoid
-
-❌ **Don't create mockups without reading templates first**
-- Templates contain accessibility features, token usage, keyboard shortcuts
-- Copying templates ensures consistency
-
-❌ **Don't hardcode colors or spacing**
-```html
-<!-- BAD -->
-<div style="padding: 20px; color: #3b82f6;">
-
-<!-- GOOD -->
-<div style="padding: var(--space-5); color: var(--color-brand-primary);">
-```
-
-❌ **Don't skip states**
-```html
-<!-- BAD - only success state -->
-<div class="show-on-success">...</div>
-
-<!-- GOOD - all 4 states -->
-<div class="show-on-success">...</div>
-<div class="show-on-loading">...</div>
-<div class="show-on-error">...</div>
-<div class="show-on-empty">...</div>
-```
-
-❌ **Don't create new components without checking ui-inventory.md**
-- Always check Design System Constraints in plan.md first
-- Reuse existing components before creating new ones
-
-❌ **Don't wire navigation without testing keyboard shortcuts**
-- Press 1-9 to verify screen navigation
-- Press H to verify hub return
-- Press S to verify state cycling
-
-### Success Metrics
-
-**Target outcomes for multi-screen mockups:**
-- 100% screen coverage (all screens from spec.md have mockups)
-- 100% state coverage (all screens show 4 states)
-- 95%+ token compliance (minimal hardcoded values)
-- 90%+ component reuse (few new components)
-- <10 minutes mockup review time (efficient keyboard navigation)
+- Batch 3: Integration tasks (depends on both)
+
+See `.claude/skills/task-breakdown-phase/reference.md` for task structure guidelines and TDD patterns.
+</task_structure>
+
+<standards>
+**Industry Standards**:
+- **TDD**: [Test-Driven Development (Martin Fowler)](https://martinfowler.com/bliki/TestDrivenDevelopment.html)
+- **Parallel Execution**: [Critical Path Method](https://en.wikipedia.org/wiki/Critical_path_method)
+- **API Contracts**: [OpenAPI 3.0 Specification](https://swagger.io/specification/)
+- **Multi-Screen UX**: [WCAG 2.2 AA](https://www.w3.org/TR/WCAG22/)
+
+**Workflow Standards**:
+- All tasks cite source lines from plan.md or spec.md
+- Anti-hallucination rules enforced (verify code exists before creating tasks)
+- TDD sequence followed within each task group
+- Dependencies verified (no circular dependencies)
+- Idempotent execution (safe to re-run)
+</standards>
+
+<notes>
+**Script location**: The bash implementation is at `.spec-flow/scripts/bash/tasks-workflow.sh`. It is invoked via spec-cli.py for cross-platform compatibility.
+
+**Reference documentation**: Anti-hallucination rules, epic sprint breakdown (9 steps), multi-screen mockup workflow, TDD sequencing, and all detailed procedures are in `.claude/skills/task-breakdown-phase/reference.md`.
+
+**Version**: v2.0 (2025-11-17) - Added epic sprint breakdown, multi-screen mockup workflow, UI-first mode with manual approval gate.
+
+**Next steps after tasks**:
+- Feature: `/validate` (recommended) or `/implement`
+- Epic: `/implement` (parallel sprint execution)
+- UI-first: `/implement` → mockups → approval → `/implement --continue`
+</notes>

@@ -1,261 +1,449 @@
 ---
-description: Automated staging→production promotion with versioning and tagged deployment
-version: 3.0
-updated: 2025-11-17
+name: ship-prod
+description: Automated staging→production promotion via git tag creation, triggering GitHub Actions deployment, and creating GitHub release
 internal: true
+argument-hint: [--version major|minor|patch]
+allowed-tools: [Bash(python .spec-flow/*), Bash(git tag:*), Bash(git push:*), Bash(git log:*), Bash(git status:*), Read, Grep]
 ---
 
-> **⚠️  INTERNAL COMMAND**: This command is called automatically by `/ship`.
+> **⚠️ INTERNAL COMMAND**: This command is automatically called by `/ship` after automated staging validation passes.
 > Most users should use `/ship` instead of calling this directly.
 
 # /ship-prod — Production Deployment (Tagged Promotion)
 
-**Purpose**: Automated staging→production promotion via git tag creation. Creates semantic version tag, pushes to trigger GitHub Actions deployment, waits for completion, creates GitHub release.
-
-**When to use**: After automated staging validation passes. This is the final step to ship features to production (fully automated).
-
-**Usage**: `/ship-prod [--version major|minor]` (defaults to patch bump)
-
-**Workflow position**: `spec-flow → clarify → plan → tasks → analyze → implement → optimize → ship-staging → [automated validation] → **ship-prod**`
-
----
-
 <context>
-## MENTAL MODEL
+**Arguments**: $ARGUMENTS
+
+**Current Feature Directory**: !`find specs/ -maxdepth 1 -type d -name "[0-9]*" | sort -n | tail -1 2>$null || echo "none"`
+
+**Workflow State**: @specs/*/workflow-state.yaml
+
+**Staging Validation Report**: @specs/*/staging-validation-report.md
+
+**Current Version in CHANGELOG**: !`grep "^## \[" CHANGELOG.md | head -1 | grep -oP '\[\K[0-9]+\.[0-9]+\.[0-9]+' || echo "unknown"`
+
+**Git Status**: !`git status --short 2>$null || echo "clean"`
+
+**Recent Git Tags**: !`git tag -l "v*" | sort -V | tail -5 || echo "none"`
+
+**GitHub CLI Status**: !`gh auth status 2>$null | head -1 || echo "not authenticated"`
+
+**Production Workflow**: !`test -f .github/workflows/deploy-production.yml && echo "exists" || echo "missing"`
+
+**Staging Validation Status**: !`grep -E "✅|❌" specs/*/staging-validation-report.md 2>$null | head -5 || echo "unknown"`
+</context>
+
+<objective>
+Automated staging→production promotion via git tag creation for projects using the `staging-prod` deployment model.
+
+**Purpose**: Create semantic version tag, push to trigger GitHub Actions deployment, monitor completion, and create GitHub release.
 
 **Tagged Promotion Flow**:
 1. Automated staging validation completes (`/validate-staging --auto`)
-2. LLM triggers `/ship-prod` (fully automated)
-3. Script extracts version from CHANGELOG.md
-4. Script defaults to patch bump (override with `--version major|minor` if needed)
-5. Script creates annotated git tag (v1.2.3)
-6. Script pushes tag to origin
-7. GitHub Actions workflow triggers on tag push
-8. Workflow deploys to production, runs smoke tests
-9. Workflow creates GitHub Release with changelog excerpt
-10. Script polls workflow status until complete
-11. Script updates workflow-state.yaml with version/tag/URLs
+2. `/ship-prod` triggered automatically (or with `--version` override)
+3. Extract version from CHANGELOG.md, default to patch bump
+4. Create annotated git tag (e.g., `v1.2.3`)
+5. Push tag to origin
+6. GitHub Actions workflow triggers on tag push
+7. Workflow deploys to production, runs smoke tests
+8. Workflow creates GitHub Release with changelog excerpt
+9. Poll workflow status until complete
+10. Update workflow-state.yaml with version/tag/URLs
 
-**Philosophy**: Fully automated from staging environment → production environment. Zero manual gates - defaults to patch versioning, uses conventional commits for auto-detection when possible. Once tag is pushed, GitHub Actions handles deployment, testing, and release creation.
+**Philosophy**: Fully automated from staging environment → production environment. Zero manual gates - defaults to patch versioning (most common for bug fixes and minor improvements). Once tag is pushed, GitHub Actions handles deployment, testing, and release creation.
 
-**Token efficiency**: Bash script handles version selection, tag creation, and GitHub Actions polling. LLM only processes results.
+**Branch Model**: No staging branch exists. Main branch is deployed to staging environment. Production deployment is triggered by tag push (not branch merge).
 
-**Branch model**: No staging branch exists. Main branch is deployed to staging environment. Production deployment is triggered by tag push (not branch).
+**Arguments**:
+- (empty): Default to patch version bump (1.2.3 → 1.2.4)
+- `--version major`: Major version bump for breaking changes (1.2.3 → 2.0.0)
+- `--version minor`: Minor version bump for new features (1.2.3 → 1.3.0)
+- `--version patch`: Explicit patch bump (same as default)
 
-</context>
+**Prerequisites**:
+- Staging validation passed (all checks in staging-validation-report.md)
+- CHANGELOG.md contains unreleased version entry
+- GitHub Actions production workflow exists (`.github/workflows/deploy-production.yml`)
+- Production workflow configured with tag trigger: `on: push: tags: - 'v*.*.*'`
+
+**Timing**: 5-10 minutes (depends on deployment platform build time)
+</objective>
+
+## Anti-Hallucination Rules
+
+**CRITICAL**: Follow these rules to prevent production deployment failures.
+
+1. **Never invent production URLs**
+   - Extract actual URLs from workflow-state.yaml or deployment logs
+   - If URL unknown, say: "Production URL not captured (check deployment platform)"
+   - Don't guess at domain names or subdomains
+
+2. **Quote workflow-state.yaml exactly for version info**
+   - Don't paraphrase deployment metadata
+   - If field missing, report: "Version not recorded in workflow-state.yaml"
+   - Read actual file content after deployment
+
+3. **Cite GitHub Actions logs for deployment status**
+   - Link to actual workflow run (extract from script output)
+   - Don't fabricate deployment IDs or timestamps
+   - Verify actual workflow conclusion (success/failure)
+
+4. **Never claim deployment success without verifying exit code**
+   - Script exit 0 = success
+   - Script exit 1 = failure (even if tag was created)
+   - Check actual bash exit code before reporting success
+
+5. **Don't invent version numbers**
+   - Extract version from CHANGELOG.md or script output
+   - If version selection fails, report error (don't make up version)
+   - Never guess at next version number
+
+**Why this matters**: False success claims for production deployments cause confusion and potential outages. Accurate reporting of actual deployment status prevents production incidents.
 
 ---
 
-<instructions>
-## USER INPUT
+<process>
 
-```text
-$ARGUMENTS
+### Step 1: Validate Staging Readiness
+
+**Verify staging validation passed**:
+
+Check that staging-validation-report.md exists and all checks passed:
+```bash
+test -f "$FEATURE_DIR/staging-validation-report.md"
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
+If file doesn't exist:
+```
+❌ Staging validation not complete
 
-## Execute Production Deployment Workflow
+Cannot proceed to production without staging validation.
+Run: /ship to complete the full deployment workflow
+```
+EXIT immediately
 
-Run the centralized spec-cli tool:
+**Verify all validation checks passed**:
+```bash
+grep -E "❌" "$FEATURE_DIR/staging-validation-report.md"
+```
+
+If any ❌ found:
+```
+❌ Staging validation failed
+
+Review failures in: $FEATURE_DIR/staging-validation-report.md
+Fix issues and re-deploy to staging before production
+```
+EXIT immediately
+
+### Step 2: Execute Production Deployment Script
+
+**Run centralized spec-cli tool with arguments**:
 
 ```bash
-python .spec-flow/scripts/spec-cli.py ship-prod "$FEATURE_DIR"
+python .spec-flow/scripts/spec-cli.py ship-prod "$FEATURE_DIR" $ARGUMENTS
 ```
 
-**What the script does:**
+**What the script does**:
 
-1. **Validate staging readiness**:
-   - Checks for staging-validation-report.md
-   - Confirms all checks passed
-
-2. **Version selection** (automatic with override):
+1. **Version selection** (automatic with override):
    - Extracts current version from CHANGELOG.md
-   - Defaults to patch bump (most common - bug fixes, minor improvements)
-   - Can override with `--version major|minor` flag if breaking changes or new features
+   - Defaults to patch bump: 1.2.3 → 1.2.4 (most common - bug fixes, minor improvements)
+   - Respects `--version major|minor|patch` flag if provided in $ARGUMENTS
    - Validates semantic versioning format (vMAJOR.MINOR.PATCH)
    - No interactive prompt - fully automated
 
-3. **Create git tag**:
-   - Checks if tag already exists
-   - Ensures clean working directory (commits changes if needed)
-   - Creates annotated tag with release message
-   - Example: `git tag -a v1.2.3 -m "Release v1.2.3..."`
+2. **Create git tag**:
+   - Checks if tag already exists (fail if duplicate)
+   - Ensures clean working directory
+   - Creates annotated tag: `git tag -a v1.2.3 -m "Release v1.2.3"`
 
-4. **Push tag to trigger deployment**:
+3. **Push tag to trigger deployment**:
    - Pushes tag to origin: `git push origin v1.2.3`
-   - GitHub Actions workflow (`deploy-production.yml`) triggers on tag push
+   - GitHub Actions workflow (`.github/workflows/deploy-production.yml`) triggers on tag push
    - Tag push is atomic - deployment starts immediately
 
-5. **Monitor deployment** (if gh CLI available):
+4. **Monitor deployment** (if gh CLI available):
    - Finds workflow run ID for the tag
    - Polls GitHub Actions status every 30 seconds
-   - Streams deployment logs
+   - Streams deployment logs to console
    - Waits for deployment completion
    - Exits with error if deployment fails
 
-6. **Update workflow state**:
+5. **Update workflow state**:
    - Writes version, tag, timestamp to workflow-state.yaml
    - Records GitHub release URL
-   - Updates deployment.production section
+   - Updates `deployment.production` section
 
-**Script output provides context for LLM:**
-
+**Script output format**:
 ```
 Version: v1.2.3
+Tag Created: v1.2.3
 GitHub Release: https://github.com/user/repo/releases/tag/v1.2.3
 Workflow Run: https://github.com/user/repo/actions/runs/12345
+Deployment Time: 2025-11-20T10:30:00Z
 ```
 
-**After script completes, you (LLM) must:**
+### Step 3: Verify Deployment Success
 
-## 1) Verify Deployment Success
-
-**Check script exit code:**
+**Check script exit code**:
 - Exit 0: Deployment succeeded
 - Exit 1: Deployment failed
 
-**If failed:**
-- Read error messages from script output
-- Check GitHub Actions logs (URL provided in output)
-- Common failures:
-  - Build errors (npm run build failed)
-  - Test failures (production smoke tests)
-  - Deployment platform errors (Vercel/Railway/Netlify)
-  - Missing secrets in GitHub
+**If script exited with code 1**:
 
-## 2) Read Deployment Metadata
+Display failure message:
+```
+❌ Production Deployment Failed
 
-**Load workflow-state.yaml:**
+Error: <error-message-from-script-output>
 
-```bash
-Read(specs/$SLUG/workflow-state.yaml)
+GitHub Actions logs: <workflow-run-url-from-script>
+
+Common failures:
+  1. Build errors (npm run build failed)
+  2. Test failures (production smoke tests)
+  3. Deployment platform errors (Vercel/Railway/Netlify)
+  4. Missing secrets in GitHub
+
+After fixing, retry production deployment:
+  1. Delete tag locally: git tag -d v<version>
+  2. Delete tag remotely: git push origin :refs/tags/v<version>
+  3. Fix the issue (build errors, secrets, etc.)
+  4. Run /ship-prod again
 ```
 
-**Extract production deployment info:**
+Update workflow phase to failed and EXIT
+
+**If script exited with code 0**:
+
+Proceed to Step 4
+
+### Step 4: Read Deployment Metadata
+
+**Load workflow-state.yaml**:
+```bash
+Read(specs/$FEATURE_DIR/workflow-state.yaml)
+```
+
+**Extract production deployment info** from workflow-state.yaml:
 - `deployment.production.version` - Deployed version (e.g., "1.2.3")
 - `deployment.production.tag` - Git tag (e.g., "v1.2.3")
 - `deployment.production.tag_created_at` - Tag creation timestamp
 - `deployment.production.deployed_at` - Deployment completion timestamp
 - `deployment.production.github_release_url` - GitHub release URL
+- `deployment.production.production_urls` - Array of production URLs (if available)
 
-## 3) Present Deployment Summary
+**If any required field is missing**:
 
-**Format:**
+Report exactly which field is missing:
+```
+⚠️  Deployment metadata incomplete
+
+Missing field: deployment.production.<field-name>
+
+Deployment may have succeeded, but metadata not recorded.
+Check GitHub Actions logs and deployment platform manually.
+```
+
+### Step 5: Present Deployment Summary
+
+**Format deployment summary** using actual metadata from workflow-state.yaml:
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ Production Deployment Complete
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Feature: <feature-slug>
-Version: v<version>
-Tag: v<version>
+Feature: {feature-slug}
+Version: v{version}
+Tag: {tag}
 
+{If production_urls available}
 Production URLs:
-  - Marketing: https://example.com
-  - App: https://app.example.com
-  - API: https://api.example.com
+  - {url-1}
+  - {url-2}
+  ...
 
-GitHub Release: <github-release-url>
-Deployment Time: <timestamp>
+{If production_urls not available}
+Production URL: See deployment platform dashboard
 
-Next: Full documentation finalization will run automatically.
+GitHub Release: {github_release_url}
+Deployed At: {deployed_at}
+
+Next: Full documentation finalization will run automatically via /finalize
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-## 4) Handle Errors
+**All values must come from actual workflow-state.yaml content**. Do not invent URLs, versions, or timestamps.
 
-**If deployment fails:**
+</process>
 
-```
-❌ Production Deployment Failed
+<success_criteria>
+**Production deployment successfully completed when:**
 
-Error: <error-message-from-script>
+1. **Staging validation verified**:
+   - staging-validation-report.md exists
+   - All validation checks passed (no ❌ in report)
 
-GitHub Actions logs: <workflow-run-url>
+2. **Deployment script executed successfully**:
+   - `python .spec-flow/scripts/spec-cli.py ship-prod` exited with code 0
+   - No error messages in script output
 
-Common fixes:
-  1. Check build errors in workflow logs
-  2. Verify all secrets are configured in GitHub
-  3. Check deployment platform (Vercel/Railway) status
-  4. Validate production environment variables
+3. **Git tag created and pushed**:
+   - Tag exists in `git tag -l` output
+   - Tag pushed to remote (visible in GitHub repository)
+   - Tag follows semantic versioning: v{MAJOR}.{MINOR}.{PATCH}
 
-After fixing, you can retry:
-  - Delete tag locally: git tag -d v<version>
-  - Delete tag remotely: git push origin :refs/tags/v<version>
-  - Re-run /ship-prod
-```
+4. **GitHub Actions workflow completed**:
+   - Workflow triggered by tag push
+   - Workflow run completed successfully (not failed or cancelled)
+   - Workflow run URL accessible
 
-</instructions>
+5. **Deployment metadata recorded**:
+   - workflow-state.yaml updated with production deployment info
+   - Version, tag, timestamps recorded
+   - GitHub release URL recorded
+
+6. **GitHub release created**:
+   - Release exists at recorded URL
+   - Release contains changelog excerpt
+   - Release tagged with correct version
+
+7. **User informed**:
+   - Deployment summary displayed with actual metadata
+   - Production URLs displayed (or warning if unavailable)
+   - GitHub release URL displayed
+   - Next steps indicated (/finalize)
+</success_criteria>
+
+<verification>
+**Before marking ship-prod complete, verify:**
+
+1. **Check git tag exists locally and remotely**:
+   ```bash
+   git tag -l "v*" | grep "v{version}"
+   # Should show the new tag
+
+   git ls-remote --tags origin | grep "v{version}"
+   # Should show tag exists on remote
+   ```
+
+2. **Verify workflow-state.yaml updated**:
+   ```bash
+   yq eval '.deployment.production.version' "$FEATURE_DIR/workflow-state.yaml"
+   # Should show actual version number (e.g., "1.2.3")
+
+   yq eval '.deployment.production.tag' "$FEATURE_DIR/workflow-state.yaml"
+   # Should show tag with v prefix (e.g., "v1.2.3")
+
+   yq eval '.deployment.production.github_release_url' "$FEATURE_DIR/workflow-state.yaml"
+   # Should show actual GitHub release URL
+   ```
+
+3. **Verify GitHub release exists**:
+   ```bash
+   gh release view "v{version}"
+   # Should display release details without error
+   ```
+
+4. **Verify deployment script success**:
+   - Script exit code was 0 (not 1)
+   - No error messages in script output
+   - Deployment completion message displayed
+
+5. **Verify no metadata fabrication**:
+   - Production URLs from actual workflow-state.yaml (not guessed)
+   - Version number from actual CHANGELOG.md or script output (not invented)
+   - GitHub release URL from actual workflow output (not constructed)
+   - Timestamps from actual workflow-state.yaml (not current time)
+
+**Never claim deployment complete without:**
+- Actual script exit code 0
+- Actual git tag created and pushed
+- Actual GitHub release URL from workflow-state.yaml
+- Actual version number from CHANGELOG.md or script
+</verification>
+
+<output>
+**Files created/modified by this command:**
+
+**Git artifacts**:
+- Git tag created: `v{version}` (annotated tag with release message)
+- Tag pushed to remote: `origin/v{version}`
+
+**GitHub artifacts**:
+- GitHub Release created at: `https://github.com/{owner}/{repo}/releases/tag/v{version}`
+- Workflow run triggered: `https://github.com/{owner}/{repo}/actions/runs/{run-id}`
+
+**Workflow state**:
+- `specs/{feature-slug}/workflow-state.yaml` - Updated with:
+  - `deployment.production.version` = "{version}"
+  - `deployment.production.tag` = "v{version}"
+  - `deployment.production.tag_created_at` = ISO 8601 timestamp
+  - `deployment.production.deployed_at` = ISO 8601 timestamp
+  - `deployment.production.github_release_url` = Release URL
+  - `deployment.production.workflow_run_id` = GitHub Actions run ID
+  - `deployment.production.production_urls` = Array of URLs (if available)
+
+**Console output**:
+- Version selection (patch/minor/major)
+- Tag creation confirmation
+- Tag push confirmation
+- Deployment monitoring progress (from GitHub Actions)
+- Deployment completion status
+- GitHub release URL
+- Production deployment summary with metadata
+</output>
 
 ---
 
-<constraints>
-## ANTI-HALLUCINATION RULES
+## Notes
 
-1. **Never invent production URLs**
-   - Extract actual URLs from workflow-state.yaml or deployment logs
-   - If URL unknown, say: "Production URL not captured (check deployment platform)"
+**Rollback Procedure**:
 
-2. **Quote workflow-state.yaml exactly for version info**
-   - Don't paraphrase deployment metadata
-   - If field missing, report: "Version not recorded in workflow-state.yaml"
+If production deployment has issues, redeploy previous version:
 
-3. **Cite GitHub Actions logs for deployment status**
-   - Link to actual workflow run (extract from script output)
-   - Don't fabricate deployment IDs or timestamps
-
-4. **Never claim deployment success without verifying exit code**
-   - Script exit 0 = success
-   - Script exit 1 = failure (even if tag was created)
-
-5. **Don't skip version selection prompt**
-   - Script is interactive by design (HITL gate for version choice)
-   - User must choose patch/minor/major or enter custom version
-
-</constraints>
-
----
-
-## NOTES
-
-**Tagged Promotion vs Workflow Dispatch:**
-- **Old approach**: Manually trigger `promote.yml` workflow via workflow_dispatch API
-- **New approach**: Push semantic version tag, workflow triggers automatically
-- **Benefits**:
-  - Clear version history in git tags
-  - Easy rollback (redeploy previous tag)
-  - GitHub releases auto-created with changelogs
-  - Auditability (git log shows all production releases)
-
-**Rollback procedure:**
 ```bash
 # Find previous version tag
 git tag -l "v*" | sort -V | tail -5
 
-# Deploy previous version
-git push origin v1.2.2  # GitHub Actions deploys old version
+# Redeploy previous version (triggers new GitHub Actions run)
+git push origin v1.2.2
 
 # Or delete bad version and recreate
 git tag -d v1.2.3
 git push origin :refs/tags/v1.2.3
-# Then run /ship-prod again with corrected CHANGELOG
+# Fix CHANGELOG, then run /ship-prod again
 ```
 
-**Deployment platform configuration:**
-- Set `DEPLOY_PLATFORM` env var in `.github/workflows/deploy-production.yml`
-- Options: `vercel`, `railway`, `netlify`, `custom`
-- Add platform-specific secrets to GitHub repo settings
+**Required GitHub Secrets** (configured in repository settings):
 
-**Required GitHub Secrets:**
-- `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (if Vercel)
-- `RAILWAY_TOKEN`, `RAILWAY_SERVICE` (if Railway)
-- `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID` (if Netlify)
-- `PRODUCTION_URL` (for smoke tests)
+- Platform-specific secrets:
+  - Vercel: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
+  - Railway: `RAILWAY_TOKEN`, `RAILWAY_SERVICE`
+  - Netlify: `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`
+- Testing: `PRODUCTION_URL` (for smoke tests)
 
-**Workflow file**: `.github/workflows/deploy-production.yml`
-- Triggers on: `push: tags: - 'v*.*.*'`
-- Builds production artifacts
-- Deploys to platform
-- Runs smoke tests
-- Creates GitHub Release with changelog excerpt
+**Workflow File**: `.github/workflows/deploy-production.yml`
+
+Must include tag trigger:
+```yaml
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+```
+
+Workflow should:
+1. Build production artifacts
+2. Deploy to platform (Vercel/Railway/Netlify)
+3. Run smoke tests against production URL
+4. Create GitHub Release with changelog excerpt
+
+**Tagged Promotion Benefits**:
+- Clear version history in git tags (audit trail)
+- Easy rollback (redeploy previous tag)
+- GitHub releases auto-created with changelogs
+- Auditability (git log shows all production releases)
+- No manual workflow dispatch API calls needed

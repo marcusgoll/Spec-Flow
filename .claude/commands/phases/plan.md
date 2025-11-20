@@ -1,313 +1,269 @@
 ---
-description: Generate design artifacts from feature spec (research + design + context plan)
-version: 3.0
-updated: 2025-11-17
+description: Generate implementation plan from spec using research-driven design (meta-prompting for epics)
+allowed-tools: [Read, Grep, Glob, Bash(python *spec-cli.py*), Bash(git *), Task, AskUserQuestion, SlashCommand]
+argument-hint: [feature-name or epic-slug]
 ---
-
-# /plan — Implementation Plan Generator
-
-Design implementation for: $ARGUMENTS
-
-**Flags:**
-- `--interactive` : Force wait for user confirmation (no auto-proceed timeout)
-- `--yes` : Skip all HITL gates (ambiguity + confirmation) and auto-commit (full automation)
-- `--skip-clarify` : Skip spec ambiguity gate only (still show confirmation before commit)
-- Environment: `SPEC_FLOW_INTERACTIVE=true` for global interactive mode
 
 <context>
-## MENTAL MODEL
+Current git status: !`git status --short | head -10`
 
-**Workflow**: spec → clarify → plan → tasks → implement → optimize → preview → ship
+Current branch: !`git branch --show-current`
 
-**Phases:**
-- Phase 0: Research & Discovery → research.md
-- Phase 0.5: Design System Research (UI features) → design-scout agent generates Design System Constraints
-- Phase 1: Design & Contracts → data-model.md, contracts/, quickstart.md, plan.md
+Feature workspace: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>/dev/null | jq -r '.FEATURE_DIR // "Not initialized"'`
 
-**State machine:**
-- Setup → [AMBIGUITY GATE] → Constitution check → Phase 0 (Research) → Phase 0.5 (Design System - UI only) → Phase 1 (Design) → [CONFIRMATION GATE] → Commit → [DECISION TREE]
+Project docs: !`ls -1 docs/project/*.md 2>/dev/null | wc -l` files available
 
-**HITL Gates (3 total):**
-1. **Ambiguity gate** (blocking): Detects spec ambiguities, requires /clarify or explicit proceed
-2. **Confirmation** (before commit): Shows architecture summary, 10s timeout
-3. **Decision tree** (after commit): Executable next-step commands via SlashCommand tool
-- **Auto-skipped when**: `--yes` flag skips all, `--skip-clarify` skips gate #1, `/feature continue` skips all
-
-**Auto-suggest:**
-- UI features → `/design-variations` or `/tasks`
-- Backend features → `/tasks`
-
-**Prerequisites:**
-- Git repository
-- jq installed (JSON parsing)
-- Feature spec completed (spec.md exists)
-- Working directory clean (uncommitted changes allowed)
+Spec exists: !`test -f specs/*/spec.md && echo "✅ Found" || echo "❌ Missing"`
 </context>
 
-<constraints>
-## ANTI-HALLUCINATION RULES
+<objective>
+Generate implementation plan for $ARGUMENTS using research-driven design.
 
-**CRITICAL**: Follow these rules to prevent making up architectural decisions.
+For **epics**: Uses meta-prompting workflow to generate research.xml → plan.xml via isolated sub-agents
+For **features**: Uses traditional planning workflow with project docs integration
 
-1. **Never speculate about existing patterns you have not read**
+This ensures architecture decisions are grounded in existing codebase patterns and project documentation.
+
+**Dependencies**:
+- Git repository initialized
+- Feature spec completed (spec.md exists)
+- Required tools: git, jq, yq (xmllint for epics)
+
+**Flags**:
+- `--interactive` : Force wait for user confirmation (no auto-proceed timeout)
+- `--yes` : Skip all HITL gates (ambiguity + confirmation) and auto-commit
+- `--skip-clarify` : Skip spec ambiguity gate only
+- Environment: `SPEC_FLOW_INTERACTIVE=true` for global interactive mode
+</objective>
+
+<process>
+1. **Execute planning workflow** via spec-cli.py:
+   ```bash
+   python .spec-flow/scripts/spec-cli.py plan "$ARGUMENTS" [flags]
+   ```
+
+   The plan-workflow.sh script performs:
+
+   a. **Detect workspace type**: Epic vs Feature
+      - Epic: If `epics/*/epic-spec.xml` exists
+      - Feature: Otherwise
+
+   b. **Epic workflows only** (Meta-prompting pipeline):
+      - Generate research prompt via `/create-prompt`
+      - Execute research via `/run-prompt` → research.xml
+      - Generate plan prompt via `/create-prompt`
+      - Execute plan via `/run-prompt` → plan.xml
+      - Copy XML outputs to epic workspace
+      - Validate XML structure
+
+   c. **Feature workflows** (Traditional planning):
+      - Load all 8 project docs (if available)
+      - Run ambiguity gate (blocking if score > 30%)
+      - Run constitution check (validate against 8 core standards)
+      - Phase 0.5: Design system research (UI features only)
+      - Phase 1: Generate design artifacts (plan.md, data-model.md, contracts/, quickstart.md, error-log.md)
+      - Confirmation gate (10s timeout before commit)
+      - Git commit with architecture summary
+      - Decision tree (suggest next steps)
+
+   d. **All workflows**:
+      - Apply anti-hallucination rules (cite existing code, verify dependencies)
+      - Use structured reasoning for complex decisions
+      - Follow HITL gates (ambiguity, confirmation, decision tree)
+      - Auto-suggest next step based on feature type
+
+2. **HITL Gates** (3 checkpoints):
+   - **Ambiguity gate** (blocking): If spec ambiguity > 30%, recommend /clarify
+   - **Confirmation** (10s timeout): Show architecture summary before commit
+   - **Decision tree**: Present next-step options (UI: /design-variations or /tasks, Backend: /tasks)
+
+3. **Review generated artifacts**:
+   - Epic: `research.xml`, `plan.xml`
+   - Feature: `research.md` (if epic), `plan.md`, `data-model.md`, `contracts/api.yaml`, `quickstart.md`, `error-log.md`
+
+4. **Verify constitution compliance** (8 core standards):
+   - Code Reuse First
+   - Test-Driven Development
+   - API Contract Stability
+   - Security by Default
+   - Accessibility First (WCAG 2.2 AA)
+   - Performance Budgets
+   - Observability
+   - Deployment Safety
+
+5. **Present next steps** based on feature type
+</process>
+
+<verification>
+Before completing, verify:
+- Workspace type correctly detected (epic vs feature)
+- All required artifacts generated (research.xml/plan.xml for epics, or plan.md/data-model.md/etc for features)
+- XML validation passed (epic workflows only)
+- Constitution check passed (all 8 standards considered)
+- HITL gates respected (unless --yes or --skip-clarify)
+- Git commit successful (if auto-commit enabled)
+- Next-step suggestions presented
+</verification>
+
+<success_criteria>
+**Epic workflows**:
+- research.xml exists and validates
+- plan.xml exists and validates
+- XML files contain required tags (<findings>, <recommendations>, <phases>, <constraints>)
+- Files copied to epic workspace
+
+**Feature workflows**:
+- plan.md has all 13 sections completed
+- data-model.md includes ERD and schemas
+- contracts/api.yaml is valid OpenAPI 3.0 (if endpoints exist)
+- quickstart.md has runnable setup steps
+- error-log.md initialized
+
+**All workflows**:
+- Anti-hallucination rules followed (citations to existing code)
+- Constitution check passed or auto-remediated
+- HITL gates handled appropriately
+- Git commit created (unless skipped)
+- User knows next action
+</success_criteria>
+
+<mental_model>
+**Workflow state machine**:
+```
+Setup
+  ↓
+[AMBIGUITY GATE] (blocking if score > 30%)
+  ↓
+Constitution Check (8 standards)
+  ↓
+{IF epic}
+  Phase 0: Meta-prompting (research → plan via sub-agents)
+{ELSE}
+  Phase 0: Load project docs
+{ENDIF}
+  ↓
+Phase 0.5: Design System Research (UI only)
+  ↓
+Phase 1: Design & Contracts
+  ↓
+[CONFIRMATION GATE] (10s timeout)
+  ↓
+Git Commit
+  ↓
+[DECISION TREE] (suggest next steps)
+```
+
+**Auto-skip HITL gates when**:
+- `--yes` flag: Skip all gates
+- `--skip-clarify` flag: Skip ambiguity gate only
+- `/feature continue` mode: Skip all gates
+- `SPEC_FLOW_INTERACTIVE=false`: No timeouts
+</mental_model>
+
+<anti_hallucination_rules>
+**CRITICAL**: Follow these rules to prevent invented architecture:
+
+1. **Never speculate** about existing patterns you haven't read
    - ❌ BAD: "The app probably follows a services pattern"
-   - ✅ GOOD: "Let me search for existing service files to understand current patterns"
-   - Use Grep to find patterns: `class.*Service`, `interface.*Repository`
+   - ✅ GOOD: "Let me search for existing service files"
 
-2. **Cite existing code when recommending reuse**
-   - When suggesting to reuse UserService, cite: `api/app/services/user.py:20-45`
-   - When referencing patterns, cite: `api/app/core/database.py:12-18 shows our DB session pattern`
-   - Don't invent reusable components that don't exist
+2. **Cite existing code** when recommending reuse
+   - Example: "Use UserService at api/app/services/user.py:20-45"
 
-3. **Admit when codebase exploration is needed**
-   - If unsure about tech stack, say: "I need to read package.json and search for imports"
-   - If uncertain about patterns, say: "Let me search the codebase for similar implementations"
-   - Never make up directory structures, module names, or import paths
+3. **Admit when exploration needed**
+   - "I need to read package.json and search for imports"
 
-4. **Quote from spec.md exactly when planning**
-   - Don't paraphrase requirements - quote user stories verbatim
-   - Example: "According to spec.md:45-48: '[exact quote]', therefore we need..."
-   - If spec is ambiguous, flag it rather than assuming intent
+4. **Quote spec.md exactly** - don't paraphrase requirements
 
-5. **Verify dependencies exist before recommending**
-   - Before suggesting "use axios for HTTP", check package.json
-   - Before recommending libraries, search existing imports
-   - Don't suggest packages that aren't installed
+5. **Verify dependencies exist** before recommending
+   - Check package.json before suggesting libraries
 
-**Why this matters**: Hallucinated architecture leads to plans that can't be implemented. Plans based on non-existent patterns create unnecessary refactoring. Accurate planning grounded in actual code saves 40-50% of implementation rework.
+**Why**: Hallucinated architecture leads to 40-50% implementation rework.
 
-## REASONING APPROACH
+See `.claude/skills/planning-phase/reference.md` for full details.
+</anti_hallucination_rules>
 
-For complex architecture decisions, show your step-by-step reasoning.
+<constitution_check>
+**8 Core Standards** (validate plan against these):
 
-**When to use structured thinking:**
-- Choosing architectural patterns (e.g., REST vs GraphQL, monolith vs microservices)
-- Selecting libraries or frameworks (e.g., Redux vs Context API)
-- Designing database schemas (normalization vs denormalization)
-- Planning file/folder structure for new features
-- Deciding on code reuse vs new implementation
+1. **Code Reuse First** - Search before creating, cite existing patterns
+2. **Test-Driven Development** - Tests before implementation
+3. **API Contract Stability** - Versioning, backward compatibility
+4. **Security by Default** - Input validation, auth required, OWASP compliance
+5. **Accessibility First** - WCAG 2.2 AA minimum
+6. **Performance Budgets** - Explicit targets (p95/p99 latency, bundle size)
+7. **Observability** - Structured logging, metrics, tracing
+8. **Deployment Safety** - Blue-green, rollback capability, health checks
 
-**Benefits**: Explicit reasoning reduces architectural rework by 30-40% and improves maintainability.
-</constraints>
+**Auto-remediation**: If standard missing, add boilerplate section to plan.md with TODO.
 
-<instructions>
-## USER INPUT
+See `.claude/skills/planning-phase/reference.md` for implementation details.
+</constitution_check>
 
-```text
-$ARGUMENTS
+<meta_prompting_workflow>
+**Epic workflows only** (v5.0+):
+
+When plan detects `epics/*/epic-spec.xml`, it uses meta-prompting to generate research and plan via isolated sub-agents.
+
+### Workflow
+
+1. **Generate research prompt** via `/create-prompt "Research technical approach for: $EPIC_OBJECTIVE"`
+2. **Execute research** via `/run-prompt 001-$EPIC_SLUG-research` → research.xml
+3. **Generate plan prompt** via `/create-prompt "Create implementation plan based on research findings"`
+4. **Execute plan** via `/run-prompt 002-$EPIC_SLUG-plan` → plan.xml
+5. **Validate XML** structure and required tags
+6. **Copy to epic workspace** and cleanup prompt artifacts
+
+### Output Structure
+
+**research.xml**:
+```xml
+<research>
+  <findings category="...">...</findings>
+  <recommendations confidence="high|medium|low">...</recommendations>
+  <metadata>
+    <confidence level="...">...</confidence>
+    <dependencies>...</dependencies>
+    <open_questions>...</open_questions>
+  </metadata>
+</research>
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
-
-## Execute Planning Workflow
-
-Run the centralized spec-cli tool:
-
-```bash
-python .spec-flow/scripts/spec-cli.py plan "$ARGUMENTS"
+**plan.xml**:
+```xml
+<plan>
+  <architecture_decisions>...</architecture_decisions>
+  <phases>...</phases>
+  <risks severity="..." probability="...">...</risks>
+  <constraints>...</constraints>
+</plan>
 ```
 
-**What the script does:**
+See `.claude/skills/planning-phase/reference.md` for full meta-prompting workflow details.
+</meta_prompting_workflow>
 
-1. **Tool preflight checks** — Validates git, jq installed
-2. **Setup** — Discovers feature paths via check-prerequisites
-3. **Ambiguity gate (HITL)** — Detects `[NEEDS CLARIFICATION]` markers, offers /clarify or proceed
-4. **Constitution check** — Validates feature against constitution.md principles
-5. **Template validation** — Ensures required templates exist
-6. **Feature type detection** — Counts screens to classify UI-heavy vs backend features
-7. **Phase 0: Research & Discovery** — Determines research depth based on feature classification
-8. **Project documentation integration** — Reads docs/project/*.md (tech-stack, data-architecture, api-strategy, capacity-planning, etc.)
-9. **Phase 1: Design & Contracts** — Generates artifact templates
-10. **Validation** — Checks for unresolved questions
-11. **Confirmation gate (HITL)** — Shows plan summary, requests confirmation
-12. **Git commit** — Commits all generated artifacts
-13. **Decision tree (HITL)** — Presents next steps based on feature type
+<standards>
+**Industry Standards**:
+- **Meta-Prompting**: [Anthropic Guide](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/meta-prompting)
+- **XML Structure**: [Anthropic XML Tags](https://docs.anthropic.com/en/docs/test-and-evaluate/strengthen-guardrails/xml-tags)
+- **Constitutional AI**: [Anthropic Research](https://www.anthropic.com/news/constitutional-ai-harmlessness-from-ai-feedback)
 
-**Script output provides context for LLM:**
+**Workflow Standards**:
+- All architecture decisions cite existing code or project docs
+- Complex decisions show explicit reasoning (reduces rework by 30-40%)
+- HITL gates ensure human oversight at critical checkpoints
+- Idempotent execution (safe to re-run)
+</standards>
 
-The script generates template files and displays a summary. The LLM must then populate these templates with actual content.
+<notes>
+**Script location**: The bash implementation is at `.spec-flow/scripts/bash/plan-workflow.sh`. It is invoked via spec-cli.py for cross-platform compatibility.
 
-**After script completes, you (LLM) must:**
+**Reference documentation**: Anti-hallucination rules, meta-prompting workflow, HITL gates, constitution check, and all detailed procedures are in `.claude/skills/planning-phase/reference.md`.
 
-## 1) Read Generated Artifacts & Perform Research
+**Version**: v5.0 (2025-11-19) - Added meta-prompting for epics, Phase 0.5 design system research, enhanced constitution check with auto-remediation.
 
-### Phase 0: Project Documentation Research
-
-**Read:**
-- `specs/*/spec.md` (feature specification)
-- `specs/*/research.md` (template to populate)
-- `specs/*/plan.md` (template to populate)
-- `docs/project/*.md` (if project docs exist - tech stack, data arch, API strategy)
-
-**Research Depth:**
-- **Minimal** (simple features): 2-3 tools (Read spec, Grep keywords, optional Glob)
-- **Full** (complex features): 5-15 tools (or 2-5 if project docs exist)
-
-**Populate RESEARCH_DECISIONS, REUSABLE_COMPONENTS, NEW_COMPONENTS, UNKNOWNS arrays**
-
-### Phase 0.5: Design System Research (UI Features Only)
-
-**For UI-heavy features (3+ screens), use the design-scout agent:**
-
-Launch the design-scout agent to analyze the existing design system and generate component reuse strategies:
-
-```bash
-# design-scout agent will:
-# 1. Read design/systems/ui-inventory.md, tokens.css, style-guide.md
-# 2. Scan specs/*/mockups/*.html for approved patterns
-# 3. Match feature requirements to existing components
-# 4. Identify new components needed (with justification)
-# 5. Flag consistency deviations from established patterns
-# 6. Generate "Design System Constraints" section for plan.md
-```
-
-**Use Task tool to launch design-scout agent:**
-
-```
-Task tool with subagent_type="design-scout"
-Prompt: "Analyze design system for [feature name] and generate Design System Constraints section.
-
-Requirements from spec.md:
-- [List UI requirements: forms, tables, navigation, etc.]
-
-Generate:
-1. Available component reuse suggestions (exact matches, extensions, new)
-2. Approved patterns from previous features
-3. New components with justification
-4. Token compliance checklist
-5. Accessibility baseline
-6. Consistency warnings (deviations from established patterns)
-
-Output format: Complete 'Design System Constraints' section ready to insert into plan.md"
-```
-
-**Skip this phase if:**
-- Feature has <3 screens (minimal UI)
-- Feature is backend-only (no UI components)
-- Design system files don't exist (ui-inventory.md, tokens.css, style-guide.md missing)
-
-## 2) Generate Planning Artifacts
-
-Use Edit tool to populate templates with actual content:
-
-**research.md** — Research decisions, component reuse analysis, unknowns
-**data-model.md** — Entity definitions, ERD, API schemas, state shape
-**contracts/api.yaml** — OpenAPI 3.0 specifications
-**quickstart.md** — Initial setup, validation, manual testing scenarios
-**plan.md** — Complete architecture document (13 sections including Design System Constraints)
-**error-log.md** — Initialized error tracking template
-
-### plan.md Section Order (for UI Features)
-
-When populating plan.md, include the Design System Constraints section between Project Context and Technical Approach:
-
-```markdown
-# Implementation Plan: [Feature Name]
-
-## 1. Overview
-[Feature summary, goals, success criteria]
-
-## 2. Project Context
-[Existing content from Phase 0 - tech stack, patterns, dependencies]
-
-## 3. Design System Constraints
-[NEW - Output from design-scout agent for UI features]
-[Skip this section for backend-only features]
-
-## 4. Technical Approach
-[Architecture decisions, patterns, data flow]
-
-## 5. Data Model
-[Database schema, API contracts, state shape]
-
-## 6. API Design
-[Endpoint specifications, request/response formats]
-
-## 7. Implementation Plan
-[Task breakdown, dependencies, sequencing]
-
-## 8. Testing Strategy
-[Unit tests, integration tests, E2E scenarios]
-
-## 9. Risks & Mitigations
-[Potential blockers, complexity areas, contingency plans]
-
-## 10. Performance Considerations
-[Optimization strategies, scalability concerns]
-
-## 11. Security Considerations
-[Auth, validation, data protection]
-
-## 12. Monitoring & Observability
-[Logging, metrics, error tracking]
-
-## 13. Rollout Plan
-[Deployment strategy, feature flags, rollback]
-```
-
-## 3) Handle HITL Gates
-
-### Gate 1: Spec Ambiguity
-If script detects `[NEEDS CLARIFICATION]` markers, use AskUserQuestion:
-- Option A: Resolve ambiguities first (/clarify) [RECOMMENDED]
-- Option B: Proceed anyway
-- Option C: Cancel
-
-### Gate 2: Confirmation
-Script shows plan summary. Present to user if not in `--yes` mode:
-1. Commit and continue
-2. Review first
-3. Adjust decisions
-4. Cancel
-
-### Gate 3: Decision Tree
-Based on feature type (UI-heavy vs backend), present appropriate next steps using AskUserQuestion + SlashCommand
-
-## 4) Git Commit
-
-```bash
-git add specs/*/
-git commit -m "design:plan: complete architecture with reuse analysis
-
-[ARCHITECTURE DECISIONS]
-- Stack: [from plan.md]
-- Patterns: [from plan.md]
-
-[EXISTING - REUSE] ({count} components)
-- [from REUSABLE_COMPONENTS]
-
-[NEW - CREATE] ({count} components)
-- [from NEW_COMPONENTS]
-
-Artifacts: research.md, data-model.md, quickstart.md, plan.md, contracts/api.yaml, error-log.md
-
-Next: /tasks
-
-🤖 Generated with Claude Code
-Co-Authored-By: Claude <noreply@anthropic.com>"
-```
-
-## 5) Update NOTES.md
-
-Append Phase 1 checkpoint with metrics (research decisions count, reusable components, new components, migration requirement).
-
-## 6) Present Next Steps
-
-Display decision tree based on feature type:
-- **UI-Heavy**: /design-variations or /tasks
-- **Backend**: /tasks or /feature continue
-
-</instructions>
-
----
-
-## CONTEXT MANAGEMENT
-
-**Before proceeding to /tasks:**
-
-If context feels large, run compaction:
-```bash
-/compact "preserve architecture decisions, reuse analysis, and schema"
-```
-
-Otherwise proceed directly to `/tasks`. No automatic tracking.
+**Next steps after planning**:
+- UI features: `/design-variations` or `/tasks`
+- Backend features: `/tasks`
+- Auto-proceed: `/feature continue`
+</notes>

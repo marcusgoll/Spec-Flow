@@ -1,428 +1,344 @@
 ---
-description: Initialize project design documentation with idempotent operation modes
+description: Generate 8 project design documents (overview, architecture, tech-stack, data, API, capacity, deployment, workflow) via interactive questionnaire or config file
+allowed-tools: [Bash(.spec-flow/scripts/powershell/init-project.ps1:*), Bash(.spec-flow/scripts/bash/init-project.sh:*), Bash(git status:*), Bash(ls:*), Bash(cat:*), Bash(wc:*), Bash(test:*), Bash(jq:*), Bash(yq:*), Bash(gh:*), Read, AskUserQuestion]
+argument-hint: ["project-name"] [--with-design] [--update|--force|--write-missing-only] [--config FILE] [--ci] [--non-interactive]
 ---
 
-Initialize project-level system design: $ARGUMENTS
-
 <context>
-## PURPOSE
+Existing project docs: !`ls -1 docs/project/*.md 2>/dev/null | wc -l` file(s)
 
-Create comprehensive project documentation that answers:
-- **What**: Vision, users, scope (overview.md)
-- **How**: System architecture (C4 model), tech stack (system-architecture.md, tech-stack.md)
-- **Data**: Data architecture (ERD), API strategy (data-architecture.md, api-strategy.md)
-- **Scale**: Capacity planning (capacity-planning.md)
-- **Deploy**: Deployment strategy (deployment-strategy.md)
-- **Team**: Development workflow (development-workflow.md)
-- **Standards**: Engineering principles, ADRs (docs/adr/0001-baseline.md)
+Package manager detected: !`test -f package.json && echo "npm/pnpm" || test -f pyproject.toml && echo "python" || test -f Cargo.toml && echo "rust" || test -f go.mod && echo "go" || echo "unknown"`
 
-These docs are the foundation for all features. Can be run multiple times with different modes.
+Git status: !`git status --short | head -10`
 
-## WORKFLOW INTEGRATION
+Brownfield indicators: !`ls package.json requirements.txt Cargo.toml go.mod docker-compose.yml 2>/dev/null | tr '\n' ', ' || echo "greenfield"`
 
-```
-/init-project (once or multiple times) → /roadmap (ongoing) → /feature (per-feature)
-```
+Design system exists: !`test -d docs/design && echo "yes" || echo "no"`
 
-## OPERATION MODES
-
-**First-time setup** (default):
-```bash
-/init-project "ProjectName"
-```
-
-**Update mode** (only fix [NEEDS CLARIFICATION] sections):
-```bash
-/init-project --update
-```
-
-**Force overwrite** (destructive, regenerate all docs):
-```bash
-/init-project --force
-```
-
-**Write missing only** (preserve existing files):
-```bash
-/init-project --write-missing-only
-```
-
-**CI/CD mode** (non-interactive, fail on missing answers):
-```bash
-INIT_NAME="MyProject" INIT_VISION="..." /init-project --ci
-```
-
-**Config file mode** (load from YAML/JSON):
-```bash
-/init-project --config project-config.json --non-interactive
-```
-
-**Design system mode** (adds design questionnaire):
-```bash
-/init-project --with-design "ProjectName"
-```
-
-## USER INPUT
-
-**Interactive mode** (default):
-- Project name: `$ARGUMENTS` or prompted
-- 15 questions about project vision, tech stack, scale, team
-
-**Design system mode** (--with-design):
-- All 15 core questions PLUS
-- 8 brand personality questions
-- 12 visual language questions (color, typography, density)
-- 6 accessibility questions
-- 7 layout & interaction questions
-- **Total: 48 questions (~20-30 minutes)**
-- **Output**: 4 additional design docs + auto-generated design tokens
-
-**Non-interactive mode**:
-- Environment variables: `INIT_NAME`, `INIT_VISION`, `INIT_USERS`, etc.
-- Config file: JSON or YAML with all answers
+Foundation issue: !`gh issue list --label project-foundation --json number,state 2>/dev/null | jq -r '.[0] | "Issue #\(.number) - \(.state)"' || echo "not created"`
 </context>
 
-## IDEMPOTENT OPERATION
+<objective>
+Generate comprehensive project design documentation (8 core files, 4 optional design files) through interactive questionnaire or config file mode.
 
-The `/init-project` command is now **idempotent** - safe to run multiple times with different modes:
+**Core outputs (always generated):**
+1. `docs/project/overview.md` - Vision, users, scope, metrics
+2. `docs/project/system-architecture.md` - C4 diagrams, data flows
+3. `docs/project/tech-stack.md` - Technology choices with rationale
+4. `docs/project/data-architecture.md` - ERD, entity schemas
+5. `docs/project/api-strategy.md` - REST/GraphQL patterns, versioning
+6. `docs/project/capacity-planning.md` - Scaling model, cost projections
+7. `docs/project/deployment-strategy.md` - CI/CD, environments, rollback
+8. `docs/project/development-workflow.md` - Git flow, PR process, DoD
+9. `docs/adr/0001-project-architecture-baseline.md` - Baseline ADR
 
-**Modes**:
-- `default`: First-time setup (asks before overwriting)
-- `--force`: Overwrite all existing docs (destructive)
-- `--update`: Only update `[NEEDS CLARIFICATION]` sections (safe)
-- `--write-missing-only`: Only create missing files, preserve existing
+**Optional outputs (--with-design flag):**
+- 4 design system docs in `docs/design/`
+- `design/systems/tokens.css` - WCAG AA compliant design tokens
+- `design/systems/tokens.json` - Programmatic token access
 
-**Environment Variables** (for non-interactive/CI mode):
-```bash
-# Required (CI mode only)
-INIT_NAME              # Project name
-INIT_VISION            # One-sentence vision
-INIT_USERS             # Primary users
+**Foundation:**
+These docs establish the foundation for `/roadmap` and `/feature` workflows by documenting architectural decisions, tech stack, and development practices.
 
-# Optional (defaults provided)
-INIT_SCALE             # micro | small | medium | large
-INIT_TEAM_SIZE         # solo | small | medium | large
-INIT_ARCHITECTURE      # monolith | microservices | serverless
-INIT_DATABASE          # PostgreSQL | MySQL | MongoDB | SQLite
-INIT_DEPLOY_PLATFORM   # Vercel | Railway | AWS | Render
-INIT_API_STYLE         # REST | GraphQL | tRPC | gRPC
-INIT_AUTH_PROVIDER     # Clerk | Auth0 | Supabase | Custom | None
-INIT_BUDGET_MVP        # Monthly budget USD (e.g., "50")
-INIT_PRIVACY           # public | PII | GDPR | HIPAA
-INIT_GIT_WORKFLOW      # GitHub Flow | Git Flow | Trunk-Based
-INIT_DEPLOY_MODEL      # staging-prod | direct-prod | local-only
-INIT_FRONTEND          # Next.js | Vite + React | Vue | Svelte
+**Dependencies:**
+- Git repository initialized
+- Required tools: git, jq, yq (for config file mode)
+- Optional: gh (for foundation issue), markdownlint, lychee
+
+**Modes:**
+- Default: Interactive questionnaire (15 questions, ~10 min)
+- --with-design: Extended questionnaire (48 questions, ~20-30 min)
+- --update: Fill `[NEEDS CLARIFICATION]` sections only
+- --force: Overwrite all docs (destructive)
+- --ci: Non-interactive mode (environment variables)
+- --config: Load from JSON/YAML file
+</objective>
+
+<process>
+1. **Detect platform and mode** from $ARGUMENTS:
+   - Platform: Windows → PowerShell, macOS/Linux → Bash
+   - Mode: Extract flags (--update, --force, --with-design, --ci, --config, etc.)
+   - Project name: Extract from first positional argument if present
+
+2. **Execute appropriate script** based on platform:
+
+   **Windows (PowerShell):**
+   ```powershell
+   pwsh -File .spec-flow/scripts/powershell/init-project.ps1 $ARGUMENTS
+   ```
+
+   **macOS/Linux (Bash):**
+   ```bash
+   .spec-flow/scripts/bash/init-project.sh $ARGUMENTS
+   ```
+
+   The scripts perform:
+   - Parse arguments and flags
+   - Detect brownfield project (scan for package.json, requirements.txt, etc.)
+   - Load config file if --config flag provided
+   - Run questionnaire (interactive) or read environment variables (--ci mode)
+   - Auto-detect tech stack for brownfield projects (20-30% fewer clarifications)
+   - Generate 8 core project docs
+   - Generate 4 design docs + tokens (if --with-design)
+   - Create ADR-0001 baseline
+   - Run quality gates (markdown lint, link check, C4 validation)
+   - Commit all generated files
+   - Create foundation GitHub issue (greenfield only, if gh available)
+   - Display summary with next steps
+
+3. **Monitor script output** for quality gate failures or errors
+
+4. **Present summary** to user:
+   - List of generated files
+   - Brownfield vs greenfield detection
+   - Tech stack detected or selected
+   - Foundation issue created (greenfield) or skipped
+   - Next steps based on project type
+</process>
+
+<verification>
+Before completing, verify:
+- All 8 core project docs exist in docs/project/
+- ADR-0001 exists in docs/adr/
+- If --with-design: 4 design docs + tokens.css + tokens.json exist
+- No `[NEEDS CLARIFICATION]` tokens (or warning shown if any found)
+- Git commit successful
+- Foundation issue created (greenfield + gh available) or skipped appropriately
+- Next-step suggestions presented
+</verification>
+
+<success_criteria>
+**Core documentation:**
+- 8 project docs generated in docs/project/
+- Each doc follows template structure
+- ADR-0001 created with baseline architecture decisions
+- All docs committed to git
+
+**Design system (--with-design only):**
+- 4 design docs in docs/design/
+- tokens.css with WCAG AA compliant colors (4.5:1 contrast)
+- tokens.json for programmatic access
+- OKLCH color space used for perceptual uniformity
+
+**Quality gates:**
+- `[NEEDS CLARIFICATION]` count: 0 (CI mode) or warnings shown (interactive)
+- Markdown lint: Passed or warnings shown
+- Link check: Passed or warnings shown
+- C4 model validation: Context/Container/Component sections present
+
+**Foundation issue (greenfield only):**
+- Created via `gh issue create` if GitHub CLI available
+- Title: "Project Foundation Setup"
+- Priority: HIGH (blocks all other features)
+- Checklist: Frontend, backend, database, deployment, auth, linting, CI/CD
+
+**Next steps communicated:**
+- Greenfield: Build foundation first (`/feature "project-foundation"`)
+- Brownfield: Review docs, fill clarifications, start features
+</success_criteria>
+
+<mental_model>
+**Workflow state machine:**
+```
+Setup
+  ↓
+[MODE DETECTION] (default | update | force | ci | config)
+  ↓
+[BROWNFIELD SCAN] (auto-detect tech stack from codebase)
+  ↓
+{IF interactive mode}
+  → Questionnaire (15 or 48 questions)
+{ELSE IF ci mode}
+  → Read environment variables
+{ELSE IF config mode}
+  → Load from JSON/YAML file
+{ENDIF}
+  ↓
+Generate Docs (8 core + optional 4 design + tokens)
+  ↓
+Quality Gates (markdown, links, C4 validation)
+  ↓
+Git Commit
+  ↓
+{IF greenfield + gh available}
+  → Create Foundation Issue
+{ENDIF}
+  ↓
+Display Summary
 ```
 
-**Config File Format** (JSON):
-```json
-{
-  "project": {
-    "name": "FlightPro",
-    "vision": "Student pilot progress tracking for flight instructors",
-    "users": "Flight instructors and student pilots",
-    "scale": "small",
-    "team_size": "solo",
-    "architecture": "monolith",
-    "database": "PostgreSQL",
-    "deploy_platform": "Vercel",
-    "api_style": "REST",
-    "auth_provider": "Clerk",
-    "budget_mvp": "50",
-    "privacy": "PII",
-    "git_workflow": "GitHub Flow",
-    "deploy_model": "staging-prod",
-    "frontend": "Next.js"
-  }
-}
-```
+**Idempotent execution:**
+- Default: Asks before overwriting existing files
+- --update: Only fills `[NEEDS CLARIFICATION]` sections
+- --force: Overwrites all files (destructive)
+- --write-missing-only: Only creates missing files
+</mental_model>
 
-**Config File Format** (YAML):
-```yaml
-project:
-  name: FlightPro
-  vision: Student pilot progress tracking for flight instructors
-  users: Flight instructors and student pilots
-  scale: small
-  team_size: solo
-  architecture: monolith
-  database: PostgreSQL
-  deploy_platform: Vercel
-  api_style: REST
-  auth_provider: Clerk
-  budget_mvp: "50"
-  privacy: PII
-  git_workflow: GitHub Flow
-  deploy_model: staging-prod
-  frontend: Next.js
-```
+<operation_modes>
+**6 operation modes** (see `.claude/skills/project-initialization-phase/reference.md` for full details):
 
-## QUALITY GATES
+1. **Default** - Interactive questionnaire, asks before overwriting
+2. **Update** (--update) - Only fill `[NEEDS CLARIFICATION]` sections
+3. **Force** (--force) - Overwrite all docs (destructive)
+4. **Write Missing** (--write-missing-only) - Only create missing files
+5. **CI/CD** (--ci) - Non-interactive, environment variables, fail on missing answers
+6. **Config File** (--config FILE) - Load from JSON/YAML, optional --non-interactive
 
-**Automated checks before commit**:
+**Design system mode** (--with-design):
+- Extends any mode above with 33 additional design questions
+- Generates 4 design docs + design tokens
+- WCAG AA compliant color system
+- OKLCH color space for perceptual uniformity
 
-1. **[NEEDS CLARIFICATION] detection**: Warns if unanswered questions remain
-   - **CI mode**: Fails (exit code 2)
-   - **Interactive mode**: Warning only
+See `.claude/skills/project-initialization-phase/reference.md` for detailed mode behaviors and examples.
+</operation_modes>
 
-2. **Markdown linting** (if `markdownlint` installed):
-   - Checks formatting, structure
-   - **Non-blocking** in all modes
+<questionnaire>
+**Core questions (15 - Required):**
 
-3. **Link checking** (if `lychee` installed):
-   - Validates all internal/external links
-   - **Non-blocking** in all modes
+Interactive mode (~10 minutes):
+1. Project name
+2. Vision (one sentence)
+3. Primary users
+4. Expected scale (Micro/Small/Medium/Large)
+5. Team size (Solo/Small/Medium/Large)
+6. Architecture (Monolith/Microservices/Serverless)
+7. Database (PostgreSQL/MySQL/MongoDB/SQLite)
+8. Deployment platform (Vercel/Railway/AWS/Render)
+9. API style (REST/GraphQL/tRPC/gRPC)
+10. Authentication (Clerk/Auth0/Supabase/Custom/None)
+11. Monthly budget (USD for MVP)
+12. Privacy (Public/PII/GDPR/HIPAA)
+13. Git workflow (GitHub Flow/Git Flow/Trunk-Based)
+14. Deployment model (staging-prod/direct-prod/local-only)
+15. Frontend framework (Next.js/Vite+React/Vue/Svelte)
 
-4. **C4 model validation**:
-   - Ensures Context/Container/Component sections exist in `system-architecture.md`
-   - **CI mode**: Fails if missing
-   - **Interactive mode**: Warning only
+**Brownfield auto-detection:** Questions 6-8, 15 auto-detected from codebase (20-30% fewer manual answers)
 
-**Exit codes**:
-- `0`: Success
-- `1`: Missing required input (CI mode)
-- `2`: Quality gate failure (CI mode)
+**Design system questions (33 - Only with --with-design):**
+- Brand personality (8 questions)
+- Visual language (12 questions)
+- Accessibility (6 questions)
+- Layout & interaction (7 questions)
 
-## EXECUTION
+**Total with --with-design:** 48 questions (~20-30 minutes)
 
-**Call the appropriate script** based on your operating system:
+See `.claude/skills/project-initialization-phase/reference.md` for complete question list and auto-detection logic.
+</questionnaire>
 
-### Windows (PowerShell):
-```powershell
-# Default mode (interactive)
-pwsh -File .spec-flow/scripts/powershell/init-project.ps1 "ProjectName"
-
-# Update mode
-pwsh -File .spec-flow/scripts/powershell/init-project.ps1 -Update
-
-# Force overwrite
-pwsh -File .spec-flow/scripts/powershell/init-project.ps1 -Force
-
-# CI mode with environment variables
-$env:INIT_NAME="MyProject"; $env:INIT_VISION="..."; pwsh -File .spec-flow/scripts/powershell/init-project.ps1 -CI
-
-# Config file mode
-pwsh -File .spec-flow/scripts/powershell/init-project.ps1 -ConfigFile project-config.json -NonInteractive
-```
-
-### macOS/Linux (Bash):
-```bash
-# Default mode (interactive)
-.spec-flow/scripts/bash/init-project.sh "ProjectName"
-
-# Update mode
-.spec-flow/scripts/bash/init-project.sh --update
-
-# Force overwrite
-.spec-flow/scripts/bash/init-project.sh --force
-
-# CI mode with environment variables
-INIT_NAME="MyProject" INIT_VISION="..." .spec-flow/scripts/bash/init-project.sh --ci
-
-# Config file mode
-.spec-flow/scripts/bash/init-project.sh --config project-config.json --non-interactive
-```
-
-## BROWNFIELD SCANNING
-
+<brownfield_scanning>
 **Auto-detection** when existing codebase found:
 
-**Detected indicators**:
+**Detected indicators:**
 - `package.json` → Node.js project
 - `requirements.txt` / `pyproject.toml` → Python project
 - `Cargo.toml` → Rust project
 - `go.mod` → Go project
+- `docker-compose.yml` → Microservices architecture hint
 
-**Auto-inferred values**:
-- **Database**: Scanned from dependencies (`pg`, `mysql2`, `mongoose`, `psycopg2`)
-- **Frontend**: Detected from `package.json` (`next`, `vite`, `vue`, etc.)
-- **Deployment**: Detected from config files (`vercel.json`, `railway.json`, etc.)
-- **Architecture**: Inferred from `docker-compose.yml` service count and directory structure
+**Auto-inferred values:**
+- Database: Scanned from dependencies (`pg`, `mysql2`, `mongoose`, `psycopg2`)
+- Frontend: Detected from package.json (`next`, `vite`, `vue`)
+- Deployment: Detected from config files (`vercel.json`, `railway.json`)
+- Architecture: Inferred from `docker-compose.yml` service count and directory structure
 
-**Result**: 20-30% fewer `[NEEDS CLARIFICATION]` tokens in generated docs
+**Result:** 20-30% fewer `[NEEDS CLARIFICATION]` tokens in generated docs
 
-## QUESTIONNAIRE
+See `.claude/skills/project-initialization-phase/reference.md` for full auto-detection rules.
+</brownfield_scanning>
 
-### Core Questions (15 - Required)
+<quality_gates>
+**Automated checks before commit:**
 
-**Interactive mode** (~10 minutes):
+1. **[NEEDS CLARIFICATION] detection** - Scans all generated docs
+   - CI mode: Fails (exit code 2) if any found
+   - Interactive mode: Warning only
 
-1. **Project name** - e.g., "FlightPro", "AcmeApp"
-2. **Vision** - One sentence: "What does this project do?"
-3. **Primary users** - e.g., "Flight instructors"
-4. **Expected scale** - Micro (<100) | Small (100-1K) | Medium (1K-10K) | Large (10K+)
-5. **Team size** - Solo | Small (2-5) | Medium (5-15) | Large (15+)
-6. **Architecture** - Monolith | Microservices | Serverless (auto-detected for brownfield)
-7. **Database** - PostgreSQL | MySQL | MongoDB | SQLite (auto-detected for brownfield)
-8. **Deployment platform** - Vercel | Railway | AWS | Render (auto-detected for brownfield)
-9. **API style** - REST | GraphQL | tRPC | gRPC
-10. **Authentication** - Clerk | Auth0 | Supabase | Custom | None
-11. **Monthly budget** - USD for MVP (e.g., $50)
-12. **Privacy** - Public | PII | GDPR | HIPAA
-13. **Git workflow** - GitHub Flow | Git Flow | Trunk-Based
-14. **Deployment model** - staging-prod | direct-prod | local-only
-15. **Frontend framework** - Next.js | Vite+React | Vue | Svelte (auto-detected for brownfield)
+2. **Markdown linting** (if `markdownlint` installed)
+   - Checks heading structure, list formatting, code blocks
+   - Non-blocking (warnings only)
 
-**Greenfield** (new project): Answer all questions
-**Brownfield** (existing code): Questions 6-8, 15 auto-detected, fewer manual answers
+3. **Link checking** (if `lychee` installed)
+   - Validates internal/external links, anchors
+   - Non-blocking (warnings only)
 
-### Design System Questions (33 - Only with --with-design flag)
+4. **C4 model validation**
+   - Ensures Context/Container/Component sections in system-architecture.md
+   - CI mode: Fails if missing
+   - Interactive mode: Warning only
 
-**Brand Personality** (8 questions, ~3 minutes):
+**Exit codes:**
+- 0: Success
+- 1: Missing required input (CI mode)
+- 2: Quality gate failure (CI mode)
 
-16. **Brand personality** - Playful/Serious, Minimal/Rich, Bold/Subtle?
-17. **Target emotional response** - How should users feel? (e.g., "Confident and empowered")
-18. **Brand keywords** - 3-5 words that describe your brand (e.g., "Fast, Secure, Friendly")
-19. **Competitive differentiation** - How does your brand differ from competitors?
-20. **Primary color preference** - Hex code or name (e.g., "#3b82f6" or "Blue")
-21. **Visual style** - Modern/Classic, Geometric/Organic, Tech/Human?
-22. **Typography style** - Geometric/Humanist/Monospace for primary font?
-23. **Density preference** - Compact/Comfortable/Spacious UI spacing?
+See `.claude/skills/project-initialization-phase/reference.md` for detailed quality gate behaviors.
+</quality_gates>
 
-**Visual Language** (12 questions, ~4 minutes):
+<generated_outputs>
+**Project documentation (8 files in docs/project/):**
+1. overview.md - Vision, users, scope, metrics
+2. system-architecture.md - C4 diagrams, data flows
+3. tech-stack.md - Technology choices with rationale
+4. data-architecture.md - ERD, entity schemas
+5. api-strategy.md - REST/GraphQL patterns, versioning
+6. capacity-planning.md - Scaling model, cost projections
+7. deployment-strategy.md - CI/CD, environments, rollback
+8. development-workflow.md - Git flow, PR process, DoD
 
-24. **Color palette size** - Minimal (3-4 colors) | Standard (5-7 colors) | Rich (8+ colors)
-25. **Neutrals approach** - True grays | Warm grays | Cool grays | Brand-tinted?
-26. **Semantic color needs** - Success/Warning/Error only, or also Info/Notice/Help?
-27. **Surface colors** - How many background levels? (1 = white only, 3 = primary/secondary/tertiary)
-28. **Type scale** - Conservative (6 sizes) | Standard (8 sizes) | Expressive (10+ sizes)
-29. **Font weights needed** - Normal/Bold only | Normal/Medium/Semibold/Bold | Full range (100-900)
-30. **Line-height system** - Fixed (1.5 everywhere) | Responsive (tight for headings, relaxed for body)
-31. **Heading style** - Uppercase/Sentence-case/Title-case?
-32. **Border radius** - Sharp (0-2px) | Rounded (4-8px) | Very rounded (12-16px) | Pill-shaped?
-33. **Shadow style** - None/Minimal | Subtle elevation | Bold depth | Neumorphic?
-34. **Icon style** - Outline | Solid | Duotone | Auto (match brand personality)?
-35. **Illustration style** - None | Abstract | Pictorial | Photography?
+**ADR:**
+- docs/adr/0001-project-architecture-baseline.md
 
-**Accessibility** (6 questions, ~2 minutes):
+**Design system (--with-design only):**
+- docs/design/brand-guidelines.md
+- docs/design/visual-language.md
+- docs/design/accessibility-standards.md
+- docs/design/component-governance.md
+- design/systems/tokens.css (WCAG AA compliant)
+- design/systems/tokens.json
 
-36. **WCAG compliance level** - AA (standard) | AAA (high contrast) | A (minimum)
-37. **Motion preferences** - Full animations | Respect prefers-reduced-motion | Minimal motion
-38. **Contrast requirements** - Text ≥4.5:1 (AA) | ≥7:1 (AAA) | ≥3:1 (large text only)
-39. **Focus indicators** - Outline | Ring | Underline | Glow?
-40. **Screen reader priority** - Standard support | Enhanced ARIA | Optimized landmarks?
-41. **Keyboard navigation** - Standard tab order | Custom shortcuts | Skip links?
+**Project CLAUDE.md:**
+- Auto-updated with tech stack summary (~2,000 tokens vs 12,000 for all docs)
 
-**Layout & Interaction** (7 questions, ~3 minutes):
+**Foundation issue (greenfield only):**
+- Created via `gh issue create` if GitHub CLI available
+- Title: "Project Foundation Setup"
+- Priority: HIGH (blocks all features)
 
-42. **Spacing scale** - Tailwind-style (0-96) | Custom (define base unit) | t-shirt sizes (xs-3xl)
-43. **Breakpoint strategy** - Mobile-first | Desktop-first | Mobile/Tablet/Desktop | All devices (5+ breakpoints)
-44. **Grid system** - 12-column | 16-column | Flexbox-only | CSS Grid-only | Hybrid?
-45. **Component states** - Hover/Active only | Add Disabled/Loading | Add Error/Success | All states (8+)
-46. **Animation defaults** - Duration: 150ms/300ms/500ms? Easing: ease-in-out/cubic-bezier?
-47. **Hover intent** - Instant | Delayed (200ms) | Touch-friendly (no hover states)?
-48. **Loading patterns** - Spinner | Skeleton | Progress bar | Shimmer effect?
+See `.claude/skills/project-initialization-phase/reference.md` for complete output catalog.
+</generated_outputs>
 
-**Total with --with-design**: 48 questions (~20-30 minutes)
-**Output**: 4 design docs + auto-generated tokens.css
+<standards>
+**Industry Standards:**
+- **C4 Model**: [C4 Model for Architecture](https://c4model.com/)
+- **ADR**: [Architecture Decision Records](https://adr.github.io/)
+- **WCAG 2.2 AA**: [Web Content Accessibility Guidelines](https://www.w3.org/TR/WCAG22/)
+- **OKLCH Color Space**: [Perceptually uniform color](https://oklch.com/)
+- **RFC 7807**: [Problem Details for HTTP APIs](https://datatracker.ietf.org/doc/html/rfc7807)
 
-## GENERATED OUTPUTS
+**Workflow Standards:**
+- Idempotent execution (safe to run multiple times)
+- Brownfield scanning reduces manual input by 20-30%
+- Quality gates enforce documentation quality
+- Git commit includes comprehensive change summary
+- Foundation issue blocks all features (greenfield only)
+</standards>
 
-The scripts generate the following outputs:
+<notes>
+**Script locations:**
+- PowerShell: `.spec-flow/scripts/powershell/init-project.ps1`
+- Bash: `.spec-flow/scripts/bash/init-project.sh`
 
-### Project Documentation (8 files in `docs/project/`)
+**Reference documentation:** Operation modes, questionnaire details, brownfield scanning logic, quality gates, and complete output catalog are in `.claude/skills/project-initialization-phase/reference.md`.
 
-1. **overview.md** - Vision, target users, scope, success metrics, competitive landscape
-2. **system-architecture.md** - C4 diagrams (Context/Container/Component), data flows, security architecture
-3. **tech-stack.md** - All technology choices with rationale and alternatives rejected
-4. **data-architecture.md** - ERD (Mermaid), entity schemas, storage strategy, migrations
-5. **api-strategy.md** - REST/GraphQL patterns, auth, versioning, error handling (RFC 7807)
-6. **capacity-planning.md** - Scaling from micro (100 users) to 1000x growth with cost model
-7. **deployment-strategy.md** - CI/CD pipeline, environments (dev/staging/prod), rollback
-8. **development-workflow.md** - Git flow, PR process, testing strategy, Definition of Done
+**Version:** v2.0 (2025-11-17) - Added design system mode (--with-design), 33 design questions, auto-generated WCAG AA compliant tokens, OKLCH color space support.
 
-### Design System Documentation (4 files in `docs/design/` - Only with --with-design)
+**Next steps after initialization:**
+- **Greenfield:** Build foundation first via `/feature "project-foundation"`
+- **Brownfield:** Review docs, fill `[NEEDS CLARIFICATION]` sections, start features via `/roadmap`
 
-1. **brand-guidelines.md** - Brand personality, voice, emotional goals, competitive differentiation, brand keywords
-2. **visual-language.md** - Color system, typography, spacing, border radius, shadows, icons, illustrations
-3. **accessibility-standards.md** - WCAG compliance level, contrast requirements, motion preferences, keyboard navigation, ARIA patterns
-4. **component-governance.md** - Component state requirements, animation defaults, loading patterns, interaction standards
-
-### Design Tokens (Auto-generated with --with-design)
-
-- **design/systems/tokens.css** - Complete design token system
-  - Color scales (primary, neutral, semantic colors)
-  - Spacing scale (based on density preference)
-  - Typography (font families, sizes, weights, line-heights)
-  - Border radius, shadows
-  - Multi-surface tokens (UI, emails, PDFs, CLI, charts, docs)
-  - **WCAG AA compliant** (4.5:1 contrast ratios auto-fixed)
-  - **OKLCH color space** (perceptually uniform adjustments)
-- **design/systems/tokens.json** - JSON reference for programmatic access
-
-### Architecture Decision Records (`docs/adr/`)
-
-- **0001-project-architecture-baseline.md** - Baseline ADR documenting initial tech stack choices, architectural style, and rationale
-
-### Optional Meta Files (Project Root)
-
-If enabled (not created by default, can be generated with `--meta-files` flag):
-
-- **CONTRIBUTING.md** - Contribution guidelines, branch naming, commit conventions, PR process
-- **SECURITY.md** - Security policy, vulnerability reporting, security best practices
-- **CODEOWNERS** - GitHub code ownership for automatic PR review assignment
-
-### Project CLAUDE.md
-
-- **CLAUDE.md** (project root) - AI context navigation file
-  - Token cost: ~2,000 tokens (vs 12,000 for all project docs)
-  - Auto-updated as features progress
-  - Quick reference to active features and tech stack
-
-### Git Commit
-
-All generated files committed with comprehensive message:
-- Lists all generated docs
-- Records project type (greenfield/brownfield)
-- Documents tech stack choices
-- Includes mode used (default/force/update)
-
-## FOUNDATION ISSUE (Greenfield Projects Only)
-
-**Auto-created for greenfield projects** (if GitHub authenticated):
-
-- **Issue title**: "Project Foundation Setup"
-- **Priority**: HIGH (blocks all other features)
-- **Content**:
-  - Frontend scaffolding ({{FRONTEND}})
-  - Backend setup
-  - Database connection ({{DATABASE}})
-  - Deployment config ({{DEPLOY_PLATFORM}})
-  - Authentication ({{AUTH_PROVIDER}})
-  - Linting, formatting, TypeScript
-  - .env.example template
-  - CI/CD pipeline init
-  - README with setup instructions
-
-**Created via**: GitHub CLI (`gh issue create`)
-**View**: `gh issue view project-foundation`
-**Start**: `/feature "project-foundation"`
-
-**Skipped if**:
-- Brownfield project (existing codebase detected)
-- GitHub CLI not installed
-- Not authenticated (`gh auth login`)
-
-## FINAL OUTPUT
-
-The scripts display a summary with:
-
-**Project Details**:
-- Name, type (greenfield/brownfield)
-- Architecture, database, deployment platform
-- Scale tier, team size, budget
-
-**Generated Files**:
-- List of all 8 project docs
-- ADR-0001 baseline
-- Optional meta files (if enabled)
-- Project CLAUDE.md
-
-**Foundation Issue** (greenfield only):
-- GitHub issue number and priority
-- Command to start: `/feature "project-foundation"`
-
-**Next Steps**:
-- **Greenfield**: Build foundation first, then add features
-- **Brownfield**: Review docs, fill `[NEEDS CLARIFICATION]`, start features
-
-**Important**: All documentation files support `{{VARIABLE}}` placeholders that get replaced during rendering.
+**Workflow integration:**
+```
+/init-project → /roadmap (manage feature backlog) → /feature (implement features)
+```
+</notes>
