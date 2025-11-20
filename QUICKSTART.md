@@ -20,7 +20,7 @@ Install Spec-Flow with a single command using npx:
 # Initialize in current directory (interactive wizard)
 npx spec-flow init
 
-# Or\spec-flow target directory
+# Or specify target directory
 npx spec-flow init --target ./my-project
 
 # Non-interactive mode (uses defaults)
@@ -58,7 +58,7 @@ cd Spec-Flow
 # Interactive wizard
 powershell -File .spec-flow/scripts/powershell/install-wizard.ps1
 
-# Or\spec-flow target directory
+# Or specify target directory
 powershell -File .spec-flow/scripts/powershell/install-wizard.ps1 -TargetDir ../my-project
 ```
 
@@ -154,22 +154,6 @@ Claude: Great! Let me score this feature...
 
 **Skip if:** You have one clear feature to build and don't need prioritization
 
-#### 3. Curate Design Inspirations (Optional)
-
-```
-/design-inspiration
-```
-
-Claude will help you collect:
-- Color palettes and typography references
-- Component styles from sites you admire
-- Layout and spacing systems
-- Animation and interaction patterns
-
-**Why?** Visual consistency across features. Designers and developers reference the same inspiration sources.
-
-**Skip if:** Your project doesn't have UI components or you're not concerned with design consistency
-
 ### Configure Claude Code Permissions (Required)
 
 The installer creates `.claude/settings.local.json` with your project path. Review permissions:
@@ -226,7 +210,7 @@ Added to roadmap under "Next". Ready to spec it out?
 Once you have a prioritized feature, create its spec:
 
 ```
-/spec-flow "dark-mode-toggle"
+/feature "dark-mode-toggle"
 ```
 
 This creates `specs/001-dark-mode-toggle/` with:
@@ -236,23 +220,21 @@ This creates `specs/001-dark-mode-toggle/` with:
 
 ### 3. Run the Workflow
 
-Use `/flow` to automate the full workflow with manual gates:
+Use `/feature` to automate the full workflow with manual gates:
 
 ```
-/flow "dark-mode-toggle"
+/feature "dark-mode-toggle"
 ```
 
 The workflow progresses through phases:
 
 ```
-/spec-flow → /clarify → /plan → /tasks → /analyze → /implement →
-/optimize → /preview (manual) → /phase-1-ship → /validate-staging (manual) →
-/phase-2-ship
+/feature → /clarify → /plan → /tasks → /validate → /implement →
+/optimize → /ship-staging → /validate-staging (manual) → /ship-prod
 ```
 
-**Manual Gates**:
-- `/preview` - You validate UI/UX before shipping to staging
-- `/validate-staging` - You test on staging before production
+**Manual Gate**:
+- `/validate-staging` - You test on staging before production promotion
 
 Or run commands individually:
 ```
@@ -261,29 +243,6 @@ Or run commands individually:
 /implement    # Phase 4: Execute tasks
 /optimize     # Phase 5: Code review + performance checks
 ```
-
-### 4. Managing Context (Optional)
-
-If context feels heavy or you're approaching token limits, use `/compact` to reduce token usage:
-
-```
-/compact                # Auto-detect phase and compact
-/compact planning       # After /plan (aggressive: 90% reduction)
-/compact implementation # After /implement (moderate: 60% reduction)
-/compact optimization   # After /optimize (minimal: 30% reduction)
-```
-
-**What it does:**
-- Summarizes verbose research notes → headings only
-- Compacts detailed task descriptions → checkpoints
-- **Preserves:** Architecture decisions, error logs, code review findings
-
-**When to use:**
-- Between workflow phases as an optional optimization
-- When suggested by command auto-progression
-- If you notice slowdowns or token warnings
-
-**Note:** `/flow` auto-compacts silently, so manual compaction is only needed when stepping through commands individually.
 
 ---
 
@@ -337,21 +296,18 @@ See the full [Troubleshooting Guide](docs/troubleshooting.md) or [file an issue]
 | Command | Purpose |
 |---------|---------|
 | `/roadmap` | Manage feature backlog with ICE scoring |
-| `/spec-flow "name"` | Create specification for a feature |
-| `/flow "name"` | Automate workflow from spec to production |
+| `/feature "name"` | Create specification and run workflow |
 | `/plan` | Generate implementation plan |
 | `/tasks` | Break plan into 20-30 actionable tasks |
 | `/implement` | Execute implementation tasks |
 | `/optimize` | Code review, performance, accessibility checks |
-| `/compact [phase]` | Reduce token usage (optional between phases) |
-| `/preview` | Manual UI/UX validation gate |
-| `/phase-1-ship` | Deploy to staging |
+| `/ship-staging` | Deploy to staging |
 | `/validate-staging` | Manual staging validation gate |
-| `/phase-2-ship` | Deploy to production |
+| `/ship-prod` | Deploy to production |
 
 **Pro tips**:
-- Use `/flow "feature-name"` to automate progression with manual gates at preview and staging validation
-- Use `/compact` between phases if context feels heavy (auto-compacts in `/flow` mode)
+- Use `/feature "feature-name"` to automate progression with manual gate at staging validation
+- Use `/feature continue` to resume after manual validation or fixing issues
 
 ---
 

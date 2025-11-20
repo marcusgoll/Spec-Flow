@@ -2,6 +2,29 @@
 
 ---
 
+## [7.0.4] - 2025-11-20
+
+### 📝 Fixed
+
+**Critical Documentation Errors**
+- **CLAUDE.md**: Removed all `/preview` command references (removed in v7.0.0 but still documented)
+  - Updated ship workflows to remove /preview step
+  - Removed /preview from epic workflow
+  - Removed /preview from commands list
+  - Removed /preview from artifacts table and manual gates
+- **QUICKSTART.md**: Fixed incorrect command names and references
+  - Fixed `/spec-flow` → `/feature` (correct command name)
+  - Removed `/flow` command references (doesn't exist)
+  - Removed `/design-inspiration` command references (doesn't exist)
+  - Removed `/compact` command references (doesn't exist)
+  - Removed all `/preview` references (removed in v7.0.0)
+  - Fixed typos: "Or\spec-flow" → "Or specify"
+  - Updated Quick Reference table with correct commands
+
+**Impact**: Previous versions shipped with documentation showing commands that don't exist or were removed, causing user confusion.
+
+---
+
 ## [7.0.3] - 2025-11-20
 
 ### 🐛 Fixed

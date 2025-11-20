@@ -11,9 +11,9 @@ Spec-Flow Workflow Kit: Slash commands transform product ideas into production r
 ```
 
 Ship workflows (model auto-detected):
-- **staging-prod**: /optimize → /preview → /ship-staging → /validate-staging → /ship-prod → /finalize
-- **direct-prod**: /optimize → /preview → /deploy-prod → /finalize
-- **local-only**: /optimize → /preview → /build-local → /finalize
+- **staging-prod**: /optimize → /ship-staging → /validate-staging → /ship-prod → /finalize
+- **direct-prod**: /optimize → /deploy-prod → /finalize
+- **local-only**: /optimize → /build-local → /finalize
 
 Deployment detection:
 - staging-prod: git remote + staging branch + `.github/workflows/deploy-staging.yml`
@@ -23,7 +23,7 @@ Deployment detection:
 ### Epic (>16h, multiple subsystems, research required)
 
 ```
-/epic → /init-project? → /clarify? → /plan → /tasks → /implement-epic → /optimize → /preview → /ship → /finalize
+/epic → /init-project? → /clarify? → /plan → /tasks → /implement-epic → /optimize → /ship → /finalize
 ```
 
 Differences from /feature:
@@ -34,7 +34,6 @@ Differences from /feature:
 - /implement-epic executes sprints in parallel layers
 - Artifacts: XML (epic-spec.xml, plan.xml, sprint-plan.xml, walkthrough.md)
 - Auto-triggers /audit-workflow after implementation
-- /preview adaptive gating (auto-skip if ≤2 sprints + no UI)
 
 ### UI-First Workflow
 
@@ -96,7 +95,6 @@ Foundation blocks all other features
 - /implement — Execute tasks with TDD (feature workflow)
 - /implement-epic — Execute sprints in parallel layers (epic workflow)
 - /optimize — Quality gates (performance, security, accessibility, code)
-- /preview — Manual UI/UX testing
 - /ship — Unified deployment orchestrator
 - /ship-staging — Deploy to staging
 - /validate-staging — Manual staging testing
@@ -140,7 +138,6 @@ Contract, flag, metrics, scheduler commands removed in v6.0+
 | /implement | Task completions (feature workflow) |
 | /implement-epic | Sprint results, contracts/*.yaml, audit-report.xml (epic workflow) |
 | /optimize | optimization-report.md, code-review-report.md |
-| /preview | release-notes.md |
 | /ship-staging | staging-ship-report.md, deployment-metadata.json |
 | /ship-prod | production-ship-report.md, GitHub release |
 | /deploy-prod | production-ship-report.md |
@@ -166,7 +163,6 @@ workflow-state.yaml tracks:
 
 ### Manual (pause for approval)
 - Mockup approval (UI-first only)
-- Preview (local dev testing)
 - Staging validation (staging-prod only)
 
 Resume: /ship continue or /feature continue
