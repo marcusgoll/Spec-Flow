@@ -89,7 +89,8 @@ async function installWorkflows(chalk) {
       return;
     }
 
-    const sourceWorkflowsDir = path.join(packageRoot, '.github', 'workflows');
+    // Workflows are in dist/ subdirectory
+    const sourceWorkflowsDir = path.join(packageRoot, 'dist', '.github', 'workflows');
     const targetWorkflowsDir = path.join(userProjectRoot, '.github', 'workflows');
 
     // Check if source workflows exist
@@ -137,7 +138,7 @@ async function installWorkflows(chalk) {
       // Use inquirer if available, otherwise skip
       const inquirer = await loadInquirer();
       if (!inquirer) {
-        console.log(chalk.gray('  Run manually: mkdir -p .github/workflows && cp node_modules/spec-flow/.github/workflows/*.yml .github/workflows/\n'));
+        console.log(chalk.gray('  Run manually: mkdir -p .github/workflows && cp node_modules/spec-flow/dist/.github/workflows/*.yml .github/workflows/\n'));
         return;
       }
 

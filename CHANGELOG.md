@@ -2,19 +2,35 @@
 
 ---
 
-## [7.0.1] - 2025-11-20
+## [7.0.2] - 2025-11-20
 
 ### 🐛 Fixed
+
+**Critical Package Structure Fix**
+- Fixed `getPackageRoot()` to point to `dist/` where templates are located
+- Updated `postinstall.js` to look for workflows in `dist/.github/workflows/`
+- v7.0.0 and v7.0.1 showed version 1.7.1 and "package corrupted" errors
+- Templates were packaged in `dist/` but code was looking at package root
+- **Action Required**: Users who installed v7.0.0 or v7.0.1 should upgrade immediately
+
+---
+
+## [7.0.1] - 2025-11-20 [BROKEN - Use v7.0.2]
+
+**⚠️ This version is broken. Please use v7.0.2 instead.**
+
+### 🐛 Fixed (Attempted)
 
 **Critical Package Fix**
 - Fixed missing bin/ folder in npm package causing installation failures
 - Added bin/, scripts/build-dist.js to package.json files array
 - v7.0.0 was broken and showed version 1.7.1 due to missing CLI dependencies
-- **Action Required**: Users who installed v7.0.0 should upgrade to v7.0.1 immediately
+
+**Note**: This fix was incomplete - templates were in dist/ but code looked at package root. Fixed in v7.0.2.
 
 ---
 
-## [7.0.0] - 2025-11-20 [BROKEN - Use v7.0.1]
+## [7.0.0] - 2025-11-20 [BROKEN - Use v7.0.2]
 
 **⚠️ This version is broken. Please use v7.0.1 instead.**
 

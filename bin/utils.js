@@ -3,10 +3,10 @@ const path = require('path');
 const chalk = require('chalk');
 
 /**
- * Get package root directory
+ * Get package root directory (points to dist/ where templates are)
  */
 function getPackageRoot() {
-  return path.resolve(__dirname, '..');
+  return path.resolve(__dirname, '..', 'dist');
 }
 
 /**
