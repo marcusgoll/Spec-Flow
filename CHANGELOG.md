@@ -2,11 +2,57 @@
 
 ---
 
+## [8.0.0] - 2025-11-20
+
+### ⚠️ BREAKING CHANGES
+
+**Epic Template Format Migration: XML → Markdown**
+
+- Epic workflow templates converted from XML to Markdown format (37% token reduction)
+- Existing epic workflows using `.xml` templates will need migration
+- All epic templates now use YAML frontmatter + Markdown structure
+- Benefits: Better readability, reduced context usage, improved maintainability
+
+### ✨ Added
+
+**Preference System**
+
+- New `/init-preferences` command for workflow customization
+- 3-tier preference system: config → learning → flags
+- Preferences stored in `.spec-flow/config/preferences.yaml`
+- Auto-detection of user patterns and learning over time
+- Supports auto-mode defaults, HITL gate preferences, and deployment model preferences
+
+**Epic Workflow State Tracking**
+
+- Add workflow-state.yaml tracking for epic sprints (fixes missing sprint completion tracking)
+- Add auto-mode manual gates with `auto_skipped` status (fixes pending gate issue in auto-mode)
+- Add sprint completion tracking in `/implement-epic` command
+- Add layer completion tracking at epic level
+- Track sprint metrics: tasks, tests, contracts, duration
+- Epic-level progress visibility: "Layer 2/3 complete"
+
+**Manual Gate Improvements**
+
+- Manual gates now properly initialized with `auto_skipped` when `auto_mode: true`
+- Interactive mode updates gates to `approved` with approval metadata
+- Auto-mode skips PAUSE points entirely (gates pre-marked as `auto_skipped`)
+- Added timestamps: `skipped_at` for auto-skipped, `approved_at` for interactive
+
+### 🔧 Changed
+
+- Epic templates migrated from `.xml` to `.md` format
+- Workflow-state.yaml now includes detailed sprint execution metadata
+- Manual gates properly reflect auto-mode vs interactive mode execution state
+
+---
+
 ## [7.0.4] - 2025-11-20
 
 ### 📝 Fixed
 
 **Critical Documentation Errors**
+
 - **CLAUDE.md**: Removed all `/preview` command references (removed in v7.0.0 but still documented)
   - Updated ship workflows to remove /preview step
   - Removed /preview from epic workflow
@@ -30,6 +76,7 @@
 ### 🐛 Fixed
 
 **Missing QUICKSTART.md File**
+
 - Added QUICKSTART.md to package (was missing, causing "package corrupted" error)
 - Copied QUICKSTART.md from example-workflow-app to root
 - Updated build script to include QUICKSTART.md in dist/ output
@@ -42,6 +89,7 @@
 ### 🐛 Fixed
 
 **Critical Package Structure Fix**
+
 - Fixed `getPackageRoot()` to point to `dist/` where templates are located
 - Updated `postinstall.js` to look for workflows in `dist/.github/workflows/`
 - v7.0.0 and v7.0.1 showed version 1.7.1 and "package corrupted" errors
@@ -57,6 +105,7 @@
 ### 🐛 Fixed (Attempted)
 
 **Critical Package Fix**
+
 - Fixed missing bin/ folder in npm package causing installation failures
 - Added bin/, scripts/build-dist.js to package.json files array
 - v7.0.0 was broken and showed version 1.7.1 due to missing CLI dependencies
@@ -74,18 +123,21 @@
 This release consolidates breaking changes that were introduced incrementally in v6.9.0-v6.11.1. We're bumping to v7.0.0 to properly reflect the architectural changes.
 
 #### Preview Phase Removed (from v6.9.0)
+
 - **Removed**: `/preview` command archived to `preview.md.deprecated`
 - **Impact**: All UI/UX testing now happens in staging environment only
 - **Migration**: Update workflows to test in staging instead of locally
 - **Rationale**: Staging provides production-like validation; local preview was redundant
 
 #### Workflow State Schema Changes (from v6.9.0)
+
 - **Removed**: `preview` phase from workflow-state.yaml schema
 - **Removed**: `manual_gates.preview` section
 - **Impact**: Existing features may need workflow-state.yaml migration
 - **Migration**: Remove `preview` phase references from existing feature specs
 
 #### Ship-Prod Version Selection (from v6.9.0)
+
 - **Changed**: `/ship-prod` no longer prompts for version interactively
 - **New Behavior**: Defaults to patch bump (most common use case)
 - **Override**: Use `--version major|minor` flag to override default
@@ -94,15 +146,18 @@ This release consolidates breaking changes that were introduced incrementally in
 ### 🐛 Fixed
 
 **CLI Update Command Confirmation** (v7.0.0)
+
 - Fixed missing confirmation output when running `npx spec-flow update`
 - Update function now returns `conflictActions` and `backupPaths` for display
 - Removed duplicate success messages between install.js and cli.js
 - Added file update summary to show which templates were updated
 
 **Release Script** (from v6.11.1)
+
 - Fixed bash eval error from nested command substitution (08e8e9f)
 
 **Feature Continue Mode** (from v6.11.0)
+
 - Implemented `/feature continue` command to resume most recent feature
 - Finds most recently modified feature in `specs/` directory
 - Cross-platform compatible (Linux, macOS, Windows/Git Bash)
@@ -113,6 +168,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ### ✨ Added
 
 **CLI Workflow Installation** (from v6.11.0)
+
 - GitHub workflows now install automatically via `npx spec-flow init` and `npx spec-flow update`
 - Added `installWorkflows()` function to copy `.github/workflows/` directory
 - Uses same conflict resolution strategy as other files (merge by default)
@@ -120,6 +176,7 @@ This release consolidates breaking changes that were introduced incrementally in
 - Skips existing workflows during update to preserve customizations
 
 **Auto-Install GitHub Workflows** (from v6.10.0)
+
 - Postinstall script now automatically copies GitHub Actions workflows to user's `.github/workflows/` directory
 - Automatically installs workflows if `.github/workflows/` exists (skips files that already exist)
 - Prompts to create directory if it doesn't exist
@@ -128,6 +185,7 @@ This release consolidates breaking changes that were introduced incrementally in
 - Preserves user customizations (never overwrites existing files)
 
 **GitHub Actions Auto-Fix CI** (from v6.9.0)
+
 - New workflow `.github/workflows/auto-fix-ci.yml` automatically fixes lint/format issues on PR creation
 - Runs PSScriptAnalyzer formatting for PowerShell scripts
 - Runs markdownlint auto-fix for Markdown files
@@ -135,6 +193,7 @@ This release consolidates breaking changes that were introduced incrementally in
 - Auto-commits fixes and comments on PR
 
 **Docker Build Validation** (from v6.9.0)
+
 - Added Docker build check to `/optimize` command (6th parallel check)
 - Validates Dockerfile builds successfully before deployment
 - Automatically skips if no Dockerfile present
@@ -144,6 +203,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ### 🚀 Changed
 
 **Streamlined Ship Orchestration** (from v6.9.0)
+
 - Reduced deployment time by 60% (25-35 min vs 65-165 min)
 - Removed `/preview` manual gate (all testing now in staging)
 - Removed interactive version selection from `/ship-prod` (defaults to patch bump)
@@ -151,6 +211,7 @@ This release consolidates breaking changes that were introduced incrementally in
 - Parallelized pre-flight + optimize checks (saves ~10 min)
 
 **Platform API-Based Deployment IDs** (from v6.9.0)
+
 - Replaced log parsing with direct API calls
 - Vercel API for deployment IDs (more reliable than grep)
 - Railway GraphQL API for deployment tracking
@@ -158,12 +219,14 @@ This release consolidates breaking changes that were introduced incrementally in
 - Fallback to log parsing if credentials missing
 
 **Enhanced npm Package Experience** (from v6.10.0)
+
 - Users no longer need to manually copy workflow files after installation
 - Workflows install automatically on `npm install spec-flow`
 - Update detection: New workflows auto-install, existing workflows preserved
 - Supports both fresh installs and package upgrades
 
 **Build System** (from v6.11.1)
+
 - Updated build validation to correct question bank path reference
 - Improved node_modules exclusion with path normalization
 - Increased package size limit to 10MB for comprehensive workflow toolkit
@@ -173,12 +236,14 @@ This release consolidates breaking changes that were introduced incrementally in
 #### For Users Upgrading from v6.8.0 or Earlier
 
 1. **Remove Preview References**:
+
    ```bash
    # Find and update any custom scripts referencing /preview
    grep -r "/preview" .spec-flow/ .claude/
    ```
 
 2. **Update workflow-state.yaml Schema**:
+
    ```yaml
    # Remove these sections from existing feature specs
    # phases: [..., preview, ...]  # Remove preview
@@ -187,6 +252,7 @@ This release consolidates breaking changes that were introduced incrementally in
    ```
 
 3. **Update Ship-Prod Scripts**:
+
    ```bash
    # Old: /ship-prod (prompts for version)
    # New: /ship-prod (defaults to patch)
@@ -208,6 +274,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ## [6.8.0] - 2025-11-18
 
 ### Added
+
 - **GitHub Actions Auto-Fix CI**: New workflow `.github/workflows/auto-fix-ci.yml` automatically fixes lint/format issues on PR creation
   - Runs PSScriptAnalyzer formatting for PowerShell scripts
   - Runs markdownlint auto-fix for Markdown files
@@ -220,6 +287,7 @@ This release consolidates breaking changes that were introduced incrementally in
   - Critical blocker if Docker build fails
 
 ### Changed
+
 - **Streamlined Ship Orchestration**: Reduced deployment time by 60% (25-35 min vs 65-165 min)
   - Removed `/preview` manual gate (all testing now in staging)
   - Removed interactive version selection from `/ship-prod` (defaults to patch bump, use `--version` flag to override)
@@ -236,12 +304,14 @@ This release consolidates breaking changes that were introduced incrementally in
   - Updated state transition diagram
 
 ### Fixed
+
 - **Ship Workflow Automation**: Zero manual gates - fully automated quality validation
   - Auto-generated staging validation reports
   - Automatic version bumping (defaults to patch)
   - Pre-flight and optimize run in parallel
 
 ### Breaking Changes
+
 - **Preview Phase Removed**: `/preview` command archived to `preview.md.deprecated`
   - All UI/UX testing now happens in staging environment
   - No local manual testing gate before deployment
@@ -256,6 +326,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ## [6.8.0] - 2025-11-18
 
 ### Added
+
 - **Full Cross-Platform Support**: 100% command coverage across all platforms (40/40 commands)
   - PowerShell wrappers for 27 bash-only commands (Windows PowerShell support)
   - Automated wrapper generator script for future maintenance (generate-ps-wrappers.py)
@@ -263,6 +334,7 @@ This release consolidates breaking changes that were introduced incrementally in
   - Windows installation guide with Git Bash requirement
 
 ### Fixed
+
 - **Name Mismatches**: 10 commands with incorrect script names in spec-cli.py
   - generate-feature-claude → generate-feature-claude-md
   - generate-project-claude → generate-project-claude-md
@@ -283,6 +355,7 @@ This release consolidates breaking changes that were introduced incrementally in
   - Avoids conflict with PowerShell's reserved -Verbose parameter
 
 ### Changed
+
 - **Platform Coverage Improved**:
   - macOS: 30/40 (75%) → 40/40 (100%) ✅
   - Linux: 30/40 (75%) → 40/40 (100%) ✅
@@ -296,6 +369,7 @@ This release consolidates breaking changes that were introduced incrementally in
   - sprint-manage.sh → placeholder with helpful errors
 
 ### Documentation
+
 - Added CROSS_PLATFORM_ANALYSIS.md (4,500 lines)
 - Added PRIORITY_FIXES_RESULTS.md (450 lines)
 - Added SPRINT_1_COMPLETE.md (580 lines)
@@ -304,6 +378,7 @@ This release consolidates breaking changes that were introduced incrementally in
 - Updated installation instructions for Windows users (Git Bash requirement)
 
 ### Requirements
+
 - **Windows (PowerShell)**: Git Bash must be installed for PowerShell wrappers to work
 - **macOS/Linux**: No additional requirements
 - **Windows (Git Bash)**: No additional requirements
@@ -313,6 +388,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ## [6.6.0] - 2025-11-18
 
 ### Added
+
 - **Streamlined Workflow**: Automated progression after plan approval through implementation
   - Removed /preview phase (all testing now happens in staging)
   - Auto-progression: tasks → validate → implement → optimize → ship-staging
@@ -320,6 +396,7 @@ This release consolidates breaking changes that were introduced incrementally in
   - Philosophy: "Test in staging, not locally" for production-like validation
 
 ### Changed
+
 - **Task Completion Tracking**: Automatic velocity tracking and Progress Summary updates
   - Updated tasks-workflow.sh to use tasks-template.md structure
   - Updated implement-workflow.sh specialist prompts to call task-tracker mark-done-with-notes
@@ -327,6 +404,7 @@ This release consolidates breaking changes that were introduced incrementally in
   - Task completion now updates both tasks.md checkboxes AND NOTES.md AND Progress Summary
 
 ### Technical Details
+
 - **feature.md**: Updated workflow phases with manual gates and auto-progression flags
 - **ship.md**: Removed /preview phase, updated staging validation manual gate message
 - **tasks-workflow.sh**: Added instruction to use tasks-template.md for Progress Summary section
@@ -334,12 +412,12 @@ This release consolidates breaking changes that were introduced incrementally in
 
 ---
 
-
 ---
 
 ## [6.5.0] - 2025-11-18
 
 ### Added
+
 - **Comprehensive Error Logging**: Implemented automatic error tracking during workflow execution
   - Added native bash `mark-failed` function to task-tracker.sh
   - Error-log.md now automatically populated during /implement phase
@@ -348,11 +426,13 @@ This release consolidates breaking changes that were introduced incrementally in
   - Resolves issue where error-log.md remained empty despite errors occurring
 
 ### Fixed
+
 - **CI ShellCheck**: Excluded workflow instruction files from validation
-  - Workflow files (*-workflow.sh) are documentation, not executable scripts
+  - Workflow files (\*-workflow.sh) are documentation, not executable scripts
   - Added SC2004 to ShellCheck exclusions (cosmetic style warnings)
 
 ### Technical Details
+
 - **task-tracker.sh**: Native bash implementation for mark-failed action with feature directory auto-detection
 - **implement-workflow.sh**: Updated specialist agent prompts with mandatory error logging instructions
 - **CI workflow**: Modified to exclude instruction files from ShellCheck and syntax validation
@@ -362,6 +442,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ## [6.4.1] - 2025-11-17
 
 ### Fixed
+
 - **Windows Compatibility**: Added automatic bash fallback in spec-cli.py when PowerShell scripts don't exist
   - Enables Windows users to run workflow commands via Git Bash/WSL
   - Falls back gracefully with informative message when PowerShell script is missing
@@ -369,8 +450,9 @@ This release consolidates breaking changes that were introduced incrementally in
 - **Git Permissions**: Fixed executable permissions for ship-prod-workflow.sh
 
 ### Technical Details
+
 - Modified `run_script()` in spec-cli.py to check for bash alternatives before failing
-- Added __pycache__ to .gitignore to prevent Python cache directory commits
+- Added **pycache** to .gitignore to prevent Python cache directory commits
 - All workflow scripts now properly executable in git (100755 mode)
 
 ---
@@ -378,6 +460,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ## [6.4.0] - 2025-11-17
 
 ### Added
+
 - **CLI Integration Expansion**: Integrated 15 new commands into spec-cli.py (total: 39 commands)
   - Living Documentation: `generate-feature-claude`, `generate-project-claude`, `update-living-docs`, `health-check-docs`
   - Project Management: `init-project`, `roadmap`, `design-health`
@@ -399,6 +482,7 @@ This release consolidates breaking changes that were introduced incrementally in
   - Registered all commands in handlers dictionary for CLI routing
 
 ### Changed
+
 - **CLAUDE.md** (+116 lines): Added comprehensive "Advanced Workflow Commands" section documenting:
   - Infrastructure commands (contract management, feature flags, test fixtures)
   - Metrics commands (HEART and DORA metrics with tier classification)
@@ -410,11 +494,13 @@ This release consolidates breaking changes that were introduced incrementally in
   - JSON output support for programmatic consumption
 
 ### Documentation
+
 - HEART Metrics: Happiness (NPS), Engagement (DAU/MAU), Adoption, Retention, Task Success
 - DORA Metrics: Deployment Frequency, Lead Time, Change Failure Rate, MTTR with Elite/High/Medium/Low classification
 - Data sources documented: surveys.json, analytics.log, DATABASE_URL, telemetry.log, capacity-planning.md
 
 ### Technical Details
+
 - metrics-track.sh: Calculates 5 HEART metrics, compares against targets from capacity-planning.md, generates markdown report
 - dora-calculate.sh: Placeholder for git tag analysis, commit-to-deploy time calculation, incident log parsing
 - Scheduler commands: Support epic-to-agent assignment with WIP limit enforcement (max 1 epic per agent)
@@ -425,6 +511,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ## [6.3.0] - 2025-11-14
 
 ### Added
+
 - **HTML Mockup Approval Workflow**: UI-first flag for `/tasks` command generates browser-previewable HTML mockups before implementation
   - `/tasks --ui-first` creates standalone HTML mockups in `specs/NNN-slug/mockups/`
   - Mockups link to `design/systems/tokens.css` for live design updates (refresh browser to see changes)
@@ -436,17 +523,20 @@ This release consolidates breaking changes that were introduced incrementally in
   - Workflow integration: mockup_approval gate in workflow-state.yaml blocks `/implement` until approved
 
 ### Changed
+
 - **Frontend Agent** (+500 lines): Added comprehensive HTML mockup creation workflow, HTML → Next.js conversion logic, and style guide update proposal flow
 - **/tasks Command** (+170 lines): Integrated `--ui-first` flag parsing, tokens.css validation, and design task generation guidance
 - **/implement Command** (+68 lines): Added mockup approval check that blocks execution until status = "approved"
 - **workflow-state-schema.md** (+107 lines): Added manual_gates section with mockup_approval, preview, and staging_validation gate definitions
 
 ### Documentation
+
 - Created `mockup-approval-checklist.md` template with comprehensive review criteria (visual, interaction, accessibility, tokens.css compliance)
 - Updated CLAUDE.md with UI-First Workflow section and Mockup Approval Gate workflow steps
 - Updated README.md with v6.3.0 release notes and HTML Mockup Approval Workflow overview
 
 ### Impact
+
 - 75-85% faster UI development by approving design before implementation
 - Zero implementation rework from design changes
 - Systematic design token evolution with user approval
@@ -457,6 +547,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ## [6.2.3] - 2025-11-14
 
 ### Changed
+
 - **Frontend Agent**: Enforced design system consultation as mandatory pre-work for ALL UI/UX implementation
   - Added MANDATORY PRE-WORK section with 7-item checklist blocking implementation until design system files are read
   - Added Design Thinking & Creative Direction guidance for choosing bold aesthetic direction
@@ -466,6 +557,7 @@ This release consolidates breaking changes that were introduced incrementally in
   - Updated Task Tool Integration to make design system consultation non-optional
 
 ### Documentation
+
 - Enhanced `.claude/agents/implementation/frontend.md` with +249 lines across 8 new/updated sections
 - Design system now provides constraints while creative guidelines provide direction
 - Quality gates ensure compliance: design-lint.js, axe-core, Lighthouse, aesthetic differentiation
@@ -475,9 +567,11 @@ This release consolidates breaking changes that were introduced incrementally in
 ## [6.2.2] - 2025-11-13
 
 ### Fixed
+
 - init-brand-tokens: Complete tokens.css to match tokens.json structure
 
 ### Documentation
+
 - Added emit module for token conversion and validation
 - Added comprehensive tests for emit module
 
@@ -486,10 +580,12 @@ This release consolidates breaking changes that were introduced incrementally in
 ## [6.2.1] - 2025-11-13
 
 ### Changed
+
 - Reorganized `.claude/agents/` folder structure into 6 logical categories for better discoverability
 - Agent Briefs section in CLAUDE.md updated with categorized folder paths
 
 ### Documentation
+
 - Moved 24 quality agents into categorized subfolders: code-quality/, testing/, security/, dev-tools/, operations/, deployment/
 - Updated all agent path references in CLAUDE.md
 - Improved agent organization and navigation
@@ -499,6 +595,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ## [6.2.0] - 2025-11-13
 
 ### Added
+
 - **Implementation Skills Integration**: Connected 4 new specialist agents to implementation-phase workflow
   - `test-architect` integrated into TDD workflow (RED phase)
   - `type-enforcer` integrated into continuous testing (post-batch validation)
@@ -506,12 +603,14 @@ This release consolidates breaking changes that were introduced incrementally in
   - `security-sentry` integrated into continuous testing (security validation)
 
 ### Changed
+
 - Updated `.claude/skills/implementation-phase/resources/tdd-workflow.md` with test-architect and refactor-surgeon guidance
 - Updated `.claude/skills/implementation-phase/resources/continuous-testing.md` with type-enforcer and security-sentry validation
 - Updated `.claude/skills/implementation-phase/SKILL.md` quick reference checklist (7 → 10 steps)
 - Updated `.claude/skills/SKILL_DEPENDENCIES.md` with new agent dependencies
 
 ### Documentation
+
 - Implementation skills now comprehensively reference all v6.1.0 specialist agents
 - Added "when to use" guidelines for each agent (optional/conditional usage)
 - Positioned agents at appropriate TDD workflow phases (RED/GREEN/REFACTOR)
@@ -521,6 +620,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ## [6.1.0] - 2025-11-13
 
 ### Added
+
 - **17 New Specialist Agents**: Comprehensive quality and automation coverage
   - `test-architect`: TDD test suite generation from acceptance criteria
   - `type-enforcer`: TypeScript strict type safety enforcement
@@ -541,6 +641,7 @@ This release consolidates breaking changes that were introduced incrementally in
   - `release-manager`: Release notes and deployment artifact preparation
 
 ### Changed
+
 - Enhanced `auto-error-resolver` with better compilation error context
 - Improved `code-reviewer` with KISS/DRY enforcement
 - Expanded `qa-tester` capabilities
@@ -553,11 +654,13 @@ This release consolidates breaking changes that were introduced incrementally in
 ## [6.0.0] - 2025-11-13
 
 ### Breaking Changes
+
 - **Architecture refactor**: Removed `implement-phase-agent` wrapper - `/implement` command now directly orchestrates specialist agents
-- Direct parallel execution with `backend-dev`, `frontend-shipper`, `database-architect` specialists
+- Direct parallel execution with `backend-dev`, `frontend-dev`, `database-architect` specialists
 - Migration: No action required - `/implement` command automatically uses new approach
 
 ### Changed
+
 - Simplified architecture by removing unnecessary wrapper layer
 - Added true parallel execution with Promise.all() for faster implementation
 - Updated `/implement` command with direct specialist orchestration logic
@@ -575,12 +678,14 @@ This release consolidates breaking changes that were introduced incrementally in
 **ICE Score Removal**: Removed ICE (Impact × Confidence / Effort) scoring system in favor of creation-order prioritization.
 
 **What Changed**:
+
 - Features are now prioritized by GitHub issue creation order (earlier = higher priority)
 - Within sprints: Issues worked S01→S02→S03→S04 in creation order
 - Removed `impact`, `effort`, `confidence` parameters from roadmap functions
 - Priority labels (`priority:high/medium/low`) are now optional manual overrides
 
 **Migration Guide**:
+
 - Existing priority labels will remain but won't be auto-assigned
 - Create issues in the order you want them worked on
 - Use sprints (`sprint:S01`, `sprint:S02`) for time-boxed iterations
@@ -607,6 +712,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ### ✨ New Features
 
 **/finalize Command Enhancement**
+
 - Added GitHub Release update step to /finalize command
 - Automatically appends production deployment info to release notes
 - Includes deployment URL, date, run ID, and documentation links
@@ -620,6 +726,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ### ✨ New Features
 
 **/implement Phase Parallel Execution**
+
 - Parallel batch group execution (3-5 batches run simultaneously)
 - TodoWrite integration for live progress tracking
 - Single validation pass at end (vs per-batch validation)
@@ -630,6 +737,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ### 🐛 Bug Fixes
 
 **ShellCheck Compliance**
+
 - Resolved SC2162: Added -r flag to all read commands in init-project.sh
 - Resolved SC2120/SC2119: Fixed scan_brownfield function parameter handling
 - Replaced bash-specific &> with POSIX-compliant > /dev/null 2>&1
@@ -637,6 +745,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ### 🧹 Maintenance
 
 **Template Cleanup**
+
 - Removed deprecated backtest-report-template.md
 - Removed deprecated design-crit-template.md
 - Updated style-guide.md
@@ -648,6 +757,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ### ✨ New Features
 
 **Infrastructure Command Integration**
+
 - Automated detection and contextual prompts for infrastructure commands
 - Centralized detection script (detect-infrastructure-needs.sh) with JSON output
 - Integration into /implement, /plan, /ship, /optimize phases
@@ -658,6 +768,7 @@ This release consolidates breaking changes that were introduced incrementally in
   - Flag cleanup after production deployment
 
 **/init-project Enhancements**
+
 - Idempotent operation modes: --update, --force, default (first-time)
 - Update mode: only fills [NEEDS CLARIFICATION] sections
 - Force mode: regenerates all documentation
@@ -670,11 +781,13 @@ This release consolidates breaking changes that were introduced incrementally in
 - Quality gates: NEEDS CLARIFICATION detection, C4 validation, markdown linting
 
 **Project Templates**
+
 - CODEOWNERS template (204 lines) with role-based code ownership patterns
 - CONTRIBUTING template (308 lines) with conventional commits and workflow guidelines
 - SECURITY template (231 lines) with vulnerability reporting process
 
 **/implement Phase Parallel Execution**
+
 - Parallel batch group execution (3-5 batches run simultaneously)
 - TodoWrite integration for live progress tracking
 - Single validation pass at end (vs per-batch validation)
@@ -685,6 +798,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ### 📝 Documentation
 
 **Design System Refinement**
+
 - Streamlined design-principles.md (v2.0.1)
 - More concise OKLCH explanations
 - Added executable Color.js contrast verification examples
@@ -694,18 +808,19 @@ This release consolidates breaking changes that were introduced incrementally in
 - Improved accessibility guidelines
 
 ### 🧹 Maintenance
+
 - Removed archived roadmap files
 - Fixed package.json dependency issue (removed invalid spec-flow file reference)
 - Fixed line ending consistency
 
 ---
 
-
 ## [4.5.0] - 2025-11-11
 
 ### ✨ New Features
 
 **Agent Auto-Routing Hook System**
+
 - Silent sub-agent auto-routing after file edits (Edit/Write/MultiEdit) and task completions
 - Shared routing configuration for 26 specialists (.claude/agents/agent-routing-rules.json)
 - Intelligent scoring: file paths (+20), keywords (+10), intent patterns (+15), specificity bonuses
@@ -715,12 +830,14 @@ This release consolidates breaking changes that were introduced incrementally in
 - Confidence threshold: Only route if score ≥ 10
 
 **Epic & Sprint Roadmap Integration**
+
 - GitHub Projects V2 native epic/sprint features integrated with roadmap manager
 - Epic manager script for organizing features into epics with milestones
 - Sprint support in /feature command for intelligent workflow assignment
 - Automatic epic/sprint detection and tracking
 
 **Backend Preview Support**
+
 - /preview command now handles backend-only features (API/Data/Infra modes)
 - Auto-detect modes from changed files: API mode, Data/Infra mode, Worker mode
 - API contract diffs with OpenAPI (openapi-diff, oasdiff)
@@ -731,16 +848,19 @@ This release consolidates breaking changes that were introduced incrementally in
 - Backend service startup (FastAPI, Celery workers)
 
 **Refactored /route-agent Command**
+
 - Now uses shared routing configuration (.claude/agents/agent-routing-rules.json)
 - Consistent routing logic with auto-routing hook (DRY principle)
 - Updated documentation with TypeScript usage examples
 
 ### 📝 Documentation
+
 - Added comprehensive setup instructions for agent auto-routing hooks
 - Updated VSCode settings template with new hook registrations
 - Created test suite for agent routing system
 
 ### 🧹 Maintenance
+
 - Cleaned up deprecated summary files (DESIGN_REVAMP_STATUS.md, etc.)
 - Updated bin scripts for roadmap management compatibility
 
@@ -749,7 +869,8 @@ This release consolidates breaking changes that were introduced incrementally in
 ## [4.4.1] - 2025-11-11
 
 ### Fixed
-- **Package contents**: Updated package.json files array to use directory glob patterns (.claude/commands/**)
+
+- **Package contents**: Updated package.json files array to use directory glob patterns (.claude/commands/\*\*)
 - **Removed duplicates**: Deleted 13 duplicate root-level command files (now in subdirectories)
 - **Proper exclusion**: Ensured internal/ command directory is excluded from npm package
 - **Issue**: v4.4.0 used old flat file listing, missing reorganized commands in subdirectories
@@ -761,6 +882,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ## [4.4.0] - 2025-11-11
 
 ### Changed
+
 - Version bump to 4.4.0
 
 <!-- Add detailed release notes here -->
@@ -795,6 +917,7 @@ This release consolidates breaking changes that were introduced incrementally in
 **Comprehensive parallel epic workflow with trunk-based development, contract-first API design, and DORA metrics tracking**
 
 **Phase 1: Contract Infrastructure** (8 tasks)
+
 - Contract directory structure (contracts/api/, contracts/pacts/, contracts/fixtures/)
 - `/contract.bump` command with semantic versioning and CDC verification
 - `/contract.verify` command with Pact CDC testing
@@ -804,6 +927,7 @@ This release consolidates breaking changes that were introduced incrementally in
 - GitHub Actions integration (contract-verification.yml)
 
 **Phase 2: Trunk-Based Development** (6 tasks)
+
 - Git pre-push hook enforcing 24h branch lifetime (warn 18h, block 24h)
 - `/branch.enforce` command for repository-wide branch age audits
 - Feature flag registry (`.spec-flow/memory/feature-flags.yaml`)
@@ -812,6 +936,7 @@ This release consolidates breaking changes that were introduced incrementally in
 - PR template with flag retirement checklist
 
 **Phase 3: Epic State Machine + Scheduler** (7 tasks)
+
 - 7-state epic lifecycle (Planned → ContractsLocked → Implementing → Review → Integrated → Released)
 - Parking logic for blocked epics (Implementing ↔ Parked)
 - `/scheduler.assign`, `/scheduler.park`, `/scheduler.list` commands
@@ -820,6 +945,7 @@ This release consolidates breaking changes that were introduced incrementally in
 - workflow-state.yaml schema v2.0.0 (epic tracking, quality gates)
 
 **Phase 4: Quality Gates** (5 tasks)
+
 - `/gate.ci` command (tests, linters, type checks, coverage ≥80%)
 - `/gate.sec` command (SAST, secrets detection, dependency vulnerabilities)
 - GitHub Actions integration (quality-gates.yml)
@@ -827,6 +953,7 @@ This release consolidates breaking changes that were introduced incrementally in
 - Gate status tracking in workflow-state.yaml
 
 **Phase 5: DORA Metrics** (6 tasks)
+
 - dora-calculate.sh (4 key metrics from GitHub API + git log)
 - `/metrics.dora` command (text/json/yaml output formats)
 - dora-alerts.sh (threshold monitoring: branch age, CFR, flag debt, parking time)
@@ -834,6 +961,7 @@ This release consolidates breaking changes that were introduced incrementally in
 - Real telemetry over manual YAML tracking
 
 **Phase 6: Documentation** (2 tasks)
+
 - Epic breakdown template (`.spec-flow/templates/epic-breakdown-template.md`)
 - Parallel epic workflow guide (`docs/parallel-epic-workflow.md`)
 - System summary (`docs/EPIC_SPRINT_ROADMAP.md`)
@@ -841,12 +969,14 @@ This release consolidates breaking changes that were introduced incrementally in
 ### 🛠️ Files Added
 
 **Commands** (17):
+
 - `/contract.bump`, `/contract.verify`, `/fixture.refresh`
 - `/branch.enforce`, `/flag.add`, `/flag.list`, `/flag.cleanup`
 - `/scheduler.assign`, `/scheduler.park`, `/scheduler.list`
 - `/gate.ci`, `/gate.sec`, `/metrics.dora`
 
 **Scripts** (13):
+
 - `branch-enforce.sh`, `contract-bump.sh`, `contract-verify.sh`, `dependency-graph-parser.sh`
 - `dora-alerts.sh`, `dora-calculate.sh`, `fixture-refresh.sh`
 - `flag-add.sh`, `flag-cleanup.sh`, `flag-list.sh`
@@ -854,12 +984,14 @@ This release consolidates breaking changes that were introduced incrementally in
 - `scheduler-assign.sh`, `scheduler-park.sh`, `scheduler-list.sh`
 
 **Infrastructure**:
+
 - 3 GitHub Actions workflows (contract-verification, flag-linter, quality-gates)
 - 1 agent brief (platform.md)
 - 3 memory files (epic-states, feature-flags, wip-tracker)
 - 4 documentation files
 
 **Contracts**:
+
 - `contracts/` directory with OpenAPI, Pact, and fixtures structure
 - Example OpenAPI 3.1 spec (v1.0.0)
 - Example Pact CDC test
@@ -885,7 +1017,6 @@ This release consolidates breaking changes that were introduced incrementally in
 
 ---
 
-
 ## [4.2.0] - 2025-11-10
 
 ### ✨ New Features - Auto-Activation System (Phase 1)
@@ -893,16 +1024,19 @@ This release consolidates breaking changes that were introduced incrementally in
 **Hook-based skill suggestions eliminate manual skill invocation**
 
 - **30-40% faster workflow navigation**
+
   - Skills auto-suggest based on prompt keywords and intent patterns
   - No need to remember which skill to use for each phase
   - Priority-based suggestions (Critical → High → Medium → Low)
 
 - **20 skills configured with triggers**
+
   - 14 phase skills (spec, clarify, plan, tasks, validate, implement, optimize, preview, deploy, finalize)
   - 5 cross-cutting skills (anti-duplication, breaking-change-detector, TDD-enforcer, hallucination-detector, context-budget)
   - 1 project skill (project-initialization, roadmap-integration, ui-ux-design)
 
 - **UserPromptSubmit hook integration**
+
   - Bash wrapper + TypeScript matcher for pattern matching
   - JSON-based configuration (`.claude/skills/skill-rules.json`)
   - Priority indicators (⚠️ CRITICAL, 📚 RECOMMENDED, 💡 SUGGESTED, 📌 OPTIONAL)
@@ -915,6 +1049,7 @@ This release consolidates breaking changes that were introduced incrementally in
 ### 🛠️ Files Added
 
 **Hook System**:
+
 - `.claude/hooks/skill-activation-prompt.sh` - Bash wrapper for hook execution
 - `.claude/hooks/skill-activation-prompt.ts` - TypeScript pattern matching logic
 - `.claude/hooks/package.json` - Dependencies (tsx@^4.19.2)
@@ -922,16 +1057,19 @@ This release consolidates breaking changes that were introduced incrementally in
 - `.claude/hooks/test-skill-activation.sh` - Test suite (5 test cases)
 
 **Configuration**:
+
 - `.claude/skills/skill-rules.json` - Trigger configuration for 20 skills
 - `.vscode/settings.json` - VSCode hook registration
 - `.spec-flow/templates/vscode/settings.json.template` - Template for install wizard
 
 **Documentation**:
+
 - `docs/AUTO_ACTIVATION.md` - Comprehensive guide (installation, testing, customization, troubleshooting)
 
 ### 🔧 Enhanced Scripts
 
 **install-wizard.ps1**:
+
 - Added Step 4: Configure VSCode Hooks (auto-activation)
 - npm dependency installation for hook TypeScript execution
 - VSCode settings.json template copying
@@ -972,15 +1110,19 @@ ACTION: Use Skill tool BEFORE responding
 - **27 focused resource files** created for on-demand loading
 
 **Skills Refactored**:
+
 1. **implementation-phase**: 1,110 → 99 lines (91% reduction) ✅
+
    - 8 resources: tech-stack-validation, tdd-workflow, anti-duplication, continuous-testing, task-batching, task-tracking, common-mistakes, commit-strategy
    - Token savings: 4,500 → 450 tokens (90%)
 
 2. **planning-phase**: 846 → 87 lines (90% reduction) ✅
+
    - 8 resources: project-docs-integration, code-reuse-analysis, architecture-planning, data-model-planning, api-contracts, testing-strategy, complexity-estimation, common-mistakes
    - Token savings: 3,400 → 350 tokens (90%)
 
 3. **optimization-phase**: 697 → 98 lines (86% reduction) ✅
+
    - 7 resources: performance-benchmarking, accessibility-audit, security-review, code-quality-review, code-review-checklist, report-generation, common-mistakes
    - Token savings: 2,800 → 400 tokens (86%)
 
@@ -989,11 +1131,13 @@ ACTION: Use Skill tool BEFORE responding
    - Token savings: 2,900 → 400 tokens (86%)
 
 **Files Added**:
+
 - 27 resource files in `.claude/skills/*/resources/`
 - 4 `SKILL.old.md` backup files preserved
 - Updated `docs/PROGRESSIVE_DISCLOSURE.md` with completion status
 
 **Impact**:
+
 - **Initial skill load**: 89% faster (382 tokens vs 3,373 tokens)
 - **On-demand resources**: Load only what you need (300-400 tokens per resource)
 - **Better maintainability**: Focused, topic-specific files
@@ -1003,15 +1147,18 @@ ACTION: Use Skill tool BEFORE responding
 **Task-scoped persistence for pause/resume workflows**
 
 - **New `/dev-docs` command**
+
   - Creates three-file structure in `dev/active/[task-name]/`
   - Generates: plan.md (strategy), context.md (decisions), tasks.md (progress)
   - Auto-populated with feature name, dates, task metadata
 
 - **Cross-platform scripts**
+
   - `.spec-flow/scripts/bash/generate-dev-docs.sh` (macOS/Linux)
   - `.spec-flow/scripts/powershell/generate-dev-docs.ps1` (Windows)
 
 - **Templates**
+
   - `.spec-flow/templates/dev-docs/plan-template.md` - Strategic overview (WHAT & WHY)
   - `.spec-flow/templates/dev-docs/context-template.md` - Key context (WHERE & HOW)
   - `.spec-flow/templates/dev-docs/tasks-template.md` - Progress tracking (WHEN)
@@ -1020,12 +1167,14 @@ ACTION: Use Skill tool BEFORE responding
   - `.claude/commands/dev-docs.md` - Usage guide and integration docs
 
 **When to Use**:
+
 - Long-running tasks (>1 day)
 - Need to pause and resume work frequently
 - Complex tasks requiring context preservation
 - Collaborating with team (handoff documentation)
 
 **Complements Living Docs**:
+
 - Feature CLAUDE.md: Feature-scoped, permanent (survives shipping)
 - Dev docs: Task-scoped, temporary (deleted after task completion)
 
@@ -1034,11 +1183,13 @@ ACTION: Use Skill tool BEFORE responding
 **Automatic file modification tracking for context management**
 
 - **New PostToolUse hook**
+
   - `.claude/hooks/post-tool-use-tracker.sh` - Tracks Edit/Write/MultiEdit operations
   - Registered in `.vscode/settings.json` (local, not tracked in git)
   - Monitors all file modifications during implementation
 
 - **Functionality**
+
   - Session-scoped cache in `.claude/tsc-cache/[session_id]/`
   - Logs: edited-files.log, affected-repos.txt, commands.txt
   - Auto-detects project structure (frontend, backend, database, monorepo)
@@ -1050,12 +1201,14 @@ ACTION: Use Skill tool BEFORE responding
   - Supports future auto-update of CLAUDE.md based on modified files
 
 **Project Structure Detection**:
+
 - Frontend: frontend, client, web, app, ui
 - Backend: backend, server, api, src, services
 - Database: database, prisma, migrations
-- Monorepo: packages/*, examples/*
+- Monorepo: packages/_, examples/_
 
 **Build Command Detection**:
+
 - Auto-detects package.json build scripts
 - Identifies package manager (pnpm, npm, yarn)
 - Prisma schema generation for database repos
@@ -1065,12 +1218,14 @@ ACTION: Use Skill tool BEFORE responding
 **Three new specialist agents added to `.claude/agents/quality/`**
 
 1. **refactor-planner.md** - Senior architect for refactoring analysis
+
    - Analyzes current codebase structure
    - Identifies refactoring opportunities (code smells, SOLID violations)
    - Creates detailed step-by-step refactor plans
    - Documents dependencies, risks, and rollback strategies
 
 2. **auto-error-resolver.md** - TypeScript error resolution specialist
+
    - Fixes TypeScript compilation errors automatically
    - Integrates with error-checking hooks and PM2 logs
    - Groups errors by type and prioritizes fixes
@@ -1091,21 +1246,25 @@ ACTION: Use Skill tool BEFORE responding
 **Hierarchical CLAUDE.md files with automatic updates**
 
 - **80-94% token reduction** in AI context loading
+
   - Feature context: 8,000 → 500 tokens (94% reduction)
   - Project context: 12,000 → 2,000 tokens (83% reduction)
   - Full context: 12,700 → 2,500 tokens (80% reduction)
 
 - **3-level hierarchy** for efficient context navigation
+
   - Root CLAUDE.md: Workflow system documentation (~3,000 tokens)
   - Project CLAUDE.md: Active features, tech stack, patterns (~2,000 tokens)
   - Feature CLAUDE.md: Current progress, velocity, specialists (~500 tokens)
 
 - **Automatic documentation updates** (no manual sync required)
+
   - Feature CLAUDE.md: Auto-generated on `/feature`, refreshed on task completion
   - Project CLAUDE.md: Auto-generated on `/init-project`, updated on `/ship`
   - Living artifact sections: spec.md, plan.md, tasks.md
 
 - **Real-time velocity tracking**
+
   - Average time per task, completion rate (tasks/day)
   - ETA calculation based on current velocity
   - Bottleneck detection (tasks >1.5x average time)
@@ -1119,6 +1278,7 @@ ACTION: Use Skill tool BEFORE responding
 ### 🛠️ Scripts Added
 
 **Bash + PowerShell (cross-platform)**:
+
 - `generate-feature-claude-md` - Feature-level context aggregation
 - `generate-project-claude-md` - Project-level context aggregation
 - `extract-notes-summary` - Parse recent task completions
@@ -1163,7 +1323,6 @@ None - all changes are backward compatible.
 
 ---
 
-
 ## [4.0.0] - 2025-11-07
 
 ### 🚀 Major Changes
@@ -1204,4 +1363,3 @@ None - all changes are backward compatible. Old design commands remain in archiv
 **Migration**: See docs/STYLE_GUIDE_MIGRATION.md for complete guide
 
 ---
-
