@@ -10,27 +10,29 @@ allowed-tools: [Read, Write, Edit, Grep, Glob, Bash(python .spec-flow/scripts/sp
 <context>
 **User Input**: $ARGUMENTS
 
+**Workflow Detection**: Auto-detected via workspace files, branch pattern, or workflow-state.yaml
+
 **Current Branch**: !`git branch --show-current 2>$null || echo "none"`
 
 **Feature Directory**: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>$null | jq -r '.FEATURE_DIR'`
 
-**Pending Tasks**: !`grep -c "^- \[ \]" specs/*/tasks.md 2>$null || echo "0"`
+**Pending Tasks**: Auto-detected from ${BASE_DIR}/*/tasks.md
 
-**Completed Tasks**: !`grep -c "^- \[x\]" specs/*/tasks.md 2>$null || echo "0"`
+**Completed Tasks**: Auto-detected from ${BASE_DIR}/*/tasks.md
 
 **Git Status**: !`git status --short 2>$null || echo "clean"`
 
-**Mockup Approval Status** (if UI-first): !`grep -A 5 "mockup_approval:" specs/*/workflow-state.yaml 2>$null | grep "status:" | awk '{print $2}' || echo "n/a"`
+**Mockup Approval Status** (if UI-first): Auto-detected from ${BASE_DIR}/*/workflow-state.yaml
 
 **Implementation Artifacts** (after script execution):
-- @specs/*/tasks.md (updated with completed tasks)
-- @specs/*/CLAUDE.md (living documentation)
+- @${BASE_DIR}/*/tasks.md (updated with completed tasks)
+- @${BASE_DIR}/*/CLAUDE.md (living documentation)
 - @design/systems/ui-inventory.md (if UI components created)
 - @design/systems/approved-patterns.md (if patterns extracted)
 </context>
 
 <objective>
-Execute all tasks from specs/$ARGUMENTS/tasks.md with parallel batching, strict TDD phases, auto-rollback on failure, and atomic commits.
+Execute all tasks from ${BASE_DIR}/$ARGUMENTS/tasks.md with parallel batching, strict TDD phases, auto-rollback on failure, and atomic commits.
 
 Implementation workflow:
 1. Run centralized spec-cli.py implement script with arguments
@@ -126,6 +128,39 @@ TodoWrite({
 ---
 
 <process>
+
+### Step 0: WORKFLOW TYPE DETECTION
+
+**Detect whether this is an epic or feature workflow:**
+
+```bash
+# Run detection utility (cross-platform)
+if command -v bash >/dev/null 2>&1; then
+    WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null)
+    DETECTION_EXIT=$?
+else
+    WORKFLOW_INFO=$(pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
+    DETECTION_EXIT=$?
+fi
+
+# Parse detection result
+if [ $DETECTION_EXIT -eq 0 ]; then
+    WORKFLOW_TYPE=$(echo "$WORKFLOW_INFO" | jq -r '.type')
+    BASE_DIR=$(echo "$WORKFLOW_INFO" | jq -r '.base_dir')
+    SLUG=$(echo "$WORKFLOW_INFO" | jq -r '.slug')
+
+    echo "✓ Detected $WORKFLOW_TYPE workflow"
+    echo "  Base directory: $BASE_DIR/$SLUG"
+
+    # Set file paths
+    TASKS_FILE="${BASE_DIR}/${SLUG}/tasks.md"
+    CLAUDE_MD="${BASE_DIR}/${SLUG}/CLAUDE.md"
+else
+    echo "⚠ Could not auto-detect workflow type - using fallback"
+fi
+```
+
+---
 
 ### Step 1: Execute Implementation Script
 

@@ -9,11 +9,13 @@ Current git status: !`git status --short | head -10`
 
 Current branch: !`git branch --show-current`
 
+Workflow Detection: Auto-detected via workspace files, branch pattern, or workflow-state.yaml
+
 Feature workspace: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>/dev/null | jq -r '.FEATURE_DIR // "Not initialized"'`
 
 Project docs: !`ls -1 docs/project/*.md 2>/dev/null | wc -l` files available
 
-Spec exists: !`test -f specs/*/spec.md && echo "✅ Found" || echo "❌ Missing"`
+Spec exists: Auto-detected (epics/*/epic-spec.md OR specs/*/spec.md)
 </context>
 
 <objective>
@@ -37,6 +39,86 @@ This ensures architecture decisions are grounded in existing codebase patterns a
 </objective>
 
 <process>
+
+### Step 0: WORKFLOW TYPE DETECTION
+
+**Detect whether this is an epic or feature workflow:**
+
+```bash
+# Run detection utility (cross-platform: tries .sh first, falls back to .ps1)
+if command -v bash >/dev/null 2>&1; then
+    WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null)
+    DETECTION_EXIT=$?
+else
+    WORKFLOW_INFO=$(pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
+    DETECTION_EXIT=$?
+fi
+
+# Parse detection result
+if [ $DETECTION_EXIT -eq 0 ]; then
+    WORKFLOW_TYPE=$(echo "$WORKFLOW_INFO" | jq -r '.type')
+    BASE_DIR=$(echo "$WORKFLOW_INFO" | jq -r '.base_dir')
+    SLUG=$(echo "$WORKFLOW_INFO" | jq -r '.slug')
+    DETECTION_SOURCE=$(echo "$WORKFLOW_INFO" | jq -r '.source')
+
+    echo "✓ Detected $WORKFLOW_TYPE workflow (source: $DETECTION_SOURCE)"
+    echo "  Base directory: $BASE_DIR/$SLUG"
+else
+    # Detection failed - prompt user
+    echo "⚠ Could not auto-detect workflow type"
+fi
+```
+
+**If detection fails**, use AskUserQuestion to prompt user:
+
+```javascript
+AskUserQuestion({
+  questions: [{
+    question: "Which workflow are you working on?",
+    header: "Workflow Type",
+    multiSelect: false,
+    options: [
+      {
+        label: "Feature",
+        description: "Single-sprint feature (specs/ directory)"
+      },
+      {
+        label: "Epic",
+        description: "Multi-sprint epic (epics/ directory)"
+      }
+    ]
+  }]
+});
+
+// Set variables based on user selection
+if (userChoice === "Feature") {
+    WORKFLOW_TYPE="feature";
+    BASE_DIR="specs";
+} else {
+    WORKFLOW_TYPE="epic";
+    BASE_DIR="epics";
+}
+
+// Find the slug by scanning directory
+SLUG=$(ls -1 ${BASE_DIR} | head -1)
+```
+
+**Set spec file path based on workflow type:**
+
+```bash
+if [ "$WORKFLOW_TYPE" = "epic" ]; then
+    SPEC_FILE="${BASE_DIR}/${SLUG}/epic-spec.md"
+else
+    SPEC_FILE="${BASE_DIR}/${SLUG}/spec.md"
+fi
+
+echo "📄 Using spec: $SPEC_FILE"
+```
+
+---
+
+### Step 1: Execute Planning Workflow
+
 1. **Execute planning workflow** via spec-cli.py:
    ```bash
    python .spec-flow/scripts/spec-cli.py plan "$ARGUMENTS" [flags]

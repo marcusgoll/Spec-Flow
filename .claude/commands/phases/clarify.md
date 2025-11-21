@@ -12,17 +12,19 @@ updated: 2025-11-19
 <context>
 **User Input**: $ARGUMENTS
 
+**Workflow Detection**: Auto-detected via workspace files, branch pattern, or workflow-state.yaml
+
 **Feature Directory**: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>$null | jq -r '.FEATURE_DIR'`
 
-**Current Spec**: @specs/*/spec.md
+**Current Spec**: Auto-detected (epics/*/epic-spec.md OR specs/*/spec.md)
 
 **Question Bank**: @.claude/skills/clarify/references/question-bank.md
 
 **Coverage Analysis**: !`python .spec-flow/scripts/spec-cli.py clarify "$ARGUMENTS" 2>&1 | grep -A 20 "Coverage analysis" || echo "Run script to analyze"`
 
-**Remaining Ambiguities**: !`grep -c "\[NEEDS CLARIFICATION\]" specs/*/spec.md 2>$null || echo "0"`
+**Remaining Ambiguities**: Auto-detected based on workflow type
 
-**Git Status**: !`git status --short specs/*/spec.md 2>$null || echo "clean"`
+**Git Status**: Auto-detected based on workflow type
 </context>
 
 <objective>
@@ -106,7 +108,90 @@ Let me analyze this ambiguity:
 
 <process>
 
-### Step 0: AUTO-INVOCATION DETECTION (New in v5.0)
+### Step 0: WORKFLOW TYPE DETECTION
+
+**Detect whether this is an epic or feature workflow:**
+
+```bash
+# Run detection utility (cross-platform: tries .sh first, falls back to .ps1)
+if command -v bash >/dev/null 2>&1; then
+    WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null)
+    DETECTION_EXIT=$?
+else
+    WORKFLOW_INFO=$(pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
+    DETECTION_EXIT=$?
+fi
+
+# Parse detection result
+if [ $DETECTION_EXIT -eq 0 ]; then
+    WORKFLOW_TYPE=$(echo "$WORKFLOW_INFO" | jq -r '.type')
+    BASE_DIR=$(echo "$WORKFLOW_INFO" | jq -r '.base_dir')
+    SLUG=$(echo "$WORKFLOW_INFO" | jq -r '.slug')
+    DETECTION_SOURCE=$(echo "$WORKFLOW_INFO" | jq -r '.source')
+
+    echo "✓ Detected $WORKFLOW_TYPE workflow (source: $DETECTION_SOURCE)"
+    echo "  Base directory: $BASE_DIR/$SLUG"
+else
+    # Detection failed - prompt user
+    echo "⚠ Could not auto-detect workflow type"
+fi
+```
+
+**If detection fails**, use AskUserQuestion to prompt user:
+
+```javascript
+AskUserQuestion({
+  questions: [{
+    question: "Which workflow are you working on?",
+    header: "Workflow Type",
+    multiSelect: false,
+    options: [
+      {
+        label: "Feature",
+        description: "Single-sprint feature (specs/ directory)"
+      },
+      {
+        label: "Epic",
+        description: "Multi-sprint epic (epics/ directory)"
+      }
+    ]
+  }]
+});
+
+// Set variables based on user selection
+if (userChoice === "Feature") {
+    WORKFLOW_TYPE="feature";
+    BASE_DIR="specs";
+} else {
+    WORKFLOW_TYPE="epic";
+    BASE_DIR="epics";
+}
+
+// Find the slug by scanning directory
+SLUG=$(ls -1 ${BASE_DIR} | head -1)
+```
+
+**Set spec file path based on workflow type:**
+
+```bash
+if [ "$WORKFLOW_TYPE" = "epic" ]; then
+    SPEC_FILE="${BASE_DIR}/${SLUG}/epic-spec.md"
+else
+    SPEC_FILE="${BASE_DIR}/${SLUG}/spec.md"
+fi
+
+echo "📄 Using spec: $SPEC_FILE"
+```
+
+**Remaining Ambiguities Check:**
+```bash
+AMBIGUITY_COUNT=$(grep -c "\[NEEDS CLARIFICATION\]" "$SPEC_FILE" 2>/dev/null || echo "0")
+echo "🔍 Found $AMBIGUITY_COUNT [NEEDS CLARIFICATION] markers"
+```
+
+---
+
+### Step 1: AUTO-INVOCATION DETECTION (New in v5.0)
 
 **When called from /epic workflow:**
 
@@ -204,7 +289,7 @@ cat .claude/skills/clarify/references/question-bank.md
 
 ---
 
-### Step 1: Execute Prerequisite Script
+### Step 2: Execute Prerequisite Script
 
 Run the centralized spec-cli tool to perform analysis and prepare environment:
 
@@ -252,11 +337,11 @@ Categories to analyze:
 
 **After script completes, you (LLM) must:**
 
-### Step 2: Read spec.md
+### Step 3: Read spec.md
 
 Use the Read tool to load the full specification from the feature directory.
 
-### Step 3: Identify Ambiguities and Map to Question Bank
+### Step 4: Identify Ambiguities and Map to Question Bank
 
 **Scan spec.md for ambiguities** using the 10 categories from script output.
 
@@ -279,7 +364,7 @@ For each ambiguous section:
 
 **Sort by priority score** (highest first), limit to `maxQuestions` calculated earlier.
 
-### Step 4: Interactive Clarification Loop (AskUserQuestion-Driven)
+### Step 5: Interactive Clarification Loop (AskUserQuestion-Driven)
 
 **IMPORTANT**: Use AskUserQuestion tool extensively for all clarification questions.
 
@@ -448,9 +533,9 @@ for (const [questionHeader, selectedOption] of Object.entries(answers)) {
 }
 ```
 
-**Important:** Each answer must be applied atomically using the workflow below (Step 5).
+**Important:** Each answer must be applied atomically using the workflow below (Step 6).
 
-### Step 5: Atomic Update Workflow
+### Step 6: Atomic Update Workflow
 
 For each answer (called from response handler above):
 
@@ -486,7 +571,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>" --no-verify
 - `✅ Applied: Database → PostgreSQL`
 - `📊 Progress: 3 of 8 questions answered`
 
-### Step 6: Coverage Summary
+### Step 7: Coverage Summary
 
 After completing all interactive question batches, display coverage analysis:
 
@@ -505,7 +590,7 @@ After completing all interactive question batches, display coverage analysis:
 | Placeholders & Ambiguity | ✅ Resolved | Sufficient detail |
 ```
 
-### Step 7: Decision Tree
+### Step 8: Decision Tree
 
 Count remaining ambiguities:
 
@@ -547,7 +632,7 @@ grep -c "\[NEEDS CLARIFICATION\]" specs/*/spec.md
    Location: Verify all clarifications are correct
 ```
 
-### Step 8: Update NOTES.md
+### Step 9: Update NOTES.md
 
 Append checkpoint using Bash tool:
 

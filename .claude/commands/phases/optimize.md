@@ -5,13 +5,15 @@ argument-hint: [feature-slug or empty for auto-detection]
 ---
 
 <context>
-Current phase: !`yq -r '.current_phase // "unknown"' specs/*/workflow-state.yaml 2>/dev/null | head -1`
+Workflow Detection: Auto-detected via workspace files, branch pattern, or workflow-state.yaml
 
-Implementation status: !`yq -r '.phases[] | select(.name == "implement") | "Status: \(.status), Tasks: \(.tasks_completed // 0)/\(.total_tasks // 0)"' specs/*/workflow-state.yaml 2>/dev/null | head -1`
+Current phase: Auto-detected from ${BASE_DIR}/*/workflow-state.yaml
 
-Quality targets: !`grep -A 10 "PERFORMANCE TARGETS\|performance requirements" specs/*/plan.md 2>/dev/null | head -15`
+Implementation status: Auto-detected from ${BASE_DIR}/*/workflow-state.yaml
 
-WCAG requirements: !`grep -i "WCAG\|accessibility" specs/*/plan.md 2>/dev/null | head -5`
+Quality targets: Auto-detected from ${BASE_DIR}/*/plan.md
+
+WCAG requirements: Auto-detected from ${BASE_DIR}/*/plan.md
 </context>
 
 <objective>
@@ -47,6 +49,45 @@ This command validates features meet production quality standards across 10 para
 </objective>
 
 <process>
+
+### Step 0: WORKFLOW TYPE DETECTION
+
+**Detect whether this is an epic or feature workflow:**
+
+```bash
+# Run detection utility (cross-platform)
+if command -v bash >/dev/null 2>&1; then
+    WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null)
+    DETECTION_EXIT=$?
+else
+    WORKFLOW_INFO=$(pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
+    DETECTION_EXIT=$?
+fi
+
+# Parse detection result
+if [ $DETECTION_EXIT -eq 0 ]; then
+    WORKFLOW_TYPE=$(echo "$WORKFLOW_INFO" | jq -r '.type')
+    BASE_DIR=$(echo "$WORKFLOW_INFO" | jq -r '.base_dir')
+    SLUG=$(echo "$WORKFLOW_INFO" | jq -r '.slug')
+
+    echo "✓ Detected $WORKFLOW_TYPE workflow"
+    echo "  Base directory: $BASE_DIR/$SLUG"
+
+    # Determine which quality gates to run
+    if [ "$WORKFLOW_TYPE" = "epic" ]; then
+        echo "  Running 10 quality gates (core + enhanced)"
+    else
+        echo "  Running 6 quality gates (core only)"
+    fi
+else
+    echo "⚠ Could not auto-detect workflow type - using fallback"
+fi
+```
+
+---
+
+### Step 1: Execute Optimization Workflow
+
 1. **Execute optimization workflow** via spec-cli.py:
    ```bash
    python .spec-flow/scripts/spec-cli.py optimize "$ARGUMENTS"

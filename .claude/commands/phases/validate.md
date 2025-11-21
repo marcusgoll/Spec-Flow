@@ -5,17 +5,19 @@ argument-hint: [feature-slug] [--quick|--constitution]
 ---
 
 <context>
-Current workflow state: !`cat specs/*/workflow-state.yaml 2>/dev/null | grep -A5 current_phase || echo "No workflow state found"`
+Workflow Detection: Auto-detected via workspace files, branch pattern, or workflow-state.yaml
 
-Feature spec exists: !`test -f specs/*/spec.md && echo "✅ Found" || echo "❌ Missing"`
+Current workflow state: Auto-detected from ${BASE_DIR}/*/workflow-state.yaml
 
-Plan exists: !`test -f specs/*/plan.md && echo "✅ Found" || echo "❌ Missing"`
+Feature spec exists: Auto-detected (epics/*/epic-spec.md OR specs/*/spec.md)
 
-Tasks exist: !`test -f specs/*/tasks.md && echo "✅ Found" || echo "❌ Missing"`
+Plan exists: Auto-detected (epics/*/plan.md OR specs/*/plan.md)
+
+Tasks exist: Auto-detected (epics/*/tasks.md OR specs/*/tasks.md)
 
 Constitution exists: !`test -f docs/project/constitution.md && echo "✅ Found" || echo "❌ Missing (run /init-project)"`
 
-Previous validation: !`ls -1 specs/*/analysis-report.md 2>/dev/null | wc -l` report(s) found
+Previous validation: Auto-detected from ${BASE_DIR}/*/analysis-report.md
 </context>
 
 <objective>
@@ -45,6 +47,95 @@ Cross-artifact consistency analysis to validate implementation readiness.
 </objective>
 
 <process>
+
+### Step 0: WORKFLOW TYPE DETECTION
+
+**Detect whether this is an epic or feature workflow:**
+
+```bash
+# Run detection utility (cross-platform: tries .sh first, falls back to .ps1)
+if command -v bash >/dev/null 2>&1; then
+    WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null)
+    DETECTION_EXIT=$?
+else
+    WORKFLOW_INFO=$(pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
+    DETECTION_EXIT=$?
+fi
+
+# Parse detection result
+if [ $DETECTION_EXIT -eq 0 ]; then
+    WORKFLOW_TYPE=$(echo "$WORKFLOW_INFO" | jq -r '.type')
+    BASE_DIR=$(echo "$WORKFLOW_INFO" | jq -r '.base_dir')
+    SLUG=$(echo "$WORKFLOW_INFO" | jq -r '.slug')
+    DETECTION_SOURCE=$(echo "$WORKFLOW_INFO" | jq -r '.source')
+
+    echo "✓ Detected $WORKFLOW_TYPE workflow (source: $DETECTION_SOURCE)"
+    echo "  Base directory: $BASE_DIR/$SLUG"
+else
+    # Detection failed - prompt user
+    echo "⚠ Could not auto-detect workflow type"
+fi
+```
+
+**If detection fails**, use AskUserQuestion to prompt user:
+
+```javascript
+AskUserQuestion({
+  questions: [{
+    question: "Which workflow are you working on?",
+    header: "Workflow Type",
+    multiSelect: false,
+    options: [
+      {
+        label: "Feature",
+        description: "Single-sprint feature (specs/ directory)"
+      },
+      {
+        label: "Epic",
+        description: "Multi-sprint epic (epics/ directory)"
+      }
+    ]
+  }]
+});
+
+// Set variables based on user selection
+if (userChoice === "Feature") {
+    WORKFLOW_TYPE="feature";
+    BASE_DIR="specs";
+} else {
+    WORKFLOW_TYPE="epic";
+    BASE_DIR="epics";
+}
+
+// Find the slug by scanning directory
+SLUG=$(ls -1 ${BASE_DIR} | head -1)
+```
+
+**Set file paths based on workflow type:**
+
+```bash
+if [ "$WORKFLOW_TYPE" = "epic" ]; then
+    SPEC_FILE="${BASE_DIR}/${SLUG}/epic-spec.md"
+    PLAN_FILE="${BASE_DIR}/${SLUG}/plan.md"
+    TASKS_FILE="${BASE_DIR}/${SLUG}/tasks.md"
+    REPORT_FILE="${BASE_DIR}/${SLUG}/analysis-report.md"
+else
+    SPEC_FILE="${BASE_DIR}/${SLUG}/spec.md"
+    PLAN_FILE="${BASE_DIR}/${SLUG}/plan.md"
+    TASKS_FILE="${BASE_DIR}/${SLUG}/tasks.md"
+    REPORT_FILE="${BASE_DIR}/${SLUG}/analysis-report.md"
+fi
+
+echo "📄 Using spec: $SPEC_FILE"
+echo "📋 Using plan: $PLAN_FILE"
+echo "✅ Using tasks: $TASKS_FILE"
+echo "📊 Will generate: $REPORT_FILE"
+```
+
+---
+
+### Step 1: Execute Validation Workflow
+
 1. **Execute validation workflow** via spec-cli.py:
    ```bash
    python .spec-flow/scripts/spec-cli.py validate "$ARGUMENTS"
@@ -66,7 +157,7 @@ Cross-artifact consistency analysis to validate implementation readiness.
    g. **Suggest next** — Recommends /implement or fix blockers
 
 2. **Read generated report**:
-   - Load `specs/*/analysis-report.md` (created by script)
+   - Load `$REPORT_FILE` (created by script, path: `${BASE_DIR}/*/analysis-report.md`)
    - Review executive summary with severity counts
    - Examine findings grouped by severity (CRITICAL → MAJOR → MINOR)
 
@@ -158,7 +249,7 @@ Cross-artifact consistency analysis to validate implementation readiness.
 
 <verification>
 Before completing, verify:
-- analysis-report.md created in specs/*/
+- analysis-report.md created in ${BASE_DIR}/*/
 - Report contains all 6 detection pass results
 - Severity counts match findings list
 - Recommendation (PROCEED/FIX_CRITICAL/FIX_ALL) is present
@@ -168,7 +259,7 @@ Before completing, verify:
 
 <success_criteria>
 **Report generation:**
-- analysis-report.md exists in specs/{NNN-slug}/
+- analysis-report.md exists in ${BASE_DIR}/{NNN-slug}/
 - Executive summary includes severity counts
 - Findings grouped by severity (CRITICAL → MAJOR → MINOR)
 - Each finding includes: ID, Title, Severity, Category, Location, Impact, Evidence, Remediation
