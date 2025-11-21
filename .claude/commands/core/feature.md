@@ -220,17 +220,51 @@ python .spec-flow/scripts/spec-cli.py feature "$ARGUMENTS"
 
 When running `/feature continue`:
 
-1. Read `workflow-state.yaml` to find current phase
-2. Locate first phase with status `in_progress` or `failed`
-3. Resume from that phase
-4. If manual gate was pending, proceed past it
-5. Continue workflow execution
+1. **Detect feature workspace and branch:**
+   ```bash
+   # Run detection utility to find feature workspace
+   WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null || pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
+
+   if [ $? -eq 0 ]; then
+       WORKFLOW_TYPE=$(echo "$WORKFLOW_INFO" | jq -r '.type')
+       BASE_DIR=$(echo "$WORKFLOW_INFO" | jq -r '.base_dir')
+       SLUG=$(echo "$WORKFLOW_INFO" | jq -r '.slug')
+       CURRENT_BRANCH=$(echo "$WORKFLOW_INFO" | jq -r '.branch')
+
+       # Verify this is a feature workflow
+       if [ "$WORKFLOW_TYPE" != "feature" ]; then
+           echo "❌ Error: This is an $WORKFLOW_TYPE workflow, not a feature"
+           echo "   Use /epic continue for epic workflows"
+           exit 1
+       fi
+
+       # Check if on correct feature branch
+       if [[ "$CURRENT_BRANCH" =~ ^feature/ ]]; then
+           echo "✓ Detected feature branch: $CURRENT_BRANCH"
+       else
+           echo "⚠️  Warning: Not on a feature branch (current: $CURRENT_BRANCH)"
+           echo "   Feature workspace detected at: specs/$SLUG"
+       fi
+
+       WORKFLOW_STATE_FILE="${BASE_DIR}/${SLUG}/workflow-state.yaml"
+   else
+       echo "❌ Error: Could not detect feature workspace"
+       echo "   Run from project root with an active feature in specs/"
+       exit 1
+   fi
+   ```
+
+2. **Read workflow-state.yaml** to find current phase
+3. Locate first phase with status `in_progress` or `failed`
+4. Resume from that phase
+5. If manual gate was pending, proceed past it
+6. Continue workflow execution
 
 **State verification required:**
 
 ```bash
 # Always read and quote actual state
-cat specs/*/workflow-state.yaml
+cat $WORKFLOW_STATE_FILE
 ```
 
 Never assume or fabricate phase status — always read the actual recorded state.

@@ -1152,10 +1152,62 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ## Handle Continue Mode
 
 **When resuming with `/epic continue`:**
-- Read `epics/NNN-slug/workflow-state.yaml` to find current phase
-- Find first phase with status `in_progress` or `failed`
-- Resume from that phase
-- If manual gate was pending, proceed past it
+
+1. **Detect epic workspace and branch:**
+   ```bash
+   # Run detection utility to find epic workspace
+   WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null || pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
+
+   if [ $? -eq 0 ]; then
+       WORKFLOW_TYPE=$(echo "$WORKFLOW_INFO" | jq -r '.type')
+       BASE_DIR=$(echo "$WORKFLOW_INFO" | jq -r '.base_dir')
+       SLUG=$(echo "$WORKFLOW_INFO" | jq -r '.slug')
+       CURRENT_BRANCH=$(echo "$WORKFLOW_INFO" | jq -r '.branch')
+
+       # Verify this is an epic workflow
+       if [ "$WORKFLOW_TYPE" != "epic" ]; then
+           echo "❌ Error: This is a $WORKFLOW_TYPE workflow, not an epic"
+           echo "   Use /feature continue for feature workflows"
+           exit 1
+       fi
+
+       # Check if on correct epic branch
+       if [[ "$CURRENT_BRANCH" =~ ^epic/ ]]; then
+           echo "✓ Detected epic branch: $CURRENT_BRANCH"
+       else
+           echo "⚠️  Warning: Not on an epic branch (current: $CURRENT_BRANCH)"
+           echo "   Epic workspace detected at: epics/$SLUG"
+
+           # Ask if user wants to switch branches
+           AskUserQuestion({
+             questions: [{
+               question: "Switch to epic branch?",
+               header: "Branch Switch",
+               multiSelect: false,
+               options: [
+                 {label: "Yes", description: "Switch to epic/$SLUG branch"},
+                 {label: "No", description: "Continue on current branch (not recommended)"}
+               ]
+             }]
+           });
+
+           if (userChoice === "Yes") {
+               git checkout -b epic/$SLUG 2>/dev/null || git checkout epic/$SLUG
+               echo "✓ Switched to epic/$SLUG"
+           }
+       fi
+   else
+       echo "❌ Error: Could not detect epic workspace"
+       echo "   Run from project root with an active epic in epics/"
+       exit 1
+   fi
+   ```
+
+2. **Read workflow state:**
+   - Read `epics/$SLUG/workflow-state.yaml` to find current phase
+   - Find first phase with status `in_progress` or `failed`
+   - Resume from that phase
+   - If manual gate was pending, proceed past it
 
 ## Error Handling
 
