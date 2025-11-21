@@ -99,7 +99,7 @@ function Get-MultiSelectInput {
     )
 
     Write-Host "`n$Prompt" -ForegroundColor Yellow
-    for ($i = 0; $i < $Options.Count; $i++) {
+    for ($i = 0; $i -lt $Options.Count; $i++) {
         Write-Host "  [$i] $($Options[$i])"
     }
     Write-Host "`nEnter numbers separated by commas (e.g., 0,2,3): " -NoNewline -ForegroundColor Gray
