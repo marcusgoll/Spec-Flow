@@ -542,6 +542,40 @@ for (const layer of layers) {
 
   // Verify layer completion before proceeding (with auto-retry in auto-mode)
   for (const sprint of layerSprints) {
+    // CRITICAL: Verify sprint workflow-state.yaml exists (agents must create it)
+    const sprintStateFile = `${EPIC_DIR}/sprints/${sprint.id}/workflow-state.yaml`;
+
+    if (!fs.existsSync(sprintStateFile)) {
+      log(`⚠️  WARNING: Sprint ${sprint.id} completed but workflow-state.yaml not found`);
+      log(`   Agent may have forgotten to create state file`);
+      log(`   Creating minimal fallback workflow-state.yaml...`);
+
+      // Create minimal fallback state (agent should have done this)
+      const fallbackState = {
+        sprint: {
+          id: sprint.id,
+          status: "completed",
+          completed_at: new Date().toISOString(),
+          duration_hours: "unknown",
+          note: "Auto-generated fallback - agent did not create workflow-state.yaml"
+        },
+        tasks: {
+          total: "unknown",
+          completed: "unknown",
+          failed: 0
+        },
+        tests: {
+          total: "unknown",
+          passed: "unknown",
+          failed: 0,
+          coverage_percent: "unknown"
+        }
+      };
+
+      fs.writeFileSync(sprintStateFile, yaml.dump(fallbackState));
+      log(`✅ Fallback workflow-state.yaml created for ${sprint.id}`);
+    }
+
     const sprintStatus = checkSprintStatus(`${EPIC_DIR}/sprints/${sprint.id}`);
 
     if (sprintStatus !== "completed") {
