@@ -1,0 +1,45 @@
+# Learning System Metadata
+# Tracks versioning, migrations, and system health
+
+schema_version: "1.0"
+workflow_version: "10.0.0"  # Spec-Flow version when learnings created
+created: null  # First learning recorded
+last_updated: null  # Most recent learning update
+last_analyzed: null  # Most recent pattern analysis
+last_migrated: null  # Most recent schema migration
+
+# Statistics
+total_learnings:
+  performance_patterns: 0
+  anti_patterns: 0
+  custom_abbreviations: 0
+  claude_md_tweaks: 0
+
+auto_applied_count: 0  # Number of low-risk auto-applications
+pending_approval_count: 0  # Number of high-risk tweaks awaiting approval
+total_time_saved_seconds: 0  # Cumulative time saved from applied patterns
+
+# Migration history
+migration_history: []
+# - from_version: "1.0"
+#   to_version: "1.1"
+#   migrated_at: "2025-11-21T12:00:00Z"
+#   changes:
+#     - "Added 'context' field to performance patterns"
+#     - "Added 'severity' field to anti-patterns"
+
+# Health check
+last_health_check: null
+health_status: "good"  # "good" | "degraded" | "needs_attention"
+health_issues: []
+# - issue: "5 patterns with confidence < 0.5 should be reviewed"
+#   severity: "low"
+#   detected: "2025-11-21T12:30:00Z"
+
+# Configuration
+config:
+  min_confidence_for_auto_apply: 0.90
+  min_occurrences_for_pattern: 3
+  pattern_detection_window_days: 30
+  statistical_significance_threshold: 0.95
+  max_pending_approvals: 10

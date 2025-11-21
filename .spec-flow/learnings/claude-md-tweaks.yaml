@@ -1,0 +1,44 @@
+# CLAUDE.md System Prompt Tweaks
+# High-risk changes to root CLAUDE.md
+# Requires manual approval before application
+
+schema_version: "1.0"
+last_updated: null
+tweaks: []
+
+# Tweak structure:
+# - id: unique identifier (e.g., "prefer-backend-dev-agent")
+#   category: "agent_preference" | "tool_usage" | "workflow_optimization" | "code_standards"
+#   name: human-readable name
+#   description: what this tweak does
+#   rationale: why this improves performance
+#   confidence: 0.0-1.0 (based on evidence)
+#   evidence: list of supporting data points
+#   impact: "low" | "medium" | "high"
+#   status: "pending" | "approved" | "rejected" | "applied"
+#   created: ISO8601 timestamp
+#   applied: ISO8601 timestamp (if applied)
+#   content: markdown text to append to CLAUDE.md
+#   approval_required: boolean - always true for tweaks
+#
+# Example:
+# - id: "prefer-backend-dev-agent-001"
+#   category: "agent_preference"
+#   name: "Prefer backend-dev agent for FastAPI features"
+#   description: "Using backend-dev agent instead of general-purpose for FastAPI tasks improves completion speed by 15%"
+#   rationale: "backend-dev agent has specialized FastAPI context and TDD workflows built-in"
+#   confidence: 0.92
+#   evidence:
+#     - "Task T045: 12min with backend-dev vs 14min with general-purpose"
+#     - "Task T067: 18min with backend-dev vs 21min with general-purpose"
+#     - "Average speedup: 15% across 8 backend tasks"
+#   impact: "medium"
+#   status: "pending"
+#   created: "2025-11-21T11:00:00Z"
+#   applied: null
+#   content: |
+#     ### Agent Selection
+#     - For Python FastAPI features, prefer backend-dev agent over general-purpose agent
+#     - backend-dev agent includes specialized FastAPI context and TDD workflows
+#     - Average task completion 15% faster for backend work
+#   approval_required: true

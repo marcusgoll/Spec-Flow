@@ -104,12 +104,57 @@ while [ -d "$SPECS_DIR/$dir_name" ] || (git rev-parse --is-inside-work-tree >/de
 done
 
 has_git=false
+worktree_enabled=false
+worktree_path=""
+
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     has_git=true
-    if branch_exists "$branch_name"; then
-        git checkout "$branch_name" >/dev/null 2>&1 || log_warn "Failed to checkout $branch_name"
-    else
-        git checkout -b "$branch_name" >/dev/null 2>&1 || log_warn "Failed to create branch $branch_name"
+
+    # Check if worktrees are enabled in user preferences
+    if [ -f "$REPO_ROOT/.spec-flow/config/user-preferences.yaml" ]; then
+        worktree_pref=$(grep "auto_create:" "$REPO_ROOT/.spec-flow/config/user-preferences.yaml" 2>/dev/null | grep -A 1 "worktrees:" | tail -1 | awk '{print $2}')
+        if [ "$worktree_pref" = "true" ]; then
+            worktree_enabled=true
+        fi
+    fi
+
+    if [ "$worktree_enabled" = "true" ]; then
+        # Create worktree instead of regular branch
+        log_info "Creating worktree for feature: $dir_name"
+
+        # Determine feature type from branch prefix
+        feature_type="feature"
+        if [[ "$TYPE" == "feat" || "$TYPE" == "feature" ]]; then
+            feature_type="feature"
+        fi
+
+        # Use worktree manager
+        worktree_result=$("$SCRIPT_DIR/worktree-manager.sh" create "$feature_type" "$dir_name" "$branch_name" --json 2>/dev/null)
+
+        if [ $? -eq 0 ]; then
+            worktree_path=$(echo "$worktree_result" | grep -o '"worktree_path":"[^"]*"' | cut -d'"' -f4)
+            status=$(echo "$worktree_result" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+
+            if [ "$status" = "created" ]; then
+                log_success "Worktree created: $worktree_path"
+                feature_dir="$worktree_path/specs/$dir_name"
+            elif [ "$status" = "exists" ]; then
+                log_info "Using existing worktree: $worktree_path"
+                feature_dir="$worktree_path/specs/$dir_name"
+            fi
+        else
+            log_warn "Failed to create worktree, falling back to regular branch"
+            worktree_enabled=false
+        fi
+    fi
+
+    # Fallback to regular branch if worktrees disabled or failed
+    if [ "$worktree_enabled" != "true" ]; then
+        if branch_exists "$branch_name"; then
+            git checkout "$branch_name" >/dev/null 2>&1 || log_warn "Failed to checkout $branch_name"
+        else
+            git checkout -b "$branch_name" >/dev/null 2>&1 || log_warn "Failed to create branch $branch_name"
+        fi
     fi
 else
     log_warn "Git not detected; skipping branch creation (planned: $branch_name)"
@@ -167,7 +212,9 @@ print(json.dumps({
     "FEATURE_DIR": "$feature_dir",
     "SPEC_FILE": "$spec_file",
     "FEATURE_NUM": "$feature_num",
-    "HAS_GIT": $has_git
+    "HAS_GIT": $has_git,
+    "WORKTREE_ENABLED": $worktree_enabled,
+    "WORKTREE_PATH": "$worktree_path"
 }))
 PY
 else
@@ -176,5 +223,9 @@ else
     echo "SPEC_FILE: $spec_file"
     echo "FEATURE_NUM: $feature_num"
     echo "HAS_GIT: $has_git"
+    echo "WORKTREE_ENABLED: $worktree_enabled"
+    if [ "$worktree_enabled" = "true" ]; then
+        echo "WORKTREE_PATH: $worktree_path"
+    fi
     echo "export SPEC_FLOW_FEATURE=$branch_name"
 fi

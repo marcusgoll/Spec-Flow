@@ -20,6 +20,8 @@ GitHub authentication: !`gh auth status >/dev/null 2>&1 && echo "✅ Authenticat
 Git remote configured: !`git remote -v | grep -q origin && echo "✅ Configured" || echo "❌ Not configured"`
 
 Recent commits (last 10): !`git log -10 --pretty=format:"%s" 2>/dev/null || echo "No commits found"`
+
+README.md Recent Updates (first 50 lines): !`grep -A 50 "## 🆕 Recent Updates" README.md | head -50 2>/dev/null || echo "Section not found"`
 </context>
 
 <objective>
@@ -29,11 +31,17 @@ Automate the complete release workflow for the Spec-Flow package, ensuring consi
 1. Pre-flight checks (git, npm, CI status)
 2. Version bump detection (conventional commits → MAJOR, MINOR, PATCH)
 3. Build validation (dist/ directory with BUILD_REPORT.md)
-4. File updates (package.json, CHANGELOG.md, README.md)
+4. File updates (package.json, CHANGELOG.md, README.md Recent Updates)
 5. Git operations (commit, tag, push)
 6. GitHub Release creation with CHANGELOG notes
 7. npm package publishing
 8. Optional X (Twitter) announcement
+
+**README.md updates include:**
+- New version section in "Recent Updates" (extracted from CHANGELOG)
+- Feature highlights and breaking changes
+- Version badge updates for major releases
+- Chronological ordering (newest at top)
 
 **Operating constraints:**
 - **INTERNAL USE ONLY** — For Spec-Flow workflow development only
@@ -98,9 +106,42 @@ Automate the complete release workflow for the Spec-Flow package, ensuring consi
      ```
    - Write updated CHANGELOG.md
 
-6. **Update README.md badges** (if version changed from 6.x.x to 7.x.x):
-   - Update npm version badge URLs
-   - Update any version-specific documentation links
+6. **Update README.md**:
+   - **Recent Updates section**: Insert new version under "🆕 Recent Updates"
+     - Extract version, date, and highlights from CHANGELOG.md
+     - Create formatted section with version number, date, and bullet points
+     - Insert at top of Recent Updates (push older versions down)
+     - Format: `### vX.Y.Z (Month YYYY)` + feature highlights
+   - **Version badges**: Update npm version badge if major version change
+   - **Breaking changes note**: Add breaking changes section if MAJOR bump
+   - **Keep existing releases**: Preserve all existing version entries
+   - Example update:
+     ```markdown
+     ## 🆕 Recent Updates
+
+     ### v10.0.0 (November 2025)
+
+     **Git Worktrees & Perpetual Learning** - Parallel development and self-improving workflows
+
+     - **Git Worktrees**: Enable multiple Claude Code instances on different epics/features
+       - Automatic worktree creation per epic/feature
+       - Shared memory linking for cross-worktree observability
+       - Automatic cleanup after /finalize
+     - **Perpetual Learning System**: Continuously improve workflow efficiency
+       - Performance pattern detection (auto-applied optimizations)
+       - Anti-pattern detection (failure prevention)
+       - Custom abbreviation learning (project terminology)
+       - CLAUDE.md optimization (system prompt improvements with approval)
+     - **NPM Update Protection**: Learnings persist across package updates via migration system
+
+     **Breaking Changes**:
+     - None (backwards compatible with v9.x.x)
+
+     ---
+
+     ### v9.4.0 (November 2025)
+     ...
+     ```
 
 7. **Git commit and tag**:
    ```bash
@@ -148,6 +189,8 @@ Before completing, verify:
 - Build succeeded (dist/BUILD_REPORT.md exists)
 - package.json version updated
 - CHANGELOG.md new section added
+- README.md Recent Updates section updated with new version
+- README.md badges updated (if major version change)
 - Git commit created with "chore: release vX.Y.Z" message
 - Git tag created (vX.Y.Z)
 - Remote push succeeded (both branch and tag)
@@ -172,7 +215,10 @@ Before completing, verify:
 - package.json version field updated
 - CHANGELOG.md new section inserted under ## [Unreleased]
 - Commits grouped by type (Features, Fixes, Docs, Chores)
+- README.md Recent Updates section updated with new version at top
+- README.md highlights extracted from CHANGELOG.md
 - README.md badges updated if major version change
+- Breaking changes section added to README.md if MAJOR bump
 
 **Git operations:**
 - Commit message: "chore: release vX.Y.Z"
@@ -257,6 +303,15 @@ Commits since v6.12.1:
 - Requires dist/ directory with BUILD_REPORT.md
 - Validates build before any git operations
 - Blocks release if build fails
+
+**README.md update behavior:**
+- Automatically extracts highlights from CHANGELOG.md
+- Inserts new version section at top of "Recent Updates"
+- Preserves all existing version entries
+- Formats as: `### vX.Y.Z (Month YYYY)` + title + bullet points
+- Adds breaking changes section for MAJOR bumps
+- Updates npm version badge for major version changes
+- Manual cleanup may be needed if section exceeds 1000 lines
 
 **Error recovery:**
 - Pre-flight failure: Fix issue and re-run /release

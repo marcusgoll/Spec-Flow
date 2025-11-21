@@ -283,26 +283,62 @@ AskUserQuestion({
 
 **Generate epic specification (Markdown format):**
 ```bash
-# Create epic workspace
-mkdir -p epics/NNN-slug
-
-# Create epic branch (following feature workflow pattern)
-CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+# Step 1: Check user preferences for worktree auto-creation
+WORKTREE_ENABLED=$(bash .spec-flow/scripts/utils/load-preferences.sh --key worktrees.auto_create --default false)
 EPIC_BRANCH="epic/${NNN}-${SLUG}"
 
-if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
-    git checkout -b "$EPIC_BRANCH"
-    echo "✅ Created branch: $EPIC_BRANCH"
-elif [[ "$CURRENT_BRANCH" == "$EPIC_BRANCH" ]]; then
-    echo "✅ Already on epic branch: $EPIC_BRANCH"
-else
-    echo "⚠️  Warning: Not on main/master. Current branch: $CURRENT_BRANCH"
-    echo "   Epic work will happen on current branch unless you create epic branch manually."
+if [[ "$WORKTREE_ENABLED" == "true" ]]; then
+    # Create worktree instead of regular branch
+    echo "🌳 Creating worktree for epic: ${NNN}-${SLUG}"
+
+    WORKTREE_RESULT=$(bash .spec-flow/scripts/bash/worktree-manager.sh create epic "${NNN}-${SLUG}" "$EPIC_BRANCH" --json)
+
+    if [[ $? -eq 0 ]]; then
+        WORKTREE_PATH=$(echo "$WORKTREE_RESULT" | grep -o '"worktree_path":"[^"]*"' | cut -d'"' -f4)
+        WORKTREE_STATUS=$(echo "$WORKTREE_RESULT" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+
+        if [[ "$WORKTREE_STATUS" == "created" ]]; then
+            echo "✅ Worktree created: $WORKTREE_PATH"
+            echo "✅ Branch: $EPIC_BRANCH"
+
+            # Switch to worktree directory
+            cd "$WORKTREE_PATH" || exit 1
+
+            # Create epic workspace in worktree
+            mkdir -p epics/${NNN}-${SLUG}
+        elif [[ "$WORKTREE_STATUS" == "exists" ]]; then
+            echo "✅ Using existing worktree: $WORKTREE_PATH"
+            cd "$WORKTREE_PATH" || exit 1
+        fi
+    else
+        echo "❌ Failed to create worktree, falling back to regular branch"
+        WORKTREE_ENABLED="false"
+    fi
 fi
 
-# Update workflow-state.yaml with branch information
+if [[ "$WORKTREE_ENABLED" != "true" ]]; then
+    # Regular branch creation (legacy behavior)
+    mkdir -p epics/${NNN}-${SLUG}
+
+    CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+
+    if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
+        git checkout -b "$EPIC_BRANCH"
+        echo "✅ Created branch: $EPIC_BRANCH"
+    elif [[ "$CURRENT_BRANCH" == "$EPIC_BRANCH" ]]; then
+        echo "✅ Already on epic branch: $EPIC_BRANCH"
+    else
+        echo "⚠️  Warning: Not on main/master. Current branch: $CURRENT_BRANCH"
+        echo "   Epic work will happen on current branch unless you create epic branch manually."
+    fi
+fi
+
+# Update workflow-state.yaml with branch and worktree information
 # epics/${NNN}-${SLUG}/workflow-state.yaml
-# Add: git.branch: $EPIC_BRANCH
+# Add:
+#   git.branch: $EPIC_BRANCH
+#   git.worktree_enabled: $WORKTREE_ENABLED
+#   git.worktree_path: $WORKTREE_PATH (if worktree enabled)
 
 # Generate epic-spec.md using template
 # Template location: .spec-flow/templates/epic-spec.md

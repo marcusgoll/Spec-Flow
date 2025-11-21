@@ -414,19 +414,54 @@ archive_artifacts() {
     fi
 }
 
-# Cleanup feature branch
+# Cleanup feature branch and worktree
 cleanup_branch() {
-    log_info "Cleaning up feature branch"
+    log_info "Cleaning up feature branch and worktree"
 
     local feature_branch
     feature_branch="$(yq -r '.workflow.git.feature_branch // ""' "$STATE_FILE")"
 
+    local worktree_enabled
+    worktree_enabled="$(yq -r '.workflow.git.worktree_enabled // false' "$STATE_FILE")"
+
+    local worktree_path
+    worktree_path="$(yq -r '.workflow.git.worktree_path // ""' "$STATE_FILE")"
+
+    # Step 1: Cleanup worktree if it was used
+    if [ "$worktree_enabled" = "true" ] && [ -n "$worktree_path" ]; then
+        log_info "Cleaning up worktree: $worktree_path"
+
+        # Check if user preferences allow cleanup
+        local cleanup_enabled
+        cleanup_enabled="false"
+        if [ -f ".spec-flow/config/user-preferences.yaml" ]; then
+            cleanup_enabled=$(grep "cleanup_on_finalize:" .spec-flow/config/user-preferences.yaml 2>/dev/null | grep -A 1 "worktrees:" | tail -1 | awk '{print $2}')
+        fi
+
+        # Default to true if not configured
+        if [ -z "$cleanup_enabled" ] || [ "$cleanup_enabled" = "true" ]; then
+            # Extract slug from worktree path
+            local slug
+            slug="$(basename "$worktree_path")"
+
+            # Use worktree manager to remove
+            if bash .spec-flow/scripts/bash/worktree-manager.sh remove "$slug" >/dev/null 2>&1; then
+                log_success "Worktree removed: $slug"
+            else
+                log_warn "Failed to remove worktree: $slug (may need manual cleanup)"
+            fi
+        else
+            log_info "Worktree cleanup disabled in preferences, skipping"
+        fi
+    fi
+
+    # Step 2: Cleanup regular branch
     if [ -n "$feature_branch" ]; then
         local current
         current="$(git branch --show-current)"
 
-        # Switch to main if on feature branch
-        if [ "$current" == "$feature_branch" ]; then
+        # Switch to main if on feature branch (only if not in worktree)
+        if [ "$worktree_enabled" != "true" ] && [ "$current" == "$feature_branch" ]; then
             git checkout -q main 2>/dev/null || git checkout -q master 2>/dev/null || true
         fi
 

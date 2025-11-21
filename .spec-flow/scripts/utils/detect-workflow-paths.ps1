@@ -10,7 +10,7 @@ Detection priority (as per user preference):
 4. Return failure code for fallback to AskUserQuestion
 
 .OUTPUTS
-JSON object with workflow information
+JSON object with workflow information including worktree detection
 
 .EXAMPLE
 .\detect-workflow-paths.ps1
@@ -37,6 +37,75 @@ function Get-CurrentBranch {
     }
 }
 
+function Detect-Worktree {
+    try {
+        $gitDir = git rev-parse --git-dir 2>$null
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($gitDir)) {
+            return @{ is_worktree = $false }
+        }
+
+        # In a worktree, git_dir is .git/worktrees/<name>
+        # In main worktree, git_dir is .git
+        if ($gitDir -match '[\\/]worktrees[\\/]') {
+            # This is a worktree
+            $worktreePath = git rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -ne 0) {
+                $worktreePath = (Get-Location).Path
+            }
+
+            # Check if this is a managed worktree (under worktrees/ directory)
+            if ($worktreePath -match '[\\/]worktrees[\\/]') {
+                # Extract type and slug from path
+                # Path format: .../worktrees/{type}/{slug}
+                if ($worktreePath -match '[\\/]worktrees[\\/]([^\\/]+)[\\/]([^\\/]+)$') {
+                    $type = $Matches[1]
+                    $slug = $Matches[2]
+
+                    return @{
+                        is_worktree = $true
+                        worktree_path = $worktreePath
+                        worktree_type = $type
+                        worktree_slug = $slug
+                    }
+                }
+            }
+
+            # Worktree but not managed by our system
+            return @{
+                is_worktree = $true
+                worktree_path = $worktreePath
+                worktree_type = "unknown"
+                worktree_slug = "unknown"
+            }
+        }
+
+        # Not a worktree (main repository)
+        return @{ is_worktree = $false }
+    }
+    catch {
+        return @{ is_worktree = $false }
+    }
+}
+
+function Merge-WorktreeInfo {
+    param(
+        [hashtable]$WorkflowInfo,
+        [hashtable]$WorktreeInfo
+    )
+
+    # Merge the two hashtables
+    $merged = $WorkflowInfo.Clone()
+    $merged['is_worktree'] = $WorktreeInfo['is_worktree']
+
+    if ($WorktreeInfo['is_worktree']) {
+        $merged['worktree_path'] = $WorktreeInfo['worktree_path']
+        $merged['worktree_type'] = $WorktreeInfo['worktree_type']
+        $merged['worktree_slug'] = $WorktreeInfo['worktree_slug']
+    }
+
+    return $merged
+}
+
 function Detect-FromFiles {
     # Check for epic workspace
     $epicSpecFiles = Get-ChildItem -Path "epics\*\epic-spec.md" -ErrorAction SilentlyContinue
@@ -44,15 +113,13 @@ function Detect-FromFiles {
         $epicDir = Split-Path -Parent $epicSpecFiles[0].FullName
         $epicSlug = Split-Path -Leaf $epicDir
         $branch = Get-CurrentBranch
-        $result = @{
+        return @{
             type = "epic"
             base_dir = "epics"
             slug = $epicSlug
             branch = $branch
             source = "files"
         }
-        Write-Output ($result | ConvertTo-Json -Compress)
-        return $true
     }
 
     # Check for feature workspace
@@ -61,18 +128,16 @@ function Detect-FromFiles {
         $featureDir = Split-Path -Parent $featureSpecFiles[0].FullName
         $featureSlug = Split-Path -Leaf $featureDir
         $branch = Get-CurrentBranch
-        $result = @{
+        return @{
             type = "feature"
             base_dir = "specs"
             slug = $featureSlug
             branch = $branch
             source = "files"
         }
-        Write-Output ($result | ConvertTo-Json -Compress)
-        return $true
     }
 
-    return $false
+    return $null
 }
 
 function Detect-FromBranch {
@@ -81,32 +146,28 @@ function Detect-FromBranch {
     # Check for epic branch pattern (epic/NNN-slug or epic/slug)
     if ($currentBranch -match '^epic/(.+)$') {
         $slug = $Matches[1]
-        $result = @{
+        return @{
             type = "epic"
             base_dir = "epics"
             slug = $slug
             branch = $currentBranch
             source = "branch"
         }
-        Write-Output ($result | ConvertTo-Json -Compress)
-        return $true
     }
 
     # Check for feature branch pattern (feature/NNN-slug or feature/slug)
     if ($currentBranch -match '^feature/(.+)$') {
         $slug = $Matches[1]
-        $result = @{
+        return @{
             type = "feature"
             base_dir = "specs"
             slug = $slug
             branch = $currentBranch
             source = "branch"
         }
-        Write-Output ($result | ConvertTo-Json -Compress)
-        return $true
     }
 
-    return $false
+    return $null
 }
 
 function Detect-FromState {
@@ -119,15 +180,13 @@ function Detect-FromState {
             $epicDir = Split-Path -Parent $stateFile
             $epicSlug = Split-Path -Leaf $epicDir
             $branch = Get-CurrentBranch
-            $result = @{
+            return @{
                 type = "epic"
                 base_dir = "epics"
                 slug = $epicSlug
                 branch = $branch
                 source = "state"
             }
-            Write-Output ($result | ConvertTo-Json -Compress)
-            return $true
         }
     }
 
@@ -140,33 +199,43 @@ function Detect-FromState {
             $featureDir = Split-Path -Parent $stateFile
             $featureSlug = Split-Path -Leaf $featureDir
             $branch = Get-CurrentBranch
-            $result = @{
+            return @{
                 type = "feature"
                 base_dir = "specs"
                 slug = $featureSlug
                 branch = $branch
                 source = "state"
             }
-            Write-Output ($result | ConvertTo-Json -Compress)
-            return $true
         }
     }
 
-    return $false
+    return $null
 }
 
 # Main detection logic
 try {
+    # Detect worktree status
+    $worktreeInfo = Detect-Worktree
+
     # Try each detection method in priority order
-    if (Detect-FromFiles) {
+    $workflowInfo = Detect-FromFiles
+    if ($workflowInfo) {
+        $merged = Merge-WorktreeInfo -WorkflowInfo $workflowInfo -WorktreeInfo $worktreeInfo
+        Write-Output ($merged | ConvertTo-Json -Compress)
         exit 0
     }
 
-    if (Detect-FromBranch) {
+    $workflowInfo = Detect-FromBranch
+    if ($workflowInfo) {
+        $merged = Merge-WorktreeInfo -WorkflowInfo $workflowInfo -WorktreeInfo $worktreeInfo
+        Write-Output ($merged | ConvertTo-Json -Compress)
         exit 0
     }
 
-    if (Detect-FromState) {
+    $workflowInfo = Detect-FromState
+    if ($workflowInfo) {
+        $merged = Merge-WorktreeInfo -WorkflowInfo $workflowInfo -WorktreeInfo $worktreeInfo
+        Write-Output ($merged | ConvertTo-Json -Compress)
         exit 0
     }
 
@@ -180,7 +249,8 @@ try {
         source = "none"
         error = "Could not detect workflow type"
     }
-    Write-Error ($error | ConvertTo-Json -Compress)
+    $errorMerged = Merge-WorktreeInfo -WorkflowInfo $error -WorktreeInfo $worktreeInfo
+    Write-Error ($errorMerged | ConvertTo-Json -Compress)
     exit 1
 }
 catch {
@@ -193,6 +263,8 @@ catch {
         source = "none"
         error = "Detection script error: $_"
     }
-    Write-Error ($error | ConvertTo-Json -Compress)
+    $worktreeInfo = @{ is_worktree = $false }
+    $errorMerged = Merge-WorktreeInfo -WorkflowInfo $error -WorktreeInfo $worktreeInfo
+    Write-Error ($errorMerged | ConvertTo-Json -Compress)
     exit 1
 }

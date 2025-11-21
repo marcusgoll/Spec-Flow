@@ -1,0 +1,31 @@
+# Performance Patterns
+# Auto-discovered patterns that improve workflow efficiency
+# Auto-applied when confidence >= 0.90
+
+schema_version: "1.0"
+last_updated: null
+patterns: []
+
+# Pattern structure:
+# - id: unique identifier (e.g., "grep-before-read")
+#   name: human-readable name
+#   description: what this pattern does
+#   confidence: 0.0-1.0 (based on occurrences and success rate)
+#   occurrences: number of times pattern observed
+#   time_saved_avg: average time saved in seconds
+#   last_observed: ISO8601 timestamp
+#   context: where this applies (e.g., "large files >1000 lines")
+#   recommendation: what to do
+#   auto_applied: boolean - whether this is auto-applied
+#
+# Example:
+# - id: "grep-before-read-001"
+#   name: "Use Grep before Read for large files"
+#   description: "Using Grep to search large files before reading saves 2-3 seconds per search"
+#   confidence: 0.95
+#   occurrences: 12
+#   time_saved_avg: 2.5
+#   last_observed: "2025-11-21T10:00:00Z"
+#   context: "Files >1000 lines in this project"
+#   recommendation: "Use Grep with pattern first, then Read only matching files"
+#   auto_applied: true

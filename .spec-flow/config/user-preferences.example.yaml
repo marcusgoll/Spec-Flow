@@ -53,6 +53,41 @@ ui:
   # Mark last-used option with ⭐ in prompts
   recommend_last_used: true
 
+# Git worktree preferences
+worktrees:
+  # Automatically create git worktrees for epics and features
+  # Enables parallel development across multiple Claude Code instances
+  auto_create: false
+
+  # Automatically cleanup worktrees after /finalize completes
+  cleanup_on_finalize: true
+
+# Perpetual learning system
+learning:
+  # Master switch for learning system
+  enabled: true
+
+  # Automatically apply low-risk learnings (performance patterns, abbreviations)
+  # Low-risk patterns have 90%+ confidence and don't modify behavior
+  auto_apply_low_risk: true
+
+  # Require approval for high-risk changes (CLAUDE.md system prompt tweaks)
+  # High-risk changes always require explicit approval
+  require_approval_high_risk: true
+
+  # Allow CLAUDE.md optimization (project-specific additions)
+  # When true, approved learnings can append to CLAUDE.md
+  claude_md_optimization: true
+
+  # Pattern detection thresholds
+  thresholds:
+    # Minimum occurrences before pattern is considered
+    pattern_detection_min_occurrences: 3
+
+    # Statistical significance threshold (0.0-1.0)
+    # Higher values require more confidence before auto-applying
+    statistical_significance: 0.95
+
 # ============================================================================
 # Example Configurations
 # ============================================================================

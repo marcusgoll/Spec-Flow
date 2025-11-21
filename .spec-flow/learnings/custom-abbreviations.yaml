@@ -1,0 +1,31 @@
+# Custom Abbreviations
+# Project-specific terminology expansions
+# Auto-expands abbreviations in specs and plans
+
+schema_version: "1.0"
+last_updated: null
+abbreviations: []
+
+# Abbreviation structure:
+# - abbr: short form (e.g., "auth")
+#   expansion: full meaning
+#   description: detailed explanation
+#   confidence: 0.0-1.0 (based on usage consistency)
+#   usage_count: number of times user used this abbreviation
+#   last_used: ISO8601 timestamp
+#   context: where this applies (e.g., "backend features")
+#   examples: list of example usages
+#   auto_expand: boolean - whether to auto-expand in specs
+#
+# Example:
+# - abbr: "auth"
+#   expansion: "JWT-based authentication with refresh tokens and httpOnly cookies"
+#   description: "User authentication system using JWT access tokens (15min TTL) and refresh tokens (7 day TTL) stored in httpOnly cookies"
+#   confidence: 0.98
+#   usage_count: 15
+#   last_used: "2025-11-21T10:30:00Z"
+#   context: "Authentication and security features"
+#   examples:
+#     - "Add auth to user dashboard"
+#     - "Implement auth for admin panel"
+#   auto_expand: true

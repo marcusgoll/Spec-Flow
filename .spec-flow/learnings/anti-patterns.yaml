@@ -1,0 +1,33 @@
+# Anti-Patterns
+# Detected mistakes and inefficiencies to avoid
+# Generates warnings when similar patterns detected
+
+schema_version: "1.0"
+last_updated: null
+antipatterns: []
+
+# Anti-pattern structure:
+# - id: unique identifier (e.g., "schema-without-migration")
+#   name: human-readable name
+#   description: what went wrong
+#   severity: "low" | "medium" | "high" | "critical"
+#   occurrences: number of times this mistake happened
+#   failure_rate: percentage of times this caused issues (0.0-1.0)
+#   last_observed: ISO8601 timestamp
+#   context: where this applies
+#   warning_message: message to show when pattern detected
+#   prevention: how to avoid this
+#   auto_warn: boolean - whether to automatically warn
+#
+# Example:
+# - id: "schema-without-migration-001"
+#   name: "Editing schema.prisma without creating migration"
+#   description: "Direct schema edits without migrations caused 3 deployment failures"
+#   severity: "high"
+#   occurrences: 3
+#   failure_rate: 1.0
+#   last_observed: "2025-11-21T09:00:00Z"
+#   context: "Prisma database schema changes"
+#   warning_message: "⚠️  Never edit schema.prisma directly - always create migrations first"
+#   prevention: "Run 'npx prisma migrate dev' before changing schema"
+#   auto_warn: true

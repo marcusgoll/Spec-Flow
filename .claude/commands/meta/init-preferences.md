@@ -248,7 +248,91 @@ Let's get started! 🚀
 }
 ```
 
-### Step 7: Build Configuration Object
+### Step 7: Git Worktree Preferences
+
+**Use AskUserQuestion with 2 questions:**
+
+**Question 9: Auto-Create Worktrees**
+```json
+{
+  "question": "Automatically create git worktrees for epics/features?",
+  "header": "Worktrees",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "No (use regular branches, recommended)",
+      "description": "Use standard git branches. Simpler but can't run multiple features in parallel."
+    },
+    {
+      "label": "Yes (enable parallel development)",
+      "description": "Create git worktrees automatically. Allows multiple Claude Code instances to work on different features simultaneously."
+    }
+  ]
+}
+```
+
+**Question 10: Cleanup Worktrees After Finalize**
+```json
+{
+  "question": "Automatically cleanup worktrees after /finalize?",
+  "header": "Cleanup",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "Yes (recommended)",
+      "description": "Remove worktrees when features are finalized. Keeps workspace clean."
+    },
+    {
+      "label": "No (keep for review)",
+      "description": "Keep worktrees after finalize. Useful if you want to review completed work."
+    }
+  ]
+}
+```
+
+### Step 8: Perpetual Learning System
+
+**Use AskUserQuestion with 2 questions:**
+
+**Question 11: Enable Perpetual Learning**
+```json
+{
+  "question": "Enable perpetual learning system?",
+  "header": "Learning",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "Yes (recommended)",
+      "description": "Learn from patterns and continuously improve workflow efficiency. Learnings stored locally and committed to git."
+    },
+    {
+      "label": "No (disable learning)",
+      "description": "Disable all learning features. Workflow won't adapt to project-specific patterns."
+    }
+  ]
+}
+```
+
+**Question 12: Allow CLAUDE.md Optimization**
+```json
+{
+  "question": "Allow CLAUDE.md optimization from learnings?",
+  "header": "CLAUDE.md tweaks",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "Yes, with approval (recommended)",
+      "description": "Allow system to suggest CLAUDE.md improvements based on learnings. You must explicitly approve all changes."
+    },
+    {
+      "label": "No (never modify CLAUDE.md)",
+      "description": "Never suggest CLAUDE.md changes. Learning system will only apply low-risk patterns."
+    }
+  ]
+}
+```
+
+### Step 9: Build Configuration Object
 
 **Map answers to preference structure:**
 
@@ -279,6 +363,20 @@ const preferences = {
   ui: {
     show_usage_stats: answer6.includes('Yes') ? true : false,
     recommend_last_used: answer7.includes('Yes') ? true : false
+  },
+  worktrees: {
+    auto_create: answer9.includes('Yes') ? true : false,
+    cleanup_on_finalize: answer10.includes('Yes') ? true : false
+  },
+  learning: {
+    enabled: answer11.includes('Yes') ? true : false,
+    auto_apply_low_risk: true,  // Always true if learning enabled
+    require_approval_high_risk: true,  // Always true
+    claude_md_optimization: answer12.includes('Yes') ? true : false,
+    thresholds: {
+      pattern_detection_min_occurrences: 3,
+      statistical_significance: 0.95
+    }
   }
 };
 ```
