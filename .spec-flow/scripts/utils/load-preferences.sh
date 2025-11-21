@@ -114,7 +114,92 @@ _set_default_preferences() {
     export PREF_CI_MODE_DEFAULT
 }
 
+# Get a specific preference value by key path
+# Usage: get_preference_value --key "worktrees.auto_create" --default "false"
+get_preference_value() {
+    local key=""
+    local default_value=""
+    local pref_path=".spec-flow/config/user-preferences.yaml"
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --key)
+                key="$2"
+                shift 2
+                ;;
+            --default)
+                default_value="$2"
+                shift 2
+                ;;
+            --config)
+                pref_path="$2"
+                shift 2
+                ;;
+            *)
+                echo "Unknown argument: $1" >&2
+                return 1
+                ;;
+        esac
+    done
+
+    # Validate key is provided
+    if [[ -z "$key" ]]; then
+        echo "Error: --key argument is required" >&2
+        return 1
+    fi
+
+    # Check if file exists
+    if [[ ! -f "$pref_path" ]]; then
+        echo "$default_value"
+        return 0
+    fi
+
+    # Split key into parts (e.g., "worktrees.auto_create" -> ["worktrees", "auto_create"])
+    IFS='.' read -ra KEY_PARTS <<< "$key"
+
+    # Try to extract value using grep/sed
+    local yaml_content
+    yaml_content=$(cat "$pref_path")
+    local value=""
+
+    case "${#KEY_PARTS[@]}" in
+        1)
+            # Top-level key (e.g., "show_usage_stats")
+            value=$(echo "$yaml_content" | grep "^${KEY_PARTS[0]}:" | head -1 | sed "s/.*${KEY_PARTS[0]}: *//" | tr -d '[:space:]')
+            ;;
+        2)
+            # Nested key (e.g., "worktrees.auto_create")
+            value=$(echo "$yaml_content" | grep -A 10 "^${KEY_PARTS[0]}:" | grep "  ${KEY_PARTS[1]}:" | head -1 | sed "s/.*${KEY_PARTS[1]}: *//" | tr -d '[:space:]')
+            ;;
+        3)
+            # Double-nested key (e.g., "commands.epic.default_mode")
+            # More precise extraction: find parent section, then child section, then specific key
+            value=$(echo "$yaml_content" | awk "/^${KEY_PARTS[0]}:/{flag=1; next} flag && /^[a-z]/{exit} flag && /^  ${KEY_PARTS[1]}:/{subflag=1; next} subflag && /^  [a-z]/{exit} subflag && /    ${KEY_PARTS[2]}:/{print; exit}" | sed "s/.*${KEY_PARTS[2]}: *//" | tr -d '[:space:]')
+            ;;
+        *)
+            echo "Error: Key path too deep (max 3 levels)" >&2
+            echo "$default_value"
+            return 0
+            ;;
+    esac
+
+    # Return value or default
+    if [[ -n "$value" ]]; then
+        echo "$value"
+    else
+        echo "$default_value"
+    fi
+
+    return 0
+}
+
 # If sourced, just define functions. If executed, run with args.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    load_preferences "$@"
+    # Check if --key flag is present (new mode)
+    if [[ "$1" == "--key" ]]; then
+        get_preference_value "$@"
+    else
+        load_preferences "$@"
+    fi
 fi

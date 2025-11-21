@@ -81,10 +81,66 @@ properties:
         default: true
         description: "Mark last-used option with ⭐ in prompts"
 
+  worktrees:
+    type: object
+    description: "Git worktree configuration for parallel development"
+    properties:
+      auto_create:
+        type: boolean
+        default: false
+        description: "Automatically create git worktrees for epics and features (enables parallel development)"
+
+      cleanup_on_finalize:
+        type: boolean
+        default: true
+        description: "Automatically remove worktrees after /finalize completes"
+
+  learning:
+    type: object
+    description: "Perpetual learning system configuration"
+    properties:
+      enabled:
+        type: boolean
+        default: true
+        description: "Master switch for learning system (pattern detection and workflow improvements)"
+
+      auto_apply_low_risk:
+        type: boolean
+        default: true
+        description: "Automatically apply low-risk learnings (90%+ confidence, no behavior changes)"
+
+      require_approval_high_risk:
+        type: boolean
+        default: true
+        description: "Require explicit approval for high-risk changes (CLAUDE.md system prompt modifications)"
+
+      claude_md_optimization:
+        type: boolean
+        default: true
+        description: "Allow approved learnings to append project-specific guidance to CLAUDE.md"
+
+      thresholds:
+        type: object
+        description: "Pattern detection thresholds and confidence levels"
+        properties:
+          pattern_detection_min_occurrences:
+            type: integer
+            default: 3
+            minimum: 2
+            maximum: 10
+            description: "Minimum number of pattern occurrences before detection"
+
+          statistical_significance:
+            type: float
+            default: 0.95
+            minimum: 0.5
+            maximum: 1.0
+            description: "Statistical significance threshold (0.0-1.0) for pattern confidence"
+
 # Validation rules
 validation:
   required_fields: []
-  optional_fields: [commands, automation, ui]
+  optional_fields: [commands, automation, ui, worktrees, learning]
 
 # Migration notes
 migrations:
