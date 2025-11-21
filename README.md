@@ -60,6 +60,28 @@
 
 ---
 
+### v10.0.2 (November 2025)
+
+**Epic Workflow Stability** - Critical fixes for epic orchestration and CI monitoring
+
+- **Epic Optimize Phase**: Fixed directory detection to support both epic and feature workflows
+  - Replaced hardcoded specs/ detection with centralized workflow detection utility
+  - Eliminates "No feature directory found" errors when running /optimize on epics
+  - Epic workflows now pass all quality gates correctly
+- **Epic Sprint Tracking**: Added fallback for missing sprint workflow-state.yaml files
+  - Verifies sprint agents created state files after completion
+  - Creates minimal fallback with warnings if agent forgets
+  - Ensures epic progress monitoring never fails silently
+- **Epic CI Monitoring**: Added 30-minute timeout and resume detection to ship-staging
+  - Detects if PR already merged (skips CI wait for /epic continue resume)
+  - Increased timeout from 10 to 30 minutes with manual override prompt
+  - Shows progress updates every 5 minutes
+  - Eliminates indefinite blocking on CI monitoring stage
+
+**Impact**: Epic workflows now run reliably from specification through production deployment without manual intervention.
+
+---
+
 ### v10.0.0 (November 2025)
 
 **Git Worktrees & Perpetual Learning** - Parallel development and self-improving workflows

@@ -1,6 +1,6 @@
 {
   "name": "spec-flow",
-  "version": "10.0.1",
+  "version": "10.0.2",
   "description": "Spec-Driven Development workflow toolkit for Claude Code - Build high-quality features faster with repeatable AI workflows",
   "keywords": [
     "claude",

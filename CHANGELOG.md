@@ -2,6 +2,29 @@
 
 ---
 
+## [10.0.2] - 2025-11-21
+
+### 🔧 Fixed
+
+- **Epic Optimize Phase**: Fixed optimize-workflow.sh directory detection to support both epic and feature workflows
+  - Replaced hardcoded specs/ detection with centralized detect-workflow-paths.sh utility
+  - Now correctly detects epics/ and specs/ directories using JSON-based workflow detection
+  - Eliminates "No feature directory found" errors when running /optimize on epic workflows
+  - Result: /optimize phase now works correctly for all epic workflows (6930bb5)
+- **Epic Sprint Tracking**: Added fallback for missing sprint workflow-state.yaml files
+  - Verifies sprint agents created workflow-state.yaml after sprint completion
+  - Creates minimal fallback state file with warnings if agent forgets
+  - Prevents silent failures in sprint status tracking during epic orchestration
+  - Result: Epic progress monitoring always visible even if agents miss state updates (8f1a197)
+- **Epic CI Monitoring**: Added 30-minute timeout and resume detection to ship-staging CI monitoring
+  - Detects if PR already merged (skips CI wait for /epic continue resume cases)
+  - Increased timeout from 10 to 30 minutes with manual override prompt
+  - Shows progress updates every 5 minutes during CI execution
+  - Handles MERGED state during wait loop
+  - Result: /epic continue no longer blocks indefinitely on CI monitoring stage (1709cc8)
+
+---
+
 ## [10.0.1] - 2025-11-21
 
 ### 🔧 Fixed
