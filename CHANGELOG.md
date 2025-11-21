@@ -2,6 +2,44 @@
 
 ---
 
+## [9.3.0] - 2025-11-20
+
+### ✨ Added
+
+**Automatic Artifact Archival System**
+
+- **Archival Infrastructure**:
+  - Created `epics/completed/` and `specs/completed/` directories
+  - Automatic archival during `/finalize` command (Step 12)
+  - Pattern matches `/run-prompt`'s prompts/completed/ system
+
+- **Archive_artifacts() Function**:
+  - Moves all planning artifacts to `{workspace}/completed/`
+  - Epic artifacts: epic-spec.md, plan.md, sprint-plan.md, tasks.md, NOTES.md, research.md, walkthrough.md
+  - Feature artifacts: spec.md, plan.md, tasks.md, NOTES.md
+  - Keeps workflow-state.yaml in root for metrics/history
+
+- **Benefits**:
+  - Clean workspace - only active work visible
+  - Historical context - completed artifacts stay with epic/spec
+  - Consistent pattern across workflow tools
+  - Automatic - no user action required
+  - Recoverable - restore with simple mv command
+
+### 🔧 Changed
+
+- **finalize-workflow.sh**: Added archive_artifacts() function as Step 12
+- **/finalize command**: Updated documentation with archival step
+- **CLAUDE.md**: Added "Artifact Archival (v9.3+)" section with folder structures
+
+### 🐛 Fixes
+
+- **spec-cli.py**: Fixed cmd_epic() to not reference non-existent epic-manager script
+  - Now provides informational guidance to use `/epic` slash commands directly
+  - Prevents errors when users run spec-cli commands
+
+---
+
 ## [9.2.0] - 2025-11-20
 
 ### ✨ Added
