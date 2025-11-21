@@ -195,6 +195,33 @@ When `ITERATION_MODE=true`, quality gates adjust their focus:
 
 ---
 
+### Step 0.75: Clean Up HTML Blueprint Mockups
+
+**Before running quality gates**, remove all HTML blueprint mockups to ensure they don't reach production:
+
+```bash
+# Check if mockups directory exists
+if [ -d "${BASE_DIR}/${SLUG}/mockups" ]; then
+    echo "🧹 Cleaning up HTML blueprint mockups..."
+    bash .spec-flow/scripts/bash/cleanup-mockups.sh
+    echo "✅ Mockups removed - TSX components are the single source of truth"
+fi
+```
+
+**Cleanup behavior**:
+- Deletes entire `mockups/` directory
+- Preserves `blueprint-patterns.md` for reference (if exists)
+- Ensures no HTML mockups reach production deployment
+- Only runs if mockups directory exists (safe for non-frontend epics)
+
+**Why cleanup before /optimize**:
+- Quality gates validate production code (TSX components)
+- HTML blueprints are development artifacts, not production code
+- Prevents accidental deployment of mockup files
+- Ensures clean workspace for deployment pipeline
+
+---
+
 ### Step 1: Execute Optimization Workflow
 
 1. **Execute optimization workflow** via spec-cli.py:

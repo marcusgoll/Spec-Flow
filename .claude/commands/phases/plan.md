@@ -174,6 +174,43 @@ echo "📄 Using spec: $SPEC_FILE"
    - Deployment Safety
 
 5. **Present next steps** based on feature type
+
+---
+
+### Step 2: Generate Epic Frontend Blueprints (Epic Workflows Only)
+
+**For epic workflows with Frontend subsystem detected**, automatically generate HTML blueprints:
+
+```bash
+# Check if epic and Frontend subsystem exists
+if [ "$WORKFLOW_TYPE" = "epic" ]; then
+    bash .spec-flow/scripts/bash/generate-epic-mockups.sh
+fi
+```
+
+The generate-epic-mockups.sh script:
+1. Detects Frontend subsystem in epic-spec.md (keywords: frontend, ui, react, next.js, web interface)
+2. Creates `epics/NNN-slug/mockups/` directory
+3. Generates `epic-overview.html` from template with:
+   - Epic name, description, sprint count
+   - Epic-level user flow diagram
+   - Placeholder for sprint sections (populated during /tasks)
+4. Outputs guidance for next steps
+
+**Blueprint characteristics**:
+- Pure HTML + Tailwind CSS classes
+- Design token integration (tokens.css)
+- State switching (success, loading, error, empty)
+- Keyboard navigation support
+- WCAG 2.1 AA accessibility baseline
+
+**When generated**:
+- After /plan completes successfully
+- Only for epics with Frontend subsystem
+- Skipped for backend-only epics
+
+**Next phase**: Sprint-level mockups generated during /tasks phase
+
 </process>
 
 <verification>
@@ -181,6 +218,7 @@ Before completing, verify:
 - Workspace type correctly detected (epic vs feature)
 - All required artifacts generated (research.md/plan.md for epics, or plan.md/data-model.md/etc for features)
 - Markdown validation passed (epic workflows only)
+- **Epic frontend blueprints generated** (if Frontend subsystem detected in epic-spec.md)
 - Constitution check passed (all 8 standards considered)
 - HITL gates respected (unless --yes or --skip-clarify)
 - Git commit successful (if auto-commit enabled)
@@ -193,6 +231,7 @@ Before completing, verify:
 - plan.md exists and validates
 - Markdown files contain required sections (Findings, Recommendations, Phases, Constraints)
 - Files copied to epic workspace
+- **Epic frontend blueprints generated** (mockups/epic-overview.html exists if Frontend subsystem detected)
 
 **Feature workflows**:
 - plan.md has all 13 sections completed

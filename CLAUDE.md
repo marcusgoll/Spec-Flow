@@ -48,6 +48,53 @@ Mockup approval gate:
 - Blocks /implement until: workflow-state.yaml manual_gates.mockup_approval.status = approved
 - Continue: /feature continue
 
+### Epic Frontend Blueprint Workflow (v9.4+)
+
+**For epics with Frontend subsystem**, HTML blueprints are automatically generated for design iteration before TSX implementation.
+
+```
+/epic → /plan → [Epic Overview Generated] → /tasks → [Sprint Blueprints Generated] →
+/implement-epic → [Blueprint Approval Gate] → TSX Implementation → /optimize → [Cleanup Blueprints] → /ship
+```
+
+**Blueprint generation phases**:
+1. **/plan phase**: Generates `epic-overview.html` (navigation hub showing all sprints/screens)
+2. **/tasks phase**: Generates individual `sprint-N/screen-*.html` files from sprint-plan.md
+
+**Blueprint characteristics**:
+- Pure HTML + Tailwind CSS classes
+- Design token integration (tokens.css)
+- State switching (success, loading, error, empty)
+- Keyboard navigation (H for hub, S for state cycling)
+- WCAG 2.1 AA accessibility baseline
+
+**Approval gate** (during /implement-epic):
+- **Auto-mode** (`--auto`): Notify and continue automatically
+- **Interactive mode**: Optional pause for iteration
+- Default: "Continue" (no pause unless requested)
+- User can edit HTML files, refresh browser to preview
+
+**TSX conversion workflow**:
+1. Blueprint patterns extracted to `blueprint-patterns.md`
+2. Edge case checklist generated (`conversion-edge-cases.md`)
+3. Developers mirror Tailwind classes in TSX components
+4. Optional validation via `validate-tsx-conversion.sh` (skippable with `--skip-validation`)
+
+**Cleanup strategy** (before production):
+- Mockups deleted during /optimize phase
+- `**/mockups/` gitignored (never committed)
+- `blueprint-patterns.md` preserved for reference
+- Only TSX components deploy to production
+
+**Blueprint location**: `epics/NNN-slug/mockups/`
+- `epic-overview.html` - Navigation hub
+- `sprint-N/screen-NN-*.html` - Individual screens
+
+**Skip options**:
+- `--skip-validation`: Skip pattern extraction and validation
+- `--no-guidance`: Skip edge case checklist
+- `--auto`: Skip all approval gates
+
 ### Feedback Loops (v10.0+)
 
 Discovered implementation gaps during preview/validation can be addressed without creating new epics.

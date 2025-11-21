@@ -434,6 +434,84 @@ async function executeFixStrategy(sprintId, strategy) {
 }
 ```
 
+### Step 2.75: Frontend Mockup Approval Gate (Optional)
+
+**If epic has Frontend subsystem and mockups exist**, provide optional approval gate:
+
+```javascript
+const mockupsDir = `${EPIC_DIR}/mockups`;
+const hasMockups = fs.existsSync(mockupsDir) && fs.existsSync(`${mockupsDir}/epic-overview.html`);
+
+if (hasMockups) {
+  log("\n📐 Frontend blueprints detected");
+  log(`   Location: ${mockupsDir}`);
+  log(`   Open epic-overview.html in browser to review designs`);
+  log("");
+
+  // In auto-mode, notify and continue automatically
+  if (global.AUTO_MODE) {
+    log("🤖 Auto-mode: Blueprints approved automatically, proceeding to implementation");
+  } else {
+    // Interactive mode: Offer optional pause
+    const shouldIterate = await AskUserQuestion({
+      questions: [{
+        question: "Would you like to iterate on blueprint designs before implementation?",
+        header: "Blueprint Review",
+        multiSelect: false,
+        options: [
+          {
+            label: "No, continue",
+            description: "Blueprints approved, proceed with TSX implementation"
+          },
+          {
+            label: "Yes, pause",
+            description: "Pause to edit HTML blueprints with Claude Code"
+          }
+        ]
+      }]
+    });
+
+    if (shouldIterate.answers["Blueprint Review"] === "Yes, pause") {
+      log("\n⏸️  Pausing for blueprint iteration");
+      log("   1. Edit HTML files in mockups/ directory");
+      log("   2. Refresh browser to preview changes");
+      log("   3. Use design tokens from tokens.css");
+      log("   4. When ready, run /implement-epic continue");
+      log("");
+      throw new Error("Blueprint iteration requested - workflow paused");
+    }
+  }
+
+  // Generate TSX conversion helpers
+  log("📝 Extracting blueprint patterns for TSX conversion...");
+  await Bash({
+    command: "bash .spec-flow/scripts/bash/extract-blueprint-patterns.sh",
+    description: "Extract Tailwind class patterns from blueprints"
+  });
+
+  // Optional: Check for common edge cases (skippable with --skip-validation)
+  const skipValidation = "$ARGUMENTS".includes('--skip-validation');
+  if (!skipValidation) {
+    log("🔍 Generating edge case checklist...");
+    await Bash({
+      command: "bash .spec-flow/scripts/bash/check-conversion-edge-cases.sh",
+      description: "Generate HTML → TSX conversion edge case checklist"
+    });
+  }
+
+  log("✅ Blueprint review complete, proceeding to implementation");
+  log("");
+}
+```
+
+**Blueprint approval behavior**:
+- **Auto-mode** (`--auto`): Notify and continue automatically
+- **Interactive mode** (default): Optional pause to iterate
+- **Validation** (default): Extract patterns + edge cases
+- **Skip validation** (`--skip-validation`): Skip pattern extraction
+
+---
+
 ### Step 3: Execute Layers Sequentially
 
 **For each layer, execute all sprints in parallel (if layer.parallelizable):**

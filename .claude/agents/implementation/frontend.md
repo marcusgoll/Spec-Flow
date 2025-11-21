@@ -779,6 +779,242 @@ export default config;
 </conversion_checklist>
 </mockup_conversion>
 
+<epic_blueprint_conversion>
+
+**Epic workflows** (v9.4+): Convert HTML blueprints to TSX components with iteration support
+
+**When**: During `/implement-epic` after blueprint approval gate
+**Input**: `epics/NNN-slug/mockups/` directory containing:
+- `epic-overview.html` (navigation hub)
+- `sprint-N/screen-*.html` (individual screen blueprints)
+- `blueprint-patterns.md` (extracted Tailwind class patterns)
+- `conversion-edge-cases.md` (HTML → TSX guidance)
+
+**Purpose**: Convert approved HTML blueprints to production Next.js/React implementation with built-in iteration cycles
+
+<blueprint_conversion_phases>
+
+**Phase 1: Basic Conversion (Blueprint → Compilable TSX)**
+
+1. **Parse blueprint structure**:
+   - Read HTML blueprint file
+   - Identify semantic structure (header, main, nav, footer, etc.)
+   - Extract component hierarchy from class patterns
+
+2. **Convert to JSX syntax**:
+   ```javascript
+   // HTML → JSX transformations
+   class=""     → className=""
+   <img>        → <img />
+   onclick=""   → onClick={handler}
+   style="..."  → style={{...}} or Tailwind classes
+   for=""       → htmlFor=""
+   <!-- -->     → {/* */}
+   ```
+
+3. **Mirror Tailwind class patterns**:
+   - Read `blueprint-patterns.md` for exact class patterns
+   - Apply same classes to TSX components
+   - Example: `className="button primary"` → `<Button variant="primary" />`
+
+4. **Verify compilation**:
+   ```bash
+   npm run type-check
+   # Should compile with no errors
+   ```
+
+**Phase 2: Make Functional (Add Logic + State)**
+
+1. **Add TypeScript interfaces**:
+   ```tsx
+   interface ScreenProps {
+     // Define props based on blueprint data needs
+   }
+   ```
+
+2. **Wire state management**:
+   - Add useState/useReducer for local state
+   - Add React Query for API data (match contracts/*.yaml)
+   - Map blueprint states (success, loading, error, empty) to React states
+
+3. **Implement event handlers**:
+   - onClick, onChange, onSubmit from blueprint interactions
+   - Form validation logic (client-side)
+   - Routing logic (Next.js Link, useRouter)
+
+4. **Server vs Client components**:
+   - Use server components by default (Next.js 15)
+   - Add "use client" only when needed (useState, useEffect, event handlers)
+
+5. **Review edge case checklist**:
+   - Read `conversion-edge-cases.md`
+   - Address complex interactions, dynamic data, responsive behavior
+   - Implement performance optimizations (memoization, lazy loading)
+
+**Phase 3: Production Polish (Quality Gates)**
+
+1. **Extract reusable components**:
+   - Identify repeated patterns across sprint screens
+   - Extract to `components/shared/` or `components/ui/`
+   - Document component API in ui-inventory.md
+
+2. **Performance optimization**:
+   - Wrap expensive components with React.memo()
+   - Use useMemo for expensive calculations
+   - Lazy load heavy components (React.lazy() + Suspense)
+   - Optimize images (next/image)
+
+3. **Error boundaries**:
+   - Add error boundaries for graceful failures
+   - Implement fallback UI
+
+4. **Accessibility enhancements**:
+   - Beyond blueprint ARIA (add focus management)
+   - Keyboard navigation (trap focus in modals)
+   - Screen reader announcements (aria-live)
+
+5. **Run quality gates**:
+   ```bash
+   npm run lint      # ESLint
+   npm run type-check # TypeScript
+   npm test          # Jest + RTL
+   npm run lighthouse # Performance + A11y
+   ```
+
+</blueprint_conversion_phases>
+
+<iteration_workflow>
+
+**Iteration support** during conversion:
+
+1. **Blueprint doesn't match reality**:
+   - API response shape differs → adjust TSX types
+   - Missing interactions → implement logic not in blueprint
+   - Performance issues → add optimizations
+
+2. **Design refinements needed**:
+   - Blueprint approved, but implementation reveals UX issues
+   - Use design tokens for tweaks (no hardcoded values)
+   - Document changes in NOTES.md
+
+3. **Edge cases discovered**:
+   - Mobile responsive needs different structure → use Tailwind breakpoints
+   - Loading states need skeletons → implement beyond blueprint
+   - Error recovery needs retry buttons → add beyond blueprint
+
+**Validation** (optional, skippable with --skip-validation):
+```bash
+# Check TSX matches blueprint patterns
+bash .spec-flow/scripts/bash/validate-tsx-conversion.sh
+
+# Get edge case guidance
+bash .spec-flow/scripts/bash/check-conversion-edge-cases.sh
+```
+
+</iteration_workflow>
+
+<blueprint_conversion_example>
+
+**HTML Blueprint** (`sprint-1/screen-01-login.html`):
+```html
+<div class="card">
+  <h1>Login</h1>
+  <form class="form-group">
+    <label for="email">Email</label>
+    <input type="email" id="email" class="w-full px-3 py-2" />
+    <button class="button primary">Sign In</button>
+  </form>
+</div>
+```
+
+**TSX Component** (after conversion):
+```tsx
+'use client'
+
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+
+interface LoginProps {
+  onSuccess?: () => void
+}
+
+export function LoginScreen({ onSuccess }: LoginProps) {
+  const [email, setEmail] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    // API call logic
+  }
+
+  return (
+    <div className="card">
+      <h1>Login</h1>
+      <form className="form-group" onSubmit={handleSubmit}>
+        <label htmlFor="email">Email</label>
+        <Input
+          type="email"
+          id="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full px-3 py-2"
+        />
+        <Button variant="primary" type="submit" disabled={isLoading}>
+          {isLoading ? 'Signing in...' : 'Sign In'}
+        </Button>
+      </form>
+    </div>
+  )
+}
+```
+
+**Key conversion points**:
+- ✅ HTML → JSX syntax (className, htmlFor, onChange)
+- ✅ Static → Dynamic (useState for email, isLoading)
+- ✅ Mirrored classes (card, form-group, w-full px-3 py-2, button primary)
+- ✅ Added functionality beyond blueprint (loading state, form handling)
+- ✅ TypeScript interfaces (LoginProps)
+- ✅ Accessible (semantic HTML, labels, disabled state)
+
+</blueprint_conversion_example>
+
+<conversion_checklist_epic>
+
+**Epic blueprint → TSX checklist**:
+
+- [ ] Read `blueprint-patterns.md` (Tailwind class patterns to mirror)
+- [ ] Read `conversion-edge-cases.md` (10 common edge cases to handle)
+- [ ] Convert HTML → JSX (all syntax transformations)
+- [ ] Mirror exact Tailwind classes from blueprint
+- [ ] Add TypeScript interfaces for all props
+- [ ] Wire state management (useState, React Query, etc.)
+- [ ] Implement all event handlers (onClick, onChange, onSubmit)
+- [ ] Add loading/error/empty states (match blueprint state variants)
+- [ ] Server vs client component decision ("use client" where needed)
+- [ ] Extract reusable components (check for duplication)
+- [ ] Implement responsive behavior (mobile layouts may differ)
+- [ ] Add performance optimizations (memo, lazy loading)
+- [ ] Error boundaries for graceful failures
+- [ ] Accessibility beyond blueprint (focus management, screen reader)
+- [ ] Run quality gates (lint, type-check, tests, lighthouse)
+- [ ] Validate conversion (optional: `validate-tsx-conversion.sh`)
+- [ ] Document changes in NOTES.md if blueprint diverged
+
+</conversion_checklist_epic>
+
+<skip_options>
+
+Power users can skip validation/guidance:
+- `--skip-validation`: Skip pattern extraction and TSX validation
+- `--no-guidance`: Skip edge case checklist generation
+- `--auto`: Skip all approval gates and iteration prompts
+
+</skip_options>
+
+</epic_blueprint_conversion>
+
 <design_system_integration>
 
 **All UI implementations must follow the comprehensive style guide.**

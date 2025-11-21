@@ -26,6 +26,9 @@ Thumbs.db
 TWITTER_ANNOUNCEMENT.md
 GITHUB_SETUP_INSTRUCTIONS.md
 
+# HTML blueprint mockups (temporary development artifacts)
+**/mockups/
+
 # Dependencies
 node_modules/
 package-lock.json
