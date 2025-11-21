@@ -278,6 +278,72 @@ REPLY_TWEET_ID="1234567890123456790"  # Retrieved after polling
 
 ---
 
+## UTF-8 Encoding for Emojis
+
+### Problem: Emojis Display as ??
+
+When posting content with emojis using direct bash variable interpolation, emojis may render as `??` in the actual tweet:
+
+**Broken approach:**
+```bash
+# ❌ This FAILS - emojis become ??
+POST_CONTENT="🚀 Spec-Flow v2.7.0 is here!"
+curl -X POST "$API_BASE/api/v1/posts/" \
+  -H "Content-Type: application/json" \
+  -d "{\"content\": \"$POST_CONTENT\", \"scheduled_at\": null}"
+```
+
+**Root cause:** Direct bash variable interpolation with quoted strings doesn't preserve UTF-8 character encoding through the curl pipeline.
+
+### Solution: Temp File + jq -Rs
+
+Use a temporary file with `jq -Rs` for proper UTF-8 encoding:
+
+**Working approach:**
+```bash
+# ✅ This WORKS - emojis preserved correctly
+cat > /tmp/x-post.txt << 'EOF'
+🚀 Spec-Flow v2.7.0 is here!
+✨ One-command releases
+🔄 Auto-close GitHub issues
+EOF
+POST_CONTENT=$(cat /tmp/x-post.txt | jq -Rs .)
+
+# No quotes around $POST_CONTENT variable
+curl -X POST "$API_BASE/api/v1/posts/" \
+  -H "Content-Type: application/json" \
+  -d "{\"content\": $POST_CONTENT, \"scheduled_at\": null}"
+```
+
+**Key details:**
+1. Write emoji content to temp file (`/tmp/x-post.txt`)
+2. Use `jq -Rs` flags:
+   - `-R` (raw input): Treat input as raw text, not JSON
+   - `-s` (slurp): Read entire input into single string
+3. **No quotes** around `$POST_CONTENT` in curl `-d` parameter
+4. `jq` handles JSON escaping and UTF-8 encoding automatically
+
+### Example: Threaded Reply with Emojis
+
+```bash
+GITHUB_URL="https://github.com/marcusgoll/Spec-Flow/releases/tag/v${NEW_VERSION}"
+
+# Write reply with emoji to temp file
+cat > /tmp/reply.txt << EOF
+🔗 Release notes: ${GITHUB_URL}
+EOF
+REPLY_CONTENT=$(cat /tmp/reply.txt | jq -Rs .)
+
+# Post threaded reply
+REPLY_RESPONSE=$(curl -s -X POST "$API_BASE/api/v1/posts/" \
+  -H "Content-Type: application/json" \
+  -d "{\"content\": $REPLY_CONTENT, \"scheduled_at\": null, \"in_reply_to_tweet_id\": \"$TWEET_ID\"}")
+```
+
+**Note:** You can use single quotes in heredoc (`<< 'EOF'`) to prevent variable expansion, or regular heredoc (`<< EOF`) to allow variable substitution (like `${GITHUB_URL}` above).
+
+---
+
 ## Error Codes
 
 ### HTTP Status Codes

@@ -148,11 +148,15 @@ If user selects **Skip**:
 
 Send POST request with confirmed content:
 ```bash
-POST_CONTENT="<user-confirmed text>"
+# Write content to temp file for proper UTF-8 encoding
+cat > /tmp/x-post.txt << 'EOF'
+<user-confirmed text>
+EOF
+POST_CONTENT=$(cat /tmp/x-post.txt | jq -Rs .)
 
 RESPONSE=$(curl -s -X POST "http://5.161.75.135:8080/api/v1/posts/" \
   -H "Content-Type: application/json" \
-  -d "{\"content\": \"$POST_CONTENT\", \"scheduled_at\": null}")
+  -d "{\"content\": $POST_CONTENT, \"scheduled_at\": null}")
 
 POST_ID=$(echo "$RESPONSE" | jq -r '.id')
 
@@ -204,12 +208,17 @@ Display progress: `⏳ Waiting for publish... (Xs)`
 Once main post is live, create threaded reply:
 ```bash
 GITHUB_URL="https://github.com/marcusgoll/Spec-Flow/releases/tag/v${NEW_VERSION}"
-REPLY_CONTENT="🔗 Release notes: ${GITHUB_URL}"
+
+# Write reply content to temp file for proper UTF-8 encoding
+cat > /tmp/reply.txt << EOF
+🔗 Release notes: ${GITHUB_URL}
+EOF
+REPLY_CONTENT=$(cat /tmp/reply.txt | jq -Rs .)
 
 # Post as threaded reply using in_reply_to_tweet_id
 REPLY_RESPONSE=$(curl -s -X POST "http://5.161.75.135:8080/api/v1/posts/" \
   -H "Content-Type: application/json" \
-  -d "{\"content\": \"$REPLY_CONTENT\", \"scheduled_at\": null, \"in_reply_to_tweet_id\": \"$TWEET_ID\"}")
+  -d "{\"content\": $REPLY_CONTENT, \"scheduled_at\": null, \"in_reply_to_tweet_id\": \"$TWEET_ID\"}")
 
 REPLY_POST_ID=$(echo "$REPLY_RESPONSE" | jq -r '.id')
 
