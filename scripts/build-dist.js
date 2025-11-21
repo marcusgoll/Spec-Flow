@@ -92,11 +92,11 @@ const BUILD_CONFIG = {
     '.spec-flow/templates/spec-template.md',
     '.spec-flow/templates/plan-template.md',
     '.spec-flow/templates/tasks-template.md',
-    '.spec-flow/templates/epic-spec.xml',
-    '.spec-flow/templates/sprint-plan.xml',
     '.spec-flow/templates/epic-spec.md',
     '.spec-flow/templates/sprint-plan.md',
     '.spec-flow/templates/walkthrough.md',
+    '.spec-flow/templates/gaps-template.md',
+    '.spec-flow/templates/scope-validation-report-template.md',
     'package.json',
     'README.md',
     'CLAUDE.md'
