@@ -360,30 +360,71 @@ gh pr merge "$PR_NUMBER" \
 ### Monitor CI Progress
 
 ```bash
-# Wait for initial CI trigger
-sleep 10
+# CRITICAL: Check if PR already merged (for /epic continue resume cases)
+PR_STATE=$(gh pr view "$PR_NUMBER" --json state --jq '.state' 2>/dev/null || echo "UNKNOWN")
 
-# Check CI status
-gh pr checks "$PR_NUMBER"
+if [ "$PR_STATE" = "MERGED" ]; then
+  echo "✅ PR already merged (resume detected), skipping CI wait"
+else
+  # Wait for initial CI trigger
+  sleep 10
 
-# Wait for CI completion (with timeout)
-TIMEOUT=600  # 10 minutes
-ELAPSED=0
+  # Check CI status
+  gh pr checks "$PR_NUMBER"
 
-while [ $ELAPSED -lt $TIMEOUT ]; do
-  STATUS=$(gh pr view "$PR_NUMBER" --json statusCheckRollup --jq '.statusCheckRollup[0].state')
+  # Wait for CI completion (with 30-minute timeout and manual override)
+  TIMEOUT=1800  # 30 minutes
+  ELAPSED=0
+  START_TIME=$(date +%s)
 
-  if [ "$STATUS" = "SUCCESS" ]; then
-    echo "✅ CI checks passed"
-    break
-  elif [ "$STATUS" = "FAILURE" ]; then
-    echo "❌ CI checks failed"
-    exit 1
+  while [ $ELAPSED -lt $TIMEOUT ]; do
+    STATUS=$(gh pr view "$PR_NUMBER" --json statusCheckRollup --jq '.statusCheckRollup[0].state')
+
+    if [ "$STATUS" = "SUCCESS" ]; then
+      echo "✅ CI checks passed"
+      break
+    elif [ "$STATUS" = "FAILURE" ]; then
+      echo "❌ CI checks failed"
+      exit 1
+    elif [ "$STATUS" = "MERGED" ]; then
+      echo "✅ PR merged while waiting (auto-merge succeeded)"
+      break
+    fi
+
+    # Show progress every 5 minutes
+    if [ $((ELAPSED % 300)) -eq 0 ] && [ $ELAPSED -gt 0 ]; then
+      echo "⏱️  CI still running... ($((ELAPSED / 60)) minutes elapsed)"
+    fi
+
+    sleep 30
+    CURRENT_TIME=$(date +%s)
+    ELAPSED=$((CURRENT_TIME - START_TIME))
+  done
+
+  # Handle timeout with manual override prompt
+  if [ $ELAPSED -ge $TIMEOUT ]; then
+    echo ""
+    echo "⏱️  CI wait exceeded 30 minutes"
+    echo ""
+    echo "Current PR state: $PR_STATE"
+    echo "Current CI status: $STATUS"
+    echo ""
+    echo "Options:"
+    echo "  1) Continue anyway (CI may still be running, proceed to health checks)"
+    echo "  2) Abort (investigate CI manually and re-run /ship later)"
+    echo ""
+    read -p "Choice [1]: " TIMEOUT_CHOICE
+
+    if [ "${TIMEOUT_CHOICE:-1}" = "1" ]; then
+      echo "⚠️  Continuing despite timeout..."
+    else
+      echo "❌ Aborting ship-staging workflow"
+      echo "   Check CI status: gh pr checks $PR_NUMBER"
+      echo "   View logs: gh run view --log"
+      exit 1
+    fi
   fi
-
-  sleep 30
-  ELAPSED=$((ELAPSED + 30))
-done
+fi
 ```
 
 ---
