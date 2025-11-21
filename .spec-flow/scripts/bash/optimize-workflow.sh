@@ -27,21 +27,37 @@ trap on_error ERR
 # Navigate to repo root
 cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
-# Detect feature directory
+# Detect feature/epic directory using centralized utility
 detect_feature_dir() {
-    local slug="${1:-$(git branch --show-current)}"
-    local feature_dir="specs/$slug"
+    # Use centralized workflow detection utility
+    local workflow_info
+    workflow_info=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null)
+    local exit_code=$?
 
-    if [ ! -d "$feature_dir" ]; then
-        # Try to find most recent feature dir
-        feature_dir="$(ls -td specs/*/ 2>/dev/null | head -1)"
-        if [ -z "$feature_dir" ]; then
-            log_error "No feature directory found in specs/"
-            exit 1
-        fi
+    if [ $exit_code -ne 0 ]; then
+        log_error "Could not detect workflow type (epic or feature)"
+        log_error "Run from project root with an active epic/feature directory"
+        exit 1
     fi
 
-    echo "${feature_dir%/}"
+    # Extract values from JSON using grep (cross-platform compatible)
+    local workflow_type=$(echo "$workflow_info" | grep -o '"type":"[^"]*"' | cut -d'"' -f4)
+    local base_dir=$(echo "$workflow_info" | grep -o '"base_dir":"[^"]*"' | cut -d'"' -f4)
+    local slug=$(echo "$workflow_info" | grep -o '"slug":"[^"]*"' | cut -d'"' -f4)
+
+    if [ -z "$base_dir" ] || [ -z "$slug" ]; then
+        log_error "Failed to parse workflow detection output"
+        exit 1
+    fi
+
+    local feature_dir="${base_dir}/${slug}"
+
+    if [ ! -d "$feature_dir" ]; then
+        log_error "Workflow directory not found: $feature_dir"
+        exit 1
+    fi
+
+    echo "${feature_dir}"
 }
 
 # Check prerequisites
