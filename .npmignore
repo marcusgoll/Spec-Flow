@@ -4,8 +4,10 @@
 # Internal workflow development files
 .claude/commands/internal/
 .claude/commands/release.md
+.claude/commands/validate.md
 .claude/commands/meta/announce-release.md
 .claude/skills/x-announcement/
+.spec-flow/testing/
 
 # Archived files (deprecated/legacy)
 .claude/commands/archive/

@@ -94,7 +94,7 @@ Foundation blocks all other features
 - /validate — Cross-artifact consistency
 - /implement — Execute tasks with TDD (feature workflow)
 - /implement-epic — Execute sprints in parallel layers (epic workflow)
-- /optimize — Quality gates (performance, security, accessibility, code)
+- /optimize — 10 parallel quality gates (performance, security, accessibility, code, migrations, Docker, E2E, contracts, load testing, migration integrity) with auto-retry
 - /ship — Unified deployment orchestrator
 - /ship-staging — Deploy to staging
 - /validate-staging — Manual staging testing
@@ -198,11 +198,11 @@ All commands support:
 |---------|---------|
 | /feature | spec.md, NOTES.md, visuals/README.md, workflow-state.yaml |
 | /plan | plan.md, research.md |
-| /tasks | tasks.md, mockup-approval-checklist.md (UI-first) |
+| /tasks | tasks.md, mockup-approval-checklist.md (UI-first), e2e-tests.md (epic) |
 | /validate | analysis-report.md |
 | /implement | Task completions (feature workflow) |
 | /implement-epic | Sprint results, contracts/*.yaml, audit-report.xml (epic workflow) |
-| /optimize | optimization-report.md, code-review-report.md |
+| /optimize | optimization-report.md, code-review-report.md, e2e-test-results.log (epic), contract-validation-report.md (epic), load-test-results.log (epic, optional), migration-integrity-report.md (epic) |
 | /ship-staging | staging-ship-report.md, deployment-metadata.json |
 | /ship-prod | production-ship-report.md, GitHub release |
 | /deploy-prod | production-ship-report.md |

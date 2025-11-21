@@ -132,22 +132,97 @@ This ensures traceable, deterministic task generation that prevents hallucinated
       - Set manual gate in workflow-state.yaml (blocks /implement)
       - Tasks include: hub, screens, navigation wiring, approval checklist
 
-2. **Read generated artifacts**:
-   - Epic: `sprint-plan.xml`, `contracts/*.yaml`, `sprints/*/tasks.md`
+2. **Generate E2E Test Suite** (Epic workflows only):
+
+   **For epic workflows only**, after task generation completes:
+
+   a. **Analyze user workflows** from spec.md:
+      - Read `epics/*/spec.md` or `specs/*/spec.md`
+      - Extract "User Stories" section
+      - Identify critical user journeys (flows that span multiple screens/endpoints)
+      - Look for integration points: API → DB, Frontend → Backend, External APIs
+
+   b. **Map user journeys to E2E test scenarios**:
+      ```javascript
+      // Example: Extract user story
+      const userStory = "As a user, I want to create an account so I can access the dashboard";
+
+      // Map to E2E scenario
+      const e2eScenario = {
+        journey: "User Registration",
+        given: "User navigates to /signup",
+        when: "User fills form and submits",
+        then: "Account created, redirected to /dashboard",
+        externalIntegrations: ["Email service (SendGrid)", "Database (Postgres)"],
+        testFile: "e2e/auth/registration.spec.ts"
+      };
+      ```
+
+   c. **Generate e2e-tests.md**:
+      - Use template from `.spec-flow/templates/e2e-tests-template.md`
+      - Create ≥3 critical user journey tests
+      - Include:
+        - Complete user workflows (start → finish)
+        - External integration testing (APIs, CLIs, webhooks)
+        - Expected outcomes in production systems (GitHub commits, DB records)
+        - Test isolation strategy (Docker containers, test databases)
+      - Save to `epics/{NNN}-{slug}/e2e-tests.md`
+
+   d. **Add E2E test tasks to tasks.md**:
+      - Append E2E test batch group to existing tasks.md
+      - One task per critical journey
+      - Priority: P1 (critical for deployment)
+      - Reference e2e-tests.md for acceptance criteria
+      - Example task structure:
+        ```markdown
+        ## E2E Testing
+
+        ### T030: Implement User Registration E2E Test
+
+        **Depends On**: T015 (Backend API), T022 (Frontend Form)
+        **Source**: e2e-tests.md:10-25
+        **Priority**: P1
+
+        **Acceptance Criteria**:
+        - [ ] Test creates new user via /signup endpoint
+        - [ ] Test verifies user in database
+        - [ ] Test validates email sent via SendGrid (mock)
+        - [ ] Test verifies redirect to /dashboard
+        - [ ] Test runs in isolated Docker container
+
+        **Implementation Notes**:
+        - Use Playwright/Cypress for browser automation
+        - Mock external APIs (SendGrid) with msw or nock
+        - Use test database with seed data
+        ```
+
+   e. **Update workflow-state.yaml**:
+      ```yaml
+      artifacts:
+        e2e_tests: epics/{NNN}-{slug}/e2e-tests.md
+      ```
+
+   f. **Skip for feature workflows**:
+      - Feature workflows can have E2E tests, but generation is optional
+      - Only auto-generate for epics (multi-subsystem, complex workflows)
+
+3. **Read generated artifacts**:
+   - Epic: `sprint-plan.xml`, `contracts/*.yaml`, `sprints/*/tasks.md`, `e2e-tests.md`
    - Feature: `tasks.md`
    - UI-first: `tasks.md` with mockup tasks, `mockup-approval-checklist.md`
 
-3. **Present task summary** to user with task count, story breakdown, TDD coverage
+4. **Present task summary** to user with task count, story breakdown, TDD coverage, E2E test count (epic only)
 
-4. **Suggest next action** based on workflow type
+5. **Suggest next action** based on workflow type
 </process>
 
 <verification>
 Before completing, verify:
 - Workspace type correctly detected (epic vs feature)
-- Epic workflows: sprint-plan.xml validates, contracts locked, tasks.md per sprint
+- Epic workflows: sprint-plan.xml validates, contracts locked, tasks.md per sprint, e2e-tests.md generated
 - Feature workflows: tasks.md has 20-30 tasks, organized by user story
 - UI-first: mockup tasks generated, manual gate set in workflow-state.yaml
+- E2E tests (epic only): ≥3 critical user journeys documented, E2E tasks added to tasks.md
 - Git commit successful with task summary
 - Next-step suggestions presented
 </verification>
@@ -159,6 +234,8 @@ Before completing, verify:
 - API contracts locked in contracts/
 - Per-sprint tasks.md files created
 - Critical path calculated
+- e2e-tests.md generated with ≥3 critical user journeys
+- E2E test tasks added to tasks.md (P1 priority)
 
 **Feature workflows**:
 - tasks.md has 20-30 tasks
@@ -409,6 +486,6 @@ See `.claude/skills/task-breakdown-phase/reference.md` for task structure guidel
 
 **Next steps after tasks**:
 - Feature: `/validate` (recommended) or `/implement`
-- Epic: `/implement` (parallel sprint execution)
+- Epic: `/implement-epic` (parallel sprint execution with E2E tests)
 - UI-first: `/implement` → mockups → approval → `/implement --continue`
 </notes>
