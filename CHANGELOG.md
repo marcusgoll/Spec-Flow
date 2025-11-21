@@ -2,6 +2,70 @@
 
 ---
 
+## [9.4.0] - 2025-11-21
+
+### ✨ Added
+
+**Epic Frontend Blueprint Workflow**
+
+Comprehensive HTML blueprint system for design-first epic frontend development with automatic TSX conversion support.
+
+- **Blueprint Generation**:
+  - Auto-generates `epic-overview.html` navigation hub during `/plan` when Frontend subsystem detected
+  - Generates `sprint-N/screen-*.html` blueprints during `/tasks` from sprint-plan.md
+  - Pure HTML + Tailwind classes, design token integration (tokens.css)
+  - State switching (S key: success → loading → error → empty)
+  - WCAG 2.1 AA accessibility baseline, keyboard navigation (H for hub)
+
+- **TSX Conversion Workflow**:
+  - Optional approval gate during `/implement-epic` (default: continue, `--auto`: skip)
+  - Blueprint pattern extraction (`blueprint-patterns.md`)
+  - Edge case guidance (`conversion-edge-cases.md`) covering 10 common HTML→TSX issues
+  - Three-phase conversion: Basic (HTML→JSX) → Functional (state, events) → Polish (optimization, a11y)
+  - Optional validation via `validate-tsx-conversion.sh` (skippable with `--skip-validation`)
+
+- **Cleanup Strategy (Defense-in-Depth)**:
+  - `.gitignore`: `**/mockups/` pattern (blueprints never committed)
+  - `/optimize`: Deletes mockups/ directory before quality gates (Step 0.75)
+  - Next.js build: Naturally excludes non-imported files
+  - `blueprint-patterns.md` preserved for reference
+
+- **New Templates**:
+  - `.spec-flow/templates/mockups/epic-overview.html` - Navigation hub with sprint sections
+  - `.spec-flow/templates/mockups/sprint-screen.html` - Individual screen with 4 state variants
+  - `.spec-flow/templates/tsx-conversion-checklist.md` - Progress tracker for conversion phases
+
+- **New Scripts** (6 bash scripts):
+  - `generate-epic-mockups.sh` - Creates overview after /plan
+  - `generate-sprint-mockups.sh` - Creates sprint screens during /tasks
+  - `extract-blueprint-patterns.sh` - Extracts Tailwind class patterns for TSX mirroring
+  - `validate-tsx-conversion.sh` - Validates TSX components match blueprint patterns
+  - `check-conversion-edge-cases.sh` - Generates comprehensive edge case guidance
+  - `cleanup-mockups.sh` - Removes mockups before production deployment
+
+- **Power User Options**:
+  - `--skip-validation`: Skip pattern extraction and TSX validation
+  - `--no-guidance`: Skip edge case checklist generation
+  - `--auto`: Skip all approval gates and iteration prompts
+
+### 🔧 Changed
+
+- **Workflow Integration**:
+  - `/plan` command: Added Step 2 for epic blueprint generation (when Frontend subsystem detected)
+  - `/implement-epic` command: Added Step 2.75 for optional blueprint approval gate
+  - `/optimize` command: Added Step 0.75 for mockup cleanup before quality gates
+  - `frontend.md` agent: Added `<epic_blueprint_conversion>` section with three-phase conversion guide
+
+- **Documentation**:
+  - `CLAUDE.md`: Added "Epic Frontend Blueprint Workflow (v9.4+)" section
+  - `.gitignore`: Added `**/mockups/` pattern for blueprint exclusion
+
+### 📝 Notes
+
+HTML blueprints are temporary development artifacts that enable design iteration before TSX implementation. Only TSX components deploy to production. Blueprints use pure HTML + Tailwind classes matching component library patterns, ensuring seamless conversion to production React/Next.js code.
+
+---
+
 ## [9.3.0] - 2025-11-20
 
 ### ✨ Added
