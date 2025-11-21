@@ -21,17 +21,17 @@ Automate X (Twitter) release announcements with minimal friction by generating e
 
 **Example flow:**
 ```
-📱 Generating X announcement for v2.7.0...
+Generating X announcement for v2.7.0...
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📱 X Announcement Preview
+X Announcement Preview
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🚀 Spec-Flow v2.7.0 is here!
+Spec-Flow v2.7.0 is here!
 
-✨ One-command releases with CI validation
-🔄 Auto-close GitHub issues when features ship
-🧹 Essential cleanup for all deployment models
+- One-command releases with CI validation
+- Auto-close GitHub issues when features ship
+- Essential cleanup for all deployment models
 
 Ship features faster with less manual work.
 
@@ -39,19 +39,19 @@ Characters: 187/280
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Options:
-1. ✅ Post as-is
-2. ✏️  Edit post text
-3. ❌ Skip X announcement
+1. Post as-is
+2. Edit post text
+3. Skip X announcement
 
-📤 Posting to X... (ID: 12345)
-⏳ Waiting for publish... (3s)
-✅ Posted to X!
+Posting to X... (ID: 12345)
+Waiting for publish... (3s)
+Posted to X!
 
-📤 Posting GitHub link as threaded reply... (ID: 12346)
-✅ GitHub link posted!
+Posting GitHub link as threaded reply... (ID: 12346)
+GitHub link posted!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📱 X Announcement Posted!
+X Announcement Posted!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Main Post:
@@ -79,17 +79,17 @@ GitHub Link Reply:
 
 <post_generation_guidelines>
 **Format requirements:**
-- Start with emoji hook (🚀, 📦, ✨, 🎉)
 - Include version number prominently
 - Highlight 1-3 key features/improvements
 - Keep under 280 characters (leave room for editing)
 - Use engaging language (not just bullet points)
 - End with call-to-action or benefit statement
+- **Do NOT use emojis** (UTF-8 encoding issues with X API)
 
 **Content extraction:**
 1. Read `CHANGELOG.md` → Extract `## [NEW_VERSION]` section
 2. Identify top features: Prioritize Added > Fixed > Changed
-3. Format with emojis and engaging tone
+3. Format with engaging tone (no emojis)
 4. Validate character count (≤280)
 
 See [references/post-templates.md](references/post-templates.md) for examples and guidelines.
