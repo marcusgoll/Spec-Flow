@@ -469,15 +469,15 @@ def cmd_design_health(args):
 # Epic & Sprint Management
 
 def cmd_epic(args):
-    """Manage epic groupings"""
-    script_args = []
-    if args.action:
-        script_args.append(args.action)
-    if args.epic_name:
-        script_args.extend(['--name', args.epic_name])
-    if args.description:
-        script_args.extend(['--description', args.description])
-    return run_script('epic-manager', script_args)
+    """Manage epic workflows - delegates to /epic slash command"""
+    print("Epic workflow management:")
+    print("  Use: /epic \"goal\" [--auto | --interactive | --no-input]")
+    print("  Use: /epic continue")
+    print("  Use: /epic next")
+    print("  Use: /epic [slug]")
+    print("\nNote: spec-cli.py delegates epic management to Claude Code slash commands.")
+    print("Run these commands directly in Claude Code for best experience.")
+    return 0  # Success - informational only
 
 def cmd_sprint(args):
     """Manage sprint cycles"""

@@ -381,6 +381,39 @@ Co-Authored-By: Claude <noreply@anthropic.com>" || true
     fi
 }
 
+# Archive completed workflow artifacts
+archive_artifacts() {
+    log_info "Archiving workflow artifacts"
+
+    # Create completed directory
+    local completed_dir="${WORKSPACE}/completed"
+    mkdir -p "$completed_dir"
+
+    # Define artifacts to archive based on workflow type
+    local artifacts
+    if [ "$WORKFLOW_TYPE" = "epic" ]; then
+        artifacts="epic-spec.md plan.md sprint-plan.md tasks.md NOTES.md research.md walkthrough.md"
+    else
+        artifacts="spec.md plan.md tasks.md NOTES.md"
+    fi
+
+    # Move artifacts to completed/
+    local archived_count=0
+    for artifact in $artifacts; do
+        if [ -f "${WORKSPACE}/${artifact}" ]; then
+            mv "${WORKSPACE}/${artifact}" "${completed_dir}/"
+            log_success "Archived: ${artifact}"
+            ((archived_count++))
+        fi
+    done
+
+    if [ $archived_count -gt 0 ]; then
+        log_success "${archived_count} artifacts archived to ${completed_dir}"
+    else
+        log_warning "No artifacts to archive"
+    fi
+}
+
 # Cleanup feature branch
 cleanup_branch() {
     log_info "Cleaning up feature branch"
@@ -459,6 +492,9 @@ main() {
 
     # Step 11: Cleanup branch
     cleanup_branch
+
+    # Step 12: Archive artifacts
+    archive_artifacts
 
     # Summary
     echo ""

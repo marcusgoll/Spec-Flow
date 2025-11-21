@@ -57,6 +57,11 @@ This command updates CHANGELOG.md, README.md, help docs, GitHub milestones/relea
       - Update GitHub Release with production deployment info
       - Commit and push documentation changes
       - Cleanup feature branch (safe delete if merged)
+      - **Archive workflow artifacts** (v9.3+):
+        * Move all planning artifacts to {workspace}/completed/
+        * Epic: epic-spec.md, plan.md, sprint-plan.md, tasks.md, NOTES.md, research.md, walkthrough.md
+        * Feature: spec.md, plan.md, tasks.md, NOTES.md
+        * workflow-state.yaml remains in root (for metrics/history)
 
 3. **Review summary output** - Verify all tasks completed successfully
 
@@ -77,6 +82,10 @@ Before completing, verify:
 - GitHub Release contains production deployment section (if release exists)
 - Documentation changes committed and pushed to main
 - Feature branch deleted if fully merged (or noted as unmerged)
+- **Workflow artifacts archived** (v9.3+):
+  * All planning artifacts moved to {workspace}/completed/
+  * workflow-state.yaml remains in root directory
+  * Completed directory contains expected files based on workflow type
 </verification>
 
 <success_criteria>
@@ -85,6 +94,7 @@ Before completing, verify:
 - Roadmap issue marked as "shipped" (if exists)
 - Current milestone closed, next milestone created
 - Feature branch deleted if fully merged
+- **Workflow artifacts archived to {workspace}/completed/** (v9.3+)
 - Finalization script exits with status 0
 - No bash commands executed beyond allowed tools
 - Idempotent: Safe to re-run if interrupted
