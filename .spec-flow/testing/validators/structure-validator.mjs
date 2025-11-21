@@ -90,7 +90,7 @@ export function validateEpicStructure(epicDir) {
 
   // Required files
   const requiredFiles = [
-    'epic-spec.xml',
+    'epic-spec.md',
     'workflow-state.yaml'
   ];
 

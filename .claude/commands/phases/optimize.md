@@ -79,10 +79,119 @@ if [ $DETECTION_EXIT -eq 0 ]; then
     else
         echo "  Running 6 quality gates (core only)"
     fi
+
+    # Set file paths
+    WORKFLOW_STATE="${BASE_DIR}/${SLUG}/workflow-state.yaml"
 else
     echo "⚠ Could not auto-detect workflow type - using fallback"
 fi
 ```
+
+---
+
+### Step 0.5: ITERATION DETECTION (v3.0 - Feedback Loop Support)
+
+**NEW**: Check if workflow is in iteration mode and adjust quality gate focus.
+
+```bash
+# Read workflow state to check iteration
+if [ -f "$WORKFLOW_STATE" ]; then
+    CURRENT_ITERATION=$(yq eval '.iteration.current' "$WORKFLOW_STATE" 2>/dev/null || echo "1")
+    TOTAL_ITERATIONS=$(yq eval '.iteration.total_iterations' "$WORKFLOW_STATE" 2>/dev/null || echo "0")
+
+    if [ "$CURRENT_ITERATION" -gt 1 ]; then
+        echo "🔄 Iteration Mode Detected"
+        echo "  Current iteration: $CURRENT_ITERATION"
+        echo "  Previous iterations: $TOTAL_ITERATIONS"
+        echo "  Quality gates will focus on:"
+        echo "    - New code from iteration $CURRENT_ITERATION"
+        echo "    - Regression checks for iteration 1-$((CURRENT_ITERATION - 1))"
+
+        # Set iteration flag for focused testing
+        ITERATION_MODE=true
+        ITERATION_NUMBER=$CURRENT_ITERATION
+
+        # Get list of files changed in current iteration
+        # (Compare current HEAD with commit from iteration start)
+        ITERATION_START_COMMIT=$(yq eval ".iteration.history[-1].completed_at" "$WORKFLOW_STATE" 2>/dev/null)
+        if [ -n "$ITERATION_START_COMMIT" ]; then
+            # Find commit closest to iteration start time
+            BASELINE_COMMIT=$(git log --until="$ITERATION_START_COMMIT" --format="%H" -1)
+            CHANGED_FILES=$(git diff --name-only "$BASELINE_COMMIT" HEAD)
+
+            echo ""
+            echo "Changed files in iteration $CURRENT_ITERATION:"
+            echo "$CHANGED_FILES" | sed 's/^/    /'
+        fi
+    else
+        echo "  Iteration: 1 (initial implementation)"
+        ITERATION_MODE=false
+        ITERATION_NUMBER=1
+    fi
+else
+    # No workflow state file - default to iteration 1
+    ITERATION_MODE=false
+    ITERATION_NUMBER=1
+fi
+```
+
+**Iteration-specific quality gates:**
+
+When `ITERATION_MODE=true`, quality gates adjust their focus:
+
+1. **Performance**:
+   - Run benchmarks on **new code only** (iteration N functions/endpoints)
+   - Check for performance **regressions** in iteration 1 code
+   - Compare baseline metrics from iteration 1 vs current
+
+2. **Security**:
+   - Scan **new files** from iteration N
+   - Re-scan dependencies (may have changed)
+   - No regression scans needed (security is additive)
+
+3. **Accessibility**:
+   - Test **new UI components** from iteration N
+   - Regression test: Run smoke tests on iteration 1 pages
+   - Ensure no WCAG violations introduced
+
+4. **Code Review**:
+   - Lint/type check **changed files only**
+   - Test coverage for **new code** must meet threshold
+   - Overall project coverage should not decrease
+
+5. **Migrations**:
+   - Only if database changes in iteration N
+   - Verify reversibility of new migrations only
+
+6. **Docker Build**:
+   - Full build (can't isolate to iteration)
+   - Check image size hasn't increased significantly
+
+**E2E Testing (Epic only)**:
+   - Run **full E2E suite** (can't isolate to iteration - integration risk)
+   - But focus failure investigation on iteration N changes
+
+**Contract Validation (Epic only)**:
+   - Validate **new/modified contracts** only
+   - Check for breaking changes in existing contracts
+
+**Load Testing (Epic only)**:
+   - Run **full load test** (system-wide performance)
+   - Compare results to iteration 1 baseline
+   - Alert if p95 latency increased >10%
+
+**Migration Integrity (Epic only)**:
+   - Test **new migrations** only
+   - Verify data integrity for iteration N schema changes
+
+**Report naming:**
+- Iteration 1: `optimization-report.md`
+- Iteration 2+: `optimization-report-iteration-{N}.md`
+
+**Performance:**
+- Iteration 2+ runs **faster** (fewer files to check)
+- Typical speedup: 40-60% reduction in quality gate time
+- Example: Iteration 1 optimize: 15 min, Iteration 2: 6 min
 
 ---
 

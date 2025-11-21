@@ -1209,6 +1209,38 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
    - Resume from that phase
    - If manual gate was pending, proceed past it
 
+3. **Check for iteration mode** (v3.0 - Feedback Loop Support):
+   ```bash
+   # Read iteration state
+   CURRENT_ITERATION=$(yq eval '.iteration.current' "epics/$SLUG/workflow-state.yaml" 2>/dev/null || echo "1")
+
+   if [ "$CURRENT_ITERATION" -gt 1 ]; then
+       echo "🔄 Resuming Iteration $CURRENT_ITERATION"
+       echo "   Gaps discovered during validation"
+       echo "   Executing supplemental tasks only"
+       echo ""
+
+       # Show gap summary
+       if [ -f "epics/$SLUG/gaps.md" ]; then
+           IN_SCOPE_COUNT=$(yq eval '.gaps.in_scope_count' "epics/$SLUG/workflow-state.yaml" 2>/dev/null || echo "0")
+           echo "   In-scope gaps: $IN_SCOPE_COUNT"
+           echo "   Tasks generated: Check tasks.md (Iteration $CURRENT_ITERATION section)"
+           echo ""
+       fi
+
+       # Resume from current phase in iteration workflow
+       # Typically this will be "implement" phase after gap capture
+       CURRENT_PHASE=$(yq eval '.phase' "epics/$SLUG/workflow-state.yaml" 2>/dev/null || echo "unknown")
+       echo "   Resuming from: /$CURRENT_PHASE phase"
+   fi
+   ```
+
+   **Iteration workflow resume logic:**
+   - If iteration > 1 and phase = "implement": Execute supplemental tasks only
+   - If iteration > 1 and phase = "optimize": Run iteration-specific quality gates
+   - If iteration > 1 and phase = "ship-staging": Deploy iteration N to staging
+   - After successful deployment: Loop back to validate-staging for convergence check
+
 ## Error Handling
 
 **If any phase fails:**

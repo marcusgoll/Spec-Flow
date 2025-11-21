@@ -1,7 +1,7 @@
 ---
-description: Validate staging deployment before production through automated test review, rollback capability testing, and guided manual validation
-allowed-tools: [Read, Write, Bash(gh *), Bash(git *), Bash(curl *), Bash(yq *), Bash(grep *), Bash(vercel *), Bash(date *), Bash(ls *), Bash(cat *), Bash(sleep *), Bash(test *), Bash(jq *), AskUserQuestion]
-argument-hint: (no arguments - validates most recent staging deployment)
+description: Validate staging deployment before production through automated test review, rollback capability testing, guided manual validation, and optional gap capture for feedback loops
+allowed-tools: [Read, Write, Bash(gh *), Bash(git *), Bash(curl *), Bash(yq *), Bash(grep *), Bash(vercel *), Bash(date *), Bash(ls *), Bash(cat *), Bash(sleep *), Bash(test *), Bash(jq *), Bash(pwsh *), AskUserQuestion]
+argument-hint: [--capture-gaps] (optional flag to launch gap capture wizard)
 ---
 
 <context>
@@ -124,12 +124,40 @@ Validate staging deployment before production by reviewing automated tests, test
    - If Y: Capture issue description, set MANUAL_STATUS=failed
    - If N: Set MANUAL_STATUS=passed
 
-9. **Determine overall status**:
+9. **Capture discovered gaps** (NEW in v3.0 - Feedback Loop Support):
+   - Prompt: "Discover any missing features or endpoints during testing? (y/N)"
+   - If Y OR --capture-gaps flag provided:
+     a. Launch gap capture wizard (Invoke-GapCaptureWizard.ps1)
+     b. For each gap:
+        - Collect gap description, source, priority, subsystems
+        - Run scope validation algorithm (Invoke-ScopeValidation.ps1)
+        - Display validation result (IN_SCOPE ✅ | OUT_OF_SCOPE ❌ | AMBIGUOUS ⚠️)
+     c. Generate gaps.md with all discoveries
+     d. Generate scope-validation-report.md with validation evidence
+     e. For in-scope gaps:
+        - Generate supplemental tasks (New-SupplementalTasks.ps1)
+        - Append to tasks.md with iteration marker
+        - Update workflow-state.yaml:
+          * Set phase to "implement"
+          * Increment iteration.current
+          * Populate gaps section
+          * Add supplemental_tasks entry
+     f. For out-of-scope gaps:
+        - Recommend creating new epic/feature
+        - Block from current workflow (prevent feature creep)
+     g. Display gap summary:
+        - Total gaps: N
+        - In scope: N ✅ (will loop back to /implement)
+        - Out of scope: N ❌ (deferred to new epic)
+        - Ambiguous: N ⚠️ (user decision required)
+   - If N: Continue to overall status determination
+
+10. **Determine overall status**:
    - If E2E failed OR manual failed: OVERALL_STATUS="❌ Blocked", READY_FOR_PROD=false
    - If Lighthouse failed: OVERALL_STATUS="⚠️ Review Required", READY_FOR_PROD=warning
    - Otherwise: OVERALL_STATUS="✅ Ready for Production", READY_FOR_PROD=true
 
-10. **Generate validation report**:
+11. **Generate validation report**:
     - Create staging-validation-report.md at specs/$SLUG/
     - Sections:
       - Deployment Info (workflow URL, commit, branch, timestamp)
@@ -139,12 +167,12 @@ Validate staging deployment before production by reviewing automated tests, test
       - Deployment Readiness (overall status, blockers/warnings, next steps)
     - Copy checklist to feature directory for archival
 
-11. **Update workflow state**:
+12. **Update workflow state**:
     - Update manual_gates.staging_validation.status to "approved"
     - Update quality_gates.rollback_capability with test results
     - Commit changes to workflow-state.yaml
 
-12. **Display final results**:
+13. **Display final results**:
     - **If blocked**:
       - Display "❌ Staging Validation Failed"
       - List blockers (E2E failures, manual failures)

@@ -186,8 +186,8 @@ Validates generated files match expected templates.
 - `validatePlan(planPath)` - Validate plan.md structure
 - `validateTasks(tasksPath)` - Validate tasks.md (5-30 tasks)
 - `validateProjectDocs(docsDir)` - Validate 8 project docs
-- `validateEpicSpec(epicSpecPath)` - Validate epic-spec.xml
-- `validateSprintPlan(sprintPlanPath)` - Validate sprint-plan.xml
+- `validateEpicSpec(epicSpecPath)` - Validate epic-spec.md
+- `validateSprintPlan(sprintPlanPath)` - Validate sprint-plan.md
 - `validateMockups(mockupsDir)` - Validate HTML mockups
 
 **Usage**:

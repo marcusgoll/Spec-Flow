@@ -296,8 +296,8 @@ function createEpicWorkflowScenario() {
         }
 
         const content = readFileSync(commandPath, 'utf-8');
-        if (!content.includes('epic-spec.xml')) {
-          throw new Error('Epic command does not reference epic-spec.xml');
+        if (!content.includes('epic-spec.md')) {
+          throw new Error('Epic command does not reference epic-spec.md');
         }
       }),
 
@@ -308,8 +308,8 @@ function createEpicWorkflowScenario() {
         }
 
         const content = readFileSync(commandPath, 'utf-8');
-        if (!content.includes('sprint-plan.xml')) {
-          throw new Error('Implement-epic command does not reference sprint-plan.xml');
+        if (!content.includes('sprint-plan.md')) {
+          throw new Error('Implement-epic command does not reference sprint-plan.md');
         }
       }),
 

@@ -11,12 +11,12 @@ Test multi-sprint epic workflow with parallel execution and dependency managemen
 
 ### 2. /epic Command Validation
 - Validates epic.md command file exists
-- Checks for epic-spec.xml references
+- Checks for epic-spec.md references
 - **Expected**: Command file properly structured
 
 ### 3. /implement-epic Command Validation
 - Validates implement-epic.md command file exists
-- Checks for sprint-plan.xml references
+- Checks for sprint-plan.md references
 - **Expected**: Command file properly structured
 
 ### 4. Epic Skill Validation
@@ -59,10 +59,10 @@ Auto /audit-workflow
 After `/epic`:
 ```
 epics/001-auth-system/
-├── epic-spec.xml
-├── research.xml
-├── plan.xml
-├── sprint-plan.xml
+├── epic-spec.md
+├── research.md
+├── plan.md
+├── sprint-plan.md
 ├── workflow-state.yaml (epic_mode: true)
 └── sprints/
     ├── S01/  # Backend + Database
@@ -128,8 +128,8 @@ Layer 3: S03 (Integration)  [depends on S01 + S02]
 
 ## Success Criteria
 
-- ✓ Epic command file references epic-spec.xml
-- ✓ Implement-epic references sprint-plan.xml
+- ✓ Epic command file references epic-spec.md
+- ✓ Implement-epic references sprint-plan.md
 - ✓ Epic skill properly structured
 - ✓ Question bank has 5 rounds with questions
 - ✓ No errors during validation

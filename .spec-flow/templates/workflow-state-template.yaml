@@ -1,5 +1,5 @@
 # Workflow State Template
-# Schema Version: 2.1.0
+# Schema Version: 3.0.0
 #
 # This template provides the baseline structure for workflow-state.yaml
 # Populated by /feature and /epic commands during workflow initialization
@@ -14,6 +14,44 @@ last_updated: {ISO8601_TIMESTAMP} # Last modification timestamp
 # Workflow type detection (v2.1.0)
 workflow_type: {WORKFLOW_TYPE}    # "epic" or "feature"
 base_directory: {BASE_DIR}        # "epics" or "specs"
+
+# Iteration tracking (v3.0.0) - Feedback loop support
+iteration:
+  current: 1                      # Current iteration number (default: 1)
+  max_iterations: 3               # Maximum allowed iterations to prevent infinite loops
+  total_iterations: 0             # Total completed iterations (increments after each iteration)
+  history: []                     # Array of completed iteration objects
+  # Example iteration history entry:
+  # - iteration: 1
+  #   started: "2025-11-20T08:00:00Z"
+  #   completed: "2025-11-20T09:00:00Z"
+  #   phases_completed: ["implement", "optimize", "ship-staging"]
+  #   tasks_completed: 30
+
+# Gap discovery tracking (v3.0.0)
+gaps:
+  discovered_at_phase: null       # Phase where gaps were discovered (e.g., "validate-staging")
+  discovered_at: null             # ISO8601 timestamp of discovery
+  discovered_by: null             # User who discovered gaps
+  discovered_count: 0             # Total number of gaps discovered
+  in_scope_count: 0               # Gaps that passed scope validation
+  out_of_scope_count: 0           # Gaps blocked as feature creep
+  ambiguous_count: 0              # Gaps requiring manual decision
+  resolved_count: 0               # Gaps resolved in supplemental tasks
+  artifacts:
+    gaps_file: null               # Path to gaps.md
+    scope_validation: null        # Path to scope-validation-report.md
+
+# Supplemental task tracking (v3.0.0)
+supplemental_tasks: []            # Array of supplemental task batches
+# Example supplemental task batch:
+# - iteration: 2
+#   batch_name: "Gap Closure - Auth Endpoints"
+#   task_count: 3
+#   task_ids: ["T031", "T032", "T033"]
+#   status: "in_progress"         # in_progress | completed | failed
+#   started_at: "2025-11-20T10:00:00Z"
+#   completed_at: null
 
 # Phase completion tracking
 completed_phases: []

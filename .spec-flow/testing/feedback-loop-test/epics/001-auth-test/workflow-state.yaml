@@ -1,0 +1,110 @@
+# Workflow State - Auth Test Epic (Iteration 1 Complete)
+# Schema Version: 3.0.0
+
+phase: validate-staging
+status: in_progress
+current_feature: 001-auth-test
+started: "2025-11-20T08:00:00Z"
+last_updated: "2025-11-20T15:30:00Z"
+
+workflow_type: epic
+base_directory: epics
+
+# Iteration tracking (v3.0.0) - Currently in iteration 1
+iteration:
+  current: 1
+  max_iterations: 3
+  total_iterations: 0
+  history: []
+
+# Gap discovery tracking (v3.0.0) - No gaps discovered yet
+gaps:
+  discovered_at_phase: null
+  discovered_at: null
+  discovered_by: null
+  discovered_count: 0
+  in_scope_count: 0
+  out_of_scope_count: 0
+  ambiguous_count: 0
+  resolved_count: 0
+  artifacts:
+    gaps_file: null
+    scope_validation: null
+
+# Supplemental task tracking (v3.0.0) - No supplemental tasks yet
+supplemental_tasks: []
+
+# Phase completion tracking
+completed_phases:
+  - clarify
+  - plan
+  - tasks
+  - validate
+  - implement
+  - optimize
+  - ship-staging
+
+# Artifact paths
+artifacts:
+  spec: epics/001-auth-test/epic-spec.md
+  plan: epics/001-auth-test/plan.md
+  tasks: epics/001-auth-test/tasks.md
+  gaps: null
+  scope_validation: null
+
+# Manual gates
+manual_gates:
+  mockup_approval:
+    status: not_applicable
+    mockup_path: null
+    tokens_css_linked: false
+    approved_at: null
+    approved_by: null
+    requested_changes: null
+    style_guide_updates: null
+  staging_validation:
+    status: pending
+    staging_url: "https://app.staging.example.com"
+    validated_at: null
+    validated_by: null
+    rollback_tested: true
+
+# Deployment information
+deployment:
+  model: staging-prod
+  version: "1.0.0"
+
+  staging:
+    url: "https://app.staging.example.com"
+    deployed_at: "2025-11-20T15:00:00Z"
+    deployment_id: "dpl_test123"
+    validated: false
+    validated_at: null
+
+  production:
+    url: null
+    deployed_at: null
+    deployment_id: null
+    tag: null
+    tag_created_at: null
+    github_release_url: null
+
+  finalization:
+    essential_complete: false
+    essential_completed_at: null
+    full_complete: false
+    full_completed_at: null
+    changelog_updated: false
+    readme_updated: false
+    help_docs_updated: false
+    milestone_closed: false
+    release_created: false
+
+# Epic mode extensions
+epic_mode: true
+
+epics: []
+
+wip_limits:
+  max_per_agent: 1
+  current_utilization: "0/0"

@@ -155,10 +155,94 @@ if [ $DETECTION_EXIT -eq 0 ]; then
     # Set file paths
     TASKS_FILE="${BASE_DIR}/${SLUG}/tasks.md"
     CLAUDE_MD="${BASE_DIR}/${SLUG}/CLAUDE.md"
+    WORKFLOW_STATE="${BASE_DIR}/${SLUG}/workflow-state.yaml"
 else
     echo "⚠ Could not auto-detect workflow type - using fallback"
 fi
 ```
+
+---
+
+### Step 0.5: ITERATION DETECTION (v3.0 - Feedback Loop Support)
+
+**NEW**: Check if workflow is in iteration mode and filter tasks accordingly.
+
+```bash
+# Read workflow state to check iteration
+if [ -f "$WORKFLOW_STATE" ]; then
+    CURRENT_ITERATION=$(yq eval '.iteration.current' "$WORKFLOW_STATE" 2>/dev/null || echo "1")
+    MAX_ITERATIONS=$(yq eval '.iteration.max_iterations' "$WORKFLOW_STATE" 2>/dev/null || echo "3")
+
+    if [ "$CURRENT_ITERATION" -gt 1 ]; then
+        echo "🔄 Iteration Mode Detected"
+        echo "  Current iteration: $CURRENT_ITERATION / $MAX_ITERATIONS"
+        echo "  Executing supplemental tasks only (iteration $CURRENT_ITERATION)"
+
+        # Check iteration limit
+        if [ "$CURRENT_ITERATION" -gt "$MAX_ITERATIONS" ]; then
+            echo "❌ ERROR: Iteration limit exceeded ($MAX_ITERATIONS)"
+            echo ""
+            echo "This workflow has reached the maximum allowed iterations."
+            echo "Remaining gaps should be addressed in a new epic/feature."
+            echo ""
+            echo "To prevent scope creep and infinite iteration, the limit is enforced."
+            exit 1
+        fi
+
+        # Set iteration flag for task filtering
+        ITERATION_MODE=true
+        ITERATION_NUMBER=$CURRENT_ITERATION
+    else
+        echo "  Iteration: 1 (initial implementation)"
+        ITERATION_MODE=false
+        ITERATION_NUMBER=1
+    fi
+else
+    # No workflow state file - default to iteration 1
+    ITERATION_MODE=false
+    ITERATION_NUMBER=1
+fi
+```
+
+**Task filtering logic:**
+
+When `ITERATION_MODE=true`, the implementation script should:
+1. Parse tasks.md for the current iteration section (e.g., "## Iteration 2: Gap Closure")
+2. Execute only tasks marked with `**Iteration**: $ITERATION_NUMBER`
+3. Skip all tasks from previous iterations
+4. Update workflow state after completion:
+   - Increment `iteration.total_iterations`
+   - Add entry to `iteration.history`
+   - Mark supplemental task batch as completed
+
+**Example filtered task execution:**
+
+```markdown
+# tasks.md structure
+
+### T001: Original task from iteration 1
+**Iteration**: 1
+**Status**: ✅ Completed
+
+---
+
+## Iteration 2: Gap Closure
+
+### T031: Implement /v1/auth/me endpoint
+**Iteration**: 2
+**Status**: Pending
+← This task WILL execute
+
+### T032: Add tests for /v1/auth/me
+**Iteration**: 2
+**Status**: Pending
+← This task WILL execute
+```
+
+**Performance benefit:**
+- Iteration 2 with 3 tasks: ~10-30 minutes (vs full re-implementation: 2-4 hours)
+- Targeted execution reduces context switching and test suite runtime
+- Atomic iteration commits preserve ability to rollback to iteration 1
 
 ---
 

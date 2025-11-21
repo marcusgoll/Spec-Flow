@@ -211,28 +211,28 @@ export function validateDesignDocs(designDir) {
 }
 
 /**
- * Validate epic-spec.xml
+ * Validate epic-spec.md
  */
 export function validateEpicSpec(epicSpecPath) {
   const errors = [];
 
   if (!existsSync(epicSpecPath)) {
-    return ValidationResult.failure('epic-spec.xml not found');
+    return ValidationResult.failure('epic-spec.md not found');
   }
 
   const content = readFileSync(epicSpecPath, 'utf-8');
 
-  // Check XML structure
-  if (!content.includes('<epic>')) {
-    errors.push('Missing <epic> root element');
+  // Check Markdown structure
+  if (!content.includes('# Epic:') && !content.includes('## Overview')) {
+    errors.push('Missing epic title or overview section');
   }
 
-  if (!content.includes('<goal>')) {
-    errors.push('Missing <goal> element');
+  if (!content.includes('## Objective') && !content.includes('## Goal')) {
+    errors.push('Missing objective/goal section');
   }
 
-  if (!content.includes('<subsystems>')) {
-    errors.push('Missing <subsystems> element');
+  if (!content.includes('## Subsystems') || !content.includes('## Components')) {
+    errors.push('Missing subsystems/components section');
   }
 
   return errors.length > 0
@@ -241,28 +241,28 @@ export function validateEpicSpec(epicSpecPath) {
 }
 
 /**
- * Validate sprint-plan.xml
+ * Validate sprint-plan.md
  */
 export function validateSprintPlan(sprintPlanPath) {
   const errors = [];
 
   if (!existsSync(sprintPlanPath)) {
-    return ValidationResult.failure('sprint-plan.xml not found');
+    return ValidationResult.failure('sprint-plan.md not found');
   }
 
   const content = readFileSync(sprintPlanPath, 'utf-8');
 
-  // Check XML structure
-  if (!content.includes('<sprint-plan>')) {
-    errors.push('Missing <sprint-plan> root element');
+  // Check Markdown structure
+  if (!content.includes('# Sprint Plan') && !content.includes('## Sprint Plan')) {
+    errors.push('Missing sprint plan title');
   }
 
-  if (!content.includes('<sprint ')) {
-    errors.push('Missing <sprint> elements');
+  if (!content.includes('## Sprint') && !content.includes('### Sprint')) {
+    errors.push('Missing sprint sections');
   }
 
-  if (!content.includes('<dependencies>')) {
-    errors.push('Missing <dependencies> element');
+  if (!content.includes('Dependencies') && !content.includes('dependencies')) {
+    errors.push('Missing dependencies section');
   }
 
   return errors.length > 0
