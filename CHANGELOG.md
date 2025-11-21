@@ -2,6 +2,43 @@
 
 ---
 
+## [10.0.0] - 2025-11-21
+
+### ✨ Added
+
+**Perpetual Learning System**
+
+Continuously improves workflow efficiency through pattern detection and self-learning capabilities. Learnings persist across npm package updates and accumulate over time.
+
+- **Performance Patterns**: Auto-applied optimizations (confidence ≥0.90), tool selection recommendations, time-saving strategies (20-40% execution time reduction)
+- **Anti-Pattern Detection**: Automatic warnings before risky operations, failure pattern detection, prevention strategies
+- **Custom Abbreviations**: Project-specific terminology expansion (confidence ≥0.80), consistent naming patterns
+- **CLAUDE.md Optimization**: System prompt improvements with approval workflow, agent preference patterns
+- **Migration System**: Archive/restore learnings across npm updates, schema migration support, version history tracking
+- **Scripts**: learning-collector.sh/.ps1, analyze-learnings.sh, auto-apply-learnings.sh, optimize-claude-md.sh, migrate-learnings.sh, pattern-detector.py
+
+**Git Worktrees for Parallel Development**
+
+Enables parallel development of multiple epics and features by running separate Claude Code instances in isolated git worktrees.
+
+- **Automatic Worktree Creation**: Auto-creates worktrees during /epic and /feature, workspace isolation with shared memory via symlinks
+- **Shared Memory Linking**: .spec-flow/memory/ symlinked across worktrees, central observation data collection, cross-worktree learning aggregation
+- **Lifecycle Management**: Auto-creation during initialization, auto-cleanup after /finalize, manual management via worktree-manager.sh/.ps1
+- **Scripts**: worktree-manager.sh/.ps1 (CRUD operations), enhanced detect-workflow-paths.sh/.ps1 with worktree detection
+- **Use Cases**: Parallel epic development, epic + urgent hotfix, multi-developer coordination
+
+### 🔧 Fixed
+
+- **PowerShell Compatibility**: Fixed reserved < operator in Invoke-GapCaptureWizard.ps1, replaced with -lt operator
+- **CI Validation**: Added SC2181, SC2126, SC2129, SC2295 to ShellCheck exclusions for style warnings
+
+### 📝 Documentation
+
+- Updated CLAUDE.md with Perpetual Learning System and Git Worktrees sections
+- Enhanced workflow detection and preference system documentation
+
+---
+
 ## [9.4.0] - 2025-11-21
 
 ### ✨ Added

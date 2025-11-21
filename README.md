@@ -45,6 +45,33 @@
 
 ## 🆕 Recent Updates
 
+
+### v10.0.0 (November 2025)
+
+**Git Worktrees & Perpetual Learning** - Parallel development and self-improving workflows
+
+- **Git Worktrees**: Enable multiple Claude Code instances on different epics/features
+  - Automatic worktree creation per epic/feature
+  - Shared memory linking for cross-worktree observability
+  - Automatic cleanup after /finalize
+  - Isolated workspaces prevent branch conflicts
+  - Use cases: parallel epic development, epic + urgent hotfix, multi-developer coordination
+- **Perpetual Learning System**: Continuously improve workflow efficiency
+  - Performance pattern detection (auto-applied optimizations, 20-40% execution time reduction)
+  - Anti-pattern detection (failure prevention with automatic warnings)
+  - Custom abbreviation learning (project-specific terminology)
+  - CLAUDE.md optimization (system prompt improvements with approval)
+  - Learning categories: performance-patterns.yaml, anti-patterns.yaml, custom-abbreviations.yaml, claude-md-tweaks.yaml
+  - Migration system preserves learnings across npm package updates
+- **NPM Update Protection**: Learnings persist across package updates via migration system
+  - Archive/restore learnings to .spec-flow/learnings/archive/v{version}/
+  - Schema migration support (add fields, rename keys)
+  - Team knowledge sharing via git-committed learning files
+
+**Breaking Changes**:
+- None (backwards compatible with v9.x.x)
+
+---
 ### v6.11.0 (November 2025)
 
 **CLI Workflow Installation & Feature Continue** - Complete workflow integration
