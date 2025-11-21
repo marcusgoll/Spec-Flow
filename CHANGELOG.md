@@ -2,6 +2,22 @@
 
 ---
 
+## [10.0.1] - 2025-11-21
+
+### 🔧 Fixed
+
+- **Epic Branch Creation**: Fixed /epic command skipping git branch creation during Step 1
+  - Added get_preference_value() function to load-preferences.sh with --key and --default argument support
+  - Handles 1-3 level nested YAML keys (e.g., worktrees.auto_create, commands.epic.default_mode)
+  - Added missing worktrees and learning sections to user-preferences.yaml
+  - Updated user-preferences-schema.yaml with validation for worktrees and learning sections
+  - Enhanced epic.md Step 1 with comprehensive error handling and fallback to regular branch creation
+  - Result: /epic command now correctly creates epic/NNN-slug branches before proceeding with specification phase (3afe33e)
+- **X Announcement UTF-8**: Removed emoji usage due to UTF-8 encoding issues in x-announcement skill (e49ea12)
+- **X Announcement Encoding**: Corrected UTF-8 emoji encoding in x-announcement skill (a569ea0)
+
+---
+
 ## [10.0.0] - 2025-11-21
 
 ### ✨ Added

@@ -45,6 +45,20 @@
 
 ## 🆕 Recent Updates
 
+### v10.0.1 (November 2025)
+
+**Bug Fixes** - Epic workflow branch creation and UTF-8 encoding
+
+- **Epic Branch Creation Fix**: Resolved critical bug where `/epic` command skipped git branch creation
+  - Fixed load-preferences.sh to support --key and --default arguments
+  - Added get_preference_value() function for nested YAML key extraction
+  - Added missing worktrees and learning configuration sections
+  - Enhanced error handling with automatic fallback to regular branch creation
+  - Result: `/epic` command now correctly creates `epic/NNN-slug` branches before specification phase
+- **X Announcement UTF-8**: Fixed UTF-8 encoding issues causing emoji corruption in release announcements
+- Updated preferences schema with complete worktrees and learning validation
+
+---
 
 ### v10.0.0 (November 2025)
 
