@@ -191,7 +191,7 @@ const clarifyCommand = read('.claude/commands/phases/clarify.md');
 // Apply modification
 const updated = clarifyCommand.replace(
   /Ask 6 standard questions/,
-  `Analyze epic-spec.xml ambiguity score:
+  `Analyze epic-spec.md ambiguity score:
    - If score < 30: Ask 2 questions
    - If score 30-60: Ask 4 questions
    - If score > 60: Ask 6 questions`
@@ -203,7 +203,7 @@ Proposed Change to: .claude/commands/phases/clarify.md
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 - Ask 6 standard questions
-+ Analyze epic-spec.xml ambiguity score:
++ Analyze epic-spec.md ambiguity score:
 +   - If score < 30: Ask 2 questions
 +   - If score 30-60: Ask 4 questions
 +   - If score > 60: Ask 6 questions

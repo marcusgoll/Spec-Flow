@@ -610,13 +610,13 @@ if (answers["Sprint Estimate"] === "7+ sprints") {
 ```
 
 **Research outputs:**
-- `.prompts/001-[epic-slug]-research/research.xml`
+- `.prompts/001-[epic-slug]-research/research.md`
 - Contains: findings, confidence levels, dependencies, open questions, assumptions
 
 **Copy research to epic workspace and commit (atomic commit #2):**
 ```bash
-# Copy research.xml to epic directory
-cp .prompts/001-${EPIC_SLUG}-research/research.xml epics/${EPIC_SLUG}/research.md
+# Copy research.md to epic directory
+cp .prompts/001-${EPIC_SLUG}-research/research.md epics/${EPIC_SLUG}/research.md
 
 # Extract metadata for commit message
 FINDINGS_COUNT=$(xmllint --xpath 'count(//finding)' epics/${EPIC_SLUG}/research.md)
@@ -651,9 +651,9 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 **The create-prompt skill will:**
 1. Detect purpose: Plan
-2. Reference research.xml from step above
+2. Reference research.md from step above
 3. Generate plan prompt in `.prompts/002-[epic-slug]-plan/`
-4. Specify plan.xml output with phases, tasks, constraints
+4. Specify plan.md output with phases, tasks, constraints
 
 **Auto-execute plan prompt:**
 ```bash
@@ -661,13 +661,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 **Plan outputs:**
-- `.prompts/002-[epic-slug]-plan/plan.xml`
+- `.prompts/002-[epic-slug]-plan/plan.md`
 - Contains: architecture decisions, implementation phases, dependencies, risks
 
 **Copy plan to epic workspace and commit (atomic commit #3):**
 ```bash
-# Copy plan.xml to epic directory
-cp .prompts/002-${EPIC_SLUG}-plan/plan.xml epics/${EPIC_SLUG}/plan.md
+# Copy plan.md to epic directory
+cp .prompts/002-${EPIC_SLUG}-plan/plan.md epics/${EPIC_SLUG}/plan.md
 
 # Extract metadata for commit message
 ARCH_DECISIONS=$(xmllint --xpath 'count(//architecture_decision)' epics/${EPIC_SLUG}/plan.md)
@@ -740,11 +740,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 **The /tasks phase will:**
-1. Read plan.xml to understand phases
+1. Read plan.md to understand phases
 2. Analyze complexity and identify sprint boundaries
 3. Build dependency graph between sprints
 4. Lock API contracts (OpenAPI schemas) for parallel work
-5. Generate sprint-plan.xml with execution layers
+5. Generate sprint-plan.md with execution layers
 
 **Sprint plan structure:**
 ```xml
@@ -1038,12 +1038,12 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
        <phase name="research">
          <duration>2 hours</duration>
          <key_findings>OAuth 2.1 recommended, JWT tokens for sessions</key_findings>
-         <artifacts>research.xml, API contracts locked</artifacts>
+         <artifacts>research.md, API contracts locked</artifacts>
        </phase>
        <phase name="planning">
          <duration>1.5 hours</duration>
          <key_decisions>PostgreSQL for sessions, httpOnly cookies for tokens</key_decisions>
-         <artifacts>plan.xml, sprint-plan.xml</artifacts>
+         <artifacts>plan.md, sprint-plan.md</artifacts>
        </phase>
        <phase name="implementation">
          <duration>16 hours</duration>
@@ -1168,8 +1168,8 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 **Common failure modes:**
 - Epic ambiguity → auto-runs `/clarify`
-- Planning failures → check plan.xml for missing context
-- Sprint dependency violations → check sprint-plan.xml
+- Planning failures → check plan.md for missing context
+- Sprint dependency violations → check sprint-plan.md
 - Implementation errors → check per-sprint error logs
 - Quality gate failures → check optimization-report.xml
 - Deployment failures → check deployment logs
@@ -1252,7 +1252,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 **Prompts** (.prompts/NNN-epic-slug-research/, NNN-epic-slug-plan/):
 - Prompt files for meta-prompting system
-- research.xml and plan.xml outputs
+- research.md and plan.md outputs
 
 **API contracts** (contracts/api/):
 - OpenAPI schemas for locked contracts (if applicable)

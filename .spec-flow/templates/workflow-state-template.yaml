@@ -1,0 +1,91 @@
+# Workflow State Template
+# Schema Version: 2.1.0
+#
+# This template provides the baseline structure for workflow-state.yaml
+# Populated by /feature and /epic commands during workflow initialization
+
+# Phase tracking (v1.0.0)
+phase: {PHASE}                    # Current workflow phase
+status: {STATUS}                  # Phase status: in_progress | completed | failed | paused
+current_feature: {FEATURE_NAME}   # Feature name or ID
+started: {ISO8601_TIMESTAMP}      # When feature work started
+last_updated: {ISO8601_TIMESTAMP} # Last modification timestamp
+
+# Workflow type detection (v2.1.0)
+workflow_type: {WORKFLOW_TYPE}    # "epic" or "feature"
+base_directory: {BASE_DIR}        # "epics" or "specs"
+
+# Phase completion tracking
+completed_phases: []
+
+# Artifact paths
+artifacts:
+  spec: {BASE_DIR}/{NNN-SLUG}/spec.md
+  plan: {BASE_DIR}/{NNN-SLUG}/plan.md
+  tasks: {BASE_DIR}/{NNN-SLUG}/tasks.md
+
+# Manual gates (UI-first and staging-prod workflows only)
+manual_gates:
+  mockup_approval:
+    status: not_applicable        # pending | approved | rejected | not_applicable
+    mockup_path: null
+    tokens_css_linked: false
+    approved_at: null
+    approved_by: null
+    requested_changes: null
+    style_guide_updates: null
+  staging_validation:
+    status: not_applicable        # pending | approved | failed | not_applicable
+    staging_url: null
+    validated_at: null
+    validated_by: null
+    rollback_tested: false
+
+# Deployment information (populated during /optimize and /ship phases)
+deployment:
+  model: null                     # staging-prod | direct-prod | local-only
+  version: null                   # Semantic version (e.g., "1.2.3")
+
+  staging:
+    url: null
+    deployed_at: null
+    deployment_id: null
+    validated: false
+    validated_at: null
+
+  production:
+    url: null
+    deployed_at: null
+    deployment_id: null
+    tag: null                     # Git tag (e.g., "v1.2.3")
+    tag_created_at: null
+    github_release_url: null
+
+  finalization:
+    essential_complete: false
+    essential_completed_at: null
+    full_complete: false
+    full_completed_at: null
+    changelog_updated: false
+    readme_updated: false
+    help_docs_updated: false
+    milestone_closed: false
+    release_created: false
+
+# Epic mode extensions (v2.0.0) - Only populated for epic workflows
+epic_mode: false                  # Set to true for epic workflows
+
+epics: []                         # Epic objects (see workflow-state-schema.md)
+# Example epic object:
+# - name: epic-auth-api
+#   state: Planned
+#   agent: null
+#   started: null
+#   contracts_locked_at: null
+#   tasks_complete: 0
+#   tasks_total: 0
+#   feature_flag: null
+
+wip_limits:                       # WIP enforcement (epic workflows only)
+  max_per_agent: 1                # Max concurrent epics per agent
+  current_utilization: "0/0"      # Format: "N/M" (N occupied of M total)

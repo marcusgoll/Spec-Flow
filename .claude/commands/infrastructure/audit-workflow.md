@@ -47,12 +47,12 @@ If not found, error: "No epic workspace found. Run /epic first."
 **Load all epic data for analysis:**
 ```bash
 # Core artifacts
-- epic-spec.xml (requirements)
+- epic-spec.md (requirements)
 - workflow-state.yaml (phase tracking)
-- sprint-plan.xml (dependencies, execution plan)
-- tasks.xml (task breakdown)
-- research.xml (research findings)
-- plan.xml (architecture plan)
+- sprint-plan.md (dependencies, execution plan)
+- tasks.md (task breakdown)
+- research.md (research findings)
+- plan.md (architecture plan)
 
 # Execution artifacts
 - NOTES.md (implementation notes)
@@ -200,11 +200,11 @@ If bottleneck_score > 0.3: Flag as moderate bottleneck
 **Check XML artifact completeness:**
 ```javascript
 const artifacts = [
-  'epic-spec.xml',
-  'research.xml',
-  'plan.xml',
-  'sprint-plan.xml',
-  'tasks.xml'
+  'epic-spec.md',
+  'research.md',
+  'plan.md',
+  'sprint-plan.md',
+  'tasks.md'
 ];
 
 for (const artifact of artifacts) {

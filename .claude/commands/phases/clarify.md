@@ -114,7 +114,7 @@ The /epic command may auto-invoke /clarify based on ambiguity detection. This se
 
 ### Ambiguity Score Calculation
 
-**Analyze epic-spec.xml or spec.md:**
+**Analyze epic-spec.md or spec.md:**
 ```javascript
 const ambiguityScore = calculateAmbiguityScore({
   missing_subsystems: epic_spec.subsystems.filter(s => s.involved === 'unknown').length,

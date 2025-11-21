@@ -17,7 +17,7 @@ Plan exists: !`ls specs/*/plan.md 2>/dev/null | wc -l` file(s)
 
 Feature workspace: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>/dev/null | jq -r '.FEATURE_DIR // "Not initialized"'`
 
-Workspace type: !`test -f epics/*/epic-spec.xml && echo "epic" || echo "feature"`
+Workspace type: !`test -f epics/*/epic-spec.md && echo "epic" || echo "feature"`
 </context>
 
 <objective>
@@ -103,7 +103,7 @@ This ensures traceable, deterministic task generation that prevents hallucinated
    The tasks-workflow.sh script performs:
 
    a. **Detect workspace type**: Epic vs Feature
-      - Epic: If `epics/*/epic-spec.xml` exists
+      - Epic: If `epics/*/epic-spec.md` exists
       - Feature: Otherwise
 
    b. **Epic workflows only** (Sprint breakdown):
@@ -111,7 +111,7 @@ This ensures traceable, deterministic task generation that prevents hallucinated
       - Create sprint boundaries (Backend + DB = S01, Frontend = S02, Integration = S03)
       - Build dependency graph with execution layers
       - Lock API contracts (OpenAPI 3.0 specs in contracts/)
-      - Generate sprint-plan.xml with critical path analysis
+      - Generate sprint-plan.md with critical path analysis
       - Generate tasks.md for each sprint in sprints/{S01,S02,S03}/
       - Commit sprint plan with summary
 
@@ -207,7 +207,7 @@ This ensures traceable, deterministic task generation that prevents hallucinated
       - Only auto-generate for epics (multi-subsystem, complex workflows)
 
 3. **Read generated artifacts**:
-   - Epic: `sprint-plan.xml`, `contracts/*.yaml`, `sprints/*/tasks.md`, `e2e-tests.md`
+   - Epic: `sprint-plan.md`, `contracts/*.yaml`, `sprints/*/tasks.md`, `e2e-tests.md`
    - Feature: `tasks.md`
    - UI-first: `tasks.md` with mockup tasks, `mockup-approval-checklist.md`
 
@@ -219,7 +219,7 @@ This ensures traceable, deterministic task generation that prevents hallucinated
 <verification>
 Before completing, verify:
 - Workspace type correctly detected (epic vs feature)
-- Epic workflows: sprint-plan.xml validates, contracts locked, tasks.md per sprint, e2e-tests.md generated
+- Epic workflows: sprint-plan.md validates, contracts locked, tasks.md per sprint, e2e-tests.md generated
 - Feature workflows: tasks.md has 20-30 tasks, organized by user story
 - UI-first: mockup tasks generated, manual gate set in workflow-state.yaml
 - E2E tests (epic only): ≥3 critical user journeys documented, E2E tasks added to tasks.md
@@ -229,7 +229,7 @@ Before completing, verify:
 
 <success_criteria>
 **Epic workflows**:
-- sprint-plan.xml exists and validates
+- sprint-plan.md exists and validates
 - Dependency graph shows execution layers
 - API contracts locked in contracts/
 - Per-sprint tasks.md files created
@@ -316,7 +316,7 @@ See `.claude/skills/task-breakdown-phase/reference.md` for full anti-hallucinati
 </anti_hallucination_rules>
 
 <epic_sprint_breakdown>
-**Epic workflows only** (detected via `epics/*/epic-spec.xml`):
+**Epic workflows only** (detected via `epics/*/epic-spec.md`):
 
 When tasks detects an epic workflow, it performs sprint breakdown with parallel execution planning.
 
@@ -338,7 +338,7 @@ When tasks detects an epic workflow, it performs sprint breakdown with parallel 
 ### Contract Locking
 
 **Before parallel work:**
-- Identify API contracts from plan.xml
+- Identify API contracts from plan.md
 - Generate OpenAPI 3.0 specs in `contracts/`
 - Producer sprint (S01) locks contract
 - Consumer sprint (S02) consumes contract
@@ -346,7 +346,7 @@ When tasks detects an epic workflow, it performs sprint breakdown with parallel 
 
 ### Generated Artifacts
 
-**sprint-plan.xml structure:**
+**sprint-plan.md structure:**
 ```xml
 <sprint_plan>
   <metadata>...</metadata>

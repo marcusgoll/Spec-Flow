@@ -1,6 +1,6 @@
 # Workflow State Schema
 
-**Version**: 2.0.0 (Epic Mode Extensions)
+**Version**: 2.1.0 (Workflow Type Detection)
 **File**: `.spec-flow/memory/workflow-state.yaml`
 
 ## Overview
@@ -10,6 +10,7 @@ The workflow state file tracks the current phase, progress, and epic-level coord
 **Version History**:
 - v1.0.0: Basic feature tracking (phase, status, artifacts)
 - v2.0.0: Epic mode extensions (parallel development, WIP tracking)
+- v2.1.0: Explicit workflow type and base directory tracking
 
 ## Schema Definition
 
@@ -22,6 +23,10 @@ status: string             # Phase status (in_progress, completed, failed)
 current_feature: string    # Feature name or ID
 started: ISO8601           # When feature work started
 last_updated: ISO8601      # Last modification timestamp
+
+# Workflow type detection (v2.1.0)
+workflow_type: string      # Workflow type: "epic" or "feature"
+base_directory: string     # Workspace directory: "epics" or "specs"
 
 # Epic mode extensions (v2.0.0)
 epic_mode: boolean         # True if feature uses epic parallelization
@@ -128,7 +133,7 @@ deployment:
    - Close GitHub milestone
    - Create GitHub release (if tagged promotion)
 
-## Example: Single Feature (v1.0.0)
+## Example: Single Feature (v2.1.0)
 
 ```yaml
 phase: implement
@@ -136,6 +141,11 @@ status: in_progress
 current_feature: user-authentication
 started: 2025-11-10T14:00:00Z
 last_updated: 2025-11-10T16:30:00Z
+
+# Workflow type (v2.1.0)
+workflow_type: feature
+base_directory: specs
+
 completed_phases:
   - clarify
   - plan
@@ -147,7 +157,7 @@ artifacts:
   tasks: specs/001-user-auth/tasks.md
 ```
 
-## Example: Epic Mode (v2.0.0)
+## Example: Epic Mode (v2.1.0)
 
 ```yaml
 phase: implement
@@ -156,7 +166,11 @@ current_feature: authentication-system
 started: 2025-11-10T14:00:00Z
 last_updated: 2025-11-10T18:45:00Z
 
-# Epic mode enabled
+# Workflow type (v2.1.0)
+workflow_type: epic
+base_directory: epics
+
+# Epic mode enabled (v2.0.0)
 epic_mode: true
 
 epics:
@@ -220,6 +234,8 @@ phase: <one of: clarify, plan, tasks, validate, implement, optimize, ship-stagin
 status: <one of: in_progress, completed, failed, paused>
 current_feature: <non-empty string>
 started: <ISO 8601 timestamp>
+workflow_type: <one of: epic, feature>  # v2.1.0+
+base_directory: <one of: epics, specs>  # v2.1.0+
 ```
 
 ### Required Fields (Epic Mode)
@@ -299,11 +315,13 @@ manual_gates:
 **Example (UI-first feature)**:
 
 ```yaml
-version: 2.0.0
+version: 2.1.0
 phase: implement
 status: in_progress
 current_feature: 001-user-dashboard
 started: 2025-11-14T10:00:00Z
+workflow_type: feature
+base_directory: specs
 manual_gates:
   mockup_approval:
     status: approved
@@ -324,11 +342,13 @@ manual_gates:
 **Example (non-UI feature)**:
 
 ```yaml
-version: 2.0.0
+version: 2.1.0
 phase: implement
 status: in_progress
 current_feature: 002-api-caching
 started: 2025-11-14T12:00:00Z
+workflow_type: feature
+base_directory: specs
 manual_gates:
   mockup_approval:
     status: not_applicable
@@ -488,7 +508,8 @@ yq eval '.wip_limits.current_utilization' workflow-state.yaml
 - **MINOR**: Additive changes (backward compatible)
 - **PATCH**: Bug fixes, clarifications
 
-**Current Version**: 2.0.0
+**Current Version**: 2.1.0
+- **2.1.0** (2025-11-20): Explicit workflow type and base directory tracking
 - **2.0.0** (2025-11-10): Epic mode extensions
 - **1.0.0** (2024-01-01): Initial schema
 
@@ -501,4 +522,4 @@ yq eval '.wip_limits.current_utilization' workflow-state.yaml
 ---
 
 **Maintained by**: Spec-Flow Workflow Kit
-**Last Updated**: 2025-11-10
+**Last Updated**: 2025-11-20

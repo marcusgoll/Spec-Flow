@@ -405,7 +405,7 @@ All checks are idempotent (safe to re-run multiple times)
 <epic_workflow_integration>
 **Epic workflows only** (v5.0+):
 
-When /optimize detects an epic workflow (presence of `epics/*/sprint-plan.xml`), it integrates workflow audit after quality gates pass.
+When /optimize detects an epic workflow (presence of `epics/*/sprint-plan.md`), it integrates workflow audit after quality gates pass.
 
 ### Workflow Audit Integration
 
