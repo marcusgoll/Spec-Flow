@@ -1,0 +1,200 @@
+areas:
+  - name: epics
+    path: epics/
+    role: epic & sprint planning
+    responsibilities:
+      - store epic specs, clarifications, plans, tasks, sprint docs, and ship notes
+      - manage epic state.yaml with phase + sprint + feature links
+      - anchor subordinate features plus roadmap context
+    boundaries:
+      - no ad-hoc folders outside epic slugs
+      - keep sprint notes under epics/<epic>/sprints/
+      - never bypass state.yaml when advancing phases
+    preferred_locations:
+      - epics/<epic>/spec.md
+      - epics/<epic>/plan.md
+      - epics/<epic>/tasks.md
+      - epics/<epic>/state.yaml
+      - epics/<epic>/sprints/<sprint-id>/
+    new_code_rules:
+      - new workstreams start here, not at repo root
+      - link every child spec/task to the owning epic
+      - reuse epic templates from .spec-flow/templates/
+
+  - name: specs
+    path: specs/
+    role: feature-level specs associated with epics
+    responsibilities:
+      - capture scoped feature specs, plans, tasks tied to one epic
+      - reference parent epic slug plus sprint context
+    boundaries:
+      - do not fork roadmap or create standalone epics here
+      - keep files lightweight; detailed docs stay under the epic
+    preferred_locations:
+      - specs/<feature>/spec.md
+      - specs/<feature>/plan.md
+      - specs/<feature>/tasks.md
+      - specs/<feature>/state.yaml (optional, must reference epic)
+    new_code_rules:
+      - point to parent epic in every artifact
+      - reuse shared assets instead of copying epic files
+
+  - name: workflow-core
+    path: .spec-flow/
+    role: workflow engine + templates
+    responsibilities:
+      - store scripts, templates, docs, memory, and repo governance
+      - define repo map, domain maps, phase schemas
+    boundaries:
+      - no product specs or feature code
+      - keep scripts in language-specific subfolders
+    preferred_locations:
+      - .spec-flow/scripts/{bash|powershell}/
+      - .spec-flow/templates/
+      - .spec-flow/domains/
+      - .spec-flow/memory/
+    new_code_rules:
+      - extend existing script families; avoid duplicating commands
+      - document new automation with templates + tests
+
+  - name: claude
+    path: .claude/
+    role: agent briefs, commands, hooks
+    responsibilities:
+      - define prompts for slash commands and agent personas
+      - mirror rules from repo map + domains
+    boundaries:
+      - no runtime automation logic or project specs
+      - keep briefs token-lean and DRY
+      - non-Claude tools treat this directory as read-only
+    preferred_locations:
+      - .claude/agents/
+      - .claude/commands/
+      - .claude/hooks/
+    new_code_rules:
+      - reuse command templates when adding phases
+      - reference repo map + epic state in briefs
+
+  - name: codex
+    path: .codex/
+    role: codex-specific prompts, commands, adapters
+    responsibilities:
+      - host Codex CLI prompt templates mirroring Claude workflows
+      - provide adapters/skills that translate shared rules into Codex behavior
+    boundaries:
+      - other tools treat this tree as read-only
+      - never duplicate `.spec-flow/` docs; link instead
+    preferred_locations:
+      - .codex/commands/
+      - .codex/skills/
+      - .codex/adapters/
+    new_code_rules:
+      - reference `.spec-flow/docs/*` and `.claude/**` for behavior without editing them
+      - keep prompts installable via spec-flow install-codex-prompts
+
+  - name: cursor
+    path: .cursor/
+    role: cursor-specific prompts and adapters
+    responsibilities:
+      - capture Cursor rules that mirror the shared epic workflow
+      - host prompt snippets and adapters for Cursor sessions
+    boundaries:
+      - other tools treat this tree as read-only
+      - no automation scripts; reference `.spec-flow/` docs instead
+    preferred_locations:
+      - .cursor/prompts/
+      - .cursor/adapters/
+    new_code_rules:
+      - sync instructions with `.cursorrules`
+      - reuse templates from `.spec-flow/` rather than reinvent prompts
+
+  - name: docs
+    path: docs/
+    role: public + internal documentation
+    responsibilities:
+      - explain workflows, architecture, Codex integration
+      - host Codex prompt templates
+    boundaries:
+      - no automation scripts or executable code
+      - avoid duplicating README content verbatim
+    preferred_locations:
+      - docs/architecture.md
+      - docs/getting-started.md
+      - docs/codex/
+    new_code_rules:
+      - keep markdown under ~100 char wrap, sentence-case headings
+      - update change log references when workflows shift
+
+  - name: example-apps
+    path: example-app/
+    role: product example implementation
+    responsibilities:
+      - show how to apply Spec-Flow outputs in real code
+      - provide reusable patterns for epic features
+    boundaries:
+      - no workflow automation assets
+      - keep example scope limited; real features live in repo root
+    preferred_locations:
+      - example-app/app/
+      - example-app/docs/
+    new_code_rules:
+      - reuse shared components before adding new packages
+      - document deviations from workflow templates
+
+  - name: example-workflow-app
+    path: example-workflow-app/
+    role: workflow orchestration demo
+    responsibilities:
+      - illustrate UI for running Spec-Flow phases
+      - test Codex/Claude prompts end-to-end
+    boundaries:
+      - no production secrets or credentials
+      - keep dependencies minimal
+    preferred_locations:
+      - example-workflow-app/app/
+      - example-workflow-app/docs/
+    new_code_rules:
+      - prefer editing shared components in _shared/
+      - align prompts with docs/codex guidance
+
+  - name: api
+    path: api/
+    role: package distribution + CLI utilities
+    responsibilities:
+      - host npm package, CLI helpers, install scripts
+      - surface commands like spec-flow install-codex-prompts
+    boundaries:
+      - no epic or feature docs
+      - keep dependencies rationalized per package.json
+    preferred_locations:
+      - api/src/
+      - api/package.json
+    new_code_rules:
+      - reuse existing CLI plumbing utilities
+      - write tests alongside new helpers
+
+  - name: scripts
+    path: scripts/
+    role: repository-level tooling
+    responsibilities:
+      - helper scripts used outside .spec-flow automation
+    boundaries:
+      - do not duplicate .spec-flow/scripts logic
+    preferred_locations:
+      - scripts/*.js
+    new_code_rules:
+      - consolidate shared utilities in bin/ if needed
+
+  - name: bin
+    path: bin/
+    role: executable entrypoints shipped with package
+    responsibilities:
+      - Node CLI commands invoked by users
+      - wrappers around .spec-flow automation
+    boundaries:
+      - no docs or specs
+    preferred_locations:
+      - bin/*.js
+    new_code_rules:
+      - keep scripts idempotent, confirm before overwriting files
+      - log instructions referencing repo map + domain rules

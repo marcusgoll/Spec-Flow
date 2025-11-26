@@ -1,0 +1,20 @@
+domain: workflow-engine
+scope: ".spec-flow/*, .claude/hooks*, automation caches"
+responsibilities:
+  - orchestrate epic + feature commands across phases
+  - manage scripts (bash|powershell), templates, memory, repo preferences
+  - keep shared learnings + command playbooks in sync
+boundaries:
+  - no business specs or feature docs
+  - commands must respect repo-map boundaries and epic state files
+  - avoid duplicating helpers across bash + powershell; share via modules
+key_assets:
+  - .spec-flow/scripts/bash/*.sh
+  - .spec-flow/scripts/powershell/*.ps1
+  - .spec-flow/templates/*
+  - .spec-flow/memory/*.md
+  - .claude/hooks/*
+dry_rules:
+  - reuse emit/test-emit modules before adding new logging
+  - extend existing commands instead of forking new entrypoints
+  - document new automation in IMPLEMENTATION_GUIDE.md with tests

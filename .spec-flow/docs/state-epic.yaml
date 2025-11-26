@@ -1,0 +1,27 @@
+# Canonical schema for epics/<slug>/state.yaml.
+# Keep documents compact; omit optional blocks when empty.
+
+epic: string   # slug, e.g., p1-e05-clerk-lite-auth
+status: enum   # planning | in-progress | blocked | shipped | archived
+phases:
+  spec: enum       # pending | in-progress | done | blocked
+  clarify: enum
+  plan: enum
+  tasks: enum
+  implement: enum
+  optimize: enum
+  preview: enum
+  ship: enum
+  finalize: enum
+sprints:
+  - id: string
+    status: enum    # pending | in-progress | done | parked
+    scope: string   # optional short summary
+features:
+  - slug: string
+    status: enum    # planning | active | done | parked
+    summary: string # optional
+manual_gates:
+  - name: string
+    status: enum    # waiting | approved | rejected
+last_updated: iso8601 timestamp

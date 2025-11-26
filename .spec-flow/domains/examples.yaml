@@ -1,0 +1,18 @@
+domain: examples
+scope: "example-app/, example-workflow-app/"
+responsibilities:
+  - demonstrate how epic + feature outputs land in product code
+  - validate prompts + state flow end-to-end inside demo apps
+  - provide reusable components and UI/UX for workflow orchestration
+boundaries:
+  - no real customer data or secrets
+  - keep dependencies limited; heavy integrations belong in epics/
+  - example apps should import shared assets from _shared/ when possible
+key_assets:
+  - example-app/app/*
+  - example-workflow-app/app/*
+  - example-workflow-app/_shared/*
+dry_rules:
+  - prefer extending shared UI components before adding new ones
+  - align demo prompts with docs/codex guidance
+  - reference repo-map roles in README files for each app

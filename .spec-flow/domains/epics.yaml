@@ -1,0 +1,22 @@
+domain: epics
+scope: "epics/* + linked specs/*"
+responsibilities:
+  - capture epic specs, clarifications, plans, tasks, sprint docs
+  - maintain epic-level state.yaml with phase + sprint + feature status
+  - coordinate subordinate features under specs/<feature>
+  - host release notes + ship logs tied to each epic
+boundaries:
+  - no automation scripts or prompts here
+  - feature folders must reference parent epic slug; no orphan specs
+  - keep sprint folders under epics/<epic>/sprints/
+key_assets:
+  - epics/<epic>/spec.md
+  - epics/<epic>/plan.md
+  - epics/<epic>/tasks.md
+  - epics/<epic>/state.yaml
+  - epics/<epic>/sprints/<id>/{plan.md,tasks.md,retro.md}
+  - specs/<feature>/* linked via state file
+dry_rules:
+  - reuse templates from .spec-flow/templates/epic-* for new epics
+  - keep state.yaml authoritative; feature states only refine
+  - link commits + PRs back to epic README or ship log

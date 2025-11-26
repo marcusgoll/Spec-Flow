@@ -1,9 +1,0 @@
-﻿{
-  "permissions": {
-    "allow": [
-      "Read(<add-your-project-paths-here>)"
-    ],
-    "deny": [],
-    "ask": []
-  }
-}

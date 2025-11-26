@@ -8,6 +8,7 @@ const { update } = require('./install');
 const { healthCheck } = require('./validate');
 const { setupRoadmap } = require('./setup-roadmap');
 const { printHeader, printSuccess, printError, printWarning } = require('./utils');
+const { installCodexPrompts } = require('./install-codex-prompts');
 const { STRATEGIES } = require('./conflicts');
 
 const VERSION = require('../package.json').version;
@@ -159,6 +160,27 @@ program
     }
   });
 
+// Install Codex prompts command
+program
+  .command('install-codex-prompts')
+  .description('Copy .codex/commands/*.md into your Codex prompts directory')
+  .option('-f, --force', 'Overwrite existing prompts without confirmation')
+  .option('--dry-run', 'Show what would change without copying files')
+  .action(async (options) => {
+    try {
+      await installCodexPrompts({
+        force: Boolean(options.force),
+        dryRun: Boolean(options.dryRun),
+      });
+    } catch (error) {
+      printError(`Prompt installation failed: ${error.message}`);
+      if (error.stack && process.env.DEBUG) {
+        console.error(error.stack);
+      }
+      process.exit(1);
+    }
+  });
+
 // Help command
 program
   .command('help')
@@ -173,6 +195,7 @@ program
     console.log(chalk.green('  update') + chalk.gray('         Update existing Spec-Flow installation'));
     console.log(chalk.green('  status') + chalk.gray('         Check installation health'));
     console.log(chalk.green('  setup-roadmap') + chalk.gray('  Set up GitHub Issues for roadmap'));
+    console.log(chalk.green('  install-codex-prompts') + chalk.gray('  Copy Codex prompt templates to ~/.codex/prompts'));
     console.log(chalk.green('  help') + chalk.gray('           Show this help message\n'));
 
     console.log(chalk.white('Options:'));

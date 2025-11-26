@@ -1,0 +1,87 @@
+skills:
+  - file: analysis-phase/SKILL.md
+    name: analysis-phase
+    description: Validates cross-artifact consistency and detects breaking changes during feature analysis. Use when running /analyze command, validating spec-plan alignment, checking task-implementation consistency, or identifying API/database/UI breaking changes before deployment. (project)
+    allowed-tools: Read, Edit, Grep, Bash
+  - file: anti-duplication/SKILL.md
+    name: anti-duplication
+    description: Before implementing new code (endpoints, components, services, models), search the codebase for existing patterns to reuse. Prevent code duplication by finding and suggesting similar implementations. Auto-trigger when user asks to create, implement, add, or build new functionality.
+  - file: breaking-change-detector/SKILL.md
+    name: breaking-change-detector
+    description: Detect and warn about breaking API/schema changes before implementation. Auto-trigger when modifying API routes, database schemas, or public interfaces. Validates changes against api-strategy.md versioning rules. Suggests migration paths for breaking changes. Prevents removing endpoints, changing request/response formats, dropping database columns, modifying function signatures without deprecation.
+  - file: caching-strategy/SKILL.md
+    name: caching-strategy
+    description: Cache expensive operations to avoid redundant work across workflow phases. Caches project docs (15min TTL), npm info (60min), grep results (30min), token counts (until file modified), web searches (15min). Auto-triggers when detecting repeated reads of same files or repeated API calls. Saves 20-40% execution time.
+  - file: clarification-phase/SKILL.md
+    name: clarification-phase
+    description: Executes the /clarify phase using AskUserQuestion tool to resolve ambiguities through structured questions (≤3), prioritization, and answer integration. Use when spec.md contains [NEEDS CLARIFICATION] markers, when requirements need disambiguation, or when running /clarify command to resolve critical scope/security/UX ambiguities before planning. (project)
+  - file: create-agent-skills/SKILL.md
+    name: create-agent-skills
+    description: Expert guidance for creating, writing, building, and refining Claude Code Skills. Use when working with SKILL.md files, authoring new skills, improving existing skills, or understanding skill structure, progressive disclosure, workflows, validation patterns, and XML formatting.
+  - file: create-hooks/SKILL.md
+    name: create-hooks
+    description: Expert guidance for creating, configuring, and using Claude Code hooks. Use when working with hooks, setting up event listeners, validating commands, automating workflows, adding notifications, or understanding hook types (PreToolUse, PostToolUse, Stop, SessionStart, UserPromptSubmit, etc).
+  - file: create-meta-prompts/SKILL.md
+    name: create-meta-prompts
+    description: Create optimized prompts for Claude-to-Claude pipelines with research, planning, and execution stages. Use when building prompts that produce outputs for other prompts to consume, or when running multi-stage workflows (research -> plan -> implement).
+  - file: create-slash-commands/SKILL.md
+    name: create-slash-commands
+    description: Expert guidance for creating Claude Code slash commands. Use when working with slash commands, creating custom commands, understanding command structure, or learning YAML configuration.
+  - file: create-subagents/SKILL.md
+    name: create-subagents
+    description: Expert guidance for creating, building, and using Claude Code subagents and the Task tool. Use when working with subagents, setting up agent configurations, understanding how agents work, or using the Task tool to launch specialized agents.
+  - file: debug-phase/SKILL.md
+    name: debug-phase
+    description: Systematic debugging techniques including error classification, root cause analysis (5 Whys), reproduction strategies, and error documentation. Use when debugging errors, investigating failures, analyzing stack traces, fixing bugs, or documenting errors in error-log.md. (project)
+  - file: dependency-conflict-resolver/SKILL.md
+    name: dependency-conflict-resolver
+    description: Detect and resolve package dependency conflicts before installation across npm/yarn/pnpm, pip/poetry, cargo, and composer. Auto-trigger when installing/upgrading packages. Validates peer dependencies, version compatibility, security vulnerabilities. Auto-resolves safe conflicts (patches, dev deps), suggests manual review for breaking changes. Prevents conflicting versions, security vulnerabilities, broken builds.
+  - file: finalize-phase/SKILL.md
+    name: finalize-phase
+    description: Completes feature/epic workflows after deployment with comprehensive walkthrough generation for epics (v5.0+), roadmap updates, artifact archival, documentation, and branch cleanup. Use after /ship-prod, /deploy-prod, or /build-local completes, or when user asks to finalize. (project)
+  - file: git-workflow-enforcer/SKILL.md
+    name: git-workflow-enforcer
+    description: Enforce git commits after every phase and task to enable rollback and prevent lost work. Auto-trigger when completing phases, tasks, or when detecting uncommitted changes. Auto-commit with Conventional Commits format. Verify branch safety, check for merge conflicts, enforce clean working tree. Block completion if changes not committed.
+  - file: git-workflow-enforcer/references/legacy-documentation.md
+    name: git-workflow-enforcer
+    description: Enforce git commits after every phase and task to enable rollback and prevent lost work. Auto-trigger when completing phases, tasks, or when detecting uncommitted changes. Verify commits happened, check branch safety, enforce clean working tree. Block completion if changes not committed.
+    allowed-tools: Bash, Read
+  - file: hallucination-detector/SKILL.md
+    name: hallucination-detector
+    description: Detect and prevent hallucinated technical decisions during feature work. Auto-trigger when suggesting technologies, frameworks, APIs, database schemas, or external services. Validates all tech decisions against docs/project/tech-stack.md (single source of truth). Blocks suggestions that violate documented architecture. Requires evidence/citation for all technical choices. Prevents wrong tech stack, duplicate entities, fake APIs, incompatible versions.
+  - file: implementation-phase/SKILL.md
+    name: implementation-phase
+    description: Executes implementation tasks using Test-Driven Development, prevents code duplication through anti-duplication checks, and maintains quality through continuous testing. Use when implementing features from tasks.md, during the /implement phase, or when the user requests TDD-based implementation. (project)
+  - file: optimization-phase/SKILL.md
+    name: optimization-phase
+    description: Validates production readiness through performance benchmarking, accessibility audits, security reviews, and code quality checks. Use after implementation phase completes, before deployment, or when conducting quality gates for features. (project)
+  - file: parallel-execution-optimizer/SKILL.md
+    name: parallel-execution-optimizer
+    description: Identify and execute independent operations in parallel for 3-5x speedup. Auto-analyzes task dependencies, groups into batches, launches parallel Task() calls. Applies to /optimize (5 checks), /ship pre-flight (5 checks), /design-variations (N screens), /implement (task batching). Auto-triggers when detecting multiple independent operations in a phase.
+  - file: planning-phase/SKILL.md
+    name: planning-phase
+    description: Generates implementation plans with code reuse analysis, architecture design, and complexity estimation during the /plan phase. Use when planning feature implementation, analyzing code reuse opportunities, or designing system architecture after specification phase completes. Integrates with 8 project documentation files for constraint extraction. (project)
+  - file: production-deployment-phase/SKILL.md
+    name: production-deployment-phase
+    description: Executes production deployment workflow by promoting validated staging builds to production with semantic versioning, health checks, and release tagging. Use when running /ship-prod command, deploying to production after staging validation, or promoting staging builds to production environment.
+  - file: project-initialization-phase/SKILL.md
+    name: project-initialization-phase
+    description: Orchestrates /init-project command execution through interactive questionnaire (15 questions), brownfield codebase scanning (tech stack detection, ERD from migrations), and 8-document generation (overview, architecture, tech-stack, data, API, capacity, deployment, workflow). Use when user runs /init-project, requests project documentation generation, or asks about architecture setup for greenfield/brownfield projects. (project)
+  - file: roadmap-integration/SKILL.md
+    name: roadmap-integration
+    description: Manages product roadmap via GitHub Issues (brainstorm, prioritize, track). Auto-validates features against project vision (from overview.md) before adding to roadmap. Use when running /roadmap command or mentions 'roadmap', 'add feature', 'brainstorm ideas', or 'prioritize features'.
+  - file: specification-phase/SKILL.md
+    name: specification-phase
+    description: Provides standard operating procedures for the /specify phase including feature classification (HAS_UI, IS_IMPROVEMENT, HAS_METRICS, HAS_DEPLOYMENT_IMPACT), research depth determination, clarification strategy (max 3, informed guesses for defaults), and roadmap integration. Use when executing /specify command, classifying features, generating structured specs, or determining research depth for planning phase. (project)
+  - file: staging-deployment-phase/SKILL.md
+    name: staging-deployment-phase
+    description: Deploys features to staging environment with database migrations, health checks, and deployment verification. Use during /ship-staging phase or when deploying to staging environments for validation before production release.
+  - file: staging-validation-phase/SKILL.md
+    name: staging-validation-phase
+    description: Guides manual staging validation before production deployment through smoke tests, critical user flow testing, data migration verification, and rollback capability checks. Use when validating staging deployments, running pre-production tests, or preparing for production promotion in staging-prod deployment model. (project)
+  - file: task-breakdown-phase/SKILL.md
+    name: task-breakdown-phase
+    description: Standard Operating Procedure for /tasks phase. Covers task sizing, acceptance criteria definition, and TDD-first task sequencing. (project)
+  - file: task-status-sync/SKILL.md
+    name: task-status-sync
+    description: Enforce atomic task status updates through task-tracker commands only. Prevent manual edits to NOTES.md and tasks.md that break synchronization. Auto-trigger when detecting Edit/Write attempts to task files, task completion mentions, or status update discussions. Auto-convert manual edit attempts to equivalent task-tracker commands. Validate task-tracker usage and auto-fix common mistakes.
