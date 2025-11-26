@@ -2,6 +2,61 @@
 
 ---
 
+## [10.1.0] - 2025-11-26
+
+### ✨ Added
+
+**Codex CLI Support**
+
+Full compatibility layer for OpenAI Codex CLI, enabling Spec-Flow workflows with Codex in addition to Claude Code.
+
+- **Codex Commands**: Complete mirror of Claude commands in `.codex/commands/` directory
+- **Codex Skills**: Full skill library in `.codex/skills/` with skills-index.yaml
+- **Installation Script**: `spec-flow install-codex-prompts` CLI command for easy setup
+- **Documentation**: CODEX_COMPATIBILITY.md with integration guide
+
+**New Skills**
+
+- **epic-scoping**: 5-round interactive scoping for epic workflows
+- **epic-meta-prompting**: Research and planning via sub-agents
+- **epic-sprints**: Sprint breakdown with dependency graph generation
+- **epic-walkthrough**: Comprehensive walkthrough document generation
+- **workflow-detection**: Centralized workflow type detection (epic/feature)
+
+**Infrastructure**
+
+- **shared-lib.sh**: Common shell patterns library for script reuse
+- **phases.yaml**: Externalized phase sequences for workflow flexibility
+- **deployment-guide.md**: ASCII flowchart for deployment model selection
+- **quality-gates.md**: Documentation for /optimize, /gate-ci, /gate-sec boundaries
+
+### 🔧 Fixed
+
+**Security**
+
+- Fixed yq command injection vulnerabilities using --arg flag for safe variable passing
+- Added secure temp file handling with mktemp instead of predictable paths
+- Added ensure_directory function to common.sh for safe directory creation
+
+**Scripts**
+
+- Refactored 8 workflow scripts to use shared-lib.sh patterns
+- Fixed cross-platform date handling with GNU/BSD/Python fallback chain
+- Standardized variable naming (PROJECT_ROOT → REPO_ROOT) across bash scripts
+
+**Commands**
+
+- Fixed AllowedTools declarations in ship-prod.md, validate-deploy.md
+- Reduced epic.md from 1757 to 1191 lines (32% reduction) via skill extraction
+
+### 🗑️ Removed
+
+- Removed legacy directories: `api/`, `contracts/`, `example-workflow-app/`
+- Removed placeholder directories: `epics/completed/`, `specs/completed/`
+- Removed 13 non-existent commands from README.md (/preview, /test-deploy, etc.)
+
+---
+
 ## [10.0.2] - 2025-11-21
 
 ### 🔧 Fixed

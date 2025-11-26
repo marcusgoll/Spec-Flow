@@ -45,6 +45,10 @@
 
 ## 🆕 Recent Updates
 
+### v10.1.0 (November 2025)
+
+**Codex CLI Support** - Full compatibility layer for OpenAI Codex CLI, enabling Spec-Flow workflows with both Claude Code and Codex. Includes new epic skills (scoping, meta-prompting, sprints, walkthrough), security fixes, and infrastructure improvements.
+
 ### v10.0.1 (November 2025)
 
 **Bug Fixes** - Epic workflow branch creation and UTF-8 encoding
