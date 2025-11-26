@@ -4,6 +4,29 @@
 
 Spec-Flow orchestrates feature work through a fixed series of Claude commands. Each command focuses on a deliverable (specification, plan, tasks, review) and hands contextual artifacts to the next step.
 
+## Repo map & domain guides
+
+- `.spec-flow/repo-map.yaml` enumerates every high-level area (epics, specs, `.spec-flow/`, `.claude/`, docs, example apps, api, scripts, bin). Each entry documents its role, responsibilities, boundaries, preferred locations, and new-code rules so every agent—Codex, Claude, Cursor—shares the same constitution.
+- `.spec-flow/domains/*.yaml` adds deeper context for specific surfaces:
+  - `epics.yaml` describes `epics/<slug>/` layout, sprint folders, and how specs → plan → tasks → implementation flow at the epic level.
+  - `workflow-engine.yaml` governs `.spec-flow/` automation, hooks, and learnings.
+  - `examples.yaml` outlines how the sample apps showcase the workflow without diverging from production rules.
+- Always read the repo map plus relevant domain map before writing code or docs; new assets must live beside their peers and reuse existing templates.
+
+## Tool-specific integrations
+
+- `.claude/` contains Claude-first commands and skills; other tools may read but never edit this tree.
+- `.codex/` houses Codex CLI prompts/adapters. Codex mirrors Claude behavior by reading `.claude/**` and the shared docs, then writing only inside `.codex/` plus normal repo areas.
+- `.cursor/` plus `.cursorrules` apply the same pattern for Cursor IDE sessions.
+- AGENTS.md at the repo root summarizes these responsibilities so every tool stays aligned.
+
+## Epic-first state model
+
+- Every epic owns `epics/<epic-slug>/state.yaml`, seeded from `.spec-flow/templates/epic-state.template.yaml`. It tracks the epic slug, overall status, ordered phase statuses (spec → clarify → plan → tasks → implement → optimize → ship), sprint snapshots, linked feature slugs, and `last_updated`.
+- Features under `specs/<feature>/` may have optional `state.yaml` files seeded from `.spec-flow/templates/feature-state.template.yaml`, but the epic file is the source of truth. Feature state files must declare the `epic` they belong to and may only refine details for that scope.
+- Automation scripts and Codex/Claude prompts must read and update the epic state when advancing a phase. Feature state updates should propagate back into the epic file’s `features` array and should never contradict it.
+- Auto mode (`spec-flow-epic-auto`) consults the epic state, runs at most the next phase or the next two early phases (spec + clarify or clarify + plan), writes the updated state, and stops for human review before tasks or implementation.
+
 ## Workflow State Machine
 
 ```

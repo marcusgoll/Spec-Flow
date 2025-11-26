@@ -69,10 +69,10 @@ load_feature_context() {
         exit 1
     fi
 
-    local state_file="${feature_dir%/}/workflow-state.yaml"
+    local state_file="${feature_dir%/}/state.yaml"
 
     if [ ! -f "$state_file" ]; then
-        log_error "No workflow-state.yaml found in $feature_dir"
+        log_error "No state.yaml found in $feature_dir"
         exit 1
     fi
 

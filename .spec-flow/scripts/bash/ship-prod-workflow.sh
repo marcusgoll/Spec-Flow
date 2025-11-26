@@ -290,9 +290,9 @@ echo "Updating Workflow State"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Update workflow-state.yaml with production deployment info
+# Update state.yaml with production deployment info
 if command -v yq &> /dev/null; then
-  WORKFLOW_STATE="$FEATURE_DIR/workflow-state.yaml"
+  WORKFLOW_STATE="$FEATURE_DIR/state.yaml"
 
   if [ -f "$WORKFLOW_STATE" ]; then
     yq eval ".deployment.production.version = \"${NEXT_VERSION#v}\"" -i "$WORKFLOW_STATE"
@@ -301,12 +301,12 @@ if command -v yq &> /dev/null; then
     yq eval ".deployment.production.deployed_at = \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"" -i "$WORKFLOW_STATE"
     yq eval ".deployment.production.github_release_url = \"https://github.com/$(git config --get remote.origin.url | sed 's/.*github.com[:\/]\(.*\)\.git/\1/')/releases/tag/$NEXT_VERSION\"" -i "$WORKFLOW_STATE"
 
-    echo "✅ Updated workflow-state.yaml"
+    echo "✅ Updated state.yaml"
   else
-    echo "⚠️  workflow-state.yaml not found, skipping update"
+    echo "⚠️  state.yaml not found, skipping update"
   fi
 else
-  echo "⚠️  yq not installed, cannot update workflow-state.yaml"
+  echo "⚠️  yq not installed, cannot update state.yaml"
 fi
 
 echo ""

@@ -9,6 +9,7 @@ Transform natural language feature requests into structured specifications that 
 This skill orchestrates the /specify phase, producing spec.md with measurable success criteria, classification flags for downstream workflows, and maximum 3 clarifications using informed guess heuristics for technical defaults.
 
 **Core responsibilities**:
+
 - Parse and normalize feature input to slug format (kebab-case, no filler words)
 - Check roadmap integration to reuse existing context
 - Load project documentation context (docs/project/) to prevent hallucination
@@ -19,7 +20,7 @@ This skill orchestrates the /specify phase, producing spec.md with measurable su
 - Write measurable success criteria (quantifiable, user-facing)
 
 Inputs: User's feature description, existing roadmap entries, project docs (if exists), codebase context
-Outputs: specs/NNN-slug/spec.md, NOTES.md, workflow-state.yaml, updated roadmap (if FROM_ROADMAP=true)
+Outputs: specs/NNN-slug/spec.md, NOTES.md, state.yaml, updated roadmap (if FROM_ROADMAP=true)
 Expected duration: 10-15 minutes
 </objective>
 
@@ -34,7 +35,7 @@ Execute /specify workflow in 9 steps:
 6. **Apply informed guess strategy** - Use defaults for performance (<500ms), rate limits (100/min), auth (OAuth2), retention (90d logs)
 7. **Generate clarifications** - Max 3 critical clarifications (scope > security > UX > technical priority matrix)
 8. **Write success criteria** - Measurable, quantifiable, user-facing outcomes (not tech-specific)
-9. **Generate artifacts and commit** - Create spec.md, NOTES.md, workflow-state.yaml, update roadmap
+9. **Generate artifacts and commit** - Create spec.md, NOTES.md, state.yaml, update roadmap
 
 Key principle: Use informed guesses for non-critical decisions, document assumptions, limit clarifications to ≤3.
 </quick_start>
@@ -50,6 +51,7 @@ Before executing /specify phase:
 
 <knowledge_requirements>
 Required understanding before execution:
+
 - **Classification decision tree**: UI keywords vs backend-only exclusions, improvement = baseline + target, metrics = user tracking, deployment = env vars/migrations/breaking changes
 - **Informed guess heuristics**: Performance (<500ms), retention (90d logs, 365d analytics), rate limits (100/min), auth (OAuth2), error handling (user-friendly + error ID)
 - **Clarification prioritization matrix**: Critical (scope, security, breaking changes) > High (UX) > Medium (performance SLA, tech stack) > Low (error messages, rate limits)
@@ -73,6 +75,7 @@ See [reference.md](reference.md) for complete decision trees and heuristics.
 Extract feature description and generate clean slug.
 
 **Slug Generation Rules**:
+
 ```bash
 # Remove filler words and normalize
 echo "$ARGUMENTS" |
@@ -85,6 +88,7 @@ echo "$ARGUMENTS" |
 ```
 
 **Example**:
+
 - Input: "We want to add student progress dashboard"
 - Slug: `student-progress-dashboard` ✅
 - Number: 042
@@ -101,6 +105,7 @@ See [reference.md § Slug Generation Rules](reference.md#slug-generation-rules) 
 Search roadmap for existing entry to reuse context.
 
 **Detection Logic**:
+
 ```bash
 SLUG="student-progress-dashboard"
 if grep -qi "^### ${SLUG}" .spec-flow/memory/roadmap.md; then
@@ -112,6 +117,7 @@ fi
 ```
 
 **Benefits**:
+
 - Saves ~10 minutes (requirements already documented)
 - Automatic status tracking (roadmap updates)
 - Context reuse (user already vetted scope)
@@ -127,6 +133,7 @@ See [reference.md § Roadmap Integration](reference.md#roadmap-integration) for 
 Extract architecture constraints from `docs/project/` to prevent hallucination.
 
 **Detection**:
+
 ```bash
 if [ -d "docs/project" ]; then
   HAS_PROJECT_DOCS=true
@@ -138,6 +145,7 @@ fi
 ```
 
 **Extraction**:
+
 ```bash
 # Extract constraints from project docs
 FRONTEND=$(grep -A 1 "| Frontend" docs/project/tech-stack.md | tail -1)
@@ -147,14 +155,17 @@ ENTITIES=$(grep -oP '[A-Z_]+(?= \{)' docs/project/data-architecture.md)
 ```
 
 **Document in NOTES.md**:
+
 ```markdown
 ## Project Documentation Context
 
 **Tech Stack Constraints** (from tech-stack.md):
+
 - Frontend: Next.js 14
 - Database: PostgreSQL
 
 **Spec Requirements**:
+
 - ✅ MUST use documented tech stack
 - ✅ MUST follow API patterns from api-strategy.md
 - ✅ MUST check for duplicate entities before proposing new ones
@@ -174,6 +185,7 @@ Set classification flags using decision tree.
 **Classification Logic**:
 
 **HAS_UI** (user-facing screens/components):
+
 ```
 UI keywords: screen, page, dashboard, form, modal, component, frontend, interface
   → BUT NOT backend-only: API, endpoint, service, worker, cron, job, migration, health check
@@ -184,6 +196,7 @@ Example: "Add background worker" → HAS_UI = false ✅ (backend-only)
 ```
 
 **IS_IMPROVEMENT** (optimization with measurable baseline):
+
 ```
 Improvement keywords: improve, optimize, enhance, speed up, reduce time
   AND baseline: existing, current, slow, faster, better
@@ -194,6 +207,7 @@ Example: "Make search faster" → IS_IMPROVEMENT = false ❌ (no baseline)
 ```
 
 **HAS_METRICS** (user behavior tracking):
+
 ```
 Metrics keywords: track user, measure user, engagement, retention, conversion, analytics, A/B test
   → HAS_METRICS = true
@@ -202,6 +216,7 @@ Example: "Track dashboard engagement" → HAS_METRICS = true ✅
 ```
 
 **HAS_DEPLOYMENT_IMPACT** (env vars, migrations, breaking changes):
+
 ```
 Deployment keywords: migration, schema change, env variable, breaking change, docker, platform change
   → HAS_DEPLOYMENT_IMPACT = true
@@ -221,27 +236,22 @@ Select research depth based on complexity (FLAG_COUNT).
 
 **Research Depth Guidelines**:
 
-| FLAG_COUNT | Depth | Tools | Use Cases |
-|------------|-------|-------|-----------|
-| 0 | Minimal | 1-2 | Simple backend endpoint, config change |
-| 1 | Standard | 3-5 | Single-aspect feature (UI-only or backend-only) |
-| ≥2 | Full | 5-8 | Complex multi-aspect feature |
+| FLAG_COUNT | Depth    | Tools | Use Cases                                       |
+| ---------- | -------- | ----- | ----------------------------------------------- |
+| 0          | Minimal  | 1-2   | Simple backend endpoint, config change          |
+| 1          | Standard | 3-5   | Single-aspect feature (UI-only or backend-only) |
+| ≥2         | Full     | 5-8   | Complex multi-aspect feature                    |
 
 **Minimal Research** (FLAG_COUNT = 0):
+
 1. Constitution check (alignment with mission/values)
 2. Grep for similar patterns
 
 **Standard Research** (FLAG_COUNT = 1):
-1-2. Minimal research
-3. UI inventory scan (if HAS_UI=true)
-4. Performance budgets check
-5. Similar spec search
+1-2. Minimal research 3. UI inventory scan (if HAS_UI=true) 4. Performance budgets check 5. Similar spec search
 
 **Full Research** (FLAG_COUNT ≥ 2):
-1-5. Standard research
-6. Design inspirations (if HAS_UI=true)
-7. Web search for novel patterns
-8. Integration points analysis
+1-5. Standard research 6. Design inspirations (if HAS_UI=true) 7. Web search for novel patterns 8. Integration points analysis
 
 **Quality Check**: Research depth matches complexity. Don't over-research simple features.
 
@@ -254,6 +264,7 @@ See [reference.md § Research Depth Guidelines](reference.md#research-depth-guid
 Use defaults for non-critical technical decisions.
 
 **Use Informed Guesses For** (do NOT clarify):
+
 - **Performance targets**: API <500ms (95th percentile), Frontend FCP <1.5s, TTI <3.0s
 - **Data retention**: User data indefinite (with deletion option), Logs 90 days, Analytics 365 days
 - **Error handling**: User-friendly messages + error ID (ERR-XXXX), logging to error-log.md
@@ -262,8 +273,10 @@ Use defaults for non-critical technical decisions.
 - **Integration patterns**: RESTful API (unless GraphQL needed), JSON format, offset/limit pagination
 
 **Document Assumptions in spec.md**:
+
 ```markdown
 ## Performance Targets (Assumed)
+
 - API endpoints: <500ms (95th percentile)
 - Frontend FCP: <1.5s, TTI: <3.0s
 - Lighthouse: Performance ≥85, Accessibility ≥95
@@ -272,6 +285,7 @@ _Assumption: Standard web application performance expectations applied._
 ```
 
 **Do NOT Use Informed Guesses For**:
+
 - Scope-defining decisions (feature boundary, user roles)
 - Security/privacy critical choices (encryption, PII handling)
 - Breaking changes (API response format changes)
@@ -289,20 +303,21 @@ Identify ambiguities that cannot be reasonably assumed.
 
 **Clarification Prioritization Matrix**:
 
-| Category | Priority | Ask? | Example |
-|----------|----------|------|---------|
-| Scope boundary | Critical | ✅ Always | "Does this include admin features or only user features?" |
-| Security/Privacy | Critical | ✅ Always | "Should PII be encrypted at rest?" |
-| Breaking changes | Critical | ✅ Always | "Is it okay to change the API response format?" |
-| User experience | High | ✅ If ambiguous | "Should this be a modal or new page?" |
-| Performance SLA | Medium | ❌ Use defaults | "What's the target response time?" → Assume <500ms |
-| Technical stack | Medium | ❌ Defer to plan | "Which database?" → Planning-phase decision |
-| Error messages | Low | ❌ Use standard | "What error message?" → Standard pattern |
-| Rate limits | Low | ❌ Use defaults | "How many requests?" → 100/min default |
+| Category         | Priority | Ask?             | Example                                                   |
+| ---------------- | -------- | ---------------- | --------------------------------------------------------- |
+| Scope boundary   | Critical | ✅ Always        | "Does this include admin features or only user features?" |
+| Security/Privacy | Critical | ✅ Always        | "Should PII be encrypted at rest?"                        |
+| Breaking changes | Critical | ✅ Always        | "Is it okay to change the API response format?"           |
+| User experience  | High     | ✅ If ambiguous  | "Should this be a modal or new page?"                     |
+| Performance SLA  | Medium   | ❌ Use defaults  | "What's the target response time?" → Assume <500ms        |
+| Technical stack  | Medium   | ❌ Defer to plan | "Which database?" → Planning-phase decision               |
+| Error messages   | Low      | ❌ Use standard  | "What error message?" → Standard pattern                  |
+| Rate limits      | Low      | ❌ Use defaults  | "How many requests?" → 100/min default                    |
 
 **Limit: Maximum 3 clarifications total**
 
 **Process**:
+
 1. Identify all ambiguities
 2. Rank by category priority
 3. Keep top 3 most critical
@@ -310,12 +325,14 @@ Identify ambiguities that cannot be reasonably assumed.
 5. Document assumptions clearly
 
 **Good Clarifications**:
+
 ```markdown
 [NEEDS CLARIFICATION: Should dashboard show all students or only assigned classes?]
 [NEEDS CLARIFICATION: Should parents have access to this dashboard?]
 ```
 
 **Bad Clarifications** (have defaults):
+
 ```markdown
 ❌ [NEEDS CLARIFICATION: What's the target response time?] → Use 500ms default
 ❌ [NEEDS CLARIFICATION: Which database to use?] → Planning-phase decision
@@ -333,8 +350,10 @@ See [reference.md § Clarification Prioritization Matrix](reference.md#clarifica
 Define measurable, quantifiable, user-facing outcomes.
 
 **Good Criteria Format**:
+
 ```markdown
 ## Success Criteria
+
 - User can complete registration in <3 minutes (measured via PostHog funnel)
 - API response time <500ms for 95th percentile (measured via Datadog APM)
 - Lighthouse accessibility score ≥95 (measured via CI Lighthouse check)
@@ -342,12 +361,14 @@ Define measurable, quantifiable, user-facing outcomes.
 ```
 
 **Criteria Requirements**:
+
 - **Measurable**: Can be validated objectively
 - **Quantifiable**: Has specific numeric target
 - **User-facing**: Focuses on outcomes, not implementation
 - **Measurement method**: Specifies how to validate (tool, metric)
 
 **Bad Criteria to Avoid**:
+
 ```markdown
 ❌ System works correctly (not measurable)
 ❌ API is fast (not quantifiable)
@@ -364,13 +385,15 @@ Define measurable, quantifiable, user-facing outcomes.
 Create specification artifacts and commit to git.
 
 **Artifacts**:
+
 1. `specs/NNN-slug/spec.md` - Structured specification with classification flags, requirements, assumptions, clarifications (≤3), success criteria
 2. `specs/NNN-slug/NOTES.md` - Implementation decisions and project context
 3. `specs/NNN-slug/visuals/README.md` - Visual artifacts directory (if HAS_UI=true)
-4. `specs/NNN-slug/workflow-state.yaml` - Phase state tracking (currentPhase: specification, status: completed)
+4. `specs/NNN-slug/state.yaml` - Phase state tracking (currentPhase: specification, status: completed)
 5. Updated roadmap (if FROM_ROADMAP=true) - Move entry to "In Progress", add branch/spec links
 
 **Validation Checks**:
+
 - [ ] Requirements checklist complete (if exists)
 - [ ] Clarifications ≤3
 - [ ] Classification flags match feature description
@@ -378,6 +401,7 @@ Create specification artifacts and commit to git.
 - [ ] Roadmap updated (if FROM_ROADMAP=true)
 
 **Commit Message**:
+
 ```bash
 git add specs/NNN-slug/
 git commit -m "feat: add spec for <feature-name>
@@ -392,7 +416,7 @@ Clarifications: N
 Research depth: <minimal/standard/full>"
 ```
 
-**Quality Check**: All artifacts created, spec committed, roadmap updated, workflow-state.yaml initialized.
+**Quality Check**: All artifacts created, spec committed, roadmap updated, state.yaml initialized.
 </step>
 </workflow>
 
@@ -404,6 +428,7 @@ Research depth: <minimal/standard/full>"
 - [ ] Required templates exist
 
 **During phase**:
+
 - [ ] Slug normalized (no filler words, lowercase kebab-case)
 - [ ] Roadmap checked for existing entry
 - [ ] Project docs loaded (if exist)
@@ -414,15 +439,17 @@ Research depth: <minimal/standard/full>"
 - [ ] Assumptions documented clearly
 
 **Post-phase validation**:
+
 - [ ] spec.md committed with proper message
 - [ ] NOTES.md initialized
 - [ ] Roadmap updated (if FROM_ROADMAP=true)
 - [ ] visuals/ created (if HAS_UI=true)
-- [ ] workflow-state.yaml initialized
-</phase_checklist>
+- [ ] state.yaml initialized
+      </phase_checklist>
 
 <quality_standards>
 **Specification quality targets**:
+
 - Clarifications: ≤3 per spec
 - Classification accuracy: ≥90%
 - Success criteria: 100% measurable
@@ -430,6 +457,7 @@ Research depth: <minimal/standard/full>"
 - Rework rate: <5%
 
 **What makes a good spec**:
+
 - Clear scope boundaries (what's in, what's out)
 - Measurable success criteria (with measurement methods)
 - Reasonable assumptions documented
@@ -438,19 +466,21 @@ Research depth: <minimal/standard/full>"
 - Context reuse (from roadmap when available)
 
 **What makes a bad spec**:
-- >5 clarifications (over-clarifying technical defaults)
+
+- > 5 clarifications (over-clarifying technical defaults)
 - Vague success criteria ("works correctly", "is fast")
 - Technology-specific criteria (couples to implementation)
 - Wrong classification (UI flag for backend-only)
 - Missing roadmap integration (duplicates planning work)
-</quality_standards>
-</validation>
+  </quality_standards>
+  </validation>
 
 <anti_patterns>
 <pitfall name="over_clarification">
 **Impact**: Delays planning phase, frustrates users
 
 **Scenario**:
+
 ```
 Spec with 7 clarifications (limit: 3):
 - [NEEDS CLARIFICATION: What format? CSV or JSON?] → Use JSON default
@@ -459,6 +489,7 @@ Spec with 7 clarifications (limit: 3):
 ```
 
 **Prevention**:
+
 - Use industry-standard defaults (see reference.md § Informed Guess Heuristics)
 - Only mark critical scope/security decisions as NEEDS CLARIFICATION
 - Document assumptions in spec.md "Assumptions" section
@@ -471,6 +502,7 @@ Spec with 7 clarifications (limit: 3):
 **Impact**: Creates unnecessary UI artifacts, wastes time
 
 **Scenario**:
+
 ```
 Feature: "Add background worker to process uploads"
 Classified: HAS_UI=true (WRONG - no user-facing UI)
@@ -480,15 +512,17 @@ Result: Generated screens.yaml for backend-only feature
 **Root cause**: Keyword "process" triggered false positive without checking for backend-only keywords
 
 **Prevention**:
+
 1. Check for backend-only keywords: worker, cron, job, migration, health check, API, endpoint, service
 2. Require BOTH UI keyword AND absence of backend-only keywords
 3. Use classification decision tree (see reference.md § Classification Decision Tree)
-</pitfall>
+   </pitfall>
 
 <pitfall name="roadmap_slug_mismatch">
 **Impact**: Misses context reuse opportunity, duplicates planning work
 
 **Scenario**:
+
 ```
 User input: "We want to add Student Progress Dashboard"
 Generated slug: "add-student-progress-dashboard" (BAD - includes "add")
@@ -497,37 +531,43 @@ Result: No match found, created fresh spec instead of reusing roadmap context
 ```
 
 **Prevention**:
+
 1. Remove filler words during slug generation: "add", "create", "we want to"
 2. Normalize to lowercase kebab-case consistently
 3. Offer fuzzy matches if exact match not found
-</pitfall>
+   </pitfall>
 
 <pitfall name="too_many_research_tools">
 **Impact**: Wastes time, exceeds token budget
 
 **Scenario**:
+
 ```bash
 # 15 research tools for simple backend endpoint (WRONG)
 Glob *.py, Glob *.ts, Glob *.tsx, Grep "database", Grep "model"...
 ```
 
 **Prevention**:
+
 - Use research depth guidelines: FLAG_COUNT = 0 → 1-2 tools only
 - For simple features: Constitution check + pattern search is sufficient
 - Reserve full research (5-8 tools) for complex multi-aspect features
 
 **Correct approach**:
+
 ```bash
 # 2 research tools for simple backend endpoint (CORRECT)
 grep "similar endpoint" specs/*/spec.md
 grep "BaseModel" api/app/models/*.py
 ```
+
 </pitfall>
 
 <pitfall name="vague_success_criteria">
 **Impact**: Cannot validate implementation, leads to scope creep
 
 **Bad examples**:
+
 ```markdown
 ❌ System works correctly (not measurable)
 ❌ API is fast (not quantifiable)
@@ -535,6 +575,7 @@ grep "BaseModel" api/app/models/*.py
 ```
 
 **Good examples**:
+
 ```markdown
 ✅ User can complete registration in <3 minutes (measured via PostHog funnel)
 ✅ API response time <500ms for 95th percentile (measured via Datadog APM)
@@ -548,6 +589,7 @@ grep "BaseModel" api/app/models/*.py
 **Impact**: Couples spec to implementation details, reduces flexibility
 
 **Bad examples**:
+
 ```markdown
 ❌ React components render efficiently
 ❌ Redis cache hit rate >80%
@@ -555,6 +597,7 @@ grep "BaseModel" api/app/models/*.py
 ```
 
 **Good examples** (outcome-focused):
+
 ```markdown
 ✅ Page load time <1.5s (First Contentful Paint)
 ✅ 95% of user searches return results in <1 second
@@ -568,28 +611,34 @@ grep "BaseModel" api/app/models/*.py
 <best_practices>
 <informed_guess_strategy>
 **When to use**:
+
 - Non-critical technical decisions
 - Industry standards exist
 - Default won't impact scope or security
 
 **When NOT to use**:
+
 - Scope-defining decisions
 - Security/privacy critical choices
 - No reasonable default exists
 
 **Approach**:
+
 1. Check if decision has reasonable default (see reference.md § Informed Guess Heuristics)
 2. Document assumption clearly in spec
 3. Note that user can override if needed
 
 **Example**:
+
 ```markdown
 ## Performance Targets (Assumed)
+
 - API response time: <500ms (95th percentile)
 - Frontend FCP: <1.5s
 - Database queries: <100ms
 
 **Assumptions**:
+
 - Standard web app performance expectations applied
 - If requirements differ, specify in "Performance Requirements" section
 ```
@@ -599,10 +648,12 @@ grep "BaseModel" api/app/models/*.py
 
 <roadmap_integration>
 **When to use**:
+
 - Feature name matches roadmap entry
 - Roadmap uses consistent slug format
 
 **Approach**:
+
 1. Normalize user input to slug format
 2. Search roadmap for exact match
 3. If found: Extract requirements, area, role, impact/effort
@@ -616,6 +667,7 @@ grep "BaseModel" api/app/models/*.py
 **Best practice**: Follow decision tree systematically (see reference.md § Classification Decision Tree)
 
 **Process**:
+
 1. Check UI keywords → Set HAS_UI (but verify no backend-only exclusions)
 2. Check improvement keywords + baseline → Set IS_IMPROVEMENT
 3. Check metrics keywords → Set HAS_METRICS
@@ -632,12 +684,13 @@ Specification phase complete when:
 - [ ] All 9 execution steps completed
 - [ ] All post-phase validations passed
 - [ ] Spec committed to git
-- [ ] workflow-state.yaml shows `currentPhase: specification` and `status: completed`
+- [ ] state.yaml shows `currentPhase: specification` and `status: completed`
 
 Ready to proceed when:
+
 - If clarifications >0 → Run `/clarify`
 - If clarifications = 0 → Run `/plan`
-</success_criteria>
+  </success_criteria>
 
 <troubleshooting>
 **Issue**: Too many clarifications (>3)
@@ -663,12 +716,14 @@ Ready to proceed when:
 For detailed documentation:
 
 **Classification & Defaults**: [reference.md](reference.md)
+
 - Classification decision tree (HAS_UI, IS_IMPROVEMENT, HAS_METRICS, HAS_DEPLOYMENT_IMPACT)
 - Informed guess heuristics (performance, retention, auth, rate limits)
 - Clarification prioritization matrix (scope > security > UX > technical)
 - Slug generation rules (normalization, filler word removal)
 
 **Real-World Examples**: [examples.md](examples.md)
+
 - Good specs (0-2 clarifications) vs bad specs (>5 clarifications)
 - Side-by-side comparisons with analysis
 - Progressive learning patterns (features 1-5, 6-15, 16+)
@@ -677,6 +732,7 @@ For detailed documentation:
 **Execution Details**: reference.md § Research Depth Guidelines, Common Mistakes to Avoid
 
 Next phase after /specify:
+
 - If clarifications >0 → `/clarify` (reduces ambiguity via targeted questions)
 - If clarifications = 0 → `/plan` (generates design artifacts from spec)
-</reference_guides>
+  </reference_guides>

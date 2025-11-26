@@ -7,9 +7,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || cd "$SCRIPT_DIR/../../.." && pwd)"
 HOOKS_SOURCE="$SCRIPT_DIR/git-hooks"
-HOOKS_TARGET="$PROJECT_ROOT/.git/hooks"
+HOOKS_TARGET="$REPO_ROOT/.git/hooks"
 
 # Colors
 GREEN='\033[0;32m'
@@ -93,7 +93,7 @@ main() {
   done
 
   # Check git repository
-  if [[ ! -d "$PROJECT_ROOT/.git" ]]; then
+  if [[ ! -d "$REPO_ROOT/.git" ]]; then
     echo "Error: Not a git repository"
     exit 1
   fi

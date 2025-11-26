@@ -2,7 +2,18 @@
 name: spec
 description: Generate complete feature specification with research, requirements analysis, and quality gates
 argument-hint: <feature-description> [--interactive] [--yes] [--skip-clarify]
-allowed-tools: [Read, Write, Edit, Grep, Glob, Bash(git *), Bash(python .spec-flow/scripts/*), AskUserQuestion, SlashCommand]
+allowed-tools:
+  [
+    Read,
+    Write,
+    Edit,
+    Grep,
+    Glob,
+    Bash(git *),
+    Bash(python .spec-flow/scripts/*),
+    AskUserQuestion,
+    SlashCommand,
+  ]
 ---
 
 # /spec — Feature Specification Generator
@@ -21,16 +32,18 @@ allowed-tools: [Read, Write, Edit, Grep, Glob, Bash(git *), Bash(python .spec-fl
 **Roadmap**: !`gh issue list --label roadmap --limit 5 2>$null || echo "none"`
 
 **Specification Artifacts** (after execution):
+
 - @specs/NNN-slug/spec.md
 - @specs/NNN-slug/NOTES.md
 - @specs/NNN-slug/checklists/requirements.md
-- @specs/NNN-slug/workflow-state.yaml
-</context>
+- @specs/NNN-slug/state.yaml
+  </context>
 
 <objective>
 Generate a production-grade feature specification from natural language input.
 
 Specification workflow:
+
 1. Analyze user input for ambiguity (clarification gate)
 2. Invoke Python CLI for deterministic slug generation and artifact creation
 3. Classify feature type and research mode
@@ -48,6 +61,7 @@ Specification workflow:
 ```
 
 **Key principles**:
+
 - **Deterministic**: Slug generation and directory structure are predictable
 - **Guardrails**: Prevent speculation, cite sources, require human confirmation before commit
 - **User-value**: Success criteria are measurable and tech-agnostic
@@ -59,18 +73,21 @@ Specification workflow:
 - **Automation-friendly**: `--yes` skips all gates, `--skip-clarify` skips only gate #1
 
 **Clarification Behavior**:
+
 - Use `[NEEDS CLARIFICATION]` **only for blocking questions** in spec.md (max 3)
 - Blocking = questions that make it unsafe to define requirements or acceptance criteria
 - Additional or non-blocking questions go into `clarify.md`
 - If blocking questions remain, spec is allowed to block further phases
 
 **Flags**:
+
 - `--interactive`: Force wait for user confirmation (no auto-proceed timeout)
 - `--yes`: Skip all HITL gates (clarification + confirmation) and auto-commit (full automation)
 - `--skip-clarify`: Skip upfront clarification gate only (still show confirmation before commit)
 - Environment: `SPEC_FLOW_INTERACTIVE=true` for global interactive mode
 
 **References**:
+
 - Gherkin for scenarios (Given/When/Then)
 - HEART metrics (Happiness, Engagement, Adoption, Retention, Task success)
 - Conventional Commits for commit messages
@@ -84,21 +101,25 @@ Specification workflow:
 **CRITICAL**: Follow these rules to prevent making up information when creating specifications.
 
 1. **Never speculate about existing code you have not read**
+
    - ❌ BAD: "The app probably uses React Router for navigation"
    - ✅ GOOD: "Let me check package.json and src/ to see what's currently used"
    - Use Glob to find files, Read to examine them before making assumptions
 
 2. **Cite sources for technical constraints**
+
    - When referencing existing architecture, cite files: `package.json:12`, `tsconfig.json:5-8`
    - When referencing similar features, cite: `specs/002-auth-flow/spec.md:45`
    - Don't invent APIs, libraries, or frameworks that might not exist
 
 3. **Admit when research is needed**
+
    - If uncertain about tech stack, say: "I need to read package.json and check existing code"
    - If unsure about design patterns, say: "Let me search for similar implementations"
    - Never make up database schemas, API endpoints, or component hierarchies
 
 4. **Verify roadmap entries before referencing**
+
    - Before saying "This builds on feature X", search GitHub Issues or `docs/roadmap.md` for X
    - Use exact issue slugs and titles, don't paraphrase
    - If feature not in roadmap, say: "This is a new feature, not extending existing work"
@@ -121,6 +142,7 @@ Specification workflow:
 **Before invoking the CLI**, analyze `$ARGUMENTS` for ambiguity and ask targeted questions if needed.
 
 **Check for --skip-clarify flag:**
+
 ```bash
 if [[ "$ARGUMENTS" == *"--skip-clarify"* ]]; then
   echo "Skipping clarification gate per --skip-clarify flag"
@@ -164,32 +186,32 @@ AskUserQuestion({
       header: "User",
       multiSelect: false,
       options: [
-        {label: "End user", description: "Direct application user"},
-        {label: "Admin", description: "System administrator"},
-        {label: "Developer", description: "API consumer or integrator"}
-      ]
+        { label: "End user", description: "Direct application user" },
+        { label: "Admin", description: "System administrator" },
+        { label: "Developer", description: "API consumer or integrator" },
+      ],
     },
     {
       question: "What's the expected scale?",
       header: "Scale",
       multiSelect: false,
       options: [
-        {label: "< 1K users", description: "Small scale"},
-        {label: "1K-10K users", description: "Medium scale"},
-        {label: "10K+ users", description: "Large scale"}
-      ]
+        { label: "< 1K users", description: "Small scale" },
+        { label: "1K-10K users", description: "Medium scale" },
+        { label: "10K+ users", description: "Large scale" },
+      ],
     },
     {
       question: "Are there performance requirements?",
       header: "Performance",
       multiSelect: false,
       options: [
-        {label: "Standard (< 2s)", description: "Normal web response"},
-        {label: "Fast (< 500ms)", description: "Real-time feel"},
-        {label: "No requirement", description: "Best effort"}
-      ]
-    }
-  ]
+        { label: "Standard (< 2s)", description: "Normal web response" },
+        { label: "Fast (< 500ms)", description: "Real-time feel" },
+        { label: "No requirement", description: "Best effort" },
+      ],
+    },
+  ],
 });
 ```
 
@@ -222,7 +244,7 @@ python .spec-flow/scripts/spec-cli.py "$ARGUMENTS"
      │   └── requirements.md
      ├── visuals/
      │   └── README.md
-     └── workflow-state.yaml
+     └── state.yaml
    ```
 3. **Classify feature type**:
    - UI feature (has screens/components)
@@ -244,16 +266,19 @@ python .spec-flow/scripts/spec-cli.py "$ARGUMENTS"
 **Read generated spec.md template and fill sections:**
 
 **a) Problem Statement**:
+
 - Quote user input from $ARGUMENTS
 - Explain pain point or opportunity
 - Cite existing issues if applicable (GitHub issue numbers)
 
 **b) Goals & Success Criteria**:
+
 - Define measurable outcomes
 - Use HEART metrics if user-facing feature
 - Tech-agnostic success definition
 
 **c) User Scenarios** (Gherkin format):
+
 ```gherkin
 Scenario: User edits profile information
   Given the user is logged in
@@ -266,6 +291,7 @@ Scenario: User edits profile information
 ```
 
 **d) Functional Requirements** (FR-XXX):
+
 ```markdown
 - **FR-001**: System SHALL allow users to edit profile information
 - **FR-002**: System SHALL validate email format before saving
@@ -273,6 +299,7 @@ Scenario: User edits profile information
 ```
 
 **e) Non-Functional Requirements** (NFR-XXX):
+
 ```markdown
 - **NFR-001**: Profile update SHALL complete within 2 seconds (p95)
 - **NFR-002**: System SHALL handle concurrent profile edits gracefully
@@ -280,14 +307,17 @@ Scenario: User edits profile information
 ```
 
 **f) Out of Scope**:
+
 - Explicitly document what this feature does NOT include
 - Prevents scope creep during implementation
 
 **g) Risks & Assumptions**:
+
 - Technical risks (dependencies, complexity)
 - Assumptions about users, environment, constraints
 
 **h) Open Questions** (if any):
+
 - Use `[NEEDS CLARIFICATION]` for **blocking questions only** (max 3)
 - Move non-blocking questions to `clarify.md`
 
@@ -299,6 +329,7 @@ Scenario: User edits profile information
 # Requirements Quality Checklist
 
 ## Completeness
+
 - [ ] All functional requirements have FR-XXX identifiers
 - [ ] All non-functional requirements have NFR-XXX identifiers
 - [ ] Success criteria are measurable
@@ -306,17 +337,20 @@ Scenario: User edits profile information
 - [ ] Out of scope is explicitly documented
 
 ## Clarity
+
 - [ ] Requirements use SHALL/SHOULD/MAY consistently
 - [ ] No ambiguous terms (improve, enhance, better)
 - [ ] Actors are clearly identified (user, system, admin)
 - [ ] No implementation details in requirements
 
 ## Testability
+
 - [ ] Each requirement can be verified with test
 - [ ] Acceptance criteria include pass/fail conditions
 - [ ] Performance targets are quantified (if applicable)
 
 ## Feasibility
+
 - [ ] Technical risks are documented
 - [ ] Dependencies are identified
 - [ ] Assumptions are stated explicitly
@@ -368,7 +402,7 @@ Location: specs/<NNN-slug>/
 - spec.md
 - NOTES.md
 - checklists/requirements.md
-- workflow-state.yaml
+- state.yaml
 
 Commit this specification? [Y/n] (auto-proceed in 10s)
 ```
@@ -389,11 +423,13 @@ else:
 ```
 
 **If No or Review first:**
+
 - Exit without committing
 - Show file locations for manual review
 - Tell user to run `/spec continue` when ready
 
 **If Yes (or timeout):**
+
 - Proceed to git commit
 
 ### Step 5: Commit Specification
@@ -544,6 +580,7 @@ elif choice == 4 and state == "BLOCKED_CLARIFICATIONS":
 ```
 
 **Automation mode**: When invoked by `/feature continue`, skip decision tree and auto-proceed:
+
 - `BLOCKED_CLARIFICATIONS` → auto-run `/clarify`
 - `BLOCKED_CHECKLIST` → auto-run `/plan` (log warning)
 - `READY` → auto-run `/plan`
@@ -554,23 +591,27 @@ elif choice == 4 and state == "BLOCKED_CLARIFICATIONS":
 **Specification successfully created when:**
 
 1. **Artifacts generated**:
+
    - spec.md exists with all required sections
    - NOTES.md initialized
    - checklists/requirements.md created
-   - workflow-state.yaml initialized
+   - state.yaml initialized
 
 2. **Requirements documented**:
+
    - All functional requirements have FR-XXX identifiers (unique, sequential)
    - All non-functional requirements have NFR-XXX identifiers (unique, sequential)
    - User scenarios use Gherkin format (Given/When/Then)
    - Success criteria are measurable
 
 3. **Quality validated**:
+
    - No more than 3 `[NEEDS CLARIFICATION]` markers in spec.md
    - Checklist completion ≥80% OR explicit decision to proceed
    - All technical constraints have source citations (file:line)
 
 4. **Git committed**:
+
    - Feature branch created: feature/<NNN-slug>
    - All artifacts committed with detailed commit message
    - Commit follows Conventional Commits format
@@ -579,12 +620,13 @@ elif choice == 4 and state == "BLOCKED_CLARIFICATIONS":
    - User receives decision tree with executable options
    - State-appropriate recommendations provided (clarify, plan, or continue)
    - SlashCommand tool invoked for user's choice
-</success_criteria>
+     </success_criteria>
 
 <verification>
 **Before committing specification, verify:**
 
 1. **Check spec.md completeness**:
+
    ```bash
    grep -c "^## Problem" specs/*/spec.md  # Should be 1
    grep -c "^## Goals" specs/*/spec.md    # Should be 1
@@ -592,17 +634,20 @@ elif choice == 4 and state == "BLOCKED_CLARIFICATIONS":
    ```
 
 2. **Verify requirement identifiers are unique**:
+
    ```bash
    grep "^- \*\*FR-" specs/*/spec.md | sort | uniq -d  # Should be empty
    grep "^- \*\*NFR-" specs/*/spec.md | sort | uniq -d  # Should be empty
    ```
 
 3. **Count blocking clarifications**:
+
    ```bash
    grep -c "\[NEEDS CLARIFICATION\]" specs/*/spec.md  # Should be ≤3
    ```
 
 4. **Validate checklist completion**:
+
    ```bash
    grep -c "\- \[x\]" specs/*/checklists/requirements.md
    grep -c "\- \[ \]" specs/*/checklists/requirements.md
@@ -610,6 +655,7 @@ elif choice == 4 and state == "BLOCKED_CLARIFICATIONS":
    ```
 
 5. **Confirm all citations have file:line references**:
+
    ```bash
    grep "package.json" specs/*/spec.md | grep -v ":[0-9]"  # Should be empty
    ```
@@ -626,21 +672,24 @@ elif choice == 4 and state == "BLOCKED_CLARIFICATIONS":
 **Files created/modified by this command:**
 
 **Specification artifacts** (specs/NNN-slug/):
+
 - spec.md — Complete feature specification with requirements, scenarios, success criteria
 - NOTES.md — Implementation notes, decisions, and context
 - checklists/requirements.md — Quality checklist for requirement validation
 - visuals/README.md — Placeholder for mockups, diagrams, screenshots
-- workflow-state.yaml — Workflow tracking (phase status, gates, metadata)
+- state.yaml — Workflow tracking (phase status, gates, metadata)
 
 **Git operations**:
+
 - Branch: feature/NNN-slug created
 - Commit: Specification files committed with detailed message
 
 **Console output**:
+
 - Specification summary (requirements count, quality metrics)
 - Decision tree with next-step options
 - Executable command suggestions based on state
-</output>
+  </output>
 
 ---
 
@@ -668,16 +717,19 @@ elif choice == 4 and state == "BLOCKED_CLARIFICATIONS":
 ### Common Patterns
 
 **Skip all gates for automation:**
+
 ```bash
 /spec "user profile editing" --yes
 ```
 
 **Interactive mode with upfront clarification:**
+
 ```bash
 /spec "payment processing" --interactive
 ```
 
 **Skip clarification but keep confirmation:**
+
 ```bash
 /spec "dashboard widgets" --skip-clarify
 ```
@@ -692,5 +744,5 @@ specs/001-user-profile-editing/
 │   └── requirements.md          # Quality checklist
 ├── visuals/
 │   └── README.md                # Mockups placeholder
-└── workflow-state.yaml          # Workflow tracking
+└── state.yaml          # Workflow tracking
 ```

@@ -1,29 +1,35 @@
 # Scenario 4: Epic Workflow
 
 ## Purpose
+
 Test multi-sprint epic workflow with parallel execution and dependency management.
 
 ## Tests
 
 ### 1. Directory Structure Validation
+
 - Verifies scenario directory exists
 - **Expected**: Directory present
 
 ### 2. /epic Command Validation
+
 - Validates epic.md command file exists
 - Checks for epic-spec.md references
 - **Expected**: Command file properly structured
 
 ### 3. /implement-epic Command Validation
+
 - Validates implement-epic.md command file exists
 - Checks for sprint-plan.md references
 - **Expected**: Command file properly structured
 
 ### 4. Epic Skill Validation
+
 - Validates epic/SKILL.md exists
 - **Expected**: Skill file properly structured
 
 ### 5. Epic Question Bank Validation
+
 - Validates question-bank.md exists
 - Checks for Round 1-5 structure
 - **Expected**: Question bank with 8-9 questions
@@ -57,13 +63,14 @@ Auto /audit-workflow
 ## Expected Artifacts
 
 After `/epic`:
+
 ```
 epics/001-auth-system/
 ├── epic-spec.md
 ├── research.md
 ├── plan.md
 ├── sprint-plan.md
-├── workflow-state.yaml (epic_mode: true)
+├── state.yaml (epic_mode: true)
 └── sprints/
     ├── S01/  # Backend + Database
     ├── S02/  # Frontend
@@ -71,6 +78,7 @@ epics/001-auth-system/
 ```
 
 After `/implement-epic`:
+
 ```
 (plus)
 ├── contracts/
@@ -85,6 +93,7 @@ After `/implement-epic`:
 ```
 
 After `/finalize`:
+
 ```
 (plus)
 └── walkthrough.md  # Epic walkthrough with lessons learned
@@ -103,16 +112,19 @@ Layer 3: S03 (Integration)  [depends on S01 + S02]
 ## Execution Modes
 
 ### Auto Mode (--auto)
+
 - Skip manual pauses
 - Run until blocker
 - Fastest execution
 
 ### Interactive Mode (--interactive)
+
 - Pause at spec review
 - Pause at plan review
 - User approval required
 
 ### 3-Tier Preference System
+
 1. Config file (lowest priority)
 2. Command history (medium)
 3. Command-line flags (highest)
@@ -137,6 +149,7 @@ Layer 3: S03 (Integration)  [depends on S01 + S02]
 ## Notes
 
 Epic workflow differences from feature workflow:
+
 - Auto-triggers /init-project if missing
 - Auto-invokes /clarify if ambiguity >30%
 - Uses meta-prompting (research → plan)

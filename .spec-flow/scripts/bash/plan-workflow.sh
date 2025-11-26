@@ -1,60 +1,19 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
+# plan-workflow.sh - Implementation planning workflow
+#
+# This script orchestrates the /plan phase of the Spec-Flow workflow.
+# Refactored to use shared-lib.sh for common patterns.
 
-# Get script directory
+# Source shared library
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+source "$SCRIPT_DIR/shared-lib.sh"
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# ERROR TRAP
+# SETUP
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-on_error() {
-  echo "⚠️  Error in /plan. Cleaning up."
-  exit 1
-}
-trap on_error ERR
-
-# Note: The rest of this script is auto-generated from plan.md
-# See migration in .claude/commands/phases/plan.md.backup
-set -Eeuo pipefail
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# ERROR TRAP
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-on_error() {
-  echo "⚠️  Error in /plan. Cleaning up."
-  exit 1
-}
-trap on_error ERR
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TOOL PREFLIGHT CHECKS
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-need() {
-  command -v "$1" >/dev/null 2>&1 || {
-    echo "❌ Missing required tool: $1"
-    echo ""
-    case "$1" in
-      git)
-        echo "Install: https://git-scm.com/downloads"
-        ;;
-      jq)
-        echo "Install: brew install jq (macOS) or apt install jq (Linux)"
-        echo "         https://stedolan.github.io/jq/download/"
-        ;;
-      *)
-        echo "Check documentation for installation"
-        ;;
-    esac
-    exit 1
-  }
-}
-
-need git
-need jq
+setup_error_trap "/plan"
+need git jq
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # SETUP - Deterministic repo root

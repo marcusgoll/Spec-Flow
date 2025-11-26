@@ -36,7 +36,7 @@ specs/002-auth-system/
 ├── CLAUDE.md           # Feature context
 ├── spec.md             # Requirements
 ├── NOTES.md            # Implementation notes
-├── workflow-state.yaml # State tracking
+├── state.yaml # State tracking
 └── visuals/            # Diagrams, mockups
 ```
 

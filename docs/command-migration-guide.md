@@ -12,13 +12,13 @@ This guide shows how to migrate phase commands from **embedded bash scripts** to
 
 Identify embedded bash sections:
 
-```bash
+````bash
 # Count lines in command file
 wc -l .claude/commands/phases/COMMAND.md
 
 # Find bash script sections
 grep -n "^```bash" .claude/commands/phases/COMMAND.md
-```
+````
 
 ### Step 2: Extract Bash Logic
 
@@ -131,7 +131,7 @@ handlers = {
 
 **Before** (e.g., 1666 lines with embedded bash):
 
-```markdown
+````markdown
 ---
 description: Command description
 ---
@@ -147,13 +147,14 @@ description: Command description
 #!/usr/bin/env bash
 # 1400+ lines of embedded bash
 [massive script]
-```
+````
+
 </instructions>
 ```
 
 **After** (e.g., ~300 lines):
 
-```markdown
+````markdown
 ---
 description: Command description
 version: 3.0
@@ -179,6 +180,7 @@ Run the centralized spec-cli tool:
 ```bash
 python .spec-flow/scripts/spec-cli.py <command> "$ARGUMENTS"
 ```
+````
 
 **What the script does:**
 
@@ -201,6 +203,7 @@ Status: Ready for LLM processing
 ## 1) Read Artifacts
 
 Use Read tool to load generated files:
+
 - spec.md
 - plan.md (or other artifacts)
 - constitution.md (if relevant)
@@ -219,7 +222,7 @@ Use Read tool to load generated files:
 
 ## 4) Update Tracking
 
-Update NOTES.md, workflow-state.yaml, etc.
+Update NOTES.md, state.yaml, etc.
 
 </instructions>
 ```
@@ -242,16 +245,16 @@ python .spec-flow/scripts/spec-cli.py <command> --help
 
 ## File Size Reduction Results
 
-| File | Before | After | Reduction |
-|------|--------|-------|-----------|
-| clarify.md | 721 | 323 | 55% |
-| plan.md | 1666 | 313 | 81% |
-| preview.md | 1582 | 257 | 84% |
-| validate.md | 1122 | 334 | 70% |
-| tasks.md | 881 | 202 | 77% |
-| implement.md | 836 | 317 | 62% |
-| optimize.md | 743 | 329 | 56% |
-| debug.md | 525 | 297 | 43% |
+| File         | Before | After | Reduction |
+| ------------ | ------ | ----- | --------- |
+| clarify.md   | 721    | 323   | 55%       |
+| plan.md      | 1666   | 313   | 81%       |
+| preview.md   | 1582   | 257   | 84%       |
+| validate.md  | 1122   | 334   | 70%       |
+| tasks.md     | 881    | 202   | 77%       |
+| implement.md | 836    | 317   | 62%       |
+| optimize.md  | 743    | 329   | 56%       |
+| debug.md     | 525    | 297   | 43%       |
 
 **Total savings**: 8,076 lines → 3,701 lines (54% overall reduction)
 **Migration status**: ✅ COMPLETE
@@ -308,6 +311,7 @@ read -p "Choice: " CHOICE
 ## Present Decision Tree
 
 Use AskUserQuestion tool to present options:
+
 - Option A: [Description]
 - Option B: [Description]
 
@@ -325,16 +329,19 @@ SPEC_CONTENT=$(cat "$FEATURE_SPEC")
 
 **After** (delegated to LLM):
 
-```markdown
+````markdown
 ## 1) Read Specification
 
 Use Read tool:
+
 ```bash
 Read(specs/*/spec.md)
 ```
+````
 
 Analyze content for [requirements].
-```
+
+````
 
 ### Pattern 3: Git Operations
 
@@ -343,19 +350,22 @@ Analyze content for [requirements].
 ```bash
 git add "$FILE"
 git commit -m "message" --no-verify
-```
+````
 
 **After** (delegated to LLM):
 
-```markdown
+````markdown
 ## 4) Commit Changes
 
 Use Bash tool:
+
 ```bash
 git add specs/*/plan.md
 git commit -m "plan: architecture complete" --no-verify
 ```
-```
+````
+
+````
 
 ## Benefits Summary
 
@@ -378,7 +388,7 @@ chmod +x .spec-flow/scripts/bash/<command>-workflow.sh
 # Check shebang
 head -1 .spec-flow/scripts/bash/<command>-workflow.sh
 # Should be: #!/usr/bin/env bash
-```
+````
 
 ### spec-cli.py not found
 
@@ -419,6 +429,7 @@ After migrating all commands:
 All major phase commands have been successfully migrated to the centralized spec-cli.py architecture:
 
 ### 1. clarify.md
+
 - **Before**: 721 lines (with embedded bash)
 - **After**: 323 lines (55% reduction)
 - **Script**: `.spec-flow/scripts/bash/clarify-workflow.sh`
@@ -426,6 +437,7 @@ All major phase commands have been successfully migrated to the centralized spec
 - **Usage**: `python .spec-flow/scripts/spec-cli.py clarify`
 
 ### 2. plan.md
+
 - **Before**: 1666 lines (largest file)
 - **After**: 313 lines (81% reduction)
 - **Script**: `.spec-flow/scripts/bash/plan-workflow.sh` (51KB)
@@ -433,6 +445,7 @@ All major phase commands have been successfully migrated to the centralized spec
 - **Usage**: `python .spec-flow/scripts/spec-cli.py plan [--interactive] [--yes]`
 
 ### 3. preview.md
+
 - **Before**: 1582 lines
 - **After**: 257 lines (84% reduction - best result!)
 - **Script**: `.spec-flow/scripts/bash/preview-workflow.sh` (42KB)
@@ -440,6 +453,7 @@ All major phase commands have been successfully migrated to the centralized spec
 - **Usage**: `python .spec-flow/scripts/spec-cli.py preview`
 
 ### 4. validate.md
+
 - **Before**: 1122 lines
 - **After**: 334 lines (70% reduction)
 - **Script**: `.spec-flow/scripts/bash/validate-workflow.sh` (35KB)
@@ -447,6 +461,7 @@ All major phase commands have been successfully migrated to the centralized spec
 - **Usage**: `python .spec-flow/scripts/spec-cli.py validate`
 
 ### 5. tasks.md
+
 - **Before**: 881 lines
 - **After**: 202 lines (77% reduction)
 - **Script**: `.spec-flow/scripts/bash/tasks-workflow.sh` (28KB)
@@ -454,6 +469,7 @@ All major phase commands have been successfully migrated to the centralized spec
 - **Usage**: `python .spec-flow/scripts/spec-cli.py tasks`
 
 ### 6. implement.md
+
 - **Before**: 836 lines
 - **After**: 317 lines (62% reduction)
 - **Script**: `.spec-flow/scripts/bash/implement-workflow.sh` (26KB)
@@ -461,6 +477,7 @@ All major phase commands have been successfully migrated to the centralized spec
 - **Usage**: `python .spec-flow/scripts/spec-cli.py implement`
 
 ### 7. optimize.md
+
 - **Before**: 743 lines
 - **After**: 329 lines (56% reduction)
 - **Script**: `.spec-flow/scripts/bash/optimize-workflow.sh` (20KB)
@@ -468,6 +485,7 @@ All major phase commands have been successfully migrated to the centralized spec
 - **Usage**: `python .spec-flow/scripts/spec-cli.py optimize`
 
 ### 8. debug.md
+
 - **Before**: 525 lines
 - **After**: 297 lines (43% reduction)
 - **Script**: `.spec-flow/scripts/bash/debug-workflow.sh` (13KB)
@@ -477,6 +495,7 @@ All major phase commands have been successfully migrated to the centralized spec
 ### Additional Commands
 
 The spec-cli.py also includes handlers for:
+
 - `feature` - Create new feature
 - `ship-finalize` - Finalize shipping
 - `compact` - Context compaction

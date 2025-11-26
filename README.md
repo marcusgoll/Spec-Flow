@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
   <h1>Spec-Flow Workflow Kit</h1>
   <p><em>Build high-quality features faster with repeatable Claude workflows.</em></p>
 
@@ -68,7 +68,7 @@
   - Replaced hardcoded specs/ detection with centralized workflow detection utility
   - Eliminates "No feature directory found" errors when running /optimize on epics
   - Epic workflows now pass all quality gates correctly
-- **Epic Sprint Tracking**: Added fallback for missing sprint workflow-state.yaml files
+- **Epic Sprint Tracking**: Added fallback for missing sprint state.yaml files
   - Verifies sprint agents created state files after completion
   - Creates minimal fallback with warnings if agent forgets
   - Ensures epic progress monitoring never fails silently
@@ -105,9 +105,11 @@
   - Team knowledge sharing via git-committed learning files
 
 **Breaking Changes**:
+
 - None (backwards compatible with v9.x.x)
 
 ---
+
 ### v6.11.0 (November 2025)
 
 **CLI Workflow Installation & Feature Continue** - Complete workflow integration
@@ -165,7 +167,7 @@
 
 - /preview command archived (all testing now in staging)
 - /ship-prod no longer prompts for version (use `--version major|minor` flag to override patch default)
-- workflow-state.yaml schema updated (removed `preview` phase)
+- state.yaml schema updated (removed `preview` phase)
 
 ---
 
@@ -272,7 +274,7 @@
 - **HTML → Next.js Conversion**: Automatic conversion after approval preserves accessibility and tokens
 - **Style Guide Evolution**: Agent proposes tokens.css updates when user requests design changes
 - **Component Reuse**: Checks ui-inventory.md before creating custom components
-- **Workflow Integration**: Mockup approval gate in workflow-state.yaml blocks `/implement` until approved
+- **Workflow Integration**: Mockup approval gate in state.yaml blocks `/implement` until approved
 
 **Problem Solved**: Previous workflow had no design approval gate. Implementation proceeded directly from spec to production code, requiring costly rework if design changes were needed. Design tokens could drift without systematic update proposals.
 
@@ -1171,7 +1173,7 @@ Select a feature from your roadmap and choose your workflow:
 ```bash
 /feature "feature-name"  # Runs full workflow with isolated phase agents
 # Auto-progresses through: spec → plan → tasks → validate → implement → optimize → ship
-# Pauses at manual gates: /preview, /validate-staging
+# Pauses at manual gate: /validate-staging (staging-prod model only)
 # Use: /feature continue (to resume after manual gates)
 ```
 
@@ -1299,10 +1301,9 @@ Every automation script is provided in both PowerShell (`.ps1`) and shell (`.sh`
 | 4     | `/implement`        | Implementation checklist & validation hooks               |
 | 5     | `/optimize`         | Code review summary & optimization plan                   |
 | 6     | `/debug`            | Error triage and remediation plan                         |
-| 7     | `/preview`          | Release notes & preview checklist                         |
-| 8     | `/ship-staging`     | Staging deployment ritual                                 |
-| 9     | `/validate-staging` | Sign-off for staging                                      |
-| 10    | `/ship-prod`        | Production launch and follow-up                           |
+| 7     | `/ship-staging`     | Staging deployment ritual                                 |
+| 8     | `/validate-staging` | Sign-off for staging                                      |
+| 9     | `/ship-prod`        | Production launch and follow-up                           |
 | -     | `/compact [phase]`  | **Optional:** Reduce token usage between phases           |
 
 **Context Management**: The `/compact` command is optional and reduces token usage by summarizing verbose artifacts. Use it between phases when context feels heavy or when suggested by auto-progression.
@@ -1379,8 +1380,25 @@ specs/001-example-feature/
 4. Select a feature from GitHub Issues and launch `/feature "<feature-slug>"` in Claude to scaffold the spec from the issue.
 5. Progress through `/clarify`, `/plan`, `/tasks`, and `/validate`, addressing blockers as they appear.
 6. Use `calculate-tokens` to watch context budgets and `compact-context` to summarise when approaching thresholds.
-7. Walk the release staircase: `/preview`, `/ship-staging`, `/validate-staging`, `/ship-prod`.
+7. Walk the release staircase: `/ship-staging`, `/validate-staging`, `/ship-prod`.
 8. The feature is automatically marked as shipped in GitHub Issues (label changed to `status:shipped`, issue closed), and changelog is updated with the release.
+
+## Epic-first repository map
+
+- The canonical structure lives in `.spec-flow/repo-map.yaml`. It documents every major area (epics, specs, `.spec-flow/`, `.claude/`, docs, api, sample apps, etc.), including roles, responsibilities, boundaries, and where new code belongs.
+- Domain-specific guides live in `.spec-flow/domains/` (e.g., `epics.yaml`, `workflow-engine.yaml`, `examples.yaml`) and explain how to extend those areas without breaking DRY rules.
+- Epics are the top-level units of work. Each epic folder (`epics/<epic-slug>/`) owns `spec.md`, `plan.md`, `tasks.md`, sprint notes, and the authoritative `state.yaml`. Features under `specs/<feature>/` must reference their parent epic and stay subordinate to epic governance.
+- Templates for new state files live in `.spec-flow/templates/epic-state.template.yaml` and `.spec-flow/templates/feature-state.template.yaml`. Automation and agents read/write these to coordinate manual and auto-driven phases.
+
+## Using Spec-Flow with Codex CLI
+
+- Install the repo-local prompt templates by running `spec-flow install-codex-prompts`. Use `--dry-run` to preview changes or `--force` to overwrite without prompts. Prompts live in `.codex/commands/` if you need to copy them manually.
+- Epic prompts: `/prompts:spec-flow-epic-spec`, `/prompts:spec-flow-epic-plan`, `/prompts:spec-flow-epic-tasks`, `/prompts:spec-flow-epic-implement`, and `/prompts:spec-flow-epic-auto`. Each reads `.spec-flow/repo-map.yaml`, domain maps, and `epics/<slug>/state.yaml`, then runs exactly one phase (auto mode can advance only the next safe phase or two early stages before stopping).
+- Feature prompts (parity with `/feature`): `/prompts:spec-flow-feature-spec`, `/prompts:spec-flow-feature-plan`, `/prompts:spec-flow-feature-tasks`, `/prompts:spec-flow-feature-implement`. They always read the parent epic’s state and never contradict it.
+- Codex-specific prompts, skills, and adapters live in `.codex/`. Codex may read `.claude/**` for reference but only writes inside `.codex/` plus the usual repo areas (epics/, specs/, api/, etc.).
+- Cursor follows the same rules via `.cursorrules` and `.cursor/` (prompts + adapters). Cursor also treats `.claude/**` as read-only.
+- Manual vs auto: Run the phase-specific prompt when you want explicit control. `spec-flow-epic-auto` offers a guarded flow (spec → clarify → plan) that updates `state.yaml` after each phase and stops at review boundaries.
+- Regardless of tool (Claude Code, Codex, Cursor, etc.), always honor the repo map, domain guides, and epic state before writing or refactoring files.
 
 ## Packages & Releases
 

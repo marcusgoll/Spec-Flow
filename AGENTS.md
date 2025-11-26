@@ -1,20 +1,26 @@
-﻿# Repository Guidelines
+# Spec-Flow Agents
 
-## Project Structure & Module Organization
-Spec-Flow keeps agent collateral under `.claude/`. Briefs live in `.claude/agents/`, and command playbooks sit in `.claude/commands/`. Repo-level preferences start from `.claude/settings.example.json` (copy to `.claude/settings.local.json` locally). Automation assets are mirrored for each platform: PowerShell scripts in `.spec-flow/scripts/powershell/`, shell scripts in `.spec-flow/scripts/bash/`, long-term memory in `.spec-flow/memory/`, and reusable templates inside `.spec-flow/templates/`. Create new assets beside their peers and stick to kebab-case filenames.
+Spec-Flow coordinates multiple coding tools through a single shared canon. Every agent must read the same rules, reuse the same artifacts, and only write in its designated areas.
 
-## Build, Test, and Development Commands
-Check your environment with either `pwsh -NoProfile -File .spec-flow/scripts/powershell/check-prerequisites.ps1 -Json` or `.spec-flow/scripts/bash/check-prerequisites.sh --json`. Scaffold features via the matching `create-new-feature` script. Estimate token usage with `.spec-flow/scripts/{powershell|bash}/calculate-tokens.*`, and trim stale context using `.spec-flow/scripts/{powershell|bash}/compact-context.*`. Prefer the PowerShell versions on Windows and the `.sh` versions on macOS/Linux.
+## Shared brain
 
-## Coding Style & Naming Conventions
-Markdown guides should open with an H1, use sentence-case headings, and wrap near 100 characters. Favor imperative voice for instructions and keep decisions as bullets. PowerShell scripts live in `.spec-flow/scripts/powershell/`, using four-space indentation, `Verb-Noun` functions, and comment-based help. Shell scripts in `.spec-flow/scripts/bash/` should be POSIX-friendly, exit on error, and document required tools. Name documents with kebab-case (for example, `agent-operating-manual.md`) and CamelCase only for PowerShell modules.
+- `.spec-flow/` holds the canonical workflow docs, repo map, state schemas, memory, and automation scripts.
+- `epics/<slug>/state.yaml` is the single source of truth for epic phase progress; feature-level `specs/<feature>/state.yaml` is optional and must mirror the epic.
+- Roadmaps, specs, plans, tasks, and ship notes all inherit the phase order: `spec → clarify → plan → tasks → implement → optimize → preview → ship → finalize`.
 
-## Testing Guidelines
-There is no CI yet, so run scripts locally (`-WhatIf` where available) before submitting changes. When adding non-trivial automation, include a Pester or shell-based test under `tests/` and document how to execute it (`Invoke-Pester -Path tests` or `pytest`). For Markdown templates, preview them in a renderer and confirm token estimates stay inside the active phase budget.
+## Tool boundaries
 
-## Commit & Pull Request Guidelines
-Follow Conventional Commits (`feat`, `fix`, `docs`, `chore`) with imperative subjects such as `docs: refresh debugger brief`. Keep related template and script updates together; large reorganisations should land in a sequence of small commits. Pull requests must describe the change, link to supporting issues, provide before/after snippets for documentation updates, and list the validation commands you ran.
+- `.claude/` — Claude Code-only prompts, commands, and hooks. Readable by other tools, but **only Claude edits this tree**.
+- `.codex/` — Codex CLI-specific prompts, commands, adapters, and skills. Codex writes here; other tools leave it alone.
+- `.cursor/` — Cursor-specific prompts and adapters. Cursor writes here; other tools treat it as read-only.
+- Shared assets may live elsewhere (api/, example-app/, docs/), but every tool must honor `.spec-flow/repo-map.yaml` and `.spec-flow/domains/*.yaml` when deciding where to add code.
 
-## Agent-Specific Instructions
-Keep personas focused on goals, list capabilities in priority order, and cross-link to supporting templates. Mirror persistent decisions in `.spec-flow/memory/` and rerun the appropriate roadmap script (`roadmap-init` in PowerShell or shell) whenever strategy shifts.
+## Hard rules
 
+1. Never fork new “top-level religions.” Add new integrations under their dedicated folder and mirror the shared canon from `.spec-flow/`.
+2. All tools may read `.claude/**` for reference, yet non-Claude edits are prohibited.
+3. Epic work begins under `epics/<slug>/`; features live in `specs/<feature>/` and must link back to their parent epic inside `state.yaml`.
+4. When progressing any phase, update the relevant `state.yaml` and stop at the documented review boundaries (no macro “run everything” flows).
+5. Persistent learnings or roadmap shifts belong in `.spec-flow/memory/` and should be reflected in the shared docs before modifying tool-specific trees.
+
+Follow these rules and every agent—Claude, Codex, Cursor, or future additions—will operate from the same source of truth.

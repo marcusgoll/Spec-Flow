@@ -7,8 +7,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-WORKFLOW_STATE="$PROJECT_ROOT/.spec-flow/memory/workflow-state.yaml"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || cd "$SCRIPT_DIR/../../.." && pwd)"
+WORKFLOW_STATE="$REPO_ROOT/.spec-flow/memory/state.yaml"
 
 # Colors
 RED='\033[0;31m'
@@ -68,13 +68,13 @@ command_exists() {
 # Detect project type
 #######################################
 detect_project_type() {
-  if [[ -f "$PROJECT_ROOT/package.json" ]]; then
+  if [[ -f "$REPO_ROOT/package.json" ]]; then
     echo "node"
-  elif [[ -f "$PROJECT_ROOT/requirements.txt" ]] || [[ -f "$PROJECT_ROOT/pyproject.toml" ]]; then
+  elif [[ -f "$REPO_ROOT/requirements.txt" ]] || [[ -f "$REPO_ROOT/pyproject.toml" ]]; then
     echo "python"
-  elif [[ -f "$PROJECT_ROOT/Cargo.toml" ]]; then
+  elif [[ -f "$REPO_ROOT/Cargo.toml" ]]; then
     echo "rust"
-  elif [[ -f "$PROJECT_ROOT/go.mod" ]]; then
+  elif [[ -f "$REPO_ROOT/go.mod" ]]; then
     echo "go"
   else
     echo "unknown"
@@ -88,9 +88,9 @@ run_tests_node() {
   log_info "Running tests (Node.js)..."
 
   local test_cmd=""
-  if command_exists npm && grep -q '"test"' "$PROJECT_ROOT/package.json" 2>/dev/null; then
+  if command_exists npm && grep -q '"test"' "$REPO_ROOT/package.json" 2>/dev/null; then
     test_cmd="npm test"
-  elif command_exists yarn && grep -q '"test"' "$PROJECT_ROOT/package.json" 2>/dev/null; then
+  elif command_exists yarn && grep -q '"test"' "$REPO_ROOT/package.json" 2>/dev/null; then
     test_cmd="yarn test"
   else
     log_warning "No test script found in package.json"
@@ -121,7 +121,7 @@ run_linters_node() {
   local lint_passed=true
 
   # ESLint
-  if command_exists npx && [[ -f "$PROJECT_ROOT/.eslintrc.js" ]] || [[ -f "$PROJECT_ROOT/.eslintrc.json" ]]; then
+  if command_exists npx && [[ -f "$REPO_ROOT/.eslintrc.js" ]] || [[ -f "$REPO_ROOT/.eslintrc.json" ]]; then
     if [[ "$VERBOSE" == true ]]; then
       npx eslint . || lint_passed=false
     else
@@ -130,7 +130,7 @@ run_linters_node() {
   fi
 
   # Prettier
-  if command_exists npx && [[ -f "$PROJECT_ROOT/.prettierrc" ]] || grep -q '"prettier"' "$PROJECT_ROOT/package.json" 2>/dev/null; then
+  if command_exists npx && [[ -f "$REPO_ROOT/.prettierrc" ]] || grep -q '"prettier"' "$REPO_ROOT/package.json" 2>/dev/null; then
     if [[ "$VERBOSE" == true ]]; then
       npx prettier --check . || lint_passed=false
     else
@@ -151,7 +151,7 @@ run_linters_node() {
 run_type_check_node() {
   log_info "Running type checks (TypeScript)..."
 
-  if [[ -f "$PROJECT_ROOT/tsconfig.json" ]]; then
+  if [[ -f "$REPO_ROOT/tsconfig.json" ]]; then
     if command_exists npx; then
       if [[ "$VERBOSE" == true ]]; then
         npx tsc --noEmit
@@ -173,9 +173,9 @@ check_coverage_node() {
   log_info "Checking code coverage..."
 
   local coverage_file=""
-  if [[ -f "$PROJECT_ROOT/coverage/coverage-summary.json" ]]; then
-    coverage_file="$PROJECT_ROOT/coverage/coverage-summary.json"
-  elif [[ -f "$PROJECT_ROOT/coverage/lcov-report/index.html" ]]; then
+  if [[ -f "$REPO_ROOT/coverage/coverage-summary.json" ]]; then
+    coverage_file="$REPO_ROOT/coverage/coverage-summary.json"
+  elif [[ -f "$REPO_ROOT/coverage/lcov-report/index.html" ]]; then
     # Parse HTML (fallback)
     log_warning "JSON coverage summary not found, skipping coverage check"
     return 0
@@ -272,7 +272,7 @@ run_type_check_python() {
 }
 
 #######################################
-# Update gate status in workflow-state.yaml
+# Update gate status in state.yaml
 #######################################
 update_gate_status() {
   local epic=$1

@@ -5,6 +5,7 @@ Real-world examples of finalization phase execution showing complete vs incomple
 </overview>
 
 <complete_finalization>
+
 <title>Complete Finalization: Student Progress Dashboard (v1.3.0)</title>
 
 <context>
@@ -66,7 +67,7 @@ ls -la
 # ship-summary.md
 # release-notes.md
 # staging-ship-report.md
-# workflow-state.yaml
+# state.yaml
 
 # 3. Verify required artifacts
 test -f spec.md && echo "✅ spec.md" || echo "❌ spec.md MISSING"
@@ -75,7 +76,7 @@ test -f tasks.md && echo "✅ tasks.md" || echo "❌ tasks.md MISSING"
 test -f optimization-report.md && echo "✅ optimization-report.md" || echo "❌ optimization-report.md MISSING"
 test -f ship-summary.md && echo "✅ ship-summary.md" || echo "❌ ship-summary.md MISSING"
 test -f release-notes.md && echo "✅ release-notes.md" || echo "❌ release-notes.md MISSING"
-test -f workflow-state.yaml && echo "✅ workflow-state.yaml" || echo "❌ workflow-state.yaml MISSING"
+test -f state.yaml && echo "✅ state.yaml" || echo "❌ state.yaml MISSING"
 
 # All ✅ - 100% complete
 
@@ -167,8 +168,8 @@ git branch -r | grep feature/042-student-progress-dashboard
 **Step 5: Commit Finalization** (3 minutes)
 
 ```bash
-# 1. Update workflow-state.yaml
-vim specs/042-student-progress-dashboard/workflow-state.yaml
+# 1. Update state.yaml
+vim specs/042-student-progress-dashboard/state.yaml
 
 # Added:
 finalization:
@@ -184,7 +185,7 @@ git add .spec-flow/memory/roadmap.md
 git add README.md
 git add CHANGELOG.md
 git add docs/features/student-progress-dashboard.md
-git add specs/042-student-progress-dashboard/workflow-state.yaml
+git add specs/042-student-progress-dashboard/state.yaml
 
 # 3. Commit with proper format
 git commit -m "chore: finalize student-progress-dashboard (v1.3.0)
@@ -204,20 +205,23 @@ Deleted feature/042-student-progress-dashboard branch"
 git push origin main
 # Output: remote: Resolving deltas: 100% (4/4), done.
 ```
+
 </execution_timeline>
 
 <outcome>
 **Total Time**: 15 minutes
 
 **Results**:
+
 - ✅ Roadmap updated with complete information (version, date, URLs, impact)
 - ✅ All 11 artifacts archived (7 required + 4 optional)
 - ✅ README, CHANGELOG, and user guide updated
 - ✅ Feature branch deleted locally and remotely
 - ✅ Finalization committed with descriptive message
-- ✅ workflow-state.yaml marked finalization complete
+- ✅ state.yaml marked finalization complete
 
 **Benefits**:
+
 - Clean historical record (roadmap shows when shipped, what version)
 - Complete knowledge preservation (all artifacts archived)
 - User discoverability (README documents feature)
@@ -226,13 +230,15 @@ git push origin main
 - Auditable finalization (git commit documents closure)
 
 **Follow-up** (optional):
+
 - Monitor adoption metrics (85% teacher adoption in first week)
 - Collect feedback for future improvements
 - Plan next feature based on user requests
-</outcome>
-</complete_finalization>
+  </outcome>
+  </complete_finalization>
 
 <rushed_cleanup>
+
 <title>Rushed Cleanup: Authentication API (No Version, Missing Docs)</title>
 
 <context>
@@ -257,7 +263,7 @@ ls
 # plan.md
 # tasks.md
 # ship-summary.md
-# workflow-state.yaml
+# state.yaml
 
 # Missing: optimization-report.md, release-notes.md
 # Didn't notice, moved on
@@ -293,7 +299,7 @@ vim CHANGELOG.md
 **Step 5: Commit Finalization** (minimal - 1 minute)
 
 ```bash
-# 1. Skipped workflow-state.yaml update
+# 1. Skipped state.yaml update
 
 # 2. Quick commit
 git add CHANGELOG.md
@@ -309,12 +315,14 @@ git commit -m "chore: update changelog"
 # 3. Push
 git push origin main
 ```
+
 </execution_timeline>
 
 <outcome>
 **Total Time**: 4 minutes (fast but incomplete)
 
 **Results**:
+
 - ❌ Roadmap NOT updated (feature still in "In Progress" section)
 - ❌ Missing artifacts (optimization-report.md, release-notes.md)
 - ❌ CHANGELOG incomplete (no version, vague description)
@@ -322,11 +330,12 @@ git push origin main
 - ❌ User guide missing (complex OAuth flow undocumented)
 - ❌ Branch NOT deleted (feature/078-auth-api still exists)
 - ❌ Minimal commit message (no context, not auditable)
-- ❌ workflow-state.yaml NOT updated (finalization status unknown)
+- ❌ state.yaml NOT updated (finalization status unknown)
 
 **Problems Encountered** (6 months later):
 
 **Problem 1**: Feature discovery
+
 ```
 New developer: "Do we have OAuth authentication?"
 Team lead: "I think so... check the code?"
@@ -335,6 +344,7 @@ Reality: Feature shipped 6 months ago, but not documented in README
 ```
 
 **Problem 2**: Version confusion
+
 ```
 User: "What version was OAuth added?"
 Developer: "Let me check CHANGELOG..."
@@ -344,6 +354,7 @@ Developer: "Uh... it says unreleased but it's in production?"
 ```
 
 **Problem 3**: Missing context
+
 ```
 Developer debugging OAuth issue: "Why was this implemented this way?"
 [Checks for optimization-report.md - doesn't exist]
@@ -353,6 +364,7 @@ Result: Spends 2 hours reverse-engineering code
 ```
 
 **Problem 4**: Stale branches
+
 ```
 git branch -a
 # Output shows 47 branches (only 3 active)
@@ -364,6 +376,7 @@ Answer: Unknown - no finalization records
 ```
 
 **Problem 5**: Roadmap drift
+
 ```
 Project manager: "What features did we ship last quarter?"
 [Opens roadmap]
@@ -374,6 +387,7 @@ Result: Inaccurate roadmap, velocity tracking wrong
 ```
 
 **Cost of Rushed Cleanup**:
+
 - **Time wasted**: 30min feature discovery + 2hr debugging + 15min branch confusion = 2h 45min
 - **Context loss**: No optimization report, no release notes, incomplete CHANGELOG
 - **Roadmap drift**: Inaccurate "In Progress" status affects planning
@@ -383,11 +397,12 @@ Result: Inaccurate roadmap, velocity tracking wrong
 **Total Cost**: 2h 45min wasted + ongoing confusion + technical debt accumulation
 
 **vs Complete Finalization**:
+
 - **Time invested**: 15 minutes
 - **ROI**: Saves 2h 45min = 11x return on time invested
 - **Benefits**: Clear history, knowledge preservation, team alignment
-</outcome>
-</rushed_cleanup>
+  </outcome>
+  </rushed_cleanup>
 
 <comparison>
 <side_by_side>
@@ -399,7 +414,7 @@ Result: Inaccurate roadmap, velocity tracking wrong
 | **Documentation** | ✅ README, CHANGELOG, user guide | ❌ Incomplete CHANGELOG only |
 | **Branch Cleanup** | ✅ Deleted locally + remotely | ❌ Skipped |
 | **Commit Quality** | ✅ Descriptive (5 files, clear body) | ❌ Minimal (1 file, no context) |
-| **workflow-state.yaml** | ✅ Updated | ❌ Skipped |
+| **state.yaml** | ✅ Updated | ❌ Skipped |
 | **Future Cost** | 0 hours | 2h 45min + ongoing debt |
 | **Knowledge Loss** | None | High |
 | **Team Friction** | None | High |
@@ -415,20 +430,24 @@ Result: Inaccurate roadmap, velocity tracking wrong
 </comparison>
 
 <decision_tree>
+
 <title>When to Skip Finalization Steps</title>
 
 **Never skip**:
+
 - Roadmap update (always required)
 - Artifact archival verification (always required)
 - Finalization commit (always required)
 
 **Can skip if**:
+
 - README update: Internal refactoring with no user-visible changes
 - CHANGELOG update: Hotfix that will be documented in next release
 - User guide: Simple feature (<3 screens, obvious workflow)
 - Branch cleanup: Using squash-merge (branches auto-deleted by GitHub)
 
 **Example** (acceptable to skip README):
+
 ```
 Feature: Refactor database query optimizer
 User Impact: None (performance improvement invisible to users)
@@ -437,15 +456,18 @@ Required: CHANGELOG update (performance improvement documented)
 ```
 
 **Example** (NOT acceptable to skip README):
+
 ```
 Feature: New OAuth API endpoints
 User Impact: High (developers need to know endpoints exist)
 Required: README update with endpoint list and examples
 Required: User guide with OAuth flow documentation
 ```
+
 </decision_tree>
 
 <epic_walkthrough_example>
+
 <title>Epic Walkthrough Generation: User Authentication System (v5.0)</title>
 
 <context>
@@ -480,23 +502,23 @@ epic-spec.xml          # Epic goal, success metrics
 research.xml           # Meta-prompting research phase output
 plan.xml               # Implementation plan with architecture
 sprint-plan.xml        # Sprint breakdown with dependency graph
-workflow-state.yaml    # State tracking across phases
+state.yaml    # State tracking across phases
 audit-report.xml       # Workflow effectiveness analysis
 preview-report.xml     # Manual testing decision
 
 # Sprint results
 sprints/
   S01-backend-api/
-    workflow-state.yaml  # Status: completed, 24 tasks, 12h duration
+    state.yaml  # Status: completed, 24 tasks, 12h duration
     tasks.md
   S02-frontend-ui/
-    workflow-state.yaml  # Status: completed, 32 tasks, 18h duration
+    state.yaml  # Status: completed, 32 tasks, 18h duration
     tasks.md
   S03-integration/
-    workflow-state.yaml  # Status: completed, 21 tasks, 8h duration
+    state.yaml  # Status: completed, 21 tasks, 8h duration
     tasks.md
   S04-documentation/
-    workflow-state.yaml  # Status: skipped (generated automatically)
+    state.yaml  # Status: skipped (generated automatically)
     tasks.md
 ```
 
@@ -552,23 +574,25 @@ $ node scripts/generate-walkthrough.js
 **Goal**: Implement secure user authentication system with OAuth 2.1, JWT tokens, and refresh token rotation
 
 **Success Metrics**:
+
 - Authentication response time <200ms (p95)
 - 99.9% uptime SLA
 - Zero password storage (delegated to OAuth provider)
 
 **Velocity Metrics**:
+
 - Expected: 3.5x parallelization
 - Actual: 3.2x parallelization
 - Time Saved: 82 hours (120h → 38h)
 
 ## Sprint Execution Results
 
-| Sprint | Name | Status | Tasks | Duration | Contracts | Tests |
-|--------|------|--------|-------|----------|-----------|-------|
-| S01 | Backend API | ✅ Completed | 24/24 | 12h | 3 locked | 98% passed |
-| S02 | Frontend UI | ✅ Completed | 32/32 | 18h | 2 locked | 95% passed |
-| S03 | Integration | ✅ Completed | 21/26 | 8h | 5 locked | 100% passed |
-| S04 | Documentation | ⏭️ Skipped | 0/10 | 0h | 0 | N/A |
+| Sprint | Name          | Status       | Tasks | Duration | Contracts | Tests       |
+| ------ | ------------- | ------------ | ----- | -------- | --------- | ----------- |
+| S01    | Backend API   | ✅ Completed | 24/24 | 12h      | 3 locked  | 98% passed  |
+| S02    | Frontend UI   | ✅ Completed | 32/32 | 18h      | 2 locked  | 95% passed  |
+| S03    | Integration   | ✅ Completed | 21/26 | 8h       | 5 locked  | 100% passed |
+| S04    | Documentation | ⏭️ Skipped   | 0/10  | 0h       | 0         | N/A         |
 
 **Totals**: 77/92 tasks (84%), 38 hours, 10 contracts locked, 97% tests passed
 
@@ -596,16 +620,19 @@ $ node scripts/generate-walkthrough.js
 ## Next Steps
 
 ### Enhancements
+
 - Add biometric authentication (Face ID, Touch ID)
 - Implement SSO with Google Workspace
 - Add session management UI
 
 ### Technical Debt
+
 - Refactor auth middleware (180 lines → extract to smaller functions)
 - Add retry logic for refresh token rotation
 - Improve error messages (add user-friendly translations)
 
 ### Monitoring Needs
+
 - Add Datadog metrics for auth latency
 - Set up alerts for failed login attempts (>10 per minute)
 - Track refresh token usage patterns
@@ -654,7 +681,7 @@ Documentation Completeness:
 
 ```bash
 # Count completed epics
-$ find epics/ -name "workflow-state.yaml" -exec grep -l "status: completed" {} \; | wc -l
+$ find epics/ -name "state.yaml" -exec grep -l "status: completed" {} \; | wc -l
 2
 
 📊 Pattern Detection Available (2 epics completed)
@@ -823,28 +850,33 @@ Artifacts Generated:
 
 Next: Standard finalization (CHANGELOG, README, GitHub Release)
 ```
+
 </walkthrough_generation>
 
 <outcome>
 **Total Time**: 16 minutes (walkthrough generation only)
 
 **Artifacts Generated**:
+
 - ✅ walkthrough.xml (542 lines, machine-readable)
 - ✅ walkthrough.md (187 lines, human-readable)
 - ✅ audit-report.xml (updated with post-mortem analysis)
 
 **Immediate Value**:
+
 - **Knowledge preserved**: Velocity metrics, sprint results, lessons learned documented
 - **Patterns detected**: 2 strong patterns with 95-100% confidence
 - **Improvements suggested**: 3 immediate (ROI: 6x-240x), 1 deferred
 - **Self-improvement enabled**: Workflow adapts based on real data
 
 **Long-Term Value**:
+
 - **After 2-3 epics**: Pattern detection enables custom skill generation
 - **After 5 epics**: Estimation multipliers auto-tuned for team velocity
 - **After 10 epics**: Workflow self-optimizes with 90% less manual configuration
 
 **ROI Calculation**:
+
 - Time invested: 16 minutes (walkthrough generation)
 - Improvement potential: 3 immediate improvements with combined ROI of 256x
   - Frontend multiplier adjustment: 10x ROI (100min saved vs 2min effort)
@@ -854,13 +886,14 @@ Next: Standard finalization (CHANGELOG, README, GitHub Release)
 - **Overall ROI**: 59x (940min saved / 16min invested)
 
 **vs Standard Finalization** (no walkthrough):
+
 - **Time**: Same 10-15 minutes for roadmap, docs, branches
 - **Knowledge preserved**: Minimal (ship-summary.md only)
 - **Patterns detected**: None
 - **Improvements suggested**: None
 - **Self-improvement**: None
 - **Long-term value**: Zero
-</outcome>
+  </outcome>
 
 <comparison_epic_vs_feature>
 | Aspect | Epic Finalization (with walkthrough) | Feature Finalization (standard) |

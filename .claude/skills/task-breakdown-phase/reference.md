@@ -11,6 +11,7 @@
 - Use Glob to find files before creating file modification tasks
 
 **Example verification:**
+
 ```bash
 # Before creating task to modify UserService
 glob "**/*user*service*.py"
@@ -26,12 +27,14 @@ glob "**/*user*service*.py"
 - Don't create tasks not mentioned in the plan
 
 **Traceability format:**
+
 ```markdown
 ### T001: Create User Entity Schema
 
 **Source**: plan.md:145-160
 
 **Acceptance Criteria**:
+
 - [ ] User table created with id, email, name, created_at
 - [ ] Email unique constraint enforced
 ```
@@ -43,6 +46,7 @@ glob "**/*user*service*.py"
 - Don't assume test structure matches your expectations
 
 **Test structure detection:**
+
 ```bash
 # Check test pattern
 glob "tests/**/*.py"  # Python (tests/ directory)
@@ -57,16 +61,21 @@ glob "**/*_test.go"   # Go (colocated tests)
 - If criteria missing, flag: "[NEEDS: Acceptance criteria for...]"
 
 **Example:**
+
 ```markdown
 # From spec.md:
+
 As a user, I want to reset my password so I can recover my account.
 
 Acceptance Criteria:
+
 - User can request password reset via email
 - Email contains secure token valid for 24 hours
 
 # Task AC should quote exactly:
+
 **Acceptance Criteria** (from spec.md:45-48):
+
 - [ ] User can request password reset via email
 - [ ] Email contains secure token valid for 24 hours
 ```
@@ -78,18 +87,25 @@ Acceptance Criteria:
 - Check plan.md for intended sequence
 
 **Dependency verification:**
+
 ```markdown
 # T001 creates User model
+
 ### T001: Create User Entity Schema
+
 Creates: api/app/models/user.py
 
 # T002 depends on User model - VALID
+
 ### T002: Create UserService
+
 **Depends On**: T001
 Uses: api/app/models/user.py (created by T001)
 
 # T003 depends on T002 - VALID
+
 ### T003: Create UserController
+
 **Depends On**: T002
 Uses: api/app/services/user_service.py (created by T002)
 ```
@@ -105,6 +121,7 @@ Uses: api/app/services/user_service.py (created by T002)
 ### Step 1: Detect Epic vs Feature
 
 **Check workspace type:**
+
 ```bash
 if [ -f "epics/*/epic-spec.xml" ]; then
   WORKSPACE_TYPE="epic"
@@ -124,6 +141,7 @@ fi
 ### Step 2: Analyze Plan Complexity
 
 **Load epic artifacts:**
+
 ```bash
 EPIC_SPEC="$EPIC_DIR/epic-spec.xml"
 PLAN_XML="$EPIC_DIR/plan.xml"
@@ -131,16 +149,21 @@ RESEARCH_XML="$EPIC_DIR/research.xml"
 ```
 
 **Extract complexity indicators:**
+
 ```javascript
 const epicSpec = readXML(EPIC_SPEC);
 const planXml = readXML(PLAN_XML);
 
 const complexity = {
-  subsystems: epicSpec.subsystems.subsystem.filter(s => s.involved === 'yes').length,
-  estimated_hours: planXml.phases.reduce((sum, p) => sum + p.estimated_hours, 0),
+  subsystems: epicSpec.subsystems.subsystem.filter((s) => s.involved === "yes")
+    .length,
+  estimated_hours: planXml.phases.reduce(
+    (sum, p) => sum + p.estimated_hours,
+    0
+  ),
   dependencies: epicSpec.dependencies.external_dependency?.length || 0,
   api_endpoints: planXml.api_design?.endpoints?.endpoint?.length || 0,
-  database_tables: planXml.data_model?.entities?.entity?.length || 0
+  database_tables: planXml.data_model?.entities?.entity?.length || 0,
 };
 
 // Decision: Single sprint vs multiple sprints
@@ -152,6 +175,7 @@ const needsMultipleSprints =
 ```
 
 **Why multiple sprints:**
+
 - More than 1 subsystem involved (frontend + backend)
 - Estimated work > 16 hours (2 work days)
 - Large API surface area (>5 endpoints)
@@ -167,45 +191,46 @@ if (needsMultipleSprints) {
   const sprints = [];
 
   // Sprint 1: Backend foundation (if backend involved)
-  if (epicSpec.subsystems.backend.involved === 'yes') {
+  if (epicSpec.subsystems.backend.involved === "yes") {
     sprints.push({
-      id: 'S01',
-      name: 'Backend API & Data Layer',
-      subsystems: ['backend', 'database'],
+      id: "S01",
+      name: "Backend API & Data Layer",
+      subsystems: ["backend", "database"],
       dependencies: [],
-      description: 'Database schema, API contracts, business logic',
-      estimated_hours: estimateHours(planXml, ['backend', 'database']),
-      contracts_to_lock: identifyAPIContracts(planXml)
+      description: "Database schema, API contracts, business logic",
+      estimated_hours: estimateHours(planXml, ["backend", "database"]),
+      contracts_to_lock: identifyAPIContracts(planXml),
     });
   }
 
   // Sprint 2: Frontend UI (if frontend involved, depends on backend)
-  if (epicSpec.subsystems.frontend.involved === 'yes') {
+  if (epicSpec.subsystems.frontend.involved === "yes") {
     sprints.push({
-      id: 'S02',
-      name: 'Frontend UI Components',
-      subsystems: ['frontend'],
-      dependencies: hasSprint('S01') ? ['S01'] : [],
-      description: 'UI components, state management, API integration',
-      estimated_hours: estimateHours(planXml, ['frontend']),
-      contracts_consumed: identifyConsumedContracts(planXml, 'frontend')
+      id: "S02",
+      name: "Frontend UI Components",
+      subsystems: ["frontend"],
+      dependencies: hasSprint("S01") ? ["S01"] : [],
+      description: "UI components, state management, API integration",
+      estimated_hours: estimateHours(planXml, ["frontend"]),
+      contracts_consumed: identifyConsumedContracts(planXml, "frontend"),
     });
   }
 
   // Sprint 3: Integration & Testing (depends on both)
   sprints.push({
     id: `S${sprints.length + 1}`,
-    name: 'Integration & E2E Testing',
-    subsystems: ['testing', 'integration'],
-    dependencies: sprints.map(s => s.id),
-    description: 'E2E tests, integration tests, performance tests',
-    estimated_hours: estimateHours(planXml, ['testing']),
-    tests_type: 'integration'
+    name: "Integration & E2E Testing",
+    subsystems: ["testing", "integration"],
+    dependencies: sprints.map((s) => s.id),
+    description: "E2E tests, integration tests, performance tests",
+    estimated_hours: estimateHours(planXml, ["testing"]),
+    tests_type: "integration",
   });
 }
 ```
 
 **Sprint boundary heuristics:**
+
 - Backend + Database = Sprint 1 (foundation layer)
 - Frontend = Sprint 2 (depends on API contracts from Sprint 1)
 - Integration/Testing = Final sprint (depends on all previous)
@@ -217,50 +242,52 @@ if (needsMultipleSprints) {
 
 ```javascript
 const dependencyGraph = {
-  layers: []
+  layers: [],
 };
 
 // Layer 1: No dependencies (can start immediately)
-const layer1 = sprints.filter(s => s.dependencies.length === 0);
+const layer1 = sprints.filter((s) => s.dependencies.length === 0);
 dependencyGraph.layers.push({
   num: 1,
-  sprint_ids: layer1.map(s => s.id),
+  sprint_ids: layer1.map((s) => s.id),
   parallelizable: layer1.length > 1,
   dependencies: [],
-  rationale: 'Foundation layer - no external dependencies'
+  rationale: "Foundation layer - no external dependencies",
 });
 
 // Layer 2: Depends only on Layer 1
-const layer1Ids = layer1.map(s => s.id);
-const layer2 = sprints.filter(s =>
-  s.dependencies.length > 0 &&
-  s.dependencies.every(dep => layer1Ids.includes(dep))
+const layer1Ids = layer1.map((s) => s.id);
+const layer2 = sprints.filter(
+  (s) =>
+    s.dependencies.length > 0 &&
+    s.dependencies.every((dep) => layer1Ids.includes(dep))
 );
 if (layer2.length > 0) {
   dependencyGraph.layers.push({
     num: 2,
-    sprint_ids: layer2.map(s => s.id),
+    sprint_ids: layer2.map((s) => s.id),
     parallelizable: layer2.length > 1,
     dependencies: layer1Ids,
-    rationale: 'Depends on foundation layer completion'
+    rationale: "Depends on foundation layer completion",
   });
 }
 
 // Layer 3+: Depends on Layer 2 or multiple layers
-const processedIds = [...layer1Ids, ...layer2.map(s => s.id)];
-const remaining = sprints.filter(s => !processedIds.includes(s.id));
+const processedIds = [...layer1Ids, ...layer2.map((s) => s.id)];
+const remaining = sprints.filter((s) => !processedIds.includes(s.id));
 if (remaining.length > 0) {
   dependencyGraph.layers.push({
     num: 3,
-    sprint_ids: remaining.map(s => s.id),
+    sprint_ids: remaining.map((s) => s.id),
     parallelizable: false, // Integration typically sequential
     dependencies: processedIds,
-    rationale: 'Integration layer - requires all previous work'
+    rationale: "Integration layer - requires all previous work",
   });
 }
 ```
 
 **Critical path analysis:**
+
 ```javascript
 const criticalPath = calculateCriticalPath(sprints, dependencyGraph);
 // Critical path = longest dependency chain
@@ -284,7 +311,7 @@ for (const sprint of sprints) {
         producer_sprint: sprint.id,
         consumer_sprints: findConsumers(sprints, contract.name),
         endpoints: contract.endpoints,
-        schemas: contract.schemas
+        schemas: contract.schemas,
       });
     }
   }
@@ -299,11 +326,14 @@ for (const contract of contracts) {
   writeFile(`$EPIC_DIR/contracts/${contract.name}.yaml`, openapi);
 
   // Add to sprint plan for reference
-  log(`✅ Contract locked: ${contract.name} (producer: ${contract.producer_sprint})`);
+  log(
+    `✅ Contract locked: ${contract.name} (producer: ${contract.producer_sprint})`
+  );
 }
 ```
 
 **Contract locking benefits:**
+
 - Frontend sprint can start using typed API clients immediately
 - Backend sprint knows exact contract to implement
 - No integration surprises (contract violations caught early)
@@ -312,6 +342,7 @@ for (const contract of contracts) {
 ### Step 6: Generate sprint-plan.xml
 
 **Generated XML structure:**
+
 ```xml
 <sprint_plan>
   <metadata>
@@ -381,11 +412,13 @@ for (const contract of contracts) {
 ## Multi-Screen Mockup Workflow
 
 **When to use multi-screen mockups** (auto-detected by script):
+
 - Feature has ≥3 distinct screens/pages
 - Screens have navigation relationships (flow between screens)
 - User journey involves multiple steps (onboarding, checkout, settings)
 
 **Script auto-detection logic:**
+
 1. Counts screen mentions in spec.md user stories (e.g., "login screen", "dashboard page")
 2. Detects navigation keywords ("navigate to", "redirects to", "shows modal")
 3. Identifies multi-step flows ("wizard", "onboarding", "checkout process")
@@ -418,11 +451,13 @@ specs/NNN-slug/mockups/
 ### Keyboard Shortcuts (Automatic)
 
 **Provided by navigation.js:**
+
 - `H` key → Return to hub (index.html)
 - `1`-`9` keys → Jump to screen by number
 - `Esc` → Close modals/dialogs
 
 **Provided by state-switcher.js:**
+
 - `S` key → Cycle state (Success → Loading → Error → Empty → Success)
 - State persists in sessionStorage during review
 
@@ -431,11 +466,13 @@ specs/NNN-slug/mockups/
 **After mockup generation:**
 
 1. **Open navigation hub** in browser:
+
    ```bash
    open specs/NNN-slug/mockups/index.html
    ```
 
 2. **Review each screen** (manual validation):
+
    - Press number keys 1-9 to navigate
    - Press S to cycle through all states
    - Verify design token usage
@@ -443,16 +480,18 @@ specs/NNN-slug/mockups/
    - Validate accessibility (contrast, touch targets, keyboard nav)
 
 3. **Complete approval checklist:**
+
    - Fill out `mockup-approval-checklist.md`
    - Mark each screen as approved
    - Note any changes needed
 
 4. **Update workflow state:**
+
    ```yaml
-   # In specs/NNN-slug/workflow-state.yaml
+   # In specs/NNN-slug/state.yaml
    manual_gates:
      mockup_approval:
-       status: approved  # or needs_changes
+       status: approved # or needs_changes
        approved_at: "2025-11-17T14:30:00Z"
        approved_by: "user@example.com"
    ```
@@ -469,28 +508,33 @@ specs/NNN-slug/mockups/
 **Before mockup approval, verify:**
 
 ✅ **Multi-screen flow** (manual review):
+
 - All screens accessible via keyboard shortcuts (1-9)
 - Navigation wiring matches user flow diagram
 - Breadcrumbs link back to hub
 
 ✅ **State completeness** (manual review):
+
 - All 4 states implemented (Success, Loading, Error, Empty)
 - S key cycles through states correctly
 - Loading spinners use CSS animations (no GIFs)
 
 ✅ **Design system compliance**:
+
 - All colors from tokens.css (no hardcoded hex codes)
 - All spacing from 8pt grid (multiples of 4px or 8px)
 - Typography uses scale (text-sm, text-base, text-lg)
 - Shadows use scale (shadow-sm, shadow-md, shadow-lg)
 
 ✅ **Component reuse**:
+
 - Suggested components from plan.md used where applicable
 - New components justified in Design System Constraints section
 - Components match ui-inventory.md patterns
 - No duplicate implementations detected
 
 ✅ **Accessibility baseline**:
+
 - Touch targets ≥24x24px (44x44px preferred)
 - Color contrast ≥4.5:1 for text
 - Focus indicators visible (2px outline, 4.5:1 contrast)
@@ -504,6 +548,7 @@ specs/NNN-slug/mockups/
 ## Task Structure
 
 **Each task includes:**
+
 - **ID**: T001, T002, ... (deterministic, sequential)
 - **Title**: Clear, actionable description
 - **Depends On**: T000 (or specific task IDs)
@@ -511,6 +556,7 @@ specs/NNN-slug/mockups/
 - **Source**: plan.md:45-60 (exact line numbers)
 
 **Example task:**
+
 ```markdown
 ### T001: Create User Entity Schema
 
@@ -518,12 +564,14 @@ specs/NNN-slug/mockups/
 **Source**: plan.md:145-160
 
 **Acceptance Criteria**:
+
 - [ ] User table created with id, email, name, created_at
 - [ ] Email unique constraint enforced
 - [ ] Migration file generated
 - [ ] Alembic upgrade/downgrade tested
 
 **Implementation Notes**:
+
 - Follow plan.md data model (SQLAlchemy ORM)
 - Reuse existing migration template from api/migrations/
 ```
@@ -533,28 +581,34 @@ specs/NNN-slug/mockups/
 ## Parallel Batching
 
 **Independent tasks grouped for parallel execution:**
+
 - Batch 1: Frontend tasks (no backend dependencies)
 - Batch 2: Backend tasks (no frontend dependencies)
 - Batch 3: Integration tasks (requires both frontend + backend)
 
 **Dependencies respected:**
+
 - Test tasks depend on implementation tasks
 - Integration tasks depend on both frontend and backend
 - Refactoring tasks depend on working implementation
 
 **Example parallel batching:**
+
 ```markdown
 ## Batch 1: Backend API (can run in parallel with Batch 2)
+
 - T001: Create User model
 - T002: Create UserService
 - T003: Create UserController
 
 ## Batch 2: Frontend Components (can run in parallel with Batch 1)
+
 - T004: Create LoginForm component
 - T005: Create Dashboard component
 - T006: Create UserProfile component
 
 ## Batch 3: Integration (depends on Batch 1 + Batch 2)
+
 - T007: Create E2E test for login flow
 - T008: Create E2E test for dashboard
 ```
@@ -571,12 +625,15 @@ specs/NNN-slug/mockups/
 4. **Refactor task**: Improve code quality (optional)
 
 **Example TDD sequence:**
+
 ```markdown
 ### T010: Write tests for UserService.create_user
+
 **Depends On**: T001 (User model must exist)
 **Source**: plan.md:165-175
 
 **Acceptance Criteria**:
+
 - [ ] Test: creates user with valid data
 - [ ] Test: rejects duplicate email
 - [ ] Test: validates email format
@@ -586,10 +643,12 @@ specs/NNN-slug/mockups/
 ---
 
 ### T011: Implement UserService.create_user
+
 **Depends On**: T010 (tests must exist)
 **Source**: plan.md:165-175
 
 **Acceptance Criteria**:
+
 - [ ] All tests from T010 passing (green state)
 - [ ] User created in database
 - [ ] Password hashed with bcrypt
@@ -598,10 +657,12 @@ specs/NNN-slug/mockups/
 ---
 
 ### T012: Refactor UserService validation logic (optional)
+
 **Depends On**: T011 (implementation must work)
 **Source**: plan.md:165-175
 
 **Acceptance Criteria**:
+
 - [ ] Extract validation to separate validator class
 - [ ] All tests still passing
 - [ ] Code coverage maintained
@@ -614,32 +675,38 @@ specs/NNN-slug/mockups/
 **Trigger**: `--ui-first` flag passed to /tasks
 
 **Behavior:**
+
 - Generates HTML mockup tasks before implementation
 - Creates multi-screen navigation hub (index.html) if ≥3 screens
 - Creates individual screen mockups with state switching (S key)
 - Creates mockup-approval-checklist.md with multi-screen flow criteria
-- Sets manual gate in workflow-state.yaml
+- Sets manual gate in state.yaml
 - Blocks /implement until mockups approved
 
 **Example task breakdown (UI-first):**
+
 ```markdown
 ## Phase 1: Mockup Generation
 
 ### T001: Create mockup navigation hub
+
 **Depends On**: T000
 **Source**: plan.md:120-135
 
 **Acceptance Criteria**:
+
 - [ ] index.html created from template
 - [ ] 4 screen cards with descriptions
 - [ ] User flow diagram includes: Welcome → Sign Up → Profile Setup → Dashboard
 - [ ] Keyboard shortcuts documented (1-4 navigate, H returns to hub)
 
 ### T002: Create welcome screen mockup
+
 **Depends On**: T001
 **Source**: spec.md:45-52 (User Story 1)
 
 **Acceptance Criteria**:
+
 - [ ] screen-01-welcome.html created from template
 - [ ] Success state: Hero section + CTA button
 - [ ] Loading state: Skeleton loader for hero
@@ -649,6 +716,7 @@ specs/NNN-slug/mockups/
 ## Phase 2: Implementation (Blocked until mockup approval)
 
 ### T008: Convert welcome screen to Next.js component
+
 **Depends On**: T007 (mockup approval)
 **Source**: mockups/screen-01-welcome.html
 
@@ -666,6 +734,7 @@ specs/NNN-slug/mockups/
 - Feature spec and plan completed (spec.md, plan.md exist)
 
 **Check command**:
+
 ```bash
 for tool in git jq; do
   command -v "$tool" >/dev/null || error "Missing required tool: $tool"
@@ -679,6 +748,7 @@ done
 - `.git/` — Git repository (must be initialized)
 
 **Check command**:
+
 ```bash
 test -f "specs/*/spec.md" || error "Missing spec.md"
 test -f "specs/*/plan.md" || error "Missing plan.md"
@@ -690,12 +760,14 @@ test -d ".git" || error "Not a git repository"
 ## Version History
 
 **v2.0** (2025-11-17):
+
 - Added epic sprint breakdown workflow
 - Added multi-screen mockup workflow
 - Added UI-first mode with mockup approval gate
 - Enhanced anti-hallucination rules
 
 **v1.0** (2025-09-15):
+
 - Initial task generation from plan.md
 - TDD task sequencing
 - Parallel batching support

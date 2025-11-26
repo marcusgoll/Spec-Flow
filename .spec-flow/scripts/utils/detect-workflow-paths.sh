@@ -5,7 +5,7 @@
 # Detection priority (as per user preference):
 # 1. Workspace files (epics/*/epic-spec.md OR specs/*/spec.md)
 # 2. Git branch pattern (epic/* OR feature/*)
-# 3. workflow-state.yaml (workflow_type field)
+# 3. state.yaml (workflow_type field)
 # 4. Return failure code for fallback to AskUserQuestion
 #
 # Output: JSON object with workflow information including worktree detection
@@ -104,11 +104,11 @@ detect_from_branch() {
     return 1
 }
 
-# Priority 3: Check workflow-state.yaml
+# Priority 3: Check state.yaml
 detect_from_state() {
-    # Check epic workflow-state.yaml
-    if ls epics/*/workflow-state.yaml 1>/dev/null 2>&1; then
-        local state_file=$(ls epics/*/workflow-state.yaml 2>/dev/null | head -n 1)
+    # Check epic state.yaml
+    if ls epics/*/state.yaml 1>/dev/null 2>&1; then
+        local state_file=$(ls epics/*/state.yaml 2>/dev/null | head -n 1)
         local workflow_type=$(grep "^workflow_type:" "$state_file" 2>/dev/null | awk '{print $2}' | tr -d '"' || echo "unknown")
 
         if [ "$workflow_type" = "epic" ]; then
@@ -119,9 +119,9 @@ detect_from_state() {
         fi
     fi
 
-    # Check feature workflow-state.yaml
-    if ls specs/*/workflow-state.yaml 1>/dev/null 2>&1; then
-        local state_file=$(ls specs/*/workflow-state.yaml 2>/dev/null | head -n 1)
+    # Check feature state.yaml
+    if ls specs/*/state.yaml 1>/dev/null 2>&1; then
+        local state_file=$(ls specs/*/state.yaml 2>/dev/null | head -n 1)
         local workflow_type=$(grep "^workflow_type:" "$state_file" 2>/dev/null | awk '{print $2}' | tr -d '"' || echo "unknown")
 
         if [ "$workflow_type" = "feature" ]; then

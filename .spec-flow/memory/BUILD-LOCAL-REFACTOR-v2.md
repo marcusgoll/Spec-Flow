@@ -17,6 +17,7 @@ Refactored the `/build-local` command from a brittle "works on my machine" scrip
 **After**: Full strict mode with error trap
 
 **Pattern** (lines 30-50):
+
 ```bash
 #!/usr/bin/env bash
 set -Eeuo pipefail
@@ -35,6 +36,7 @@ trap on_error ERR
 ```
 
 **Why safe**:
+
 - `set -E`: Ensures ERR trap is inherited by shell functions
 - `set -e`: Exit on any command failure
 - `set -u`: Exit on unset variable access
@@ -50,6 +52,7 @@ trap on_error ERR
 **After**: Explicit preflight checks with actionable error messages
 
 **Pattern** (lines 36-47):
+
 ```bash
 # Require tools early to fail fast
 need() { command -v "$1" >/dev/null 2>&1 || { echo "❌ Missing tool: $1"; exit 1; }; }
@@ -59,6 +62,7 @@ need yq
 ```
 
 **Error messages** (lines 182-201):
+
 ```bash
 case "$PKG_MANAGER" in
   npm)
@@ -87,6 +91,7 @@ esac
 **After**: Corepack locks package manager versions; telemetry disabled
 
 **Corepack** (lines 112-115):
+
 ```bash
 # Prefer Node Corepack to lock package manager versions if available
 if command -v corepack >/dev/null 2>&1; then
@@ -95,6 +100,7 @@ fi
 ```
 
 **Telemetry control** (lines 147-149):
+
 ```bash
 # Disable framework telemetry during local builds
 export CI="${CI:-1}"
@@ -102,6 +108,7 @@ export NEXT_TELEMETRY_DISABLED=1
 ```
 
 **Why important**:
+
 - **Corepack**: Reads `packageManager` field in `package.json` (e.g., `"pnpm@8.15.0"`) and uses exact version
 - **Telemetry**: Next.js/Gatsby/etc. can send network requests during build; `CI=1` disables this (deterministic, faster)
 - **Same inputs → same outputs**: Reproducible across machines, no "works on my machine" surprises
@@ -115,11 +122,13 @@ export NEXT_TELEMETRY_DISABLED=1
 **After**: Always start at repo root via `git rev-parse`
 
 **Pattern** (line 33):
+
 ```bash
 cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ```
 
 **Why safe**:
+
 - `git rev-parse --show-toplevel` returns absolute path to repo root
 - Works from any subdirectory (e.g., run from `apps/web/` → jumps to repo root)
 - Falls back to `pwd` if not in git repo (edge case for non-git projects)
@@ -134,6 +143,7 @@ cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 **After**: Optional SBOM generation if `cdxgen` is installed
 
 **Pattern** (lines 318-332):
+
 ```bash
 # Optional SBOM if CycloneDX cdxgen is present
 if command -v cdxgen >/dev/null 2>&1; then
@@ -145,6 +155,7 @@ fi
 ```
 
 **Why valuable**:
+
 - **Security audit trail**: Lists all dependencies and their versions
 - **Supply chain security**: Detects vulnerable dependencies
 - **Compliance**: Some industries require SBOM (e.g., U.S. Executive Order 14028)
@@ -159,6 +170,7 @@ fi
 **After**: All typos removed, clean comments
 
 **Example**:
+
 ```bash
 # Before (line 61 old):
 n# Start timing for build-local phase
@@ -176,6 +188,7 @@ n# Start timing for build-local phase
 **After**: Consolidated security scan logic with deterministic package manager detection
 
 **Pattern** (lines 300-315):
+
 ```bash
 case "$PKG_MANAGER" in
   npm)   if command -v npm  >/dev/null; then npm audit --json > "$FEATURE_DIR/security-audit.json" 2>&1 || true; SECURITY_ISSUES=$(jq -r '.metadata.vulnerabilities.total // 0' "$FEATURE_DIR/security-audit.json" 2>/dev/null || echo 0); fi ;;
@@ -190,6 +203,7 @@ esac
 ```
 
 **Tools used**:
+
 - **Node.js**: `npm audit`, `yarn audit`, `pnpm audit` (built-in)
 - **Rust**: `cargo-audit` (optional install: `cargo install cargo-audit`)
 - **Go**: `go mod verify` (built-in)
@@ -206,34 +220,41 @@ esac
 **After**: 200 lines with concise, actionable output
 
 **Report structure** (lines 337-559):
+
 ```markdown
 # Build Report: {feature-slug}
 
 ## Build Summary
+
 - Status: Success / Failed
 - Duration: {N}s
 - Platform: {OS}
 - Package Manager: {npm|yarn|pnpm|cargo|go|python}
 
 ## Build Artifacts
+
 - Output directory: {dist|build|target}
 - Total size: {N} MB
 - File count: {N} files
 
 ## Test Results
+
 - Tests run: {N} passing
 - Coverage: {N}% lines, {N}% branches
 
 ## Quality Checks
+
 - Lint: ✅ Clean / ❌ {N} errors
 - Type-check: ✅ Clean / ❌ {N} errors
 - Security issues: {N} vulnerabilities found
 
 ## Next Steps
+
 - {Actionable recommendations}
 ```
 
 **Benefits**:
+
 - **Concise**: Key metrics only, no fluff
 - **Actionable**: Clear next steps (e.g., "Fix 3 lint errors before shipping")
 - **Fast**: Generates in <1 second
@@ -247,6 +268,7 @@ esac
 **After**: Shell-agnostic Bash with POSIX-compatible commands
 
 **Changes**:
+
 - Removed Windows-specific `git rev-parse` workarounds
 - Used `[[ ... ]]` only where bash-specific features needed (otherwise `[ ... ]`)
 - Used `command -v` instead of `which` (POSIX-compatible)
@@ -261,6 +283,7 @@ esac
 **After**: Trap ensures phase always marked as "failed" or "completed"
 
 **Pattern** (lines 43-48, 557-559):
+
 ```bash
 # Error trap (entry)
 on_error() {
@@ -344,11 +367,13 @@ update_workflow_phase "$FEATURE_DIR" "ship:build-local" "completed"
 ### Missing Tool
 
 **Old** (cryptic):
+
 ```
 ./build-local.sh: line 182: npm: command not found
 ```
 
 **New** (actionable, lines 182-201):
+
 ```
 ❌ Missing tool: npm
 Install Node.js: https://nodejs.org
@@ -357,25 +382,29 @@ Install Node.js: https://nodejs.org
 ### Build Failure with State Update
 
 **Old** (state stranded as "in_progress"):
+
 ```
 Error: Build failed
-(workflow-state.yaml still shows ship:build-local as "in_progress")
+(state.yaml still shows ship:build-local as "in_progress")
 ```
 
 **New** (state always updated, lines 43-48):
+
 ```
 ⚠️  Error in /build-local. Marking phase as failed.
-(workflow-state.yaml updated to "failed", timing completed)
+(state.yaml updated to "failed", timing completed)
 ```
 
 ### Typo Fixed
 
 **Old** (syntax error):
+
 ```
 ./build-local.sh: line 61: n#: command not found
 ```
 
 **New** (clean):
+
 ```
 # Start timing for build-local phase
 (no error, correct bash comment syntax)
@@ -392,18 +421,21 @@ Error: Build failed
 2. **New features use v2.0** — Reproducible, strict error handling
 
 3. **Optional: Install Corepack** (for Node.js projects):
+
    ```bash
    corepack enable
    # Reads "packageManager" field in package.json
    ```
 
 4. **Optional: Install CycloneDX** (for SBOM generation):
+
    ```bash
    npm install -g @cyclonedx/cdxgen
    # Generates sbom.cdx.json on each build
    ```
 
 5. **Optional: Install security audit tools**:
+
    ```bash
    # Rust
    cargo install cargo-audit

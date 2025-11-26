@@ -66,6 +66,7 @@ FEATURE_DIR="specs/$SLUG"
 ### Error Conditions
 
 **No deployments found**:
+
 ```
 ❌ No staging deployments found
 
@@ -75,6 +76,7 @@ Did you run /ship-staging?
 ```
 
 **Feature directory not found**:
+
 ```
 ❌ Feature directory not found: specs/$SLUG
 
@@ -136,6 +138,7 @@ Job Status:
 ### Error Conditions
 
 **Deployment still running**:
+
 ```
 ⏳ Deployment still running
 
@@ -146,6 +149,7 @@ Wait for deployment to complete, then run /validate-staging again
 ```
 
 **Deployment failed**:
+
 ```
 ❌ Deployment failed
 
@@ -187,6 +191,7 @@ API_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "$STAGING_API/api/v1/health/
 ### Success Criteria
 
 All health checks return HTTP 200 OK:
+
 ```
 Checking staging endpoints...
 
@@ -200,6 +205,7 @@ Checking staging endpoints...
 ### Failure Handling
 
 If any endpoint fails:
+
 ```
 ⚠️  Some health checks failed
 
@@ -207,6 +213,7 @@ Deployment may not be fully ready. Continue anyway? (y/N)
 ```
 
 User can choose to:
+
 - **N** (default): Cancel validation, fix health checks
 - **y**: Continue despite unhealthy endpoints (not recommended)
 
@@ -222,7 +229,7 @@ User can choose to:
 2. Roll back to previous deployment
 3. Verify rollback succeeded (check live URL)
 4. Roll forward to current deployment
-5. Update quality gate in workflow-state.yaml
+5. Update quality gate in state.yaml
 
 ### Implementation
 
@@ -238,8 +245,8 @@ else
   # Extract current deployment ID
   CURRENT_APP_ID=$(yq eval '.staging.deployments.app // empty' "$METADATA_FILE")
 
-  # Get previous deployment from workflow-state.yaml
-  STATE_FILE="$FEATURE_DIR/workflow-state.yaml"
+  # Get previous deployment from state.yaml
+  STATE_FILE="$FEATURE_DIR/state.yaml"
   if [ -f "$STATE_FILE" ]; then
     PREV_APP_ID=$(yq eval '.deployment.staging.previous_deployment_ids.app // empty' "$STATE_FILE")
   fi
@@ -345,18 +352,21 @@ fi
 ### Rollback Test Outcomes
 
 **Success**:
+
 - Rollback command succeeds
 - Previous deployment goes live (verified via headers)
 - Roll-forward succeeds
-- Quality gate updated in workflow-state.yaml
+- Quality gate updated in state.yaml
 
 **Blocker - Vercel CLI missing**:
+
 ```
 🚨 BLOCKER: Cannot verify rollback capability
 Install Vercel CLI and re-run /validate-staging
 ```
 
 **Blocker - Rollback command failed**:
+
 ```
 🚨 BLOCKER: Rollback capability broken
 
@@ -369,6 +379,7 @@ Fix rollback capability before proceeding to production.
 ```
 
 **Blocker - Rollback verification failed**:
+
 ```
 🚨 BLOCKER: Rollback command succeeded but verification failed
 
@@ -383,6 +394,7 @@ Recommendation: Wait 1-2 minutes and re-run /validate-staging
 ### First Deployment Handling
 
 For first deployment (no previous deployment exists):
+
 ```
 ℹ️  No previous deployment found (first deployment to staging)
    Skipping rollback test
@@ -443,12 +455,13 @@ fi
 
 - `passed` - All E2E tests passed (✅ Allow production)
 - `failed` - E2E tests failed (🚫 BLOCK production)
-- `not_run` - No E2E job found (⚠️  Warning)
-- Other - Unexpected status (⚠️  Warning)
+- `not_run` - No E2E job found (⚠️ Warning)
+- Other - Unexpected status (⚠️ Warning)
 
 ### Blocker Condition
 
 E2E test failures are **blocking** - production deployment cannot proceed:
+
 ```
 🚫 BLOCKER: E2E tests must pass before production
 
@@ -545,12 +558,13 @@ fi
 ### Lighthouse Status Values
 
 - `passed` - Performance targets met (✅ Recommended)
-- `failed` - Performance below targets (⚠️  Warning - can continue with user confirmation)
-- `not_run` - No Lighthouse job found (ℹ️  Info)
+- `failed` - Performance below targets (⚠️ Warning - can continue with user confirmation)
+- `not_run` - No Lighthouse job found (ℹ️ Info)
 
 ### Warning Handling
 
 Lighthouse failures are **warnings**, not blockers. User can choose to:
+
 - Fix performance issues and redeploy
 - Continue with warnings (not recommended)
 
@@ -627,7 +641,7 @@ Create checklist at `/tmp/staging-validation-checklist-$SLUG.md`:
 
 - [ ] {acceptance criterion 1}
 - [ ] {acceptance criterion 2}
-...
+      ...
 
 ---
 
@@ -635,7 +649,7 @@ Create checklist at `/tmp/staging-validation-checklist-$SLUG.md`:
 
 - [ ] {user flow 1}
 - [ ] {user flow 2}
-...
+      ...
 
 ---
 
@@ -695,11 +709,13 @@ Create checklist at `/tmp/staging-validation-checklist-$SLUG.md`:
 If spec.md doesn't have structured acceptance criteria or user flows:
 
 **Acceptance Criteria fallback**:
+
 ```markdown
 - [ ] Feature works as described in spec.md
 ```
 
 **User Flows fallback**:
+
 ```markdown
 - [ ] Primary user flow works end-to-end
 ```
@@ -775,18 +791,21 @@ fi
 ### Manual Testing Outcomes
 
 **Passed**:
+
 ```
 MANUAL_STATUS="passed"
 MANUAL_ISSUES="None - all checks passed ✅"
 ```
 
 **Failed with issues**:
+
 ```
 MANUAL_STATUS="failed"
 MANUAL_ISSUES="Login button not working on mobile"
 ```
 
 **Incomplete** (user exits early):
+
 ```
 ⏸️  Manual testing incomplete
 
@@ -849,6 +868,7 @@ Create report at `specs/{slug}/staging-validation-report.md`:
 {lighthouse_details}
 
 **Targets**:
+
 - Performance: ≥85
 - Accessibility: ≥95
 - FCP: <1500ms
@@ -889,7 +909,7 @@ See detailed checklist: {checklist_file}
 
 ---
 
-*Generated by `/validate-staging` command*
+_Generated by `/validate-staging` command_
 ```
 
 ### Overall Status Determination
@@ -911,8 +931,10 @@ fi
 ### Report Sections by Status
 
 **Ready for Production** (`READY_FOR_PROD="true"`):
+
 ```markdown
 All staging validation checks passed:
+
 - ✅ Deployment successful
 - ✅ Health checks passing
 - ✅ E2E tests
@@ -923,6 +945,7 @@ All staging validation checks passed:
 ```
 
 **Blocked** (`READY_FOR_PROD="false"`):
+
 ```markdown
 **Blockers:**
 
@@ -933,10 +956,11 @@ All staging validation checks passed:
 ```
 
 **Review Required** (`READY_FOR_PROD="warning"`):
+
 ```markdown
 **Warnings:**
 
-- ⚠️  Lighthouse performance below targets
+- ⚠️ Lighthouse performance below targets
 
 **Action required**: Review warnings, fix if critical, or proceed with caution
 ```
@@ -949,18 +973,19 @@ All staging validation checks passed:
 
 ### Decision Matrix
 
-| E2E Status | Lighthouse Status | Manual Status | Overall Status | Production Ready |
-|------------|-------------------|---------------|----------------|------------------|
-| passed | passed | passed | ✅ Ready for Production | true |
-| passed | failed | passed | ⚠️  Review Required | warning |
-| failed | any | any | ❌ Blocked | false |
-| any | any | failed | ❌ Blocked | false |
-| not_run | passed | passed | ⚠️  Review Required | warning |
-| not_run | not_run | passed | ⚠️  Review Required | warning |
+| E2E Status | Lighthouse Status | Manual Status | Overall Status          | Production Ready |
+| ---------- | ----------------- | ------------- | ----------------------- | ---------------- |
+| passed     | passed            | passed        | ✅ Ready for Production | true             |
+| passed     | failed            | passed        | ⚠️ Review Required      | warning          |
+| failed     | any               | any           | ❌ Blocked              | false            |
+| any        | any               | failed        | ❌ Blocked              | false            |
+| not_run    | passed            | passed        | ⚠️ Review Required      | warning          |
+| not_run    | not_run           | passed        | ⚠️ Review Required      | warning          |
 
 ### Blocking Conditions
 
 Production deployment is **blocked** if:
+
 - E2E tests failed
 - Manual validation failed
 - Deployment failed
@@ -969,6 +994,7 @@ Production deployment is **blocked** if:
 ### Warning Conditions
 
 Production deployment has **warnings** if:
+
 - Lighthouse performance below targets
 - E2E tests not run
 - Lighthouse not run
@@ -976,6 +1002,7 @@ Production deployment has **warnings** if:
 ### Final Output Examples
 
 **Ready for Production**:
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VALIDATION COMPLETE
@@ -1013,6 +1040,7 @@ Run `/ship-prod` to deploy to production
 ```
 
 **Blocked**:
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VALIDATION COMPLETE
@@ -1044,6 +1072,7 @@ Validation report: specs/feature-123/staging-validation-report.md
 ```
 
 **Review Required**:
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VALIDATION COMPLETE
@@ -1079,6 +1108,7 @@ Validation report: specs/feature-123/staging-validation-report.md
 ### Not on Main Branch
 
 Command can run from any branch, but warns:
+
 ```bash
 CURRENT_BRANCH=$(git branch --show-current)
 
@@ -1178,7 +1208,7 @@ fi
 
 ## Workflow State Integration
 
-After successful validation, update workflow-state.yaml:
+After successful validation, update state.yaml:
 
 ```yaml
 workflow:

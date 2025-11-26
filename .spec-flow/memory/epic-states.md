@@ -8,6 +8,7 @@
 Epics are the parallelization unit in the Spec-Flow workflow. Each epic represents a vertical slice (API + DB + UI) that can be developed independently after contracts are locked.
 
 **Key Principles**:
+
 - **One WIP epic per agent**: Enforce focus and prevent context switching
 - **Contract-first**: Lock API schemas before parallel implementation begins
 - **Trunk-based**: Max 24h branch lifetime, daily merges with feature flags
@@ -36,20 +37,24 @@ stateDiagram-v2
 **Description**: Epic defined in `plan.md`, dependencies identified, ready for contract design.
 
 **Entry Criteria**:
+
 - Epic extracted from `/plan` output
 - Vertical slice boundaries clear (API endpoints, DB tables, UI screens)
 - Dependencies documented
 
 **Artifacts**:
+
 - `plan.md` section for this epic
 - Dependency graph entry
 
 **Allowed Actions**:
+
 - Design contracts (OpenAPI schemas, JSON Schema events)
 - Create Pact CDC tests
 - Identify shared types/fixtures
 
 **Exit Criteria**:
+
 - Contracts drafted in `contracts/api/vX.Y.Z/`
 - CDC pacts created in `contracts/pacts/`
 - Breaking changes flagged (major version bump)
@@ -63,25 +68,30 @@ stateDiagram-v2
 **Description**: API schemas locked, CDC tests written, ready for parallel implementation.
 
 **Entry Criteria**:
+
 - Contracts committed and versioned
 - CDC pacts pass verification: `/contract.verify`
 - Golden fixtures refreshed: `/fixture.refresh`
 
 **Artifacts**:
+
 - Locked OpenAPI spec (e.g., `contracts/api/v1.1.0/openapi.yaml`)
 - Passing CDC pacts
 - Golden fixtures matching schemas
 
 **Blocking Gate**: **CDC Verification Gate**
+
 - All pacts must pass before implementation starts
 - Prevents breaking existing consumers
 - Enforced by CI (blocks epic assignment if fails)
 
 **Allowed Actions**:
+
 - Request WIP slot from scheduler: `/scheduler.assign <epic-name>`
 - Wait in queue if all slots occupied
 
 **Exit Criteria**:
+
 - WIP slot available (max 1 epic per agent)
 - Agent assigned via scheduler
 
@@ -94,26 +104,31 @@ stateDiagram-v2
 **Description**: Active development with daily merges and feature flag protection.
 
 **Entry Criteria**:
+
 - WIP slot acquired
 - Agent assigned
 - Contracts locked and verified
 
 **Artifacts**:
+
 - Feature flag registered: `/flag.add <epic_name>_enabled --reason "Epic in progress"`
 - Active git branch (max 24h lifetime)
 - Task checklist in `tasks.md`
 
 **WIP Enforcement**:
+
 - One epic per agent (tracked in `wip-tracker.yaml`)
 - Other epics for this agent stay in `ContractsLocked` or `Parked`
 - Automatic parking if blocked >4h
 
 **Allowed Actions**:
+
 - Implement tasks behind feature flag
 - Merge to main daily (branch age <24h)
 - Request parking if blocked: `/scheduler.park <epic-name> --reason "Waiting for DBA"`
 
 **Exit Criteria**:
+
 - All tasks marked complete
 - Code merged to main
 - Feature flag still active (feature incomplete from user perspective)
@@ -127,17 +142,21 @@ stateDiagram-v2
 **Description**: Code complete, quality gates running, awaiting merge approval.
 
 **Entry Criteria**:
+
 - All tasks complete
 - Code on main behind feature flag
 - PR created (if applicable)
 
 **Artifacts**:
+
 - `optimization-report.md`
 - `code-review-report.md`
 - CI test results
 
 **Blocking Gates**:
+
 1. **CI Gate** (`/gate.ci`):
+
    - Unit tests pass (min 80% coverage)
    - Integration tests pass
    - Linters pass (ESLint, Prettier)
@@ -149,10 +168,12 @@ stateDiagram-v2
    - No secrets committed (git-secrets)
 
 **Allowed Actions**:
+
 - Fix failing gates
 - Manual code review
 
 **Exit Criteria**:
+
 - CI gate passes
 - Security gate passes
 - Code review approved
@@ -166,25 +187,30 @@ stateDiagram-v2
 **Description**: Code merged to main, feature flag enabled in staging/production.
 
 **Entry Criteria**:
+
 - Quality gates passed
 - Code on main branch
 - Feature flag toggled ON in staging
 
 **Artifacts**:
+
 - Feature flag still active
 - Deployment to staging complete
 - Staging validation checklist
 
 **Manual Gate**: **Staging Validation**
+
 - Manual QA in staging environment
 - Acceptance criteria verified
 - Performance checked
 
 **Allowed Actions**:
+
 - Staging testing
 - Toggle feature flag in production (gradual rollout)
 
 **Exit Criteria**:
+
 - Staging validation passed
 - Feature flag toggled ON in production
 - No P0/P1 issues found
@@ -198,21 +224,25 @@ stateDiagram-v2
 **Description**: Feature fully deployed, flag retired, epic complete.
 
 **Entry Criteria**:
+
 - Production deployment complete
 - Feature flag enabled for all users
 - Monitoring shows healthy metrics
 
 **Artifacts**:
+
 - Feature flag retired: `/flag.cleanup <epic_name>_enabled --verify`
 - `production-ship-report.md`
 - DORA metrics updated
 
 **Allowed Actions**:
+
 - Monitor production metrics
 - Remove feature flag code
 - Archive epic documentation
 
 **Exit Criteria**:
+
 - Feature flag code removed
 - Epic marked complete in roadmap
 - DORA metrics recorded (lead time, deployment frequency)
@@ -226,25 +256,30 @@ stateDiagram-v2
 **Description**: Epic blocked by external dependency, WIP slot released for other work.
 
 **Entry Criteria**:
+
 - Agent reports blocker (manual or auto-detected after 4h)
 - Blocker type: external API, DBA approval, design decision, dependency on other epic
 
 **Artifacts**:
+
 - Parking reason in `wip-tracker.yaml`
 - Notification to blocker owner
 - WIP slot released
 
 **Automatic Parking Triggers**:
+
 - No commits for 4 hours during business hours
 - Explicit `/scheduler.park` command
 - CI repeatedly failing (>3 attempts in 2h)
 
 **Allowed Actions**:
+
 - Wait for blocker resolution
 - Work on other epics (WIP slot freed)
 - Check blocker status
 
 **Exit Criteria**:
+
 - Blocker resolved (manual confirmation or webhook)
 - WIP slot available
 - Agent re-assigned via scheduler
@@ -255,19 +290,20 @@ stateDiagram-v2
 
 ### Transition Rules
 
-| From              | To                | Trigger                                         | Gate                          |
-| ----------------- | ----------------- | ----------------------------------------------- | ----------------------------- |
-| `Planned`         | `ContractsLocked` | Contracts drafted, pacts created                | Contract completeness check   |
-| `ContractsLocked` | `Implementing`    | `/scheduler.assign` with available WIP slot     | CDC verification passes       |
-| `Implementing`    | `Review`          | All tasks complete                              | None (automatic)              |
-| `Implementing`    | `Parked`          | `/scheduler.park` or auto-parked after 4h       | None                          |
-| `Review`          | `Integrated`      | Quality gates pass                              | CI gate + Security gate       |
-| `Integrated`      | `Released`        | Production deployment + flag retirement         | Staging validation (manual)   |
-| `Parked`          | `Implementing`    | Blocker resolved + WIP slot available           | None                          |
+| From              | To                | Trigger                                     | Gate                        |
+| ----------------- | ----------------- | ------------------------------------------- | --------------------------- |
+| `Planned`         | `ContractsLocked` | Contracts drafted, pacts created            | Contract completeness check |
+| `ContractsLocked` | `Implementing`    | `/scheduler.assign` with available WIP slot | CDC verification passes     |
+| `Implementing`    | `Review`          | All tasks complete                          | None (automatic)            |
+| `Implementing`    | `Parked`          | `/scheduler.park` or auto-parked after 4h   | None                        |
+| `Review`          | `Integrated`      | Quality gates pass                          | CI gate + Security gate     |
+| `Integrated`      | `Released`        | Production deployment + flag retirement     | Staging validation (manual) |
+| `Parked`          | `Implementing`    | Blocker resolved + WIP slot available       | None                        |
 
 ### Blocking Conditions
 
 **Cannot progress if**:
+
 - **Planned → ContractsLocked**: Contracts incomplete, pacts missing, no versioning
 - **ContractsLocked → Implementing**: CDC verification fails, no WIP slot available
 - **Implementing → Review**: Tasks incomplete, branch age >24h without flag
@@ -314,6 +350,7 @@ parked_epics:
 **Purpose**: Request WIP slot for an epic in `ContractsLocked` state.
 
 **Behavior**:
+
 1. Check epic state (must be `ContractsLocked`)
 2. Check WIP slots (max 1 per agent)
 3. If slot available:
@@ -325,6 +362,7 @@ parked_epics:
    - Notify when slot opens
 
 **Example**:
+
 ```bash
 /scheduler.assign epic-auth-api
 # Output:
@@ -338,6 +376,7 @@ parked_epics:
 **Purpose**: Park current epic due to blocker, release WIP slot.
 
 **Behavior**:
+
 1. Verify epic is in `Implementing` state
 2. Record parking reason
 3. Transition to `Parked`
@@ -345,6 +384,7 @@ parked_epics:
 5. Notify next epic in queue
 
 **Example**:
+
 ```bash
 /scheduler.park epic-payment-integration --reason "Waiting for Stripe API keys"
 # Output:
@@ -359,6 +399,7 @@ parked_epics:
 **Purpose**: Show all epics with current state and WIP status.
 
 **Example Output**:
+
 ```
 Epic State Summary
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -385,6 +426,7 @@ WIP Status: 2/2 slots occupied
 **Runs on**: `Review` state entry
 
 **Checks**:
+
 - Unit tests pass (Jest, Vitest, Pytest)
 - Integration tests pass (Playwright, Cypress)
 - Code coverage ≥80% (Istanbul, Coverage.py)
@@ -394,6 +436,7 @@ WIP Status: 2/2 slots occupied
 **Pass Criteria**: All checks green
 
 **Failure Handling**:
+
 - Block `Review → Integrated` transition
 - Notify agent with failure details
 - Allow re-run after fixes
@@ -403,6 +446,7 @@ WIP Status: 2/2 slots occupied
 **Runs on**: `Review` state entry (parallel with CI gate)
 
 **Checks**:
+
 - SAST scan passes (Semgrep, CodeQL)
 - Dependency audit (npm audit, Snyk, pip-audit)
 - Secrets detection (git-secrets, truffleHog)
@@ -411,6 +455,7 @@ WIP Status: 2/2 slots occupied
 **Pass Criteria**: No HIGH/CRITICAL vulnerabilities
 
 **Failure Handling**:
+
 - Block `Review → Integrated` transition
 - Create security issue in GitHub
 - Require fix or risk acceptance
@@ -420,6 +465,7 @@ WIP Status: 2/2 slots occupied
 **Runs on**: `ContractsLocked` state entry
 
 **Checks**:
+
 - All pacts pass verification
 - No breaking changes (or major version bump approved)
 - Fixtures match schemas
@@ -427,6 +473,7 @@ WIP Status: 2/2 slots occupied
 **Pass Criteria**: All pacts green
 
 **Failure Handling**:
+
 - Block `ContractsLocked → Implementing` transition
 - Highlight contract violations
 - Require contract fixes before implementation
@@ -441,12 +488,14 @@ When `/plan` generates `plan.md`, include epic breakdowns:
 ## Epic Breakdown
 
 ### Epic 1: Authentication API
+
 **Vertical Slice**: Backend + Database
 **Contracts**: POST /auth/login, POST /auth/register
 **Dependencies**: None
 **Estimated Tasks**: 8
 
 ### Epic 2: Authentication UI
+
 **Vertical Slice**: Frontend
 **Contracts**: Consumes /auth/login, /auth/register
 **Dependencies**: Epic 1 (contracts locked)
@@ -458,12 +507,14 @@ The scheduler parses this section to build the dependency graph.
 ### Integration with `/implement`
 
 **Before parallel mode**:
+
 ```bash
 /implement
 # Implements all tasks sequentially
 ```
 
 **After parallel mode**:
+
 ```bash
 /implement --parallel
 # 1. Parse plan.md for epic breakdowns
@@ -476,6 +527,7 @@ The scheduler parses this section to build the dependency graph.
 ### Integration with `/ship`
 
 **Epic-aware shipping**:
+
 - Check if any epics still in `Implementing` or `Review` states
 - Block `/ship` if critical epics incomplete
 - Allow `/ship` if only nice-to-have epics remain (with warning)
@@ -491,6 +543,7 @@ Real-time view of epic progress:
 ```
 
 **Output**:
+
 ```
 Epic WIP Dashboard
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -534,13 +587,14 @@ Track epic-level metrics for bottleneck detection:
 - **Gate Failure Rate**: % of epics failing CI/Security gates
 
 **Alerting**:
+
 - Epic in `Implementing` >24h without progress → Slack alert
 - Epic parked >48h → Escalate to unblock
 - Gate failure rate >30% → Process issue (tests flaky, security debt)
 
 ## State Schema Updates
 
-### `workflow-state.yaml` Extensions
+### `state.yaml` Extensions
 
 Add epic state tracking to existing workflow state:
 
@@ -575,7 +629,7 @@ epics:
 
 wip_limits:
   max_per_agent: 1
-  current_utilization: 1/2  # 1 of 2 agents busy
+  current_utilization: 1/2 # 1 of 2 agents busy
 ```
 
 ## Example Workflow
@@ -644,4 +698,5 @@ wip_limits:
 ---
 
 **Version History**:
+
 - v1.0.0 (2025-11-10): Initial state machine definition with 5 states + parking logic

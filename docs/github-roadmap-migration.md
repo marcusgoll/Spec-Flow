@@ -7,17 +7,20 @@
 ## Overview
 
 This guide covers GitHub Issues-based roadmap management for both:
+
 1. **Workflow Development** (this repo) - Tracking improvements to the workflow system
 2. **User Projects** (their repos) - Product roadmaps using the `/roadmap` command
 
 ## Important Distinction
 
 **This Repository (Spec-Flow Workflow Kit):**
+
 - An **npm package** that provides workflow commands
 - Uses GitHub Issues to track workflow system improvements
 - Old markdown roadmap has been **archived** (not migrated)
 
 **User Repositories (Projects using the workflow):**
+
 - Product development projects using this workflow
 - Will use `/roadmap` command to manage product features
 - Each project has its own GitHub Issues roadmap
@@ -37,6 +40,7 @@ This guide covers GitHub Issues-based roadmap management for both:
 ### Phase 1: GitHub Setup
 
 - ✅ **Issue Templates** (`.github/ISSUE_TEMPLATE/`)
+
   - `feature.yml` - Feature requests with ICE scoring
   - `enhancement.yml` - Enhancements to existing features
   - `bug.yml` - Bug reports
@@ -50,12 +54,14 @@ This guide covers GitHub Issues-based roadmap management for both:
 ### Phase 2: Roadmap Manager
 
 - ✅ **GitHub Roadmap Manager** (bash)
+
   - `.spec-flow/scripts/bash/github-roadmap-manager.sh`
   - Functions: create, query, update, mark in-progress, mark shipped
   - ICE scoring and frontmatter generation
   - Dual authentication (gh CLI + GitHub API)
 
 - ✅ **GitHub Roadmap Manager** (PowerShell)
+
   - `.spec-flow/scripts/powershell/github-roadmap-manager.ps1`
   - Windows-compatible version
   - Same functionality as bash version
@@ -73,12 +79,14 @@ This guide covers GitHub Issues-based roadmap management for both:
 Choose one of the following:
 
 **Option A: GitHub CLI (Recommended)**
+
 ```bash
 gh auth login
 # Follow prompts to authenticate
 ```
 
 **Option B: Personal Access Token**
+
 ```bash
 # Create token at: https://github.com/settings/tokens
 # Required scopes: repo, write:discussion
@@ -94,6 +102,7 @@ $env:GITHUB_TOKEN = "ghp_your_token_here"
 Run the label setup script to create all necessary labels:
 
 **macOS/Linux:**
+
 ```bash
 chmod +x .spec-flow/scripts/bash/setup-github-labels.sh
 
@@ -105,6 +114,7 @@ chmod +x .spec-flow/scripts/bash/setup-github-labels.sh
 ```
 
 **Windows PowerShell:**
+
 ```powershell
 # Dry run to preview
 .\.spec-flow\scripts\powershell\setup-github-labels.ps1 -DryRun
@@ -114,6 +124,7 @@ chmod +x .spec-flow/scripts/bash/setup-github-labels.sh
 ```
 
 **Expected Output:**
+
 ```
 ✓ GitHub CLI authenticated
 ✓ Repository: your-org/your-repo
@@ -176,11 +187,13 @@ cp node_modules/@your-org/spec-flow-workflow/.spec-flow/scripts/bash/setup-githu
 ### Viewing the Roadmap
 
 **Via GitHub Web UI:**
+
 - Browse issues: `https://github.com/YOUR_ORG/YOUR_REPO/issues`
 - Filter by labels: Click labels like `status:next`, `area:backend`
 - Create views: Save custom filters
 
 **Via GitHub CLI:**
+
 ```bash
 # List all features in backlog
 gh issue list --label status:backlog --label type:feature
@@ -196,6 +209,7 @@ gh issue list --search "authentication"
 ```
 
 **Via API (for scripts):**
+
 ```bash
 # Source the roadmap manager
 source .spec-flow/scripts/bash/github-roadmap-manager.sh
@@ -210,12 +224,14 @@ get_issue_by_slug "student-progress-widget"
 ### Creating Features
 
 **Via GitHub Web UI:**
+
 - Go to Issues → New Issue
 - Select "Feature Request" template
 - Fill in ICE scores, area, role, requirements
 - Submit
 
 **Via Script:**
+
 ```bash
 source .spec-flow/scripts/bash/github-roadmap-manager.sh
 
@@ -232,6 +248,7 @@ create_roadmap_issue \
 ```
 
 **Via PowerShell:**
+
 ```powershell
 . .\.spec-flow\scripts\powershell\github-roadmap-manager.ps1
 
@@ -250,6 +267,7 @@ New-RoadmapIssue `
 ### Updating Feature Status
 
 **Mark as In Progress:**
+
 ```bash
 source .spec-flow/scripts/bash/github-roadmap-manager.sh
 
@@ -258,6 +276,7 @@ mark_issue_in_progress "student-progress-widget"
 ```
 
 **Mark as Shipped:**
+
 ```bash
 mark_issue_shipped "student-progress-widget" "1.2.0" "2025-10-20" "https://app.example.com"
 # ✅ Marked issue #123 as Shipped (v1.2.0) in roadmap
@@ -293,6 +312,7 @@ Add a progress widget to the results page...
 ```
 
 **Parsing ICE Scores:**
+
 ```bash
 # Get issue
 issue=$(gh issue view 123 --json body -q .body)
@@ -310,17 +330,20 @@ score=$(calculate_ice_score "$impact" "$effort" "$confidence")
 ## Label Schema
 
 ### Priority Labels
+
 - `priority:high` - High priority, address soon (ICE score >= 1.5)
 - `priority:medium` - Medium priority, normal queue (0.8 <= ICE < 1.5)
 - `priority:low` - Low priority, nice to have (ICE < 0.8)
 
 ### Type Labels
+
 - `type:feature` - New feature or functionality
 - `type:enhancement` - Enhancement to existing feature
 - `type:bug` - Bug or defect
 - `type:task` - Task or chore
 
 ### Area Labels
+
 - `area:backend` - Backend/API code
 - `area:frontend` - Frontend/UI code
 - `area:api` - API endpoints and contracts
@@ -329,6 +352,7 @@ score=$(calculate_ice_score "$impact" "$effort" "$confidence")
 - `area:marketing` - Marketing pages and content
 
 ### Role Labels
+
 - `role:all` - All users
 - `role:free` - Free tier users
 - `role:student` - Student users
@@ -336,6 +360,7 @@ score=$(calculate_ice_score "$impact" "$effort" "$confidence")
 - `role:school` - School/organization users
 
 ### Status Labels (Workflow States)
+
 - `status:backlog` - Backlog - not yet prioritized
 - `status:next` - Next - queued for implementation
 - `status:later` - Later - future consideration
@@ -344,12 +369,14 @@ score=$(calculate_ice_score "$impact" "$effort" "$confidence")
 - `status:blocked` - Blocked - waiting on dependency
 
 ### Size Labels (Effort Estimation)
+
 - `size:small` - Small - < 1 day
 - `size:medium` - Medium - 1-2 weeks
 - `size:large` - Large - 2-4 weeks
 - `size:xl` - Extra Large - 4+ weeks (consider splitting)
 
 ### Special Labels
+
 - `blocked` - Blocked by dependency or external factor
 - `good-first-issue` - Good for newcomers
 - `help-wanted` - Extra attention needed
@@ -364,24 +391,29 @@ score=$(calculate_ice_score "$impact" "$effort" "$confidence")
 The following slash commands need to be updated to use GitHub Issues:
 
 1. **`/roadmap`** - Main roadmap command
+
    - Replace markdown operations with GitHub API calls
    - Actions: add, brainstorm, move, delete, search, ship
 
 2. **`/feature`** - Feature workflow orchestrator
+
    - Query GitHub for existing issue by slug
-   - Link issue to workflow-state.yaml
+   - Link issue to state.yaml
    - Call `mark_issue_in_progress()` when starting
 
 3. **`/ship` and `/ship-prod`** - Deployment commands
+
    - Call `mark_issue_shipped()` instead of `mark_feature_shipped()`
    - Add deployment URL as comment on issue
    - Close issue when shipped
 
 4. **Agent Briefs**
+
    - `.claude/agents/phase/ship-prod.md` - Update roadmap references
    - `.claude/agents/phase/finalize.md` - Update to close GitHub issue
 
 5. **Skills**
+
    - `.claude/skills/roadmap-integration.md` - Update with GitHub workflow
 
 6. **Documentation**
@@ -393,12 +425,14 @@ The following slash commands need to be updated to use GitHub Issues:
 The `/roadmap` command (`.claude/commands/roadmap.md`) needs these changes:
 
 **Before (Markdown):**
+
 ```bash
 # Add feature to roadmap
 echo "$FEATURE_DATA" >> .spec-flow/memory/roadmap.md
 ```
 
 **After (GitHub Issues):**
+
 ```bash
 # Source GitHub roadmap manager
 source .spec-flow/scripts/bash/github-roadmap-manager.sh
@@ -422,7 +456,7 @@ if [ -n "$ISSUE" ] && [ "$ISSUE" != "null" ]; then
   echo "✅ Found roadmap issue: #$ISSUE_NUMBER"
 
   # Store in workflow state
-  yq eval -i ".feature.github_issue = $ISSUE_NUMBER" "$FEATURE_DIR/workflow-state.yaml"
+  yq eval -i ".feature.github_issue = $ISSUE_NUMBER" "$FEATURE_DIR/state.yaml"
 
   # Mark as in-progress
   mark_issue_in_progress "$SLUG"
@@ -439,6 +473,7 @@ fi
 **Problem**: "No GitHub authentication found"
 
 **Solution**:
+
 ```bash
 # Check gh CLI status
 gh auth status
@@ -455,6 +490,7 @@ export GITHUB_TOKEN=ghp_your_token
 **Problem**: "API rate limit exceeded"
 
 **Solution**:
+
 - Authenticated users: 5000 requests/hour
 - Add delays between bulk operations
 - Check remaining quota: `gh api rate_limit`
@@ -464,6 +500,7 @@ export GITHUB_TOKEN=ghp_your_token
 **Problem**: Issue creation fails
 
 **Solutions**:
+
 1. Verify labels exist: `gh label list`
 2. Check repository permissions: `gh repo view`
 3. Run setup-github-labels.sh first
@@ -474,6 +511,7 @@ export GITHUB_TOKEN=ghp_your_token
 **Problem**: "Label 'status:backlog' does not exist"
 
 **Solution**:
+
 ```bash
 # Recreate labels
 ./.spec-flow/scripts/bash/setup-github-labels.sh
@@ -484,6 +522,7 @@ export GITHUB_TOKEN=ghp_your_token
 **Problem**: Running migration twice creates duplicates
 
 **Solution**:
+
 ```bash
 # Delete all roadmap issues (CAREFUL!)
 gh issue list --label type:feature --limit 1000 --json number -q '.[].number' | \
@@ -496,26 +535,31 @@ gh issue list --label type:feature --limit 1000 --json number -q '.[].number' | 
 ## Best Practices
 
 ### 1. Use Descriptive Slugs
+
 - Keep slugs URL-friendly: `lowercase-with-hyphens`
 - Make them unique and searchable
 - Max 30 characters for readability
 
 ### 2. Maintain ICE Scores
+
 - Update scores when estimates change
 - Re-sort backlog periodically by ICE
 - Document confidence changes in comments
 
 ### 3. Link Issues to PRs
+
 - Reference issues in PR descriptions: "Closes #123"
 - GitHub will auto-close issues when PRs merge
 - Maintains clean audit trail
 
 ### 4. Use Projects for Visualization
+
 - Create GitHub Project for roadmap view
 - Use "Roadmap" layout for timeline
 - Add custom fields for quarters/themes
 
 ### 5. Regular Grooming
+
 - Review `status:backlog` monthly
 - Close stale issues with `wont-fix`
 - Merge duplicates
@@ -526,15 +570,18 @@ gh issue list --label type:feature --limit 1000 --json number -q '.[].number' | 
 For visual roadmap management:
 
 1. **Create Project:**
+
    - Go to repository → Projects → New Project
    - Choose "Roadmap" template
 
 2. **Add Custom Fields:**
+
    - ICE Score (number)
    - Quarter (select: Q1, Q2, Q3, Q4)
    - Theme (text)
 
 3. **Configure Views:**
+
    - Backlog: Filter `status:backlog`, sort by ICE score descending
    - Next: Filter `status:next`
    - In Progress: Filter `status:in-progress`

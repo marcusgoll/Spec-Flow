@@ -1,27 +1,33 @@
 # Scenario 3: Feature Workflow
 
 ## Purpose
+
 Test standard feature workflow from specification through deployment.
 
 ## Tests
 
 ### 1. Directory Structure Validation
+
 - Verifies scenario directory exists
 - **Expected**: Directory present
 
 ### 2. /spec Command Validation
+
 - Validates spec.md command file exists
 - **Expected**: Command file properly structured
 
 ### 3. /plan Command Validation
+
 - Validates plan.md command file exists
 - **Expected**: Command file properly structured
 
 ### 4. /tasks Command Validation
+
 - Validates tasks.md command file exists
 - **Expected**: Command file properly structured
 
 ### 5. Workflow State Schema Validation
+
 - Checks workflow-state-schema.md exists
 - **Expected**: Schema file with proper version
 
@@ -54,50 +60,56 @@ Staging Validation (Manual Gate #3)
 ## Expected Artifacts
 
 After `/spec`:
+
 ```
 specs/001-dark-mode/
 ├── spec.md
 ├── NOTES.md
-├── workflow-state.yaml (phase: specification)
+├── state.yaml (phase: specification)
 └── visuals/
     └── README.md
 ```
 
 After `/plan`:
+
 ```
 (plus)
 ├── plan.md
 ├── research.md
-└── workflow-state.yaml (phase: planning)
+└── state.yaml (phase: planning)
 ```
 
 After `/tasks`:
+
 ```
 (plus)
 ├── tasks.md (20-30 tasks)
-└── workflow-state.yaml (phase: task_breakdown)
+└── state.yaml (phase: task_breakdown)
 ```
 
 After `/validate`:
+
 ```
 (plus)
 ├── analysis-report.md
-└── workflow-state.yaml (phase: validation)
+└── state.yaml (phase: validation)
 ```
 
 After `/implement`:
+
 ```
 (plus)
 ├── NOTES.md (updated with implementation notes)
-└── workflow-state.yaml (phase: implementation)
+└── state.yaml (phase: implementation)
 ```
 
 After `/optimize`:
+
 ```
 (plus)
 ├── optimization-report.md
 ├── code-review-report.md
-└── workflow-state.yaml (phase: optimization)
+└── state.yaml (phase: optimization)
 ```
 
 ## Manual Test Steps

@@ -1,7 +1,7 @@
 # Workflow State Template
 # Schema Version: 3.0.0
 #
-# This template provides the baseline structure for workflow-state.yaml
+# This template provides the baseline structure for state.yaml
 # Populated by /feature and /epic commands during workflow initialization
 
 # Phase tracking (v1.0.0)

@@ -7,27 +7,33 @@
 #### 1. `docs/project/overview.md` (CRITICAL)
 
 **Sections read:**
+
 - **Vision** (## Vision) - 1 paragraph describing project purpose
 - **Out of Scope** (### Out of Scope) - Bullet list of explicit exclusions
 - **Target Users** (## Target Users) - Bullet list of intended users
 
 **Usage:**
+
 - Vision alignment validation (Step 4)
 - Out-of-scope detection
 - Target user role extraction
 
 **Example:**
+
 ```markdown
 ## Vision
+
 AKTR helps flight instructors track student progress against ACS standards,
 enabling data-driven instruction and transparent competency demonstration.
 
 ### Out of Scope
+
 - Flight scheduling or aircraft management
 - Payment processing or student billing
 - General aviation weather briefings
 
 ## Target Users
+
 - Certified Flight Instructors (CFIs)
 - Flight students (private, instrument, commercial)
 - Flight school administrators
@@ -59,12 +65,14 @@ fi
 ```
 
 **Impact:**
+
 - Vision alignment validation skipped
 - All features added without alignment check
 - No out-of-scope detection
 - Manual role selection (not validated against target users)
 
 **Recommendation:**
+
 - Run `/init-project` to create project docs before scaling roadmap
 - For small projects (<10 features), docs optional
 - For medium/large projects (>10 features), docs strongly recommended
@@ -76,6 +84,7 @@ fi
 ### Detecting Outdated Docs
 
 **Symptoms:**
+
 - Features frequently flagged as out-of-scope
 - Vision statements don't match current direction
 - Target users list incomplete
@@ -83,6 +92,7 @@ fi
 **Solutions:**
 
 1. **Update overview.md when scope changes:**
+
 ```bash
 # Edit docs/project/overview.md
 # - Update Vision section
@@ -94,6 +104,7 @@ fi
 ```
 
 2. **Version project docs:**
+
 ```markdown
 <!-- docs/project/overview.md -->
 
@@ -102,6 +113,7 @@ fi
 ```
 
 3. **Periodic review:**
+
 - Review overview.md quarterly
 - Update after major pivots or scope expansions
 - Sync with product strategy changes
@@ -113,6 +125,7 @@ fi
 ### /init-project → /roadmap
 
 **Flow:**
+
 ```
 /init-project
     ↓
@@ -128,6 +141,7 @@ Creates: GitHub Issue with metadata
 ```
 
 **Example:**
+
 ```bash
 # Initialize project
 /init-project
@@ -148,6 +162,7 @@ Creates: GitHub Issue with metadata
 ### /roadmap → /feature
 
 **Flow:**
+
 ```
 /roadmap add "student progress widget"
     ↓
@@ -163,6 +178,7 @@ Updates: Issue label (status:backlog → status:in-progress)
 ```
 
 **Metadata inheritance:**
+
 ```bash
 # Roadmap creates issue with metadata
 create_roadmap_issue \
@@ -197,6 +213,7 @@ EOF
 ### /feature → /ship-prod → /roadmap
 
 **Flow:**
+
 ```
 /feature student-progress-widget
     ↓
@@ -218,6 +235,7 @@ Shows: Issue #123 moved to Shipped (closed with status:shipped label)
 ```
 
 **Issue state transitions:**
+
 ```bash
 # Step 1: Feature added
 /roadmap add "widget"
@@ -244,13 +262,14 @@ mark_issue_shipped "widget"
 
 ### GitHub Issue ↔ Workflow State
 
-**Problem:** GitHub Issues and workflow-state.yaml can diverge
+**Problem:** GitHub Issues and state.yaml can diverge
 
 **Solution:** Hook workflow commands to update issue labels
 
 #### Hook Points
 
 1. **/feature invocation:**
+
 ```bash
 # In /feature command
 SLUG="$1"
@@ -259,12 +278,14 @@ mark_issue_in_progress "$SLUG"
 ```
 
 2. **/ship-staging completion:**
+
 ```bash
 # In /ship-staging command (after successful deploy)
 mark_issue_next "$SLUG")  # Optional: staged for production
 ```
 
 3. **/ship-prod completion:**
+
 ```bash
 # In /ship-prod command (after successful deploy)
 mark_issue_shipped "$SLUG"
@@ -336,6 +357,7 @@ gh issue list --repo "$REPO" --label "status:backlog" --json number,title,create
 ```
 
 **Output:**
+
 ```
 Top 3 in Backlog (oldest/highest priority):
 1. #98 cfi-batch-export (Created: 2025-11-01)
@@ -368,6 +390,7 @@ fi
 **If you have existing roadmap.md or features.md:**
 
 1. **Extract features:**
+
 ```bash
 # Read legacy roadmap
 grep -E '^##' roadmap.md | sed 's/^## //' > features.txt
@@ -379,10 +402,12 @@ done < features.txt
 ```
 
 2. **Preserve priority:**
+
 - Add features in priority order (oldest first)
 - Creation order determines priority
 
 3. **Add metadata manually:**
+
 - Edit each GitHub Issue
 - Add YAML frontmatter with area, role, slug
 
@@ -393,6 +418,7 @@ done < features.txt
 ### Token Budget by Integration
 
 **With /init-project integration:**
+
 ```
 /init-project (first time): ~40-60K tokens
   ↓
@@ -402,11 +428,13 @@ overview.md created (~5-8K tokens when read)
 ```
 
 **Without /init-project:**
+
 ```
 /roadmap add (no vision check): ~2-3K tokens per feature
 ```
 
 **Recommendation:**
+
 - Run /init-project once upfront (~40-60K tokens)
 - Saves 5-10K tokens per feature added (vision validation)
 - Break-even at ~6-10 features
@@ -420,6 +448,7 @@ overview.md created (~5-8K tokens when read)
 **Cause:** overview.md Vision section poorly defined
 
 **Solution:**
+
 ```bash
 # Improve Vision statement clarity
 # Bad: "Make a great product"
@@ -431,6 +460,7 @@ overview.md created (~5-8K tokens when read)
 **Cause:** Slug mismatch between GitHub Issue and /feature argument
 
 **Solution:**
+
 ```bash
 # Check slug in GitHub Issue metadata
 gh issue view 123 --json body --jq '.body' | grep 'slug:'
@@ -444,6 +474,7 @@ gh issue view 123 --json body --jq '.body' | grep 'slug:'
 **Cause:** GitHub Issue labels not updated when feature progresses
 
 **Solution:**
+
 ```bash
 # Add hooks to workflow commands
 # In .claude/commands/feature.md:

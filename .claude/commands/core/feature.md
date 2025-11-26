@@ -4,7 +4,7 @@ argument-hint:
   [
     description|slug|continue|next|epic:<name>|epic:<name>:sprint:<num>|sprint:<num>,
   ]
-allowed-tools: Bash(python .spec-flow/scripts/spec-cli.py:*), Bash(git:*), Read(specs/**), Read(workflow-state.yaml), Read(.github/**), SlashCommand(/spec), SlashCommand(/clarify), SlashCommand(/plan), SlashCommand(/tasks), SlashCommand(/design-*), SlashCommand(/analyze), SlashCommand(/implement), SlashCommand(/optimize), SlashCommand(/ship-staging), SlashCommand(/ship-prod), SlashCommand(/finalize), TodoWrite
+allowed-tools: Bash(python .spec-flow/scripts/spec-cli.py:*), Bash(git:*), Read(specs/**), Read(state.yaml), Read(.github/**), SlashCommand(/spec), SlashCommand(/clarify), SlashCommand(/plan), SlashCommand(/tasks), SlashCommand(/design-*), SlashCommand(/analyze), SlashCommand(/implement), SlashCommand(/optimize), SlashCommand(/ship-staging), SlashCommand(/ship-prod), SlashCommand(/finalize), TodoWrite
 version: 2.1
 updated: 2025-11-20
 ---
@@ -18,7 +18,7 @@ Orchestrate complete feature delivery through isolated phase agents with strict 
 
 **Architecture**:
 
-- **Orchestrator** (`/feature`): Moves one phase at a time, updates `workflow-state.yaml`, never invents state
+- **Orchestrator** (`/feature`): Moves one phase at a time, updates `state.yaml`, never invents state
 - **Phase Commands**: `/spec`, `/plan`, `/tasks`, `/implement`, `/optimize`, `/ship` execute isolated phases
 - **Specialist Agents**: Implementation directly launches backend-dev, frontend-dev, database-architect in parallel
 
@@ -38,7 +38,7 @@ Recent features:
 !`ls -t specs/ 2>/dev/null | head -5`
 
 Active workflow state (if any):
-!`find specs -name "workflow-state.yaml" -exec grep -l "status: in_progress\|status: failed" {} \; 2>/dev/null | head -3`
+!`find specs -name "state.yaml" -exec grep -l "status: in_progress\|status: failed" {} \; 2>/dev/null | head -3`
 
 Deployment model detection:
 !`git branch -r | grep -q "staging" && echo "staging-prod" || (git remote -v | grep -q "origin" && echo "direct-prod" || echo "local-only")`
@@ -73,7 +73,7 @@ python .spec-flow/scripts/spec-cli.py feature "$ARGUMENTS"
 3. **Feature slug generation** — Auto-generates from issue title or description
 4. **Project type detection** — Identifies project technology (fullstack, backend, frontend, etc.)
 5. **Branch management** — Creates feature branch or uses existing branch
-6. **Initialize workflow state** — Creates `specs/NNN-slug/` directory and `workflow-state.yaml`
+6. **Initialize workflow state** — Creates `specs/NNN-slug/` directory and `state.yaml`
 7. **Generate feature CLAUDE.md** — Creates AI context navigation file
 
 **After script completes:**
@@ -221,6 +221,7 @@ python .spec-flow/scripts/spec-cli.py feature "$ARGUMENTS"
 When running `/feature continue`:
 
 1. **Detect feature workspace and branch:**
+
    ```bash
    # Run detection utility to find feature workspace
    WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null || pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
@@ -246,7 +247,7 @@ When running `/feature continue`:
            echo "   Feature workspace detected at: specs/$SLUG"
        fi
 
-       WORKFLOW_STATE_FILE="${BASE_DIR}/${SLUG}/workflow-state.yaml"
+       WORKFLOW_STATE_FILE="${BASE_DIR}/${SLUG}/state.yaml"
    else
        echo "❌ Error: Could not detect feature workspace"
        echo "   Run from project root with an active feature in specs/"
@@ -254,13 +255,14 @@ When running `/feature continue`:
    fi
    ```
 
-2. **Read workflow-state.yaml** to find current phase
+2. **Read state.yaml** to find current phase
 3. Locate first phase with status `in_progress` or `failed`
 4. Resume from that phase
 5. If manual gate was pending, proceed past it
 6. Continue workflow execution
 
 7. **Check for iteration mode** (v3.0 - Feedback Loop Support):
+
    ```bash
    # Read iteration state
    CURRENT_ITERATION=$(yq eval '.iteration.current' "$WORKFLOW_STATE_FILE" 2>/dev/null || echo "1")
@@ -287,6 +289,7 @@ When running `/feature continue`:
    ```
 
    **Iteration workflow resume logic:**
+
    - If iteration > 1 and phase = "implement": Execute supplemental tasks only
    - If iteration > 1 and phase = "optimize": Run iteration-specific quality gates
    - If iteration > 1 and phase = "ship-staging": Deploy iteration N to staging
@@ -308,7 +311,7 @@ Never assume or fabricate phase status — always read the actual recorded state
 
 **If any phase fails:**
 
-1. Read error details from `workflow-state.yaml`
+1. Read error details from `state.yaml`
 2. Check relevant log files in `specs/NNN-slug/`
 3. Present clear error message with file paths
 4. Suggest fixes based on error type
@@ -324,7 +327,7 @@ Never assume or fabricate phase status — always read the actual recorded state
 
 **Anti-Hallucination Rules:**
 
-1. **Never claim phase completion without quoting `workflow-state.yaml`**
+1. **Never claim phase completion without quoting `state.yaml`**
 
    - Always `Read` the file and print the actual recorded status
 
@@ -350,7 +353,7 @@ Never assume or fabricate phase status — always read the actual recorded state
 
 ## State Management
 
-All phases read/write `specs/<NNN-slug>/workflow-state.yaml`.
+All phases read/write `specs/<NNN-slug>/state.yaml`.
 
 **Todo list example (staging-prod model):**
 
@@ -454,7 +457,7 @@ Feature workflow is complete when:
 - ✅ All quality gates passed (tests, optimization, security)
 - ✅ Feature deployed to production successfully
 - ✅ Documentation finalized and merged
-- ✅ `workflow-state.yaml` shows all phases with status `completed`
+- ✅ `state.yaml` shows all phases with status `completed`
 - ✅ No blocking failures or errors in state file
 - ✅ GitHub issue updated to shipped status (if applicable)
   </success_criteria>
@@ -503,7 +506,7 @@ Feature workflow is complete when:
 <philosophy>
 ## Design Principles
 
-**State truth lives in `workflow-state.yaml`**
+**State truth lives in `state.yaml`**
 
 - Never guess; always read, quote, and update atomically
 - State file is single source of truth for workflow status

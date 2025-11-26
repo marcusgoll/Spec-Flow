@@ -1,26 +1,31 @@
 # Scenario 2: Brownfield Project
 
 ## Purpose
+
 Test workflow on existing codebase with auto-scan capabilities for technology detection.
 
 ## Tests
 
 ### 1. Directory Structure Validation
+
 - Verifies scenario directory exists
 - **Expected**: Directory present
 
 ### 2. Fixture Files Present
+
 - Checks for package.json
 - Checks for docker-compose.yml
 - **Expected**: Mock existing project files present
 
 ### 3. Anti-Duplication Skill Validation
+
 - Validates anti-duplication skill exists
 - **Expected**: Skill file properly structured
 
 ## Expected Artifacts
 
 Fixture files (simulating existing project):
+
 ```
 fixtures/
 ├── package.json          # Mock Node.js project
@@ -30,6 +35,7 @@ fixtures/
 ```
 
 After running `/init-project`:
+
 ```
 02-brownfield/
 ├── docs/
@@ -41,10 +47,11 @@ After running `/init-project`:
 │       └── ...
 └── .spec-flow/
     └── memory/
-        └── workflow-state.yaml
+        └── state.yaml
 ```
 
 After running `/feature "Add password reset"`:
+
 ```
 specs/001-password-reset/
 ├── spec.md (with reuse analysis)
@@ -73,6 +80,7 @@ specs/001-password-reset/
 ## Notes
 
 This scenario simulates a brownfield project where:
+
 - Existing `package.json` indicates tech stack
 - Existing `migrations/` indicate database schema
 - Existing `docker-compose.yml` indicates deployment setup

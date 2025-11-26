@@ -30,7 +30,7 @@
     Generates:
     - gaps.md
     - scope-validation-report.md
-    - Updates workflow-state.yaml
+    - Updates state.yaml
     - Appends supplemental tasks to tasks.md (if gaps are in-scope)
 #>
 
@@ -146,10 +146,10 @@ function Capture-GapDetails {
 
     return [PSCustomObject]@{
         Description = $description
-        Source = $source
-        Priority = $priority
-        Subsystems = $subsystems
-        Context = $context
+        Source      = $source
+        Priority    = $priority
+        Subsystems  = $subsystems
+        Context     = $context
     }
 }
 
@@ -190,19 +190,19 @@ try {
 
         # Create gap object
         $gap = [PSCustomObject]@{
-            Id = Generate-GapId -Index $gapIndex
-            Title = $gapDetails.Description.Split('.')[0]  # First sentence as title
-            Description = $gapDetails.Description
-            Source = $gapDetails.Source
-            Priority = $gapDetails.Priority
-            Subsystems = $gapDetails.Subsystems
-            Context = $gapDetails.Context
-            ScopeStatus = $validation.Status
-            Evidence = $validation.Evidence
-            Reason = $validation.Reason
+            Id             = Generate-GapId -Index $gapIndex
+            Title          = $gapDetails.Description.Split('.')[0]  # First sentence as title
+            Description    = $gapDetails.Description
+            Source         = $gapDetails.Source
+            Priority       = $gapDetails.Priority
+            Subsystems     = $gapDetails.Subsystems
+            Context        = $gapDetails.Context
+            ScopeStatus    = $validation.Status
+            Evidence       = $validation.Evidence
+            Reason         = $validation.Reason
             Recommendation = $validation.Recommendation
-            Checks = $validation.Checks
-            SpecExcerpts = $validation.SpecExcerpts
+            Checks         = $validation.Checks
+            SpecExcerpts   = $validation.SpecExcerpts
         }
 
         $gaps += $gap
@@ -227,7 +227,8 @@ try {
             if ($continue -eq "n") {
                 break
             }
-        } else {
+        }
+        else {
             break
         }
     } while ($true)
@@ -392,12 +393,12 @@ $($gap.Recommendation)
 
     # Return gap data for downstream processing
     return [PSCustomObject]@{
-        Gaps = $gaps
-        InScopeCount = $inScopeCount
+        Gaps            = $gaps
+        InScopeCount    = $inScopeCount
         OutOfScopeCount = $outOfScopeCount
-        AmbiguousCount = $ambiguousCount
-        GapsPath = $gapsPath
-        ReportPath = $reportPath
+        AmbiguousCount  = $ambiguousCount
+        GapsPath        = $gapsPath
+        ReportPath      = $reportPath
     }
 }
 catch {

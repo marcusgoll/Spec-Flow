@@ -4,8 +4,8 @@
  * Validates directory structure and file organization.
  */
 
-import { existsSync, statSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { existsSync, statSync, readdirSync } from "fs";
+import { join } from "path";
 
 /**
  * Validation result
@@ -21,7 +21,10 @@ class ValidationResult {
   }
 
   static failure(errors) {
-    return new ValidationResult(false, Array.isArray(errors) ? errors : [errors]);
+    return new ValidationResult(
+      false,
+      Array.isArray(errors) ? errors : [errors]
+    );
   }
 }
 
@@ -46,15 +49,13 @@ export function validateFeatureStructure(featureDir) {
   const errors = [];
 
   if (!isDirectory(featureDir)) {
-    return ValidationResult.failure(`Feature directory not found: ${featureDir}`);
+    return ValidationResult.failure(
+      `Feature directory not found: ${featureDir}`
+    );
   }
 
   // Required files
-  const requiredFiles = [
-    'spec.md',
-    'NOTES.md',
-    'workflow-state.yaml'
-  ];
+  const requiredFiles = ["spec.md", "NOTES.md", "state.yaml"];
 
   for (const file of requiredFiles) {
     if (!isFile(join(featureDir, file))) {
@@ -63,9 +64,7 @@ export function validateFeatureStructure(featureDir) {
   }
 
   // Required directories
-  const requiredDirs = [
-    'visuals'
-  ];
+  const requiredDirs = ["visuals"];
 
   for (const dir of requiredDirs) {
     if (!isDirectory(join(featureDir, dir))) {
@@ -89,10 +88,7 @@ export function validateEpicStructure(epicDir) {
   }
 
   // Required files
-  const requiredFiles = [
-    'epic-spec.md',
-    'workflow-state.yaml'
-  ];
+  const requiredFiles = ["epic-spec.md", "state.yaml"];
 
   for (const file of requiredFiles) {
     if (!isFile(join(epicDir, file))) {
@@ -101,8 +97,8 @@ export function validateEpicStructure(epicDir) {
   }
 
   // Check for sprints directory
-  if (!isDirectory(join(epicDir, 'sprints'))) {
-    errors.push('Missing sprints/ directory');
+  if (!isDirectory(join(epicDir, "sprints"))) {
+    errors.push("Missing sprints/ directory");
   }
 
   return errors.length > 0
@@ -117,15 +113,13 @@ export function validateProjectStructure(projectDir) {
   const errors = [];
 
   if (!isDirectory(projectDir)) {
-    return ValidationResult.failure(`Project directory not found: ${projectDir}`);
+    return ValidationResult.failure(
+      `Project directory not found: ${projectDir}`
+    );
   }
 
   // Required directories
-  const requiredDirs = [
-    '.claude',
-    '.spec-flow',
-    'specs'
-  ];
+  const requiredDirs = [".claude", ".spec-flow", "specs"];
 
   for (const dir of requiredDirs) {
     if (!isDirectory(join(projectDir, dir))) {
@@ -134,17 +128,17 @@ export function validateProjectStructure(projectDir) {
   }
 
   // Check .claude subdirectories
-  const claudeDirs = ['commands', 'agents', 'skills'];
+  const claudeDirs = ["commands", "agents", "skills"];
   for (const dir of claudeDirs) {
-    if (!isDirectory(join(projectDir, '.claude', dir))) {
+    if (!isDirectory(join(projectDir, ".claude", dir))) {
       errors.push(`Missing .claude/${dir} directory`);
     }
   }
 
   // Check .spec-flow subdirectories
-  const specFlowDirs = ['memory', 'templates', 'scripts'];
+  const specFlowDirs = ["memory", "templates", "scripts"];
   for (const dir of specFlowDirs) {
-    if (!isDirectory(join(projectDir, '.spec-flow', dir))) {
+    if (!isDirectory(join(projectDir, ".spec-flow", dir))) {
       errors.push(`Missing .spec-flow/${dir} directory`);
     }
   }
@@ -160,22 +154,22 @@ export function validateProjectStructure(projectDir) {
 export function validateProjectDocsStructure(projectDir) {
   const errors = [];
 
-  const docsDir = join(projectDir, 'docs', 'project');
+  const docsDir = join(projectDir, "docs", "project");
 
   if (!isDirectory(docsDir)) {
-    return ValidationResult.failure('docs/project/ directory not found');
+    return ValidationResult.failure("docs/project/ directory not found");
   }
 
   // Required docs (8 files)
   const requiredDocs = [
-    'overview.md',
-    'system-architecture.md',
-    'tech-stack.md',
-    'data-architecture.md',
-    'api-strategy.md',
-    'capacity-planning.md',
-    'deployment-strategy.md',
-    'development-workflow.md'
+    "overview.md",
+    "system-architecture.md",
+    "tech-stack.md",
+    "data-architecture.md",
+    "api-strategy.md",
+    "capacity-planning.md",
+    "deployment-strategy.md",
+    "development-workflow.md",
   ];
 
   for (const doc of requiredDocs) {
@@ -195,18 +189,18 @@ export function validateProjectDocsStructure(projectDir) {
 export function validateDesignSystemStructure(projectDir) {
   const errors = [];
 
-  const designDocsDir = join(projectDir, 'docs', 'design');
-  const tokensDir = join(projectDir, 'design', 'systems');
+  const designDocsDir = join(projectDir, "docs", "design");
+  const tokensDir = join(projectDir, "design", "systems");
 
   // Check design docs
   if (!isDirectory(designDocsDir)) {
-    errors.push('docs/design/ directory not found');
+    errors.push("docs/design/ directory not found");
   } else {
     const requiredDocs = [
-      'brand-guidelines.md',
-      'visual-language.md',
-      'accessibility-standards.md',
-      'component-governance.md'
+      "brand-guidelines.md",
+      "visual-language.md",
+      "accessibility-standards.md",
+      "component-governance.md",
     ];
 
     for (const doc of requiredDocs) {
@@ -218,9 +212,9 @@ export function validateDesignSystemStructure(projectDir) {
 
   // Check tokens
   if (!isDirectory(tokensDir)) {
-    errors.push('design/systems/ directory not found');
+    errors.push("design/systems/ directory not found");
   } else {
-    const requiredTokens = ['tokens.css', 'tokens.json'];
+    const requiredTokens = ["tokens.css", "tokens.json"];
     for (const token of requiredTokens) {
       if (!isFile(join(tokensDir, token))) {
         errors.push(`Missing token file: ${token}`);
@@ -239,37 +233,39 @@ export function validateDesignSystemStructure(projectDir) {
 export function validateMockupStructure(featureDir, screenCount) {
   const errors = [];
 
-  const mockupsDir = join(featureDir, 'mockups');
+  const mockupsDir = join(featureDir, "mockups");
 
   if (!isDirectory(mockupsDir)) {
-    return ValidationResult.failure('mockups/ directory not found');
+    return ValidationResult.failure("mockups/ directory not found");
   }
 
   // Check for mockup-approval-checklist.md
-  if (!isFile(join(mockupsDir, 'mockup-approval-checklist.md'))) {
-    errors.push('Missing mockup-approval-checklist.md');
+  if (!isFile(join(mockupsDir, "mockup-approval-checklist.md"))) {
+    errors.push("Missing mockup-approval-checklist.md");
   }
 
   // Check for HTML mockups
   const files = readdirSync(mockupsDir);
-  const htmlFiles = files.filter(f => f.endsWith('.html'));
+  const htmlFiles = files.filter((f) => f.endsWith(".html"));
 
   if (htmlFiles.length === 0) {
-    errors.push('No HTML mockup files found');
+    errors.push("No HTML mockup files found");
   }
 
   // If 3+ screens, check for navigation hub
   if (screenCount >= 3) {
-    if (!htmlFiles.includes('index.html')) {
-      errors.push('Multi-screen mockup missing index.html navigation hub');
+    if (!htmlFiles.includes("index.html")) {
+      errors.push("Multi-screen mockup missing index.html navigation hub");
     }
 
     // Check for screen-XX-*.html pattern
     const screenPattern = /^screen-\d{2}-/;
-    const screenFiles = htmlFiles.filter(f => screenPattern.test(f));
+    const screenFiles = htmlFiles.filter((f) => screenPattern.test(f));
 
     if (screenFiles.length < 3) {
-      errors.push(`Expected at least 3 screen-XX-*.html files, found ${screenFiles.length}`);
+      errors.push(
+        `Expected at least 3 screen-XX-*.html files, found ${screenFiles.length}`
+      );
     }
   }
 
@@ -284,15 +280,15 @@ export function validateMockupStructure(featureDir, screenCount) {
 export function validateContractsStructure(projectDir) {
   const errors = [];
 
-  const contractsDir = join(projectDir, 'contracts');
+  const contractsDir = join(projectDir, "contracts");
 
   if (!isDirectory(contractsDir)) {
-    return ValidationResult.failure('contracts/ directory not found');
+    return ValidationResult.failure("contracts/ directory not found");
   }
 
   // Check for api/ subdirectory
-  if (!isDirectory(join(contractsDir, 'api'))) {
-    errors.push('contracts/api/ directory not found');
+  if (!isDirectory(join(contractsDir, "api"))) {
+    errors.push("contracts/api/ directory not found");
   }
 
   return errors.length > 0
@@ -306,14 +302,14 @@ export function validateContractsStructure(projectDir) {
 export function validateGitStructure(projectDir) {
   const errors = [];
 
-  const gitDir = join(projectDir, '.git');
+  const gitDir = join(projectDir, ".git");
 
   if (!isDirectory(gitDir)) {
-    return ValidationResult.failure('Not a git repository');
+    return ValidationResult.failure("Not a git repository");
   }
 
   // Check for basic git files
-  const gitFiles = ['config', 'HEAD'];
+  const gitFiles = ["config", "HEAD"];
   for (const file of gitFiles) {
     if (!isFile(join(gitDir, file))) {
       errors.push(`Missing git file: ${file}`);
@@ -331,18 +327,20 @@ export function validateGitStructure(projectDir) {
 export function validateGitHubActionsStructure(projectDir) {
   const errors = [];
 
-  const workflowsDir = join(projectDir, '.github', 'workflows');
+  const workflowsDir = join(projectDir, ".github", "workflows");
 
   if (!isDirectory(workflowsDir)) {
-    return ValidationResult.failure('.github/workflows/ directory not found');
+    return ValidationResult.failure(".github/workflows/ directory not found");
   }
 
   // Check for deployment workflows
   const files = readdirSync(workflowsDir);
-  const workflowFiles = files.filter(f => f.endsWith('.yml') || f.endsWith('.yaml'));
+  const workflowFiles = files.filter(
+    (f) => f.endsWith(".yml") || f.endsWith(".yaml")
+  );
 
   if (workflowFiles.length === 0) {
-    errors.push('No workflow files found in .github/workflows/');
+    errors.push("No workflow files found in .github/workflows/");
   }
 
   return errors.length > 0
@@ -410,5 +408,5 @@ export default {
   validateGitStructure,
   validateGitHubActionsStructure,
   validateCompleteStructure,
-  ValidationResult
+  ValidationResult,
 };

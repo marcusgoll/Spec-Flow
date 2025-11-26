@@ -39,7 +39,7 @@ allowed-tools:
 
 - @epics/_/sprints/S_/tasks.md (completed tasks per sprint)
 - @epics/_/contracts/_.yaml (locked API contracts)
-- @epics/\*/workflow-state.yaml (epic status)
+- @epics/\*/state.yaml (epic status)
 - @epics/\*/audit-report.xml (effectiveness metrics)
   </context>
 
@@ -79,7 +79,7 @@ Parallel sprint execution workflow:
 
 2. **Never claim sprint completion without reading status**
 
-   - Read workflow-state.yaml for each sprint
+   - Read state.yaml for each sprint
    - Quote actual status: "completed" or "failed"
    - Check contract violations are 0 before proceeding
 
@@ -96,7 +96,7 @@ Parallel sprint execution workflow:
    - Monitor agent responses for completion status
 
 5. **Never invent velocity metrics**
-   - Read actual duration from sprint workflow-state.yaml
+   - Read actual duration from sprint state.yaml
    - Calculate multiplier from real data: expected_hours / actual_hours
    - Quote audit scores from audit-report.xml
 
@@ -144,19 +144,21 @@ log(`Estimated Duration: ${metadata.total_estimated_hours}h`);
 ```javascript
 // Check CLI arguments first (highest priority)
 const args = "$ARGUMENTS".trim();
-const hasAutoModeFlag = args.includes('--auto-mode');
+const hasAutoModeFlag = args.includes("--auto-mode");
 
-// Fall back to workflow-state.yaml if no CLI flag
+// Fall back to state.yaml if no CLI flag
 let autoMode = hasAutoModeFlag;
 
 if (!hasAutoModeFlag) {
-  const workflowState = readYAML(`${EPIC_DIR}/workflow-state.yaml`);
+  const workflowState = readYAML(`${EPIC_DIR}/state.yaml`);
   autoMode = workflowState.epic.auto_mode || false;
 }
 
 // Display mode to user
 if (autoMode) {
-  log("🤖 Auto-mode enabled - will attempt auto-fixes for non-critical failures");
+  log(
+    "🤖 Auto-mode enabled - will attempt auto-fixes for non-critical failures"
+  );
   log("🛑 Will stop only for: CI failures, security issues, deployment errors");
   log("🔄 Fixable issues (tests, builds, infrastructure) will be auto-retried");
 } else {
@@ -168,6 +170,7 @@ global.AUTO_MODE = autoMode;
 ```
 
 **Auto-mode contract:**
+
 - **Stop for**: CI pipeline failures, security scan failures, deployment errors (critical blockers)
 - **Auto-retry for**: Test failures, build failures, npm install errors, infrastructure issues (fixable issues)
 - **Retry attempts**: 2-3 attempts with progressive delays (5s, 10s, 30s)
@@ -219,14 +222,14 @@ for (const contract of contracts) {
  * @returns {"critical" | "fixable" | "unknown"} - Failure classification
  */
 function classifyFailure(sprintId) {
-  const sprintState = readYAML(`${EPIC_DIR}/sprints/${sprintId}/workflow-state.yaml`);
+  const sprintState = readYAML(`${EPIC_DIR}/sprints/${sprintId}/state.yaml`);
 
   // Critical blockers (MUST stop, even in auto-mode)
   if (sprintState.ci_pipeline_failed) {
     return {
       type: "critical",
       reason: "CI pipeline failure detected",
-      details: sprintState.ci_error || "GitHub Actions/GitLab CI failed"
+      details: sprintState.ci_error || "GitHub Actions/GitLab CI failed",
     };
   }
 
@@ -234,7 +237,7 @@ function classifyFailure(sprintId) {
     return {
       type: "critical",
       reason: "Security vulnerabilities detected",
-      details: sprintState.security_issues || "High/Critical CVEs found"
+      details: sprintState.security_issues || "High/Critical CVEs found",
     };
   }
 
@@ -242,7 +245,8 @@ function classifyFailure(sprintId) {
     return {
       type: "critical",
       reason: "Deployment failure",
-      details: sprintState.deployment_error || "Production/Staging deployment crashed"
+      details:
+        sprintState.deployment_error || "Production/Staging deployment crashed",
     };
   }
 
@@ -252,7 +256,7 @@ function classifyFailure(sprintId) {
       type: "fixable",
       reason: "Test failures (not CI-related)",
       details: `${sprintState.tests_failed_count || 0} tests failing`,
-      strategies: ["re-run-tests", "check-dependencies", "clear-cache"]
+      strategies: ["re-run-tests", "check-dependencies", "clear-cache"],
     };
   }
 
@@ -261,7 +265,7 @@ function classifyFailure(sprintId) {
       type: "fixable",
       reason: "Build failure",
       details: sprintState.build_error || "Build compilation/bundling failed",
-      strategies: ["clear-cache", "reinstall-deps", "rebuild"]
+      strategies: ["clear-cache", "reinstall-deps", "rebuild"],
     };
   }
 
@@ -270,7 +274,7 @@ function classifyFailure(sprintId) {
       type: "fixable",
       reason: "Dependency installation failure",
       details: sprintState.dependency_error || "npm/pip/cargo install failed",
-      strategies: ["clean-install", "clear-lockfile", "check-registry"]
+      strategies: ["clean-install", "clear-lockfile", "check-registry"],
     };
   }
 
@@ -278,8 +282,9 @@ function classifyFailure(sprintId) {
     return {
       type: "fixable",
       reason: "Infrastructure issues",
-      details: sprintState.infra_error || "Docker/database/services unavailable",
-      strategies: ["restart-services", "check-ports", "verify-env"]
+      details:
+        sprintState.infra_error || "Docker/database/services unavailable",
+      strategies: ["restart-services", "check-ports", "verify-env"],
     };
   }
 
@@ -288,7 +293,7 @@ function classifyFailure(sprintId) {
       type: "fixable",
       reason: "Type checking errors",
       details: sprintState.type_errors || "TypeScript/mypy errors",
-      strategies: ["add-type-annotations", "fix-imports", "update-types"]
+      strategies: ["add-type-annotations", "fix-imports", "update-types"],
     };
   }
 
@@ -296,7 +301,7 @@ function classifyFailure(sprintId) {
   return {
     type: "unknown",
     reason: "Unclassified failure",
-    details: sprintState.status_message || "Sprint failed for unknown reason"
+    details: sprintState.status_message || "Sprint failed for unknown reason",
   };
 }
 ```
@@ -317,7 +322,9 @@ async function attemptAutoFix(sprintId, failureClassification) {
     return { success: false, reason: "Not fixable or no strategies available" };
   }
 
-  log(`🔄 Auto-fix: Attempting to fix ${sprintId} using ${strategies.length} strategies...`);
+  log(
+    `🔄 Auto-fix: Attempting to fix ${sprintId} using ${strategies.length} strategies...`
+  );
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     for (const strategy of strategies) {
@@ -330,7 +337,9 @@ async function attemptAutoFix(sprintId, failureClassification) {
           log(`  ✅ Strategy '${strategy}' succeeded!`);
 
           // Verify sprint is now completed
-          const newState = readYAML(`${EPIC_DIR}/sprints/${sprintId}/workflow-state.yaml`);
+          const newState = readYAML(
+            `${EPIC_DIR}/sprints/${sprintId}/state.yaml`
+          );
           if (newState.sprint.status === "completed") {
             log(`✅ Auto-fix successful: ${sprintId} now completed`);
             return { success: true, strategy, attempts: attempt };
@@ -345,12 +354,14 @@ async function attemptAutoFix(sprintId, failureClassification) {
     // Wait before next retry (progressive delay)
     if (attempt < 3) {
       const delay = attempt * 5000; // 5s, 10s, 15s
-      log(`  Waiting ${delay/1000}s before next attempt...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      log(`  Waiting ${delay / 1000}s before next attempt...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 
-  log(`❌ Auto-fix failed: All ${strategies.length} strategies exhausted after 3 attempts`);
+  log(
+    `❌ Auto-fix failed: All ${strategies.length} strategies exhausted after 3 attempts`
+  );
   return { success: false, reason: "All strategies failed", attempts: 3 };
 }
 ```
@@ -370,47 +381,68 @@ async function executeFixStrategy(sprintId, strategy) {
   switch (strategy) {
     case "re-run-tests":
       log(`    Running tests again (may be flaky tests)...`);
-      const testResult = await execCommand(`cd ${sprintDir} && npm test`, { timeout: 120000 });
+      const testResult = await execCommand(`cd ${sprintDir} && npm test`, {
+        timeout: 120000,
+      });
       return { success: testResult.exitCode === 0, output: testResult.stdout };
 
     case "check-dependencies":
       log(`    Verifying all dependencies installed...`);
-      const depsResult = await execCommand(`cd ${sprintDir} && npm list`, { timeout: 30000 });
+      const depsResult = await execCommand(`cd ${sprintDir} && npm list`, {
+        timeout: 30000,
+      });
       if (!depsResult.success) {
         log(`    Missing dependencies detected, installing...`);
-        await execCommand(`cd ${sprintDir} && npm install`, { timeout: 120000 });
+        await execCommand(`cd ${sprintDir} && npm install`, {
+          timeout: 120000,
+        });
       }
       return { success: true };
 
     case "clear-cache":
       log(`    Clearing build/test caches...`);
-      await execCommand(`cd ${sprintDir} && rm -rf .next .cache coverage node_modules/.cache`);
-      await execCommand(`cd ${sprintDir} && npm run build`, { timeout: 180000 });
+      await execCommand(
+        `cd ${sprintDir} && rm -rf .next .cache coverage node_modules/.cache`
+      );
+      await execCommand(`cd ${sprintDir} && npm run build`, {
+        timeout: 180000,
+      });
       return { success: true };
 
     case "clean-install":
       log(`    Performing clean npm install...`);
       await execCommand(`cd ${sprintDir} && npm cache clean --force`);
-      await execCommand(`cd ${sprintDir} && rm -rf node_modules package-lock.json`);
-      const installResult = await execCommand(`cd ${sprintDir} && npm install`, { timeout: 300000 });
+      await execCommand(
+        `cd ${sprintDir} && rm -rf node_modules package-lock.json`
+      );
+      const installResult = await execCommand(
+        `cd ${sprintDir} && npm install`,
+        { timeout: 300000 }
+      );
       return { success: installResult.exitCode === 0 };
 
     case "reinstall-deps":
       log(`    Reinstalling dependencies with --force...`);
-      const forceResult = await execCommand(`cd ${sprintDir} && npm install --force`, { timeout: 120000 });
+      const forceResult = await execCommand(
+        `cd ${sprintDir} && npm install --force`,
+        { timeout: 120000 }
+      );
       return { success: forceResult.exitCode === 0 };
 
     case "rebuild":
       log(`    Rebuilding from scratch...`);
       await execCommand(`cd ${sprintDir} && rm -rf dist build .next`);
-      const buildResult = await execCommand(`cd ${sprintDir} && npm run build`, { timeout: 180000 });
+      const buildResult = await execCommand(
+        `cd ${sprintDir} && npm run build`,
+        { timeout: 180000 }
+      );
       return { success: buildResult.exitCode === 0 };
 
     case "restart-services":
       log(`    Restarting Docker services...`);
       await execCommand(`docker-compose down`, { timeout: 30000 });
       await execCommand(`docker-compose up -d`, { timeout: 120000 });
-      await new Promise(resolve => setTimeout(resolve, 10000)); // Wait for services to start
+      await new Promise((resolve) => setTimeout(resolve, 10000)); // Wait for services to start
       return { success: true };
 
     case "check-ports":
@@ -424,12 +456,17 @@ async function executeFixStrategy(sprintId, strategy) {
 
     case "verify-env":
       log(`    Verifying environment variables...`);
-      const envResult = await execCommand(`cd ${sprintDir} && node -e "console.log(process.env.NODE_ENV)"`);
+      const envResult = await execCommand(
+        `cd ${sprintDir} && node -e "console.log(process.env.NODE_ENV)"`
+      );
       return { success: envResult.exitCode === 0 };
 
     default:
       log(`    ⚠️  Unknown strategy: ${strategy}`);
-      return { success: false, output: `Strategy '${strategy}' not implemented` };
+      return {
+        success: false,
+        output: `Strategy '${strategy}' not implemented`,
+      };
   }
 }
 ```
@@ -440,7 +477,9 @@ async function executeFixStrategy(sprintId, strategy) {
 
 ```javascript
 const mockupsDir = `${EPIC_DIR}/mockups`;
-const hasMockups = fs.existsSync(mockupsDir) && fs.existsSync(`${mockupsDir}/epic-overview.html`);
+const hasMockups =
+  fs.existsSync(mockupsDir) &&
+  fs.existsSync(`${mockupsDir}/epic-overview.html`);
 
 if (hasMockups) {
   log("\n📐 Frontend blueprints detected");
@@ -450,25 +489,31 @@ if (hasMockups) {
 
   // In auto-mode, notify and continue automatically
   if (global.AUTO_MODE) {
-    log("🤖 Auto-mode: Blueprints approved automatically, proceeding to implementation");
+    log(
+      "🤖 Auto-mode: Blueprints approved automatically, proceeding to implementation"
+    );
   } else {
     // Interactive mode: Offer optional pause
     const shouldIterate = await AskUserQuestion({
-      questions: [{
-        question: "Would you like to iterate on blueprint designs before implementation?",
-        header: "Blueprint Review",
-        multiSelect: false,
-        options: [
-          {
-            label: "No, continue",
-            description: "Blueprints approved, proceed with TSX implementation"
-          },
-          {
-            label: "Yes, pause",
-            description: "Pause to edit HTML blueprints with Claude Code"
-          }
-        ]
-      }]
+      questions: [
+        {
+          question:
+            "Would you like to iterate on blueprint designs before implementation?",
+          header: "Blueprint Review",
+          multiSelect: false,
+          options: [
+            {
+              label: "No, continue",
+              description:
+                "Blueprints approved, proceed with TSX implementation",
+            },
+            {
+              label: "Yes, pause",
+              description: "Pause to edit HTML blueprints with Claude Code",
+            },
+          ],
+        },
+      ],
     });
 
     if (shouldIterate.answers["Blueprint Review"] === "Yes, pause") {
@@ -486,16 +531,16 @@ if (hasMockups) {
   log("📝 Extracting blueprint patterns for TSX conversion...");
   await Bash({
     command: "bash .spec-flow/scripts/bash/extract-blueprint-patterns.sh",
-    description: "Extract Tailwind class patterns from blueprints"
+    description: "Extract Tailwind class patterns from blueprints",
   });
 
   // Optional: Check for common edge cases (skippable with --skip-validation)
-  const skipValidation = "$ARGUMENTS".includes('--skip-validation');
+  const skipValidation = "$ARGUMENTS".includes("--skip-validation");
   if (!skipValidation) {
     log("🔍 Generating edge case checklist...");
     await Bash({
       command: "bash .spec-flow/scripts/bash/check-conversion-edge-cases.sh",
-      description: "Generate HTML → TSX conversion edge case checklist"
+      description: "Generate HTML → TSX conversion edge case checklist",
     });
   }
 
@@ -505,6 +550,7 @@ if (hasMockups) {
 ```
 
 **Blueprint approval behavior**:
+
 - **Auto-mode** (`--auto`): Notify and continue automatically
 - **Interactive mode** (default): Optional pause to iterate
 - **Validation** (default): Extract patterns + edge cases
@@ -542,13 +588,15 @@ for (const layer of layers) {
 
   // Verify layer completion before proceeding (with auto-retry in auto-mode)
   for (const sprint of layerSprints) {
-    // CRITICAL: Verify sprint workflow-state.yaml exists (agents must create it)
-    const sprintStateFile = `${EPIC_DIR}/sprints/${sprint.id}/workflow-state.yaml`;
+    // CRITICAL: Verify sprint state.yaml exists (agents must create it)
+    const sprintStateFile = `${EPIC_DIR}/sprints/${sprint.id}/state.yaml`;
 
     if (!fs.existsSync(sprintStateFile)) {
-      log(`⚠️  WARNING: Sprint ${sprint.id} completed but workflow-state.yaml not found`);
+      log(
+        `⚠️  WARNING: Sprint ${sprint.id} completed but state.yaml not found`
+      );
       log(`   Agent may have forgotten to create state file`);
-      log(`   Creating minimal fallback workflow-state.yaml...`);
+      log(`   Creating minimal fallback state.yaml...`);
 
       // Create minimal fallback state (agent should have done this)
       const fallbackState = {
@@ -557,23 +605,23 @@ for (const layer of layers) {
           status: "completed",
           completed_at: new Date().toISOString(),
           duration_hours: "unknown",
-          note: "Auto-generated fallback - agent did not create workflow-state.yaml"
+          note: "Auto-generated fallback - agent did not create state.yaml",
         },
         tasks: {
           total: "unknown",
           completed: "unknown",
-          failed: 0
+          failed: 0,
         },
         tests: {
           total: "unknown",
           passed: "unknown",
           failed: 0,
-          coverage_percent: "unknown"
-        }
+          coverage_percent: "unknown",
+        },
       };
 
       fs.writeFileSync(sprintStateFile, yaml.dump(fallbackState));
-      log(`✅ Fallback workflow-state.yaml created for ${sprint.id}`);
+      log(`✅ Fallback state.yaml created for ${sprint.id}`);
     }
 
     const sprintStatus = checkSprintStatus(`${EPIC_DIR}/sprints/${sprint.id}`);
@@ -589,10 +637,15 @@ for (const layer of layers) {
       if (global.AUTO_MODE && failureClassification.type === "fixable") {
         log(`🔄 Auto-mode enabled - attempting auto-fix for ${sprint.id}...`);
 
-        const autoFixResult = await attemptAutoFix(sprint.id, failureClassification);
+        const autoFixResult = await attemptAutoFix(
+          sprint.id,
+          failureClassification
+        );
 
         if (autoFixResult.success) {
-          log(`✅ Auto-fix successful: ${sprint.id} recovered using '${autoFixResult.strategy}' (${autoFixResult.attempts} attempts)`);
+          log(
+            `✅ Auto-fix successful: ${sprint.id} recovered using '${autoFixResult.strategy}' (${autoFixResult.attempts} attempts)`
+          );
           continue; // Proceed to next sprint
         } else {
           log(`❌ Auto-fix failed: All strategies exhausted for ${sprint.id}`);
@@ -604,16 +657,20 @@ for (const layer of layers) {
       if (failureClassification.type === "critical") {
         throw new Error(
           `❌ CRITICAL BLOCKER: Sprint ${sprint.id} failed with critical issue\n` +
-          `   Reason: ${failureClassification.reason}\n` +
-          `   Details: ${failureClassification.details}\n` +
-          `   Action: Manual intervention required - cannot proceed to next layer`
+            `   Reason: ${failureClassification.reason}\n` +
+            `   Details: ${failureClassification.details}\n` +
+            `   Action: Manual intervention required - cannot proceed to next layer`
         );
       } else {
         throw new Error(
           `❌ Sprint ${sprint.id} failed - cannot proceed to next layer\n` +
-          `   Reason: ${failureClassification.reason}\n` +
-          `   Details: ${failureClassification.details}\n` +
-          `   ${global.AUTO_MODE ? "Auto-fix attempts exhausted" : "Manual fix required (not in auto-mode)"}`
+            `   Reason: ${failureClassification.reason}\n` +
+            `   Details: ${failureClassification.details}\n` +
+            `   ${
+              global.AUTO_MODE
+                ? "Auto-fix attempts exhausted"
+                : "Manual fix required (not in auto-mode)"
+            }`
         );
       }
     }
@@ -686,9 +743,9 @@ Execute Sprint {SPRINT_ID}: {SPRINT_NAME}
    - Refactor: Improve without changing behavior
    - Commit: Atomic commit per task
 4. Run sprint-level test suite
-5. **Update sprint workflow-state.yaml** (CRITICAL - must happen after completion):
+5. **Update sprint state.yaml** (CRITICAL - must happen after completion):
    ```yaml
-   # {EPIC_DIR}/sprints/{SPRINT_ID}/workflow-state.yaml
+   # {EPIC_DIR}/sprints/{SPRINT_ID}/state.yaml
    sprint:
      id: {SPRINT_ID}
      status: completed  # or failed if tests fail
@@ -734,12 +791,14 @@ Execute Sprint {SPRINT_ID}: {SPRINT_NAME}
 **On Failure (auto-mode aware):**
 
 **Auto-mode:**
+
 - Classify failure (critical vs fixable)
 - If fixable: Attempt 2-3 auto-fix retries
 - If fixed: Continue automatically
 - If critical or auto-fix exhausted: Stop and document
 
 **Interactive mode:**
+
 - Auto-rollback to last good commit
 - Document blocker in sprint status with classification
 - Do NOT proceed if critical
@@ -753,13 +812,13 @@ Execute Sprint {SPRINT_ID}: {SPRINT_NAME}
 
 ```javascript
 // Agents execute in parallel
-// Each agent updates its sprint's workflow-state.yaml
+// Each agent updates its sprint's state.yaml
 
 // Poll sprint status files
 const sprintStatuses = layerSprints.map(s => ({
   id: s.id,
-  status: readYAML(`${EPIC_DIR}/sprints/${s.id}/workflow-state.yaml`).status,
-  progress: readYAML(`${EPIC_DIR}/sprints/${s.id}/workflow-state.yaml`).tasks_completed
+  status: readYAML(`${EPIC_DIR}/sprints/${s.id}/state.yaml`).status,
+  progress: readYAML(`${EPIC_DIR}/sprints/${s.id}/state.yaml`).tasks_completed
 }));
 
 // Display progress
@@ -776,7 +835,13 @@ for (const status of sprintStatuses) {
 const failedSprints = sprintStatuses.filter((s) => s.status === "failed");
 
 if (failedSprints.length > 0) {
-  log(`❌ ${failedSprints.length} sprint(s) failed in Layer ${layerNum}: ${failedSprints.map((s) => s.id).join(", ")}`);
+  log(
+    `❌ ${
+      failedSprints.length
+    } sprint(s) failed in Layer ${layerNum}: ${failedSprints
+      .map((s) => s.id)
+      .join(", ")}`
+  );
 
   // Try to auto-fix each failed sprint in auto-mode
   if (global.AUTO_MODE) {
@@ -788,10 +853,15 @@ if (failedSprints.length > 0) {
       log(`  Sprint ${failedSprint.id}: ${failureClassification.reason}`);
 
       if (failureClassification.type === "fixable") {
-        const autoFixResult = await attemptAutoFix(failedSprint.id, failureClassification);
+        const autoFixResult = await attemptAutoFix(
+          failedSprint.id,
+          failureClassification
+        );
 
         if (autoFixResult.success) {
-          log(`  ✅ ${failedSprint.id} recovered using '${autoFixResult.strategy}'`);
+          log(
+            `  ✅ ${failedSprint.id} recovered using '${autoFixResult.strategy}'`
+          );
           // Remove from failedSprints list
           const index = failedSprints.indexOf(failedSprint);
           failedSprints.splice(index, 1);
@@ -811,22 +881,30 @@ if (failedSprints.length > 0) {
   }
 
   // Still have failures - classify if critical or not
-  const criticalFailures = failedSprints.filter(s => {
+  const criticalFailures = failedSprints.filter((s) => {
     const classification = classifyFailure(s.id);
     return classification.type === "critical";
   });
 
   if (criticalFailures.length > 0) {
     throw new Error(
-      `❌ CRITICAL BLOCKERS in Layer ${layerNum}: ${criticalFailures.map((s) => s.id).join(", ")}\n` +
-      `   These failures require manual intervention\n` +
-      `   Cannot proceed to next layer`
+      `❌ CRITICAL BLOCKERS in Layer ${layerNum}: ${criticalFailures
+        .map((s) => s.id)
+        .join(", ")}\n` +
+        `   These failures require manual intervention\n` +
+        `   Cannot proceed to next layer`
     );
   } else {
     throw new Error(
-      `❌ Sprint failures in Layer ${layerNum}: ${failedSprints.map((s) => s.id).join(", ")}\n` +
-      `   ${global.AUTO_MODE ? "Auto-fix attempts exhausted" : "Manual fixes required (not in auto-mode)"}\n` +
-      `   Cannot proceed to next layer`
+      `❌ Sprint failures in Layer ${layerNum}: ${failedSprints
+        .map((s) => s.id)
+        .join(", ")}\n` +
+        `   ${
+          global.AUTO_MODE
+            ? "Auto-fix attempts exhausted"
+            : "Manual fixes required (not in auto-mode)"
+        }\n` +
+        `   Cannot proceed to next layer`
     );
   }
 }
@@ -848,9 +926,7 @@ const layerResults = {
 };
 
 for (const sprint of layerSprints) {
-  const sprintState = readYAML(
-    `${EPIC_DIR}/sprints/${sprint.id}/workflow-state.yaml`
-  );
+  const sprintState = readYAML(`${EPIC_DIR}/sprints/${sprint.id}/state.yaml`);
 
   layerResults.total_tasks += sprintState.tasks_completed;
   layerResults.total_tests += sprintState.tests_passed;
@@ -878,12 +954,12 @@ log(`✅ Layer ${layerNum} Results:`);
 log(`  Sprints: ${layerResults.sprints_completed}`);
 log(`  Tasks: ${layerResults.total_tasks}`);
 
-// **CRITICAL: Update epic-level workflow-state.yaml after layer completion**
-const epicState = readYAML(`${EPIC_DIR}/workflow-state.yaml`);
+// **CRITICAL: Update epic-level state.yaml after layer completion**
+const epicState = readYAML(`${EPIC_DIR}/state.yaml`);
 epicState.layers.completed += 1;
 epicState.sprints.completed += layerResults.sprints_completed;
 
-writeYAML(`${EPIC_DIR}/workflow-state.yaml`, epicState);
+writeYAML(`${EPIC_DIR}/state.yaml`, epicState);
 
 log(
   `📊 Epic Progress: Layer ${epicState.layers.completed}/${epicState.layers.total} complete`
@@ -893,17 +969,21 @@ log(`  Duration: ${layerResults.duration_hours}h`);
 log(`  Contracts Locked: ${layerResults.contracts_locked.length}`);
 
 // **CRITICAL: Commit layer completion atomically (per-layer commit)**
-const SPRINT_IDS = layerSprints.map(s => s.id).join(', ');
+const SPRINT_IDS = layerSprints.map((s) => s.id).join(", ");
 const LAYER_NUM = layerNum;
 
-execSync(`git add epics/${EPIC_SLUG}/sprints/${layerSprints.map(s => s.id).join('/ epics/${EPIC_SLUG}/sprints/')}/`);
-execSync(`git add epics/${EPIC_SLUG}/workflow-state.yaml`);
+execSync(
+  `git add epics/${EPIC_SLUG}/sprints/${layerSprints
+    .map((s) => s.id)
+    .join("/ epics/${EPIC_SLUG}/sprints/")}/`
+);
+execSync(`git add epics/${EPIC_SLUG}/state.yaml`);
 execSync(`git commit -m "feat(epic): complete layer ${LAYER_NUM} (sprints ${SPRINT_IDS})
 
 Duration: ${layerResults.duration_hours}h
 Tasks: ${layerResults.total_tasks}
 Tests: ${layerResults.total_tests} passing
-Coverage: ${layerResults.coverage_percent || 'N/A'}%
+Coverage: ${layerResults.coverage_percent || "N/A"}%
 Contracts locked: ${layerResults.contracts_locked.length}
 
 Layer ${LAYER_NUM} of ${epicState.layers.total} complete
@@ -919,9 +999,12 @@ log(`✅ Layer ${LAYER_NUM} committed to git`);
 ```
 
 **Alternative (recommended): Use git-workflow-enforcer skill:**
+
 ```javascript
 // Invoke skill to auto-generate commit
-await executeCommand(`/meta:enforce-git-commits --phase "epic-layer-${LAYER_NUM}"`);
+await executeCommand(
+  `/meta:enforce-git-commits --phase "epic-layer-${LAYER_NUM}"`
+);
 ```
 
 ### Step 7: Auto-Trigger Workflow Audit
@@ -950,7 +1033,7 @@ await executeCommand(`/meta:enforce-git-commits --phase "epic-layer-${LAYER_NUM}
 ```bash
 # Commit audit results and final workflow state
 git add epics/*/audit-report.xml
-git add epics/*/workflow-state.yaml
+git add epics/*/state.yaml
 
 git commit -m "feat(epic): complete ${epic_slug} with ${multiplier}x velocity
 
@@ -1029,7 +1112,7 @@ Artifacts Generated:
   ✅ sprints/*/tasks.md (all completed)
   ✅ contracts/*.yaml (${contracts_locked.length} locked)
   ✅ audit-report.xml
-  ✅ workflow-state.yaml (updated)
+  ✅ state.yaml (updated)
 
 Next: /optimize (quality gates + apply audit recommendations)
 ```
@@ -1053,7 +1136,7 @@ Next: /optimize (quality gates + apply audit recommendations)
 
 3. **Sprint results consolidated**:
 
-   - All sprint workflow-state.yaml files show status: completed
+   - All sprint state.yaml files show status: completed
    - Task completion counts accurate
    - Test results aggregated correctly
 
@@ -1090,7 +1173,7 @@ Next: /optimize (quality gates + apply audit recommendations)
 2. **Check all sprint statuses**:
 
    ```bash
-   grep "status:" epics/*/sprints/*/workflow-state.yaml
+   grep "status:" epics/*/sprints/*/state.yaml
    ```
 
    All should show "completed"
@@ -1098,7 +1181,7 @@ Next: /optimize (quality gates + apply audit recommendations)
 3. **Verify contract violations are zero**:
 
    ```bash
-   grep "contract_violations:" epics/*/sprints/*/workflow-state.yaml
+   grep "contract_violations:" epics/*/sprints/*/state.yaml
    ```
 
    All counts should be 0
@@ -1125,7 +1208,7 @@ Next: /optimize (quality gates + apply audit recommendations)
    ```
    Should list all locked API contracts
 
-**Never claim epic completion without reading all sprint workflow-state.yaml files.**
+**Never claim epic completion without reading all sprint state.yaml files.**
 </verification>
 
 <output>
@@ -1134,7 +1217,7 @@ Next: /optimize (quality gates + apply audit recommendations)
 **Sprint implementations** (epics/NNN-slug/sprints/S\*/):
 
 - tasks.md — All tasks marked as completed per sprint
-- workflow-state.yaml — Sprint status, task counts, test results, contract info
+- state.yaml — Sprint status, task counts, test results, contract info
 - Source code files (varies by sprint subsystem)
 
 **API Contracts** (epics/NNN-slug/contracts/):
@@ -1144,7 +1227,7 @@ Next: /optimize (quality gates + apply audit recommendations)
 
 **Epic tracking** (epics/NNN-slug/):
 
-- workflow-state.yaml — Epic-level status with layer completion
+- state.yaml — Epic-level status with layer completion
 - audit-report.xml — Effectiveness metrics, bottlenecks, recommendations
 
 **Git commits**:
@@ -1207,6 +1290,7 @@ Launch all parallel sprints in SINGLE message with multiple Task tool calls.
 **Sprint failure (auto-mode aware):**
 
 **In auto-mode:**
+
 1. Classify failure type (critical vs fixable)
 2. If fixable: Attempt auto-fix with 2-3 retries
    - Try strategies: re-run tests, clean install, rebuild, restart services
@@ -1216,18 +1300,21 @@ Launch all parallel sprints in SINGLE message with multiple Task tool calls.
 5. If critical blocker: Skip auto-fix, stop immediately
 
 **In interactive mode (or after auto-fix exhausted):**
-1. Mark sprint as failed in workflow-state.yaml
+
+1. Mark sprint as failed in state.yaml
 2. Classify as critical or fixable for user guidance
 3. Block layer progression
 4. Present error with details and classification
 5. User must manually fix and run `/epic continue`
 
 **Critical blockers (stop always, even in auto-mode):**
+
 - CI pipeline failures (GitHub Actions, GitLab CI)
 - Security scan failures (High/Critical CVEs)
 - Deployment failures (production/staging crashes)
 
 **Fixable issues (auto-retry in auto-mode):**
+
 - Test failures (not CI-related)
 - Build failures (compilation/bundling)
 - Dependency installation failures

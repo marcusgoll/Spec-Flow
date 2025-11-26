@@ -118,7 +118,7 @@ We chose **[Option Name]** because:
 
 - Start with the user impact, not the technical change
 - Good: "Added velocity tracking to show feature completion trends"
-- Bad: "Implemented task-tracker updates in workflow-state.yaml"
+- Bad: "Implemented task-tracker updates in state.yaml"
 - Link to PRs: `[#47](link)`
 - Use present tense: "Adds", "Fixes", "Changes"
 

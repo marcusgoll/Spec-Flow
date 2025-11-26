@@ -11,7 +11,7 @@ Execute production deployment workflow by promoting validated staging builds to 
 <production_deployment_workflow>
 **Prerequisite-driven production promotion:**
 
-1. **Verify staging validation**: Check workflow-state.yaml manual_gates.staging_validation.status = approved
+1. **Verify staging validation**: Check state.yaml manual_gates.staging_validation.status = approved
 2. **Bump semantic version**: Update package.json/version files (major.minor.patch)
 3. **Create release tag**: Tag git commit with new version
 4. **Deploy to production**: Push to production branch or trigger deployment
@@ -20,6 +20,7 @@ Execute production deployment workflow by promoting validated staging builds to 
 7. **Monitor post-deploy**: Watch logs, metrics, alerts for 15-30 minutes
 
 **Example workflow:**
+
 ```
 Verifying staging validation complete... ✅
 Current version: 2.6.0
@@ -40,30 +41,34 @@ Production deployment successful!
 Release: https://github.com/user/repo/releases/tag/v2.7.0
 Ship report: specs/NNN-slug/production-ship-report.md
 ```
+
 </production_deployment_workflow>
 
 <trigger_conditions>
 **Auto-invoke when:**
+
 - `/ship-prod` command executed
 - User mentions "deploy to production", "ship to prod", "production release"
-- workflow-state.yaml shows current_phase: ship-prod
+- state.yaml shows current_phase: ship-prod
 
 **Prerequisites required:**
+
 - Staging validation approved (manual_gates.staging_validation.status = approved)
 - Rollback gate passed (quality_gates.rollback.status = passed)
 - Git repository has remote configured
 - Production deployment configuration exists
-</trigger_conditions>
-</quick_start>
+  </trigger_conditions>
+  </quick_start>
 
 <workflow>
 <step_1_verify_staging>
 **1. Verify Staging Validation Complete**
 
 Check workflow state for staging validation approval:
+
 ```bash
 # Read workflow state
-STATE_FILE="specs/$(ls -t specs/ | head -1)/workflow-state.yaml"
+STATE_FILE="specs/$(ls -t specs/ | head -1)/state.yaml"
 
 STAGING_STATUS=$(grep -A2 "staging_validation:" "$STATE_FILE" | grep "status:" | awk '{print $2}')
 
@@ -78,15 +83,17 @@ echo "✅ Staging validation approved"
 ```
 
 **Blocking conditions:**
+
 - Staging validation status ≠ approved
 - Rollback gate status ≠ passed
 - No staging deployment exists
-</step_1_verify_staging>
+  </step_1_verify_staging>
 
 <step_2_bump_version>
 **2. Bump Semantic Version**
 
 Determine version bump type and update version files:
+
 ```bash
 # Read current version
 CURRENT_VERSION=$(node -p "require('./package.json').version")
@@ -105,20 +112,23 @@ echo "Version bumped: $CURRENT_VERSION → $NEW_VERSION"
 ```
 
 **Semantic versioning rules:**
+
 - **Major (X.0.0)**: Breaking changes, API contract changes
 - **Minor (0.X.0)**: New features, backward compatible
 - **Patch (0.0.X)**: Bug fixes, no new features
 
 **Files to update:**
+
 - package.json (version field)
 - CHANGELOG.md (unreleased → version section)
 - Any version constants in code
-</step_2_bump_version>
+  </step_2_bump_version>
 
 <step_3_create_release_tag>
 **3. Create Git Release Tag**
 
 Tag the commit and push to remote:
+
 ```bash
 # Create annotated tag
 git tag -a "v${NEW_VERSION}" -m "Release v${NEW_VERSION}
@@ -132,15 +142,17 @@ echo "✅ Tag created and pushed: v${NEW_VERSION}"
 ```
 
 **Tag format:**
+
 - Annotated tags required (not lightweight)
 - Prefix with "v" (e.g., v2.7.0)
 - Include CHANGELOG excerpt in tag message
-</step_3_create_release_tag>
+  </step_3_create_release_tag>
 
 <step_4_deploy_production>
 **4. Deploy to Production**
 
 Trigger production deployment based on deployment model:
+
 ```bash
 # Model 1: Git push to production branch
 git push origin main:production
@@ -155,16 +167,18 @@ vercel --prod --yes
 ```
 
 **Deployment verification:**
+
 - Wait for deployment to complete
 - Check deployment platform status
 - Verify deployment ID/URL returned
 - Record deployment metadata
-</step_4_deploy_production>
+  </step_4_deploy_production>
 
 <step_5_health_checks>
 **5. Run Production Health Checks**
 
 Verify all critical services operational:
+
 ```bash
 echo "Running production health checks..."
 
@@ -195,17 +209,19 @@ echo "✅ All health checks passed"
 ```
 
 **Critical checks:**
+
 - API endpoints return 200 OK
 - Database connections healthy
 - Cache/Redis operational
 - CDN serving latest assets
 - Background jobs processing
-</step_5_health_checks>
+  </step_5_health_checks>
 
 <step_6_generate_ship_report>
 **6. Generate Production Ship Report**
 
 Create production-ship-report.md with deployment metadata:
+
 ```bash
 cat > specs/$FEATURE_SLUG/production-ship-report.md <<EOF
 # Production Ship Report: $FEATURE_SLUG
@@ -238,16 +254,18 @@ echo "✅ Ship report generated"
 ```
 
 **Report contents:**
+
 - Deployment metadata (version, time, ID, URLs)
 - Health check results
 - Rollback procedure
 - Post-deployment monitoring plan
-</step_6_generate_ship_report>
+  </step_6_generate_ship_report>
 
 <step_7_monitor_post_deploy>
 **7. Monitor Post-Deployment**
 
 Watch production for 15-30 minutes after deployment:
+
 ```bash
 echo "Monitoring production (15-30 minutes)..."
 echo "Watch for:"
@@ -266,6 +284,7 @@ echo "Monitor dashboard: https://monitoring.example.com/dashboard"
 ```
 
 **Monitoring checklist:**
+
 - [ ] Error rates normal (<1% increase)
 - [ ] Response times acceptable (<10% degradation)
 - [ ] No critical alerts triggered
@@ -273,12 +292,13 @@ echo "Monitor dashboard: https://monitoring.example.com/dashboard"
 - [ ] No user-reported issues in first 30 minutes
 
 **If issues detected:**
+
 1. Assess severity (critical vs minor)
 2. Initiate rollback if critical
 3. Apply hotfix if minor and fixable quickly
 4. Document incident for post-mortem
-</step_7_monitor_post_deploy>
-</workflow>
+   </step_7_monitor_post_deploy>
+   </workflow>
 
 <anti_patterns>
 **Avoid these production deployment mistakes:**
@@ -292,7 +312,7 @@ echo "Monitor dashboard: https://monitoring.example.com/dashboard"
 **✅ Always verify staging validation approved**
 ```bash
 # GOOD: Check workflow state first
-grep -A2 "staging_validation:" workflow-state.yaml
+grep -A2 "staging_validation:" state.yaml
 # Ensure status: approved before proceeding
 ```
 **Impact**: Untested code reaches production, high risk of incidents
@@ -308,7 +328,7 @@ git push origin main:production
 **✅ Verify rollback gate passed**
 ```bash
 # GOOD: Ensure rollback tested on staging
-grep -A2 "rollback:" workflow-state.yaml | grep "status: passed"
+grep -A2 "rollback:" state.yaml | grep "status: passed"
 # Confidence that rollback works if needed
 ```
 **Impact**: Unable to recover quickly if deployment fails
@@ -381,7 +401,7 @@ git push origin main:production
 <success_criteria>
 **Production deployment successful when:**
 
-- ✓ Staging validation approved (workflow-state.yaml verified)
+- ✓ Staging validation approved (state.yaml verified)
 - ✓ Rollback gate passed (confidence in recovery procedure)
 - ✓ Version bumped correctly (semantic versioning followed)
 - ✓ Git tag created and pushed (v${VERSION} format)
@@ -393,9 +413,10 @@ git push origin main:production
 - ✓ Deployment metadata recorded (ID, URLs, timestamps)
 
 **Quality gates passed:**
+
 - No critical errors in first 30 minutes
 - Error rate <1% increase from baseline
 - Response times <10% degradation
 - No user-reported critical issues
 - All background jobs processing normally
-</success_criteria>
+  </success_criteria>

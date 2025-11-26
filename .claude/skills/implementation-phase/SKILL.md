@@ -64,12 +64,14 @@ Analyze tasks.md for dependency relationships:
 
 ```markdown
 # Look for dependencies in tasks.md
+
 T001: Create User model [no dependencies]
 T002: Create AuthService [depends: T001]
 T003: Create LoginController [depends: T002]
 ```
 
 Identify parallel work opportunities:
+
 - Independent tasks can run concurrently
 - Dependent tasks must run sequentially
 
@@ -88,6 +90,7 @@ For complex features (>10 tasks, multiple components), use test-architect agent:
 ```
 
 Benefits:
+
 - Tests written before implementation (pure TDD)
 - Coverage of happy paths, edge cases, error conditions
 - Executable specification from acceptance criteria
@@ -101,6 +104,7 @@ See resources/tdd-workflow.md#test-architect for detailed usage.
 For each task, follow RED → GREEN → REFACTOR cycle:
 
 **RED (Write Failing Test)**:
+
 ```python
 def test_user_can_login_with_valid_credentials():
     """Test user authentication with correct email/password"""
@@ -113,6 +117,7 @@ def test_user_can_login_with_valid_credentials():
 ```
 
 **GREEN (Minimal Implementation)**:
+
 ```python
 def login(email, password):
     user = User.query.filter_by(email=email).first()
@@ -123,6 +128,7 @@ def login(email, password):
 ```
 
 **REFACTOR (Clean Up)**:
+
 - Extract magic values to constants
 - Remove duplication
 - Improve naming
@@ -145,6 +151,7 @@ After completing each task, update NOTES.md:
 ```
 
 Track velocity for remaining tasks:
+
 - Average time per task
 - Estimated completion date
 - Blockers and dependencies
@@ -169,6 +176,7 @@ grep -r "validate_email" src/
 ```
 
 If found:
+
 - Reuse existing code (DRY principle)
 - Extract to shared utility if needed
 - Refactor duplicated logic
@@ -210,6 +218,7 @@ For TypeScript projects, use type-enforcer agent to validate strict type safety:
 ```
 
 Blocks:
+
 - Implicit `any` types (requires explicit type annotations)
 - Null/undefined access without guards
 - Missing exhaustive pattern matching
@@ -229,6 +238,7 @@ For security-sensitive code (auth, API, uploads), use security-sentry agent:
 ```
 
 Critical scans:
+
 - Authentication/session code
 - File upload handlers
 - API endpoints accepting user input
@@ -256,6 +266,7 @@ Tests: test_user_can_login_with_valid_credentials"
 ```
 
 Commit message format:
+
 - Type: feat, fix, refactor, test, docs
 - Subject: concise description (<75 chars)
 - Body: what + why (not how)
@@ -270,6 +281,7 @@ See resources/commit-strategy.md for commit best practices.
 If task blocked (missing dependency, unclear requirement, external blocker):
 
 1. Document blocker in NOTES.md:
+
    ```markdown
    ## Blocked Tasks
 
@@ -278,7 +290,7 @@ If task blocked (missing dependency, unclear requirement, external blocker):
 
 2. Move to next independent task
 3. Escalate blocker if critical path
-4. Update workflow-state.yaml with blocker reason
+4. Update state.yaml with blocker reason
 
 See resources/handling-blocked-tasks.md for escalation strategies.
 </step>
@@ -305,7 +317,7 @@ npm run type-check  # Should be green
 # Manual review or use duplication detection tool
 ```
 
-Update workflow-state.yaml: `implementation.status = completed`
+Update state.yaml: `implementation.status = completed`
 
 Proceed to `/optimize` for code review and production readiness.
 </step>
@@ -324,7 +336,7 @@ After implementation phase, verify:
 - Type safety validated (TypeScript strict mode passing)
 - Security validated (no critical vulnerabilities from security-sentry)
 - Blocked tasks escalated if on critical path
-</validation>
+  </validation>
 
 <anti_patterns>
 <pitfall name="testing_after_implementation">
@@ -332,11 +344,13 @@ After implementation phase, verify:
 **✅ Do**: Write failing test first (RED), then implement (GREEN), then refactor
 
 **Why**: Writing tests after code leads to:
+
 - Tests that pass implementation (not requirements)
 - Lower coverage (hard to test after the fact)
 - Design flaws missed (tests reveal design issues early)
 
 **Example** (bad):
+
 ```
 1. Write login() function
 2. Manually test in browser
@@ -344,11 +358,13 @@ After implementation phase, verify:
 ```
 
 **Example** (good):
+
 ```
 1. Write test_user_can_login() (fails - no implementation)
 2. Implement login() to make test pass
 3. Refactor for clarity
 ```
+
 </pitfall>
 
 <pitfall name="skipping_duplication_checks">
@@ -356,27 +372,31 @@ After implementation phase, verify:
 **✅ Do**: Search codebase for similar functions/components before writing
 
 **Why**: Leads to:
+
 - Code duplication (DRY violations)
 - Inconsistent behavior across codebase
 - Higher maintenance burden (fix bugs in multiple places)
 
 **Example** (bad):
+
 ```javascript
 // New file: utils/emailValidator.js
 function validateEmail(email) {
-    return /\S+@\S+\.\S+/.test(email);
+  return /\S+@\S+\.\S+/.test(email);
 }
 
 // Didn't search - this already exists in utils/validation.js!
 ```
 
 **Example** (good):
+
 ```bash
 # Before writing validateEmail, search:
 grep -r "validateEmail" src/
 # Found: src/utils/validation.js already has validateEmail()
 # Reuse existing function instead of duplicating
 ```
+
 </pitfall>
 
 <pitfall name="accumulating_test_debt">
@@ -384,11 +404,13 @@ grep -r "validateEmail" src/
 **✅ Do**: Fix failing tests immediately before proceeding
 
 **Why**: Accumulating test failures leads to:
+
 - Unknown which change broke tests
 - Harder to debug (multiple changes since last green)
 - Loss of confidence in test suite
 
 **Example** (bad):
+
 ```
 T001: Implemented ✓ (tests passing)
 T002: Implemented ✓ (1 test failing - ignore for now)
@@ -397,12 +419,14 @@ T003: Implemented ✓ (3 tests failing - will fix later)
 ```
 
 **Example** (good):
+
 ```
 T001: Implemented ✓ (all tests passing)
 T002: Implemented ✓ (1 test failing - STOP, fix immediately)
 # Fix test before T003
 T003: Implemented ✓ (all tests passing)
 ```
+
 </pitfall>
 
 <pitfall name="ignoring_type_errors">
@@ -410,26 +434,30 @@ T003: Implemented ✓ (all tests passing)
 **✅ Do**: Fix type errors by adding proper type annotations
 
 **Why**: Type errors indicate design issues:
+
 - Null safety violations
 - Incorrect function signatures
 - Missing type definitions
 
 **Example** (bad):
+
 ```typescript
 // @ts-ignore
-const user = getUser(userId);  // Type error suppressed
-console.log(user.email);  // May crash if user is null
+const user = getUser(userId); // Type error suppressed
+console.log(user.email); // May crash if user is null
 ```
 
 **Example** (good):
+
 ```typescript
 const user: User | null = getUser(userId);
 if (user) {
-    console.log(user.email);  // Type-safe
+  console.log(user.email); // Type-safe
 } else {
-    console.error('User not found');
+  console.error("User not found");
 }
 ```
+
 </pitfall>
 
 <pitfall name="large_uncommitted_changes">
@@ -437,6 +465,7 @@ if (user) {
 **✅ Do**: Commit after each task or task triplet (small, frequent commits)
 
 **Why**: Large uncommitted changes are risky:
+
 - Hard to debug (which change broke what?)
 - Hard to review (massive diffs)
 - Risk of losing work (no backup)
@@ -511,13 +540,14 @@ Implementation phase complete when:
 - [ ] Git commits made (Conventional Commits format)
 - [ ] Type safety validated (TypeScript strict mode passing - if applicable)
 - [ ] Security validated (security-sentry shows no critical vulnerabilities)
-- [ ] workflow-state.yaml updated (implementation.status = completed)
+- [ ] state.yaml updated (implementation.status = completed)
 
 Ready to proceed to /optimize phase.
 </success_criteria>
 
 <quality_standards>
 **Good implementation**:
+
 - Test-first discipline (all code has tests before implementation)
 - High coverage (≥80% unit + integration)
 - No duplication (DRY violations <3)
@@ -526,12 +556,13 @@ Ready to proceed to /optimize phase.
 - Secure (no vulnerabilities from security-sentry)
 
 **Bad implementation**:
+
 - Tests written after code (low coverage, design flaws)
 - Code duplication (DRY violations >5)
 - Large uncommitted changes (hours of work, risky)
 - Type errors suppressed (`@ts-ignore`, `any` types)
 - Security vulnerabilities ignored (SQL injection, XSS, etc.)
-</quality_standards>
+  </quality_standards>
 
 <troubleshooting>
 **Issue**: Tests failing after implementation
@@ -555,24 +586,28 @@ Ready to proceed to /optimize phase.
 
 <reference_guides>
 Core workflow:
+
 - TDD Workflow (resources/tdd-workflow.md) - RED → GREEN → REFACTOR cycle
 - Task Batching (resources/task-batching.md) - Parallel execution strategy
 - Task Tracking (resources/task-tracking.md) - NOTES.md updates, velocity tracking
 
 Quality gates:
+
 - Tech Stack Validation (resources/tech-stack-validation.md) - Load constraints from tech-stack.md
 - Anti-Duplication Checks (resources/anti-duplication-checks.md) - Search patterns, DRY enforcement
 - Continuous Testing (resources/continuous-testing.md) - Test cadence, coverage requirements
 
 Advanced topics:
+
 - Handling Blocked Tasks (resources/handling-blocked-tasks.md) - Escalation strategies
 - Integration Testing (resources/integration-testing.md) - Multi-component tests
 - UI Component Testing (resources/ui-component-testing.md) - React Testing Library
 - E2E Testing (resources/e2e-testing.md) - Playwright/Cypress patterns
 
 Reference:
+
 - Common Mistakes (resources/common-mistakes.md) - Anti-patterns to avoid
 - Best Practices (resources/best-practices.md) - Proven patterns
 - Code Review Checklist (resources/code-review-checklist.md) - Pre-commit validation
 - Troubleshooting Guide (resources/troubleshooting.md) - Common blockers
-</reference_guides>
+  </reference_guides>

@@ -1,0 +1,13 @@
+# Optional refinement for specs/<feature>/state.yaml
+feature: your-feature-slug
+epic: parent-epic-slug
+status: planning
+phases:
+  spec: pending
+  clarify: pending
+  plan: pending
+  tasks: pending
+  implement: pending
+  optimize: pending
+  ship: pending
+last_updated: 1970-01-01T00:00:00Z

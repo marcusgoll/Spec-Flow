@@ -2,7 +2,17 @@
 name: help
 description: Analyze workflow state and provide context-aware guidance with visual progress indicators and recommended next steps
 argument-hint: [verbose]
-allowed-tools: [Read, Bash(ls:*), Bash(yq:*), Bash(cat:*), Bash(echo:*), Bash(wc:*), Bash(grep:*), Bash(tail:*)]
+allowed-tools:
+  [
+    Read,
+    Bash(ls:*),
+    Bash(yq:*),
+    Bash(cat:*),
+    Bash(echo:*),
+    Bash(wc:*),
+    Bash(grep:*),
+    Bash(tail:*),
+  ]
 ---
 
 <objective>
@@ -20,57 +30,63 @@ Analyze the current workflow context (feature directory, workflow state, phase p
 
 ! `FEATURE_DIR=$(ls -td specs/*/ 2>/dev/null | head -1 | sed 's:/$::'); if [ -z "$FEATURE_DIR" ]; then echo "no_feature"; else echo "$FEATURE_DIR"; fi`
 
-! `if [ "$FEATURE_DIR" = "no_feature" ]; then echo "no_feature"; elif [ ! -f "$FEATURE_DIR/workflow-state.yaml" ]; then echo "no_state"; else echo "in_feature"; fi`
+! `if [ "$FEATURE_DIR" = "no_feature" ]; then echo "no_feature"; elif [ ! -f "$FEATURE_DIR/state.yaml" ]; then echo "no_state"; else echo "in_feature"; fi`
 
 ## Step 2: Load Workflow State (if in feature)
 
-! `if [ -f "$FEATURE_DIR/workflow-state.yaml" ]; then yq eval '.workflow.phase' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown"; fi`
+! `if [ -f "$FEATURE_DIR/state.yaml" ]; then yq eval '.workflow.phase' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"; fi`
 
-! `if [ -f "$FEATURE_DIR/workflow-state.yaml" ]; then yq eval '.workflow.status' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown"; fi`
+! `if [ -f "$FEATURE_DIR/state.yaml" ]; then yq eval '.workflow.status' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"; fi`
 
-! `if [ -f "$FEATURE_DIR/workflow-state.yaml" ]; then yq eval '.deployment_model' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown"; fi`
+! `if [ -f "$FEATURE_DIR/state.yaml" ]; then yq eval '.deployment_model' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"; fi`
 
-! `if [ -f "$FEATURE_DIR/workflow-state.yaml" ]; then yq eval '.feature.slug' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown"; fi`
+! `if [ -f "$FEATURE_DIR/state.yaml" ]; then yq eval '.feature.slug' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"; fi`
 
-! `if [ -f "$FEATURE_DIR/workflow-state.yaml" ]; then yq eval '.feature.branch_name' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown"; fi`
+! `if [ -f "$FEATURE_DIR/state.yaml" ]; then yq eval '.feature.branch_name' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"; fi`
 
-! `if [ -f "$FEATURE_DIR/workflow-state.yaml" ]; then yq eval '.workflow.completed_phases[]' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null | wc -l | tr -d ' '; fi`
+! `if [ -f "$FEATURE_DIR/state.yaml" ]; then yq eval '.workflow.completed_phases[]' "$FEATURE_DIR/state.yaml" 2>/dev/null | wc -l | tr -d ' '; fi`
 
-! `if [ -f "$FEATURE_DIR/workflow-state.yaml" ]; then yq eval '.workflow.failed_phases[]' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null; fi`
+! `if [ -f "$FEATURE_DIR/state.yaml" ]; then yq eval '.workflow.failed_phases[]' "$FEATURE_DIR/state.yaml" 2>/dev/null; fi`
 
-! `if [ -f "$FEATURE_DIR/workflow-state.yaml" ]; then yq eval '.workflow.manual_gates.preview.status' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "null"; fi`
+! `if [ -f "$FEATURE_DIR/state.yaml" ]; then yq eval '.workflow.manual_gates.preview.status' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"; fi`
 
-! `if [ -f "$FEATURE_DIR/workflow-state.yaml" ]; then yq eval '.workflow.manual_gates.validate_staging.status' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "null"; fi`
+! `if [ -f "$FEATURE_DIR/state.yaml" ]; then yq eval '.workflow.manual_gates.validate_staging.status' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"; fi`
 
 ## Step 3: Render Context-Specific Help
 
 Based on detected context, provide appropriate guidance:
 
 **Context 1: No Feature Directory**
+
 - Show getting started commands (/feature, /roadmap, /init-project)
 - Link to documentation
 
 **Context 2: Missing State File**
+
 - Show recovery options
 - Explain how to manually restore or start fresh
 
 **Context 3: Workflow Blocked (failed status)**
+
 - Show failed phases
 - Display recent errors from error-log.md
 - Provide recovery commands (/debug, /feature continue)
 
 **Context 4: At Manual Gate (preview or staging validation)**
+
 - Show testing checklist
 - Display environment URL
 - Provide approval/abort commands
 
 **Context 5: Feature Complete**
+
 - Show completion summary
 - Display production version and URL
 - List generated artifacts
 - Suggest next feature commands
 
 **Context 6: Active Phase (default)**
+
 - Show progress bar with emoji indicators
 - Display current phase and status
 - Show completed/total phases
@@ -78,14 +94,16 @@ Based on detected context, provide appropriate guidance:
 - Display workflow path for deployment model
 
 **Verbose Mode** (if $ARGUMENTS contains "verbose"):
+
 - Show quality gate status (pre-flight, code-review, rollback)
 - Display deployment URLs and versions
 - Show GitHub issue link if available
 - List all completed phases
-</process>
+  </process>
 
 <success_criteria>
 Help output is successful when:
+
 - Workflow context correctly detected (6 possible contexts)
 - Current phase and progress accurately displayed
 - Next steps are specific and actionable
@@ -93,7 +111,7 @@ Help output is successful when:
 - Manual gates show clear approval/abort instructions
 - Deployment model correctly reflected in workflow path
 - Verbose mode provides additional detail when requested
-</success_criteria>
+  </success_criteria>
 
 ---
 
@@ -101,7 +119,7 @@ Based on the detected context above, here is your current workflow state:
 
 ## Context Detection
 
-! `CONTEXT=$(if [ "$FEATURE_DIR" = "no_feature" ]; then echo "no_feature"; elif [ ! -f "$FEATURE_DIR/workflow-state.yaml" ]; then echo "no_state"; else WORKFLOW_STATUS=$(yq eval '.workflow.status' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown"); PREVIEW_GATE=$(yq eval '.workflow.manual_gates.preview.status' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "null"); STAGING_GATE=$(yq eval '.workflow.manual_gates.validate_staging.status' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "null"); COMPLETED_PHASES=$(yq eval '.workflow.completed_phases[]' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null); if [ "$WORKFLOW_STATUS" = "failed" ]; then echo "blocked"; elif [ "$PREVIEW_GATE" = "pending" ] || [ "$STAGING_GATE" = "pending" ]; then echo "manual_gate"; elif [ "$WORKFLOW_STATUS" = "completed" ] && echo "$COMPLETED_PHASES" | grep -q "finalize"; then echo "complete"; else echo "active"; fi; fi); echo "$CONTEXT"`
+! `CONTEXT=$(if [ "$FEATURE_DIR" = "no_feature" ]; then echo "no_feature"; elif [ ! -f "$FEATURE_DIR/state.yaml" ]; then echo "no_state"; else WORKFLOW_STATUS=$(yq eval '.workflow.status' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"); PREVIEW_GATE=$(yq eval '.workflow.manual_gates.preview.status' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"); STAGING_GATE=$(yq eval '.workflow.manual_gates.validate_staging.status' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"); COMPLETED_PHASES=$(yq eval '.workflow.completed_phases[]' "$FEATURE_DIR/state.yaml" 2>/dev/null); if [ "$WORKFLOW_STATUS" = "failed" ]; then echo "blocked"; elif [ "$PREVIEW_GATE" = "pending" ] || [ "$STAGING_GATE" = "pending" ]; then echo "manual_gate"; elif [ "$WORKFLOW_STATUS" = "completed" ] && echo "$COMPLETED_PHASES" | grep -q "finalize"; then echo "complete"; else echo "active"; fi; fi); echo "$CONTEXT"`
 
 ---
 
@@ -155,7 +173,7 @@ If CONTEXT is "no_state":
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Feature directory detected: ! `echo "$FEATURE_DIR"`/
-But workflow-state.yaml is missing or corrupted.
+But state.yaml is missing or corrupted.
 
 **Possible causes:**
 1. State file was deleted
@@ -170,7 +188,7 @@ But workflow-state.yaml is missing or corrupted.
    - Run: /feature "Feature description"
 
 2. **Manual recovery:**
-   - Copy template: .spec-flow/templates/workflow-state.yaml
+   - Copy template: .spec-flow/templates/state.yaml
    - Edit manually with feature details
    - Continue workflow with /feature continue
 
@@ -187,11 +205,11 @@ But workflow-state.yaml is missing or corrupted.
 
 If CONTEXT is "blocked":
 
-! `CURRENT_PHASE=$(yq eval '.workflow.phase' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown")`
+! `CURRENT_PHASE=$(yq eval '.workflow.phase' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown")`
 
-! `FEATURE_SLUG=$(yq eval '.feature.slug' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown")`
+! `FEATURE_SLUG=$(yq eval '.feature.slug' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown")`
 
-! `FAILED_PHASES=$(yq eval '.workflow.failed_phases[]' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null)`
+! `FAILED_PHASES=$(yq eval '.workflow.failed_phases[]' "$FEATURE_DIR/state.yaml" 2>/dev/null)`
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -234,9 +252,9 @@ Phase: ! `echo "$CURRENT_PHASE"` (failed)
 
 If CONTEXT is "manual_gate":
 
-! `PREVIEW_GATE=$(yq eval '.workflow.manual_gates.preview.status' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "null")`
+! `PREVIEW_GATE=$(yq eval '.workflow.manual_gates.preview.status' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null")`
 
-! `STAGING_GATE=$(yq eval '.workflow.manual_gates.validate_staging.status' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "null")`
+! `STAGING_GATE=$(yq eval '.workflow.manual_gates.validate_staging.status' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null")`
 
 ! `if [ "$PREVIEW_GATE" = "pending" ]; then echo "Preview Testing|ship:preview"; elif [ "$STAGING_GATE" = "pending" ]; then echo "Staging Validation|ship:validate-staging"; fi`
 
@@ -277,7 +295,7 @@ The local dev server should be running. Please complete:
 
 For staging gate:
 
-! `STAGING_URL=$(yq eval '.deployment.staging.url' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown")`
+! `STAGING_URL=$(yq eval '.deployment.staging.url' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown")`
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -316,11 +334,11 @@ Staging deployment is live. Please complete:
 
 If CONTEXT is "complete":
 
-! `PRODUCTION_VERSION=$(yq eval '.deployment.production.version' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown")`
+! `PRODUCTION_VERSION=$(yq eval '.deployment.production.version' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown")`
 
-! `PRODUCTION_URL=$(yq eval '.deployment.production.url' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown")`
+! `PRODUCTION_URL=$(yq eval '.deployment.production.url' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown")`
 
-! `ROADMAP_STATUS=$(yq eval '.feature.roadmap_status' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown")`
+! `ROADMAP_STATUS=$(yq eval '.feature.roadmap_status' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown")`
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -365,23 +383,23 @@ Roadmap: ! `echo "$ROADMAP_STATUS"`
 
 If CONTEXT is "active":
 
-! `CURRENT_PHASE=$(yq eval '.workflow.phase' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown")`
+! `CURRENT_PHASE=$(yq eval '.workflow.phase' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown")`
 
-! `WORKFLOW_STATUS=$(yq eval '.workflow.status' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown")`
+! `WORKFLOW_STATUS=$(yq eval '.workflow.status' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown")`
 
-! `DEPLOYMENT_MODEL=$(yq eval '.deployment_model' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown")`
+! `DEPLOYMENT_MODEL=$(yq eval '.deployment_model' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown")`
 
-! `FEATURE_SLUG=$(yq eval '.feature.slug' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown")`
+! `FEATURE_SLUG=$(yq eval '.feature.slug' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown")`
 
-! `BRANCH_NAME=$(yq eval '.feature.branch_name' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown")`
+! `BRANCH_NAME=$(yq eval '.feature.branch_name' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown")`
 
-! `COMPLETED_COUNT=$(yq eval '.workflow.completed_phases[]' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null | wc -l | tr -d ' ')`
+! `COMPLETED_COUNT=$(yq eval '.workflow.completed_phases[]' "$FEATURE_DIR/state.yaml" 2>/dev/null | wc -l | tr -d ' ')`
 
 ! `TOTAL_PHASES=$(case "$DEPLOYMENT_MODEL" in "staging-prod") echo "11";; "direct-prod") echo "8";; "local-only") echo "8";; *) echo "10";; esac)`
 
-! `COMPLETED_PHASES=$(yq eval '.workflow.completed_phases[]' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null)`
+! `COMPLETED_PHASES=$(yq eval '.workflow.completed_phases[]' "$FEATURE_DIR/state.yaml" 2>/dev/null)`
 
-! `FAILED_PHASES=$(yq eval '.workflow.failed_phases[]' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null)`
+! `FAILED_PHASES=$(yq eval '.workflow.failed_phases[]' "$FEATURE_DIR/state.yaml" 2>/dev/null)`
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -422,4 +440,4 @@ Directory: @ ! `echo "$FEATURE_DIR"`/
 
 ### Verbose Mode (if $ARGUMENTS contains "verbose")
 
-! `if [[ "${ARGUMENTS:-}" == *"verbose"* ]] && [ "$CONTEXT" = "active" ]; then echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; echo "📊 Detailed State Information"; echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; echo ""; echo "**Quality Gates:**"; PRE_FLIGHT=$(yq eval '.quality_gates.pre_flight.passed' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "null"); CODE_REVIEW=$(yq eval '.quality_gates.code_review.passed' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "null"); ROLLBACK=$(yq eval '.quality_gates.rollback_capability.passed' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "null"); if [ "$PRE_FLIGHT" != "null" ]; then [ "$PRE_FLIGHT" = "true" ] && echo "✅ Pre-flight checks: passed" || echo "❌ Pre-flight checks: failed"; fi; if [ "$CODE_REVIEW" != "null" ]; then [ "$CODE_REVIEW" = "true" ] && echo "✅ Code review: passed" || echo "❌ Code review: failed"; fi; if [ "$ROLLBACK" != "null" ]; then [ "$ROLLBACK" = "true" ] && echo "✅ Rollback capability: tested" || echo "⬜ Rollback capability: not tested"; fi; echo ""; STAGING_URL=$(yq eval '.deployment.staging.url' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown"); PRODUCTION_URL=$(yq eval '.deployment.production.url' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown"); PRODUCTION_VERSION=$(yq eval '.deployment.production.version' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "unknown"); STAGING_DEPLOYED=$(yq eval '.deployment.staging.deployed' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "false"); PRODUCTION_DEPLOYED=$(yq eval '.deployment.production.deployed' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "false"); if [ "$STAGING_DEPLOYED" = "true" ] || [ "$PRODUCTION_DEPLOYED" = "true" ]; then echo "**Deployment Status:**"; [ "$STAGING_DEPLOYED" = "true" ] && echo "📦 Staging: $STAGING_URL"; [ "$PRODUCTION_DEPLOYED" = "true" ] && echo "🚀 Production: $PRODUCTION_URL ($PRODUCTION_VERSION)"; echo ""; fi; GITHUB_ISSUE=$(yq eval '.feature.github_issue' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null || echo "null"); if [ "$GITHUB_ISSUE" != "null" ] && [ "$GITHUB_ISSUE" != "0" ]; then echo "**GitHub Integration:**"; echo "🔗 Issue #$GITHUB_ISSUE"; echo ""; fi; echo "**Completed Phases:**"; if [ -n "$COMPLETED_PHASES" ]; then echo "$COMPLETED_PHASES" | while read -r phase; do [ -n "$phase" ] && echo "✅ $phase"; done; else echo "(none yet)"; fi; fi`
+! `if [[ "${ARGUMENTS:-}" == *"verbose"* ]] && [ "$CONTEXT" = "active" ]; then echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; echo "📊 Detailed State Information"; echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; echo ""; echo "**Quality Gates:**"; PRE_FLIGHT=$(yq eval '.quality_gates.pre_flight.passed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"); CODE_REVIEW=$(yq eval '.quality_gates.code_review.passed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"); ROLLBACK=$(yq eval '.quality_gates.rollback_capability.passed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"); if [ "$PRE_FLIGHT" != "null" ]; then [ "$PRE_FLIGHT" = "true" ] && echo "✅ Pre-flight checks: passed" || echo "❌ Pre-flight checks: failed"; fi; if [ "$CODE_REVIEW" != "null" ]; then [ "$CODE_REVIEW" = "true" ] && echo "✅ Code review: passed" || echo "❌ Code review: failed"; fi; if [ "$ROLLBACK" != "null" ]; then [ "$ROLLBACK" = "true" ] && echo "✅ Rollback capability: tested" || echo "⬜ Rollback capability: not tested"; fi; echo ""; STAGING_URL=$(yq eval '.deployment.staging.url' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"); PRODUCTION_URL=$(yq eval '.deployment.production.url' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"); PRODUCTION_VERSION=$(yq eval '.deployment.production.version' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"); STAGING_DEPLOYED=$(yq eval '.deployment.staging.deployed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "false"); PRODUCTION_DEPLOYED=$(yq eval '.deployment.production.deployed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "false"); if [ "$STAGING_DEPLOYED" = "true" ] || [ "$PRODUCTION_DEPLOYED" = "true" ]; then echo "**Deployment Status:**"; [ "$STAGING_DEPLOYED" = "true" ] && echo "📦 Staging: $STAGING_URL"; [ "$PRODUCTION_DEPLOYED" = "true" ] && echo "🚀 Production: $PRODUCTION_URL ($PRODUCTION_VERSION)"; echo ""; fi; GITHUB_ISSUE=$(yq eval '.feature.github_issue' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"); if [ "$GITHUB_ISSUE" != "null" ] && [ "$GITHUB_ISSUE" != "0" ]; then echo "**GitHub Integration:**"; echo "🔗 Issue #$GITHUB_ISSUE"; echo ""; fi; echo "**Completed Phases:**"; if [ -n "$COMPLETED_PHASES" ]; then echo "$COMPLETED_PHASES" | while read -r phase; do [ -n "$phase" ] && echo "✅ $phase"; done; else echo "(none yet)"; fi; fi`

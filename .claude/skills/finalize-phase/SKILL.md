@@ -9,15 +9,17 @@ Complete feature/epic workflow, generate walkthrough (epics only), update roadma
 This skill orchestrates the /finalize phase, the final step after successful deployment to production, direct-prod, or local build.
 
 **For Epic Workflows (v5.0+)**:
+
 - Generate comprehensive walkthrough.md with velocity metrics, sprint results, lessons learned
 - Run post-mortem audit with pattern detection (after 2-3 epics)
 - Offer workflow healing with improvement recommendations
 - Detect patterns for custom skills/commands generation
 
 **For Feature Workflows**:
+
 - Standard finalization (roadmap, artifacts, docs, branches)
 
-Inputs: Deployed feature/epic, phase artifacts, ship report, workflow-state.yaml
+Inputs: Deployed feature/epic, phase artifacts, ship report, state.yaml
 Outputs: walkthrough.md (epics only), updated roadmap, archived artifacts, updated documentation
 Expected duration: 10-15 minutes (features), 20-30 minutes (epics with walkthrough)
 </objective>
@@ -25,12 +27,13 @@ Expected duration: 10-15 minutes (features), 20-30 minutes (epics with walkthrou
 <quick_start>
 After deployment completes, finalize the workflow:
 
-**Epic Workflows (NEW in v5.0)**:
-0. Generate walkthrough - Comprehensive epic summary with velocity metrics, sprint results, lessons learned, pattern detection
+**Epic Workflows (NEW in v5.0)**: 0. Generate walkthrough - Comprehensive epic summary with velocity metrics, sprint results, lessons learned, pattern detection
+
 1. Run post-mortem audit - Final effectiveness analysis with improvement recommendations
 2. Offer workflow healing - Apply discovered improvements with user approval
 
 **All Workflows** (features + epics):
+
 1. Update roadmap - Move to "Shipped" with completion date, version, production URL
 2. Archive artifacts - Verify all phase artifacts in specs/NNN-slug/ or epics/NNN-slug/
 3. Update documentation - README, CHANGELOG, user guides (if applicable)
@@ -38,10 +41,11 @@ After deployment completes, finalize the workflow:
 5. Commit finalization - Small commit documenting workflow closure
 
 Key principles:
+
 - Clean closure preserves knowledge and enables learning
 - Epic walkthroughs enable self-improving workflow system
 - Pattern detection (after 2-3 epics) suggests custom automation
-</quick_start>
+  </quick_start>
 
 <prerequisites>
 Before beginning finalization:
@@ -60,6 +64,7 @@ If deployment incomplete, return to /ship phase.
 Detect epic vs feature workflow and generate comprehensive walkthrough for epics.
 
 **Detection**:
+
 ```bash
 if [ -f "epics/*/epic-spec.xml" ]; then
   WORKSPACE_TYPE="epic"
@@ -78,22 +83,25 @@ fi
 **Walkthrough Generation Pipeline**:
 
 1. **Gather all epic artifacts**:
+
    - epic-spec.xml (epic specification)
    - research.xml (research phase output)
    - plan.xml (plan phase output with meta-prompting)
    - sprint-plan.xml (task breakdown with dependency graph)
-   - workflow-state.yaml (state tracking across phases)
+   - state.yaml (state tracking across phases)
    - audit-report.xml (workflow effectiveness analysis)
    - preview-report.xml (manual testing decision)
-   - Sprint results from epics/NNN-slug/sprints/*/
+   - Sprint results from epics/NNN-slug/sprints/\*/
 
 2. **Calculate velocity metrics**:
+
    - Expected parallelization multiplier (from sprint-plan.xml)
    - Actual parallelization multiplier (from audit-report.xml)
    - Time saved in hours (parallel vs sequential execution)
    - Duration from start to completion
 
 3. **Extract key information**:
+
    - Epic goal and success metrics
    - Phases completed with timestamps
    - Sprint execution results (status, tasks, duration, contracts, tests)
@@ -102,17 +110,20 @@ fi
    - Next steps (enhancements, technical debt, monitoring needs)
 
 4. **Generate walkthrough.xml and walkthrough.md**:
+
    - Use template: `.spec-flow/templates/walkthrough.xml`
    - Populate with metrics, sprint results, lessons learned
    - Write both machine-readable (XML) and human-readable (Markdown) versions
 
 5. **Run post-mortem audit**:
+
    - Invoke `/audit-workflow --post-mortem`
    - Analyze velocity accuracy (expected vs actual)
    - Detect bottlenecks and inefficiencies
    - Generate improvement recommendations
 
 6. **Pattern detection** (if 2+ epics completed):
+
    - Analyze patterns across completed epics
    - Detect code generation patterns (service boilerplate repeated 3x)
    - Detect architectural patterns (all services use DI + Repository)
@@ -120,12 +131,14 @@ fi
    - Suggest custom skills/commands if confidence ≥80%
 
 7. **Offer workflow healing**:
+
    - Display immediate improvements from audit recommendations
    - Categorize by priority (immediate vs deferred)
    - Offer `/heal-workflow` to apply improvements
    - Save deferred improvements for pattern-based optimization
 
 8. **Commit walkthrough**:
+
 ```bash
 git add epics/*/walkthrough.xml
 git add epics/*/walkthrough.md
@@ -181,21 +194,25 @@ See reference.md for epic walkthrough generation details.
 Move feature from "In Progress" to "Shipped" section in roadmap.
 
 **Actions**:
+
 1. Open `.spec-flow/memory/roadmap.md`
 2. Find feature in "In Progress" section
 3. Move to "Shipped" section with completion details
 
 **Required information**:
+
 - Completion date (deployment date)
 - Version number (from CHANGELOG or ship report)
 - Production URL (if applicable)
 - Links to ship report and release notes
 
 **Example**:
+
 ```markdown
 ## Shipped
 
 ### Student Progress Dashboard (v1.3.0) - Shipped 2025-10-21
+
 - **Production URL**: https://app.example.com/students/progress
 - **Ship Report**: specs/042-student-progress-dashboard/ship-summary.md
 - **Release Notes**: CHANGELOG.md#v1.3.0
@@ -213,6 +230,7 @@ See reference.md for roadmap update checklist.
 Verify all workflow artifacts archived in `specs/NNN-slug/` directory.
 
 **Required artifacts checklist**:
+
 - [ ] spec.md (feature specification)
 - [ ] plan.md (implementation plan)
 - [ ] tasks.md (task breakdown)
@@ -220,14 +238,16 @@ Verify all workflow artifacts archived in `specs/NNN-slug/` directory.
 - [ ] preview-checklist.md (manual testing checklist - if applicable)
 - [ ] ship-summary.md (deployment report)
 - [ ] release-notes.md (user-facing release notes)
-- [ ] workflow-state.yaml (workflow state tracking)
+- [ ] state.yaml (workflow state tracking)
 
 **Optional artifacts**:
+
 - [ ] clarifications.md (if /clarify phase ran)
 - [ ] analysis-report.md (if /validate phase ran)
 - [ ] staging-ship-report.md (if staging deployment happened)
 
 **Validation steps**:
+
 ```bash
 # List all artifacts in feature directory
 ls -la specs/NNN-slug/
@@ -237,6 +257,7 @@ ls -la specs/NNN-slug/
 ```
 
 **If artifacts missing**:
+
 - Check for artifacts in wrong locations (root directory, temp folders)
 - Regenerate missing artifacts if possible
 - Document missing artifacts in finalization commit message
@@ -250,6 +271,7 @@ See reference.md for complete artifact checklist.
 Update user-facing documentation for shipped feature.
 
 **README.md updates** (if user-facing feature):
+
 ```markdown
 ## Features
 
@@ -260,22 +282,27 @@ Update user-facing documentation for shipped feature.
 ```
 
 **CHANGELOG.md updates**:
+
 ```markdown
 ## [1.3.0] - 2025-10-21
 
 ### Added
+
 - Student progress dashboard with completion tracking
 - CSV export for progress reports
 - Filtering by class, subject, and time period
 
 ### Changed
+
 - Improved dashboard load time from 3s to 1.2s
 
 ### Fixed
+
 - Fixed timeout issue with large datasets (pagination added)
 ```
 
 **User guides** (for complex features):
+
 - Create docs/features/student-progress-dashboard.md
 - Include screenshots, usage instructions, FAQs
 - Link from README.md
@@ -291,6 +318,7 @@ See reference.md for documentation standards.
 Delete feature branch locally and remotely (if applicable).
 
 **Local branch deletion**:
+
 ```bash
 # Verify branch is merged
 git branch --merged main | grep feature/042-student-progress-dashboard
@@ -300,6 +328,7 @@ git branch -d feature/042-student-progress-dashboard
 ```
 
 **Remote branch deletion** (if pushed to remote):
+
 ```bash
 # Delete remote branch
 git push origin --delete feature/042-student-progress-dashboard
@@ -309,6 +338,7 @@ git branch -r | grep feature/042-student-progress-dashboard  # Should return not
 ```
 
 **If branch not merged**:
+
 - Verify feature deployed successfully
 - If deployed, force delete: `git branch -D feature/...`
 - Document why branch not merged in commit message
@@ -324,6 +354,7 @@ See reference.md for branch cleanup guidelines.
 Create small commit documenting workflow closure.
 
 **Commit format**:
+
 ```bash
 git add .spec-flow/memory/roadmap.md README.md CHANGELOG.md
 git commit -m "chore: finalize student-progress-dashboard (v1.3.0)
@@ -333,11 +364,13 @@ Archived artifacts in specs/042-student-progress-dashboard/"
 ```
 
 **Commit message format**:
+
 - Type: `chore` (finalization is housekeeping)
 - Subject: `finalize [feature-name] ([version])`
 - Body: List what was updated (roadmap, docs, etc.)
 
-**Update workflow-state.yaml**:
+**Update state.yaml**:
+
 ```yaml
 finalization:
   status: completed
@@ -362,7 +395,7 @@ After finalization phase, verify:
 - Documentation updated (README, CHANGELOG, user guides if applicable)
 - Branches cleaned up (feature branch deleted locally and remotely)
 - Finalization committed (chore commit with workflow closure details)
-- workflow-state.yaml updated (finalization.status = completed)
+- state.yaml updated (finalization.status = completed)
 
 Workflow is now cleanly closed and ready for retrospective analysis.
 </validation>
@@ -375,11 +408,13 @@ Workflow is now cleanly closed and ready for retrospective analysis.
 **Why**: Roadmap becomes stale and inaccurate. Team loses visibility into what shipped and when.
 
 **Impact**:
+
 - Historical tracking lost
 - Roadmap doesn't reflect reality
 - Hard to analyze velocity over time
 
 **Example** (bad):
+
 ```
 Feature deploys to production
 /finalize skips roadmap update
@@ -388,12 +423,14 @@ Roadmap still shows feature "In Progress"
 ```
 
 **Example** (good):
+
 ```
 Feature deploys to production
 /finalize updates roadmap immediately
 Roadmap shows "Shipped 2025-10-21, v1.3.0"
 6 months later: Clear historical record
 ```
+
 </pitfall>
 
 <pitfall name="incomplete_documentation">
@@ -403,11 +440,13 @@ Roadmap shows "Shipped 2025-10-21, v1.3.0"
 **Why**: Knowledge loss compounds over time. Users can't discover features if not documented.
 
 **Impact**:
+
 - Feature discovery issues (users don't know feature exists)
 - Onboarding friction (new team members confused)
 - Version history unclear (what changed when?)
 
 **Example** (bad):
+
 ```
 Ship feature, skip README update
 3 months later: User asks "Do we have progress tracking?"
@@ -415,11 +454,13 @@ Answer: "Yes, we shipped that 3 months ago" (not documented)
 ```
 
 **Example** (good):
+
 ```
 Ship feature, update README immediately
 README: "Student Progress Dashboard - Track completion"
 User discovers feature organically from README
 ```
+
 </pitfall>
 
 <pitfall name="branch_not_deleted">
@@ -429,11 +470,13 @@ User discovers feature organically from README
 **Why**: Branch clutter makes it hard to find active work.
 
 **Impact**:
+
 - Git branch list becomes unusable (100+ stale branches)
 - Hard to identify active development
 - Wastes storage (remote branches)
 
 **Example** (bad):
+
 ```
 git branch -a
 # Shows 87 feature branches (only 3 active)
@@ -441,11 +484,13 @@ git branch -a
 ```
 
 **Example** (good):
+
 ```
 git branch -a
 # Shows 3 feature branches (all active)
 # Clear signal: current work only
 ```
+
 </pitfall>
 
 <pitfall name="no_finalization_commit">
@@ -455,11 +500,13 @@ git branch -a
 **Why**: Finalization changes should be tracked in git history.
 
 **Impact**:
+
 - Changes not backed up
 - No clear signal when workflow closed
 - Hard to audit finalization process
 
 **Example** (bad):
+
 ```
 Update roadmap, README, CHANGELOG
 Git status: 3 modified files
@@ -467,11 +514,13 @@ Never commit (lose changes on machine wipe)
 ```
 
 **Example** (good):
+
 ```
 Update roadmap, README, CHANGELOG
 git commit -m "chore: finalize feature (v1.3.0)"
 Clear git history marker: finalization happened
 ```
+
 </pitfall>
 
 <pitfall name="artifacts_not_archived">
@@ -481,11 +530,13 @@ Clear git history marker: finalization happened
 **Why**: Artifacts contain valuable context for future maintenance.
 
 **Impact**:
+
 - Context loss (why was feature built this way?)
 - Hard to debug issues (no spec to reference)
 - Can't analyze past decisions (no plan to review)
 
 **Example** (bad):
+
 ```
 Ship feature, delete spec.md and plan.md
 6 months later: "Why did we implement it this way?"
@@ -493,11 +544,13 @@ Answer: Unknown (artifacts deleted)
 ```
 
 **Example** (good):
+
 ```
 Ship feature, archive all artifacts
 6 months later: "Why did we implement it this way?"
 Answer: Check specs/042-.../spec.md (clear rationale)
 ```
+
 </pitfall>
 </anti_patterns>
 
@@ -561,24 +614,26 @@ Finalization phase complete when:
 - [ ] Documentation updated (README, CHANGELOG, user guides if applicable)
 - [ ] Branches cleaned up (feature branch deleted locally and remotely)
 - [ ] Finalization committed (chore commit documenting closure)
-- [ ] workflow-state.yaml updated (finalization.status = completed)
+- [ ] state.yaml updated (finalization.status = completed)
 
 Workflow is cleanly closed and ready for retrospective analysis.
 </success_criteria>
 
 <quality_standards>
 **Good finalization**:
+
 - Immediate (runs right after deployment)
 - Complete (all artifacts archived, all docs updated)
 - Clean (branches deleted, commit made)
 - Documented (roadmap + README + CHANGELOG updated)
 
 **Bad finalization**:
+
 - Deferred (runs days/weeks later, details forgotten)
 - Incomplete (missing artifacts, incomplete docs)
 - Messy (branches not deleted, no commit)
 - Undocumented (roadmap stale, README outdated)
-</quality_standards>
+  </quality_standards>
 
 <troubleshooting>
 **Issue**: Can't find feature in roadmap "In Progress" section
@@ -599,11 +654,13 @@ Workflow is cleanly closed and ready for retrospective analysis.
 
 <reference_guides>
 Finalization procedures:
+
 - Roadmap Update Checklist (reference.md#roadmap-updates) - Required information and format
 - Artifact Archival Guide (reference.md#artifact-archival) - Complete checklist and validation
 - Documentation Standards (reference.md#documentation-updates) - README, CHANGELOG, user guide formats
 
 Examples:
+
 - Complete Finalization (examples.md#complete-finalization) - All steps done correctly
 - Rushed Cleanup (examples.md#rushed-cleanup) - What happens when steps skipped
 

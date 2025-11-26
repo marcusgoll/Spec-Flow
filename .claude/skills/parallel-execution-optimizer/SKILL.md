@@ -7,6 +7,7 @@ description: Identify and execute independent operations in parallel for 3-5x sp
 The parallel-execution-optimizer skill transforms sequential workflows into concurrent execution patterns, dramatically reducing wall-clock time for phases with multiple independent operations.
 
 Traditional sequential execution wastes time:
+
 - /optimize runs 5 quality checks sequentially (10-15 minutes)
 - /ship runs 5 pre-flight checks sequentially (8-12 minutes)
 - /implement processes tasks one-by-one despite no dependencies
@@ -20,6 +21,7 @@ This skill analyzes operation dependencies, groups independent work into batches
 When you detect multiple independent operations, send **a single message** with multiple tool calls:
 
 **Sequential (slow)**:
+
 - Send message with Task call for security-sentry
 - Wait for response
 - Send message with Task call for performance-profiler
@@ -28,47 +30,53 @@ When you detect multiple independent operations, send **a single message** with 
 - Total: 15 minutes
 
 **Parallel (fast)**:
+
 - Send ONE message with 3 Task calls (security-sentry, performance-profiler, accessibility-auditor)
 - All three run concurrently
 - Total: 5 minutes
-</basic_pattern>
+  </basic_pattern>
 
 <immediate_use_cases>
+
 1. **/optimize phase**: Run 5 quality checks in parallel (security, performance, accessibility, code-review, type-safety)
 2. **/ship pre-flight**: Run 5 deployment checks in parallel (env-vars, build, docker, CI-config, dependency-audit)
 3. **/implement**: Process independent task batches in parallel layers
 4. **Design variations**: Generate multiple mockup variations concurrently
 5. **Research phase**: Fetch multiple documentation sources concurrently
-</immediate_use_cases>
-</quick_start>
+   </immediate_use_cases>
+   </quick_start>
 
 <workflow>
 <step number="1">
 **Identify independent operations**
 
 Scan the current phase for operations that:
+
 - Read different files/data sources
 - Don't modify shared state
 - Have no sequential dependencies
 - Can produce results independently
 
 Examples:
+
 - Quality checks (security scan + performance test + accessibility audit)
 - File reads (spec.md + plan.md + tasks.md)
 - API documentation fetches (Stripe docs + Twilio docs + SendGrid docs)
 - Test suite runs (unit tests + integration tests + E2E tests)
-</step>
+  </step>
 
 <step number="2">
 **Analyze dependencies**
 
 Build a dependency graph:
+
 - **Layer 0**: Operations with no dependencies (can run immediately)
 - **Layer 1**: Operations depending only on Layer 0 outputs
 - **Layer 2**: Operations depending on Layer 1 outputs
 - etc.
 
 Example (/optimize):
+
 ```
 Layer 0 (parallel):
   - security-sentry (reads codebase)
@@ -80,22 +88,25 @@ Layer 0 (parallel):
 Layer 1 (after Layer 0):
   - Generate optimization-report.md (combines all Layer 0 results)
 ```
+
 </step>
 
 <step number="3">
 **Group into batches**
 
 Create batches for each layer:
+
 - All Layer 0 operations in single message (parallel execution)
 - Wait for Layer 0 completion
 - All Layer 1 operations in single message
 - Continue through layers
 
 Batch size considerations:
+
 - **Optimal**: 3-5 operations per batch (balanced parallelism)
 - **Maximum**: 8 operations (avoid overwhelming system)
 - **Minimum**: 2 operations (below 2, parallelism has no benefit)
-</step>
+  </step>
 
 <step number="4">
 **Execute parallel batches**
@@ -103,6 +114,7 @@ Batch size considerations:
 Send a single message with multiple tool calls for each batch.
 
 Critical requirements:
+
 - Must be a **single message** with multiple tool use blocks
 - Each tool call must be complete and independent
 - Do not use placeholders or forward references
@@ -115,23 +127,26 @@ See [references/execution-patterns.md](references/execution-patterns.md) for det
 **Aggregate results**
 
 After each batch completes:
+
 - Collect results from all parallel operations
 - Check for failures or blocking issues
 - Decide whether to proceed to next layer
 - Aggregate findings into unified report
 
 Failure handling:
+
 - If any operation blocks (critical security issue), halt pipeline
 - If operations have warnings (minor performance issue), continue but log
 - If operations fail (agent error), retry individually or escalate
-</step>
-</workflow>
+  </step>
+  </workflow>
 
 <phase_specific_patterns>
 <optimize_phase>
 **Operation**: Run 5 quality gates in parallel
 
 **Dependency graph**:
+
 ```
 Layer 0 (parallel - 5 operations):
   1. security-sentry → Scan for vulnerabilities, secrets, auth issues
@@ -145,6 +160,7 @@ Layer 1 (sequential - 1 operation):
 ```
 
 **Time savings**:
+
 - Sequential: ~15 minutes (3 min per check)
 - Parallel: ~5 minutes (longest check + aggregation)
 - **Speedup**: 3x
@@ -156,6 +172,7 @@ See [references/optimize-phase-parallelization.md](references/optimize-phase-par
 **Operation**: Run 5 pre-flight checks in parallel
 
 **Dependency graph**:
+
 ```
 Layer 0 (parallel - 5 operations):
   1. Check environment variables (read .env.example vs .env)
@@ -165,10 +182,11 @@ Layer 0 (parallel - 5 operations):
   5. Run dependency audit (npm audit --production)
 
 Layer 1 (sequential - 1 operation):
-  6. Update workflow-state.yaml with pre-flight results
+  6. Update state.yaml with pre-flight results
 ```
 
 **Time savings**:
+
 - Sequential: ~12 minutes
 - Parallel: ~4 minutes (build is longest operation)
 - **Speedup**: 3x
@@ -180,12 +198,14 @@ See [references/ship-preflight-parallelization.md](references/ship-preflight-par
 **Operation**: Execute independent task batches in parallel
 
 **Dependency analysis**:
+
 1. Read tasks.md
 2. Build dependency graph from task relationships
 3. Identify tasks with no dependencies (Layer 0)
 4. Group tasks by layer
 
 **Example** (15 tasks):
+
 ```
 Layer 0 (4 tasks - parallel):
   T001: Create User model
@@ -207,12 +227,14 @@ Layer 3 (sequential):
 ```
 
 **Execution**:
+
 - Batch 1: Launch 4 agents for Layer 0 tasks (parallel)
 - Batch 2: Launch 3 agents for Layer 1 tasks (parallel)
 - Batch 3: Launch 2 agents for Layer 2 tasks (parallel)
 - Batch 4: Single agent for Layer 3
 
 **Time savings**:
+
 - Sequential: 15 tasks × 20 min = 300 minutes (5 hours)
 - Parallel: 4 batches × 30 min = 120 minutes (2 hours)
 - **Speedup**: 2.5x
@@ -226,14 +248,16 @@ See [references/implement-phase-parallelization.md](references/implement-phase-p
 **Use case**: User wants to see 3 different homepage layouts
 
 **Sequential approach** (slow):
+
 1. Generate variation A
 2. Generate variation B
 3. Generate variation C
-Total: 15 minutes
+   Total: 15 minutes
 
 **Parallel approach** (fast):
+
 1. Launch 3 design agents in single message (A, B, C variants)
-Total: 5 minutes (all generate concurrently)
+   Total: 5 minutes (all generate concurrently)
 
 **Speedup**: 3x
 
@@ -256,10 +280,11 @@ Two operations are **dependent** if:
 2. **Write-after-write**: Both write to same file (race condition)
 3. **Data dependency**: Operation B needs Operation A's output as input
 4. **Order-dependent side effects**: Operations modify shared state
-</determining_independence>
+   </determining_independence>
 
 <common_patterns>
 **Independent** (safe to parallelize):
+
 - Multiple quality checks reading codebase
 - Multiple file reads (spec.md, plan.md, tasks.md)
 - Multiple API documentation fetches
@@ -267,12 +292,13 @@ Two operations are **dependent** if:
 - Multiple lint checks on different file types
 
 **Dependent** (must sequence):
+
 - Generate code → Run tests on generated code
 - Fetch API docs → Generate client based on docs
 - Write file → Read file back for validation
 - Create database schema → Run migrations
 - Build project → Deploy built artifacts
-</common_patterns>
+  </common_patterns>
 
 <edge_cases>
 **Shared mutable state**: If operations modify the same git branch, database, or filesystem location, they CANNOT run in parallel safely.
@@ -294,7 +320,7 @@ Automatically apply parallel execution when you detect:
 5. **Multiple test suites**: Unit, integration, E2E running independently
 6. **Multiple design variations**: ≥2 mockup/prototype variants requested
 7. **Multiple research queries**: ≥3 web searches or documentation lookups
-</when_to_apply>
+   </when_to_apply>
 
 <when_not_to_apply>
 Do NOT parallelize when:
@@ -304,7 +330,7 @@ Do NOT parallelize when:
 3. **Small operation count**: <2 independent operations (no benefit)
 4. **Complex coordination needed**: Results must be merged in specific order
 5. **User explicitly requests sequential**: "Do X, then Y, then Z"
-</when_not_to_apply>
+   </when_not_to_apply>
 
 <proactive_detection>
 Scan for these phrases in phase workflows:
@@ -323,6 +349,7 @@ When detected, immediately analyze dependencies and propose parallel execution s
 **Context**: Running /optimize on a feature with UI components
 
 **Sequential execution** (15 minutes):
+
 ```
 1. Launch security-sentry (3 min)
 2. Wait for completion
@@ -339,6 +366,7 @@ Total: 15 minutes
 ```
 
 **Parallel execution** (5 minutes):
+
 ```
 1. Launch 5 agents in SINGLE message:
    - security-sentry
@@ -358,6 +386,7 @@ Total: 5 minutes
 **Context**: Running pre-flight checks before deployment
 
 **Sequential execution** (12 minutes):
+
 ```
 1. Check env vars (1 min)
 2. Run build (5 min)
@@ -368,6 +397,7 @@ Total: 12 minutes
 ```
 
 **Parallel execution** (6 minutes):
+
 ```
 1. Launch 5 checks in SINGLE message (all concurrent)
 2. Longest operation is build (5 min)
@@ -382,6 +412,7 @@ Total: 6 minutes
 **Context**: 12 tasks with dependency graph in /implement phase
 
 **Task dependencies**:
+
 ```
 T001 (User model) → no deps
 T002 (Product model) → no deps
@@ -393,6 +424,7 @@ T007 (Integration tests) → depends on T003, T004
 ```
 
 **Parallel execution plan**:
+
 ```
 Batch 1 (Layer 0): T001, T002 (parallel - 2 tasks)
 Batch 2 (Layer 1): T003, T004 (parallel - 2 tasks, wait for Batch 1)
@@ -401,6 +433,7 @@ Batch 4 (Layer 3): T007 (sequential - 1 task, wait for Batch 3)
 ```
 
 **Time savings**:
+
 - Sequential: 7 tasks × 20 min = 140 minutes
 - Parallel: 4 batches × 25 min = 100 minutes
 - **Speedup**: 1.4x
@@ -414,6 +447,7 @@ Batch 4 (Layer 3): T007 (sequential - 1 task, wait for Batch 3)
 **Problem**: Sending multiple messages rapidly, thinking they'll run in parallel
 
 **Wrong approach**:
+
 ```
 Send message 1: Launch agent A
 Send message 2: Launch agent B
@@ -423,6 +457,7 @@ Send message 3: Launch agent C
 These execute **sequentially** because each message waits for the previous to complete.
 
 **Correct approach**:
+
 ```
 Send ONE message with 3 tool calls (A, B, C)
 ```
@@ -434,6 +469,7 @@ Send ONE message with 3 tool calls (A, B, C)
 **Problem**: Parallelizing dependent operations causing race conditions
 
 **Wrong approach**:
+
 ```
 Parallel batch:
 - Generate User model code
@@ -443,6 +479,7 @@ Parallel batch:
 Second operation will fail because code doesn't exist yet.
 
 **Correct approach**:
+
 ```
 Batch 1 (sequential): Generate User model code
 Batch 2 (sequential): Write tests for User model
@@ -455,6 +492,7 @@ Batch 2 (sequential): Write tests for User model
 **Problem**: Launching 20 agents in parallel, overwhelming system
 
 **Wrong approach**:
+
 ```
 Launch 20 agents in single message (all tasks at once)
 ```
@@ -462,6 +500,7 @@ Launch 20 agents in single message (all tasks at once)
 System resources exhausted, agents may fail or slow down dramatically.
 
 **Correct approach**:
+
 ```
 Batch 1: Launch 5 agents (Layer 0)
 Batch 2: Launch 5 agents (Layer 1)
@@ -476,6 +515,7 @@ Batch 4: Launch 5 agents (Layer 3)
 **Problem**: Using parallel execution for operations taking <30 seconds each
 
 **Wrong approach**:
+
 ```
 Parallel batch:
 - Read spec.md (5 seconds)
@@ -485,6 +525,7 @@ Parallel batch:
 Overhead of parallel coordination exceeds time savings.
 
 **Correct approach**:
+
 ```
 Sequential:
 - Read spec.md
@@ -504,56 +545,64 @@ After applying parallel execution optimization:
 3. **Results identical**: Parallel execution produces same output as sequential
 4. **No resource exhaustion**: System handles parallel load without failures
 5. **Clear dependency graph**: Can explain why operations were grouped into specific batches
-</success_indicators>
+   </success_indicators>
 
 <testing_approach>
 **Before parallelization**:
+
 1. Run phase sequentially
 2. Record total time
 3. Record all outputs (files, reports, state changes)
 
 **After parallelization**:
+
 1. Run phase with parallel batches
 2. Record total time
 3. Record all outputs
 
 **Validate**:
+
 - Time reduced by expected factor (2-5x)
 - Outputs identical (diff files, compare checksums)
 - No errors or warnings introduced
 - Workflow state updated correctly
 
 **Rollback if**:
+
 - Parallel version produces different outputs
 - Failures or race conditions occur
 - Time savings <20% (not worth complexity)
-</testing_approach>
-</validation>
+  </testing_approach>
+  </validation>
 
 <reference_guides>
 For deeper topics, see reference files:
 
 **Execution patterns**: [references/execution-patterns.md](references/execution-patterns.md)
+
 - Correct vs incorrect parallel execution patterns
 - Message structure for parallel tool calls
 - Handling tool call failures
 
 **Phase-specific guides**:
+
 - [references/optimize-phase-parallelization.md](references/optimize-phase-parallelization.md)
 - [references/ship-preflight-parallelization.md](references/ship-preflight-parallelization.md)
 - [references/implement-phase-parallelization.md](references/implement-phase-parallelization.md)
 - [references/design-variations-parallelization.md](references/design-variations-parallelization.md)
 
 **Dependency analysis**: [references/dependency-analysis-guide.md](references/dependency-analysis-guide.md)
+
 - Building dependency graphs
 - Detecting hidden dependencies
 - Handling edge cases
 
 **Troubleshooting**: [references/troubleshooting.md](references/troubleshooting.md)
+
 - Common failures and fixes
 - Performance not improving
 - Race condition debugging
-</reference_guides>
+  </reference_guides>
 
 <success_criteria>
 The parallel-execution-optimizer skill is successfully applied when:
@@ -566,4 +615,4 @@ The parallel-execution-optimizer skill is successfully applied when:
 6. **No race conditions**: No failures due to shared state or missing dependencies
 7. **Appropriate scope**: Only applied when ≥2 operations taking ≥1 minute each
 8. **Clear documentation**: Execution plan explained (layers, batches, expected speedup)
-</success_criteria>
+   </success_criteria>

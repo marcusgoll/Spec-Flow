@@ -100,9 +100,9 @@ if [ -n "$MOCKUPS" ]; then
   MOCKUP_COUNT=$(echo "$MOCKUPS" | wc -l)
   echo "🎨 Found $MOCKUP_COUNT HTML mockup(s) - checking approval status..."
 
-  # Check workflow-state.yaml for mockup approval status
-  if [ -f "$FEATURE_DIR/workflow-state.yaml" ]; then
-    APPROVAL_STATUS=$(grep -A 5 "mockup_approval:" "$FEATURE_DIR/workflow-state.yaml" | grep "status:" | awk '{print $2}' || echo "")
+  # Check state.yaml for mockup approval status
+  if [ -f "$FEATURE_DIR/state.yaml" ]; then
+    APPROVAL_STATUS=$(grep -A 5 "mockup_approval:" "$FEATURE_DIR/state.yaml" | grep "status:" | awk '{print $2}' || echo "")
 
     if [ "$APPROVAL_STATUS" != "approved" ]; then
       echo ""
@@ -134,7 +134,7 @@ if [ -n "$MOCKUPS" ]; then
       echo ""
       echo "4. Approve or request changes in checklist"
       echo ""
-      echo "5. Update workflow-state.yaml:"
+      echo "5. Update state.yaml:"
       echo "   workflow:"
       echo "     manual_gates:"
       echo "       mockup_approval:"
@@ -152,7 +152,7 @@ if [ -n "$MOCKUPS" ]; then
     echo "✅ Mockup approved - proceeding with implementation"
     echo ""
   else
-    echo "⚠️  WARNING: No workflow-state.yaml found - cannot verify mockup approval"
+    echo "⚠️  WARNING: No state.yaml found - cannot verify mockup approval"
     echo "   Continuing anyway (assuming brownfield project or manual approval)"
     echo ""
   fi

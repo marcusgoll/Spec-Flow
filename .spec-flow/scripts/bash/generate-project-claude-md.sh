@@ -71,7 +71,7 @@ find_active_features() {
     return
   fi
 
-  for state_file in "$REPO_ROOT/specs"/*/workflow-state.yaml; do
+  for state_file in "$REPO_ROOT/specs"/*/state.yaml; do
     [[ -f "$state_file" ]] || continue
 
     local feature_dir

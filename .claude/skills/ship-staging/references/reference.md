@@ -37,6 +37,7 @@ Suggest /validate-staging
 **Called by**: `/ship` (parent orchestrator)
 
 **Position in workflow**:
+
 ```
 /feature → /clarify → /plan → /tasks → /analyze → /implement →
 /optimize → /preview → **/ ship-staging** → /validate-staging → /ship-prod
@@ -45,6 +46,7 @@ Suggest /validate-staging
 ### Auto-Suggestions
 
 After successful staging deployment:
+
 - **Next step**: `/validate-staging` for manual testing
 - **If CI fails**: `/checks pr [number]` to investigate
 
@@ -59,6 +61,7 @@ The command performs 6 critical validation checks before deployment.
 **Purpose**: Ensure remote repository exists with staging workflow
 
 **Validation**:
+
 ```bash
 # Check remote origin exists
 git remote -v | grep -q "origin"
@@ -69,10 +72,12 @@ git show-ref --verify --quiet refs/remotes/origin/staging
 ```
 
 **Error conditions**:
+
 - **No remote**: Display instructions to add remote repository
 - **No staging branch**: Show commands to create staging branch
 
 **Remediation**:
+
 ```bash
 # Add remote
 git remote add origin <repository-url>
@@ -88,15 +93,18 @@ git push -u origin staging
 **Purpose**: Prevent deploying uncommitted changes
 
 **Validation**:
+
 ```bash
 git status --porcelain
 ```
 
 **Error conditions**:
+
 - Uncommitted changes exist
 - Untracked files present
 
 **Remediation**:
+
 ```bash
 # Commit changes
 git add .
@@ -111,6 +119,7 @@ git stash
 **Purpose**: Ensure `/optimize` phase completed successfully
 
 **Validation**:
+
 ```bash
 # Check for optimization-report.md
 test -f "$FEATURE_DIR/optimization-report.md"
@@ -120,6 +129,7 @@ grep -q "✅.*PASSED" "$FEATURE_DIR/optimization-report.md"
 ```
 
 **Error conditions**:
+
 - optimization-report.md missing
 - Quality gates failed
 
@@ -131,12 +141,14 @@ Run `/optimize` to complete quality gates
 **Purpose**: Run quick local tests before deployment
 
 **Test suite**:
+
 - Build validation (if applicable)
 - Linting checks
 - Unit test subset (fast tests only)
 - Type checking
 
 **Example**:
+
 ```bash
 # Node.js project
 pnpm run type-check
@@ -145,6 +157,7 @@ pnpm run test:unit --bail
 ```
 
 **Error conditions**:
+
 - Any test fails
 - Build errors
 - Type errors
@@ -157,6 +170,7 @@ Fix issues locally before proceeding
 **Purpose**: Check quota before consuming Vercel deployments
 
 **Validation**:
+
 ```bash
 # Count deployments in last 24h
 DEPLOYMENTS=$(gh run list --workflow=deploy-staging.yml \
@@ -173,6 +187,7 @@ fi
 ```
 
 **Thresholds**:
+
 - **< 10 remaining**: Critical, block deployment
 - **< 20 remaining**: Warning, suggest preview mode
 - **>= 20 remaining**: Safe to proceed
@@ -182,12 +197,14 @@ fi
 **Purpose**: Verify required environment variables exist
 
 **Required variables**:
+
 - `VERCEL_TOKEN` (or `VERCEL_ORG_ID` + `VERCEL_PROJECT_ID`)
 - `DATABASE_URL` (if using database)
 - `REDIS_URL` (if using cache)
 - Application-specific secrets
 
 **Validation**:
+
 ```bash
 # Check .env.staging exists
 test -f .env.staging
@@ -197,6 +214,7 @@ grep -q "VERCEL_TOKEN" .env.staging
 ```
 
 **Error conditions**:
+
 - .env.staging missing
 - Required variables not set
 
@@ -210,12 +228,14 @@ Create .env.staging with required variables
 ### Modes
 
 **Staging Mode** (default):
+
 - Deploys to staging.{domain}.com
 - Consumes Vercel quota (2 deployments per ship)
 - Updates staging environment
 - Triggers CI/CD pipeline
 
 **Preview Mode** (quota-conscious):
+
 - Creates preview deployment
 - Does NOT consume quota
 - Does NOT update staging.{domain}.com
@@ -248,12 +268,14 @@ esac
 ### Mode Implications
 
 **Staging mode**:
+
 - ✅ Updates staging environment
 - ✅ Runs full CI pipeline
 - ❌ Consumes quota (2 per ship)
 - ❌ Requires quota availability
 
 **Preview mode**:
+
 - ✅ Free, unlimited
 - ✅ Tests CI without quota cost
 - ❌ Does NOT update staging environment
@@ -270,6 +292,7 @@ feat: {feature-title} ({slug})
 ```
 
 **Example**:
+
 ```
 feat: User Authentication System (001-user-auth)
 ```
@@ -278,24 +301,30 @@ feat: User Authentication System (001-user-auth)
 
 ```markdown
 ## Summary
+
 {1-3 sentence feature summary from spec.md}
 
 ## Implementation Highlights
+
 - {Key implementation detail 1}
 - {Key implementation detail 2}
 - {Key implementation detail 3}
 
 ## Testing
+
 - {Test coverage summary}
 - {Manual testing notes}
 
 ## Deployment
+
 - Deployment mode: {staging|preview}
 - Estimated cost: {2 quota if staging, 0 if preview}
 - Health checks: {enabled|disabled}
 
 ## Next Steps
+
 After merge and CI success:
+
 1. Run `/validate-staging` for manual testing
 2. Monitor staging environment for issues
 3. Proceed with `/ship-prod` when validated
@@ -317,6 +346,7 @@ gh pr create \
 ```
 
 **Error conditions**:
+
 - PR already exists for branch
 - Base branch doesn't exist
 - GitHub CLI not authenticated
@@ -337,6 +367,7 @@ gh pr merge "$PR_NUMBER" \
 ```
 
 **Flags**:
+
 - `--auto`: Enable auto-merge (merges when CI passes)
 - `--squash`: Squash commits into single commit
 - `--delete-branch`: Delete feature branch after merge
@@ -344,16 +375,19 @@ gh pr merge "$PR_NUMBER" \
 ### Auto-Merge Behavior
 
 **Merge conditions**:
+
 - All required CI checks pass
 - No merge conflicts
 - Branch up-to-date with base
 
 **Merge method**: Squash merge
+
 - Combines all feature commits into single commit
 - Clean main branch history
 - Commit message: PR title + body
 
 **Branch cleanup**:
+
 - Feature branch deleted automatically
 - Local branch remains (user must delete manually if desired)
 
@@ -436,18 +470,21 @@ After CI passes and deployment completes, run health checks to verify deployment
 ### Check 1: Deployment URL Accessibility
 
 **Marketing site**:
+
 ```bash
 curl -sS -o /dev/null -w "%{http_code}" https://staging.{domain}.com
 # Expected: 200
 ```
 
 **App site**:
+
 ```bash
 curl -sS -o /dev/null -w "%{http_code}" https://app.staging.{domain}.com
 # Expected: 200
 ```
 
 **Error conditions**:
+
 - 404: Site not deployed
 - 500: Server error
 - Timeout: Network issue or site down
@@ -460,6 +497,7 @@ curl -sS https://app.staging.{domain}.com/api/health | jq
 ```
 
 **Health endpoint contract**:
+
 ```json
 {
   "status": "ok",
@@ -479,6 +517,7 @@ curl -sS https://app.staging.{domain}.com/api/health | jq '.database'
 ```
 
 **Error conditions**:
+
 - "disconnected": Database connection failed
 - null: Health endpoint doesn't check database
 - Timeout: API not responding
@@ -531,7 +570,7 @@ APP_ID=$(vercel ls --scope "$VERCEL_ORG" "$APP_PROJECT" --json | \
   jq -r '.[0].url')
 ```
 
-### Update workflow-state.yaml
+### Update state.yaml
 
 ```bash
 yq eval -i ".deployment.staging.deployed = true" "$STATE_FILE"
@@ -578,6 +617,7 @@ yq eval -i ".deployment.staging.deployment_ids.app = \"$APP_ID\"" "$STATE_FILE"
 **File**: `specs/{slug}/staging-ship-report.md`
 
 **Sections**:
+
 1. **Deployment Summary** - Status, timestamp, commit, PR
 2. **Deployment Details** - URLs, IDs, health checks
 3. **Quality Gates** - Pre-flight results, CI status
@@ -585,7 +625,8 @@ yq eval -i ".deployment.staging.deployment_ids.app = \"$APP_ID\"" "$STATE_FILE"
 5. **Next Steps** - Validation checklist, production readiness
 
 **Example**:
-```markdown
+
+````markdown
 # Staging Deployment Report
 
 **Feature**: 001-user-auth
@@ -602,11 +643,13 @@ yq eval -i ".deployment.staging.deployment_ids.app = \"$APP_ID\"" "$STATE_FILE"
 ## Deployment Details
 
 ### Marketing Site
+
 - **URL**: https://staging.{domain}.com
 - **Deployment ID**: marketing-xyz789.vercel.app
 - **Health Check**: ✅ PASSED (200 OK)
 
 ### App Site
+
 - **URL**: https://app.staging.{domain}.com
 - **Deployment ID**: app-def456.vercel.app
 - **Health Check**: ✅ PASSED (200 OK)
@@ -624,6 +667,7 @@ yq eval -i ".deployment.staging.deployment_ids.app = \"$APP_ID\"" "$STATE_FILE"
 **Previous Commit**: def9876543210
 
 **Rollback Commands**:
+
 ```bash
 # Revert commit
 git revert abc1234567890
@@ -633,15 +677,18 @@ git push origin main
 git reset --hard def9876543210
 git push --force origin main
 ```
+````
 
 ## Next Steps
 
 1. **Validate Staging**:
+
    ```bash
    /validate-staging
    ```
 
 2. **Manual Testing Checklist**:
+
    - [ ] Test authentication flow
    - [ ] Verify database operations
    - [ ] Check API responses
@@ -656,7 +703,8 @@ git push --force origin main
 ---
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
-```
+
+````
 
 ---
 
@@ -679,16 +727,18 @@ gh auth login
 
 # Retry PR creation
 gh pr create ...
-```
+````
 
 ### Auto-Merge Fails
 
 **Causes**:
+
 - Merge conflicts
 - CI checks failed
 - Branch protection rules
 
 **Remediation**:
+
 ```bash
 # Check PR status
 gh pr view "$PR_NUMBER"
@@ -705,11 +755,13 @@ gh pr checks "$PR_NUMBER"
 ### Health Checks Fail
 
 **Causes**:
+
 - Deployment not complete
 - Service errors
 - Database connection issues
 
 **Remediation**:
+
 ```bash
 # Check deployment logs
 vercel logs "$DEPLOYMENT_ID"
@@ -724,11 +776,13 @@ curl -v https://staging.{domain}.com
 ### Deployment Timeout
 
 **Causes**:
+
 - CI takes longer than timeout (10 minutes)
 - Build errors
 - Test failures
 
 **Remediation**:
+
 ```bash
 # Check CI status
 gh pr checks "$PR_NUMBER"
@@ -822,6 +876,7 @@ vercel promote "$PREVIOUS_DEPLOYMENT_ID"
 **Internal command**: Called automatically by `/ship`, most users should use `/ship` instead
 
 **Deployment modes**:
+
 - **Staging**: Updates staging environment, consumes quota
 - **Preview**: CI testing only, free and unlimited
 

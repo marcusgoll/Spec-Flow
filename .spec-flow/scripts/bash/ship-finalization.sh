@@ -109,10 +109,10 @@ else
   if ! gh auth status >/dev/null 2>&1; then
     echo "⚠️  GitHub CLI not authenticated, skipping roadmap update"
   else
-    # Get feature slug from workflow-state.yaml
+    # Get feature slug from state.yaml
     if command -v yq >/dev/null 2>&1; then
-      FEATURE_SLUG=$(yq eval '.feature.slug' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null)
-      GITHUB_ISSUE=$(yq eval '.feature.github_issue' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null)
+      FEATURE_SLUG=$(yq eval '.feature.slug' "$FEATURE_DIR/state.yaml" 2>/dev/null)
+      GITHUB_ISSUE=$(yq eval '.feature.github_issue' "$FEATURE_DIR/state.yaml" 2>/dev/null)
 
       if [ -n "$GITHUB_ISSUE" ] && [ "$GITHUB_ISSUE" != "null" ]; then
         ISSUE_NUMBER="$GITHUB_ISSUE"
@@ -138,8 +138,8 @@ else
           --remove-label "status:in-progress" 2>/dev/null || true
 
         # Get deployment details
-        PROD_URL=$(yq eval '.deployment.production.url // "Not recorded"' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null)
-        VERSION=$(yq eval '.deployment.version // "unknown"' "$FEATURE_DIR/workflow-state.yaml" 2>/dev/null)
+        PROD_URL=$(yq eval '.deployment.production.url // "Not recorded"' "$FEATURE_DIR/state.yaml" 2>/dev/null)
+        VERSION=$(yq eval '.deployment.version // "unknown"' "$FEATURE_DIR/state.yaml" 2>/dev/null)
 
         # Add shipped comment
         gh issue comment "$ISSUE_NUMBER" --body "🚀 Shipped in v$VERSION on $(date +%Y-%m-%d)

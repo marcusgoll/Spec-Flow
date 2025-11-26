@@ -19,6 +19,7 @@ Deploy features to staging environment with database migrations, health checks, 
 6. **Generate report**: Create staging-ship-report.md with deployment metadata
 
 **Example workflow:**
+
 ```
 Verifying PR merged... ✅
   Merge commit: abc123f "Merge pull request #47"
@@ -41,22 +42,25 @@ Staging deployment successful!
 Ship report: specs/NNN-slug/staging-ship-report.md
 Staging URL: https://staging.example.com
 ```
+
 </staging_deployment_workflow>
 
 <trigger_conditions>
 **Auto-invoke when:**
+
 - `/ship-staging` command executed
 - User mentions "deploy to staging", "ship to staging", "staging deployment"
-- workflow-state.yaml shows current_phase: ship-staging
+- state.yaml shows current_phase: ship-staging
 - Deployment model is staging-prod (not direct-prod or local-only)
 
 **Prerequisites:**
+
 - PR successfully merged to main branch
 - CI/CD passing on main branch
 - Staging environment configured
 - Database migrations prepared (if needed)
-</trigger_conditions>
-</quick_start>
+  </trigger_conditions>
+  </quick_start>
 
 <workflow>
 <step number="1" name="verify_pr_merged">
@@ -65,6 +69,7 @@ Staging URL: https://staging.example.com
 Confirm pull request successfully merged before deploying.
 
 **Validation:**
+
 ```bash
 # Check recent commits for merge commit
 git log --oneline -10 | grep "Merge pull request"
@@ -85,17 +90,20 @@ echo "✅ PR merged to main"
 ```
 
 **Blocking conditions:**
+
 - Not on main branch → Switch to main first
 - No recent merge commit → Feature branch not merged yet
 - CI failing on main → Fix CI before deploying
 
 **Output:**
+
 ```
 ✅ PR merged to main
   Merge commit: abc123f "Merge pull request #47: Add user profile editing"
   Author: @username
   Merged: 2 minutes ago
 ```
+
 </step>
 
 <step number="2" name="run_database_migrations">
@@ -104,6 +112,7 @@ echo "✅ PR merged to main"
 Execute database migrations if schema changes exist.
 
 **Detection:**
+
 ```bash
 # Check for migration files (Node.js example)
 if [ -d "migrations" ] && [ -n "$(ls -A migrations/*.sql 2>/dev/null)" ]; then
@@ -127,6 +136,7 @@ fi
 ```
 
 **Error handling:**
+
 ```bash
 # If migration fails
 if [ $? -ne 0 ]; then
@@ -143,6 +153,7 @@ fi
 ```
 
 **Rollback procedure:**
+
 ```bash
 # If deployment fails after migration
 # Rollback migrations
@@ -151,6 +162,7 @@ npm run migrate:rollback:staging
 # Or manually revert last migration
 # psql -h staging-db.example.com -d mydb -f migrations/rollback/2025_11_revert.sql
 ```
+
 </step>
 
 <step number="3" name="trigger_staging_deployment">
@@ -161,6 +173,7 @@ Deploy to staging environment based on deployment platform.
 **Platform-specific commands:**
 
 **Vercel:**
+
 ```bash
 # Deploy to staging (preview environment)
 vercel --yes
@@ -171,6 +184,7 @@ git push origin main
 ```
 
 **Netlify:**
+
 ```bash
 # Deploy to staging environment
 netlify deploy --prod=false
@@ -180,12 +194,14 @@ git push origin main:staging
 ```
 
 **Railway:**
+
 ```bash
 # Trigger deployment
 railway up --environment staging
 ```
 
 **GitHub Actions:**
+
 ```bash
 # Trigger workflow
 gh workflow run deploy-staging.yml
@@ -195,6 +211,7 @@ gh run watch
 ```
 
 **Docker/Custom:**
+
 ```bash
 # Build and deploy
 docker build -t myapp:staging .
@@ -207,6 +224,7 @@ docker-compose up -d
 ```
 
 **Monitor deployment:**
+
 ```bash
 # Get deployment ID/URL
 DEPLOYMENT_ID="dpl_abc123xyz"
@@ -218,6 +236,7 @@ echo ""
 echo "Monitoring deployment..."
 # Platform-specific monitoring commands
 ```
+
 </step>
 
 <step number="4" name="run_health_checks">
@@ -226,6 +245,7 @@ echo "Monitoring deployment..."
 Verify all services and endpoints operational after deployment.
 
 **Critical checks:**
+
 ```bash
 echo "Running health checks..."
 
@@ -278,11 +298,12 @@ echo "✅ All health checks passed"
 ```
 
 **Health check endpoints:**
+
 - `/health` - Overall system health
 - `/api/version` - Deployed version
 - `/api/status` - Detailed service status
 - `/api/db/ping` - Database connectivity
-</step>
+  </step>
 
 <step number="5" name="generate_ship_report">
 **5. Generate Staging Ship Report**
@@ -290,6 +311,7 @@ echo "✅ All health checks passed"
 Create staging-ship-report.md with deployment metadata.
 
 **Report generation:**
+
 ```bash
 FEATURE_SLUG="user-profile-editing"
 REPORT_PATH="specs/001-$FEATURE_SLUG/staging-ship-report.md"
@@ -338,9 +360,10 @@ echo "✅ Ship report generated: $REPORT_PATH"
 ```
 
 **Update workflow state:**
+
 ```bash
-# Update workflow-state.yaml
-STATE_FILE="specs/001-$FEATURE_SLUG/workflow-state.yaml"
+# Update state.yaml
+STATE_FILE="specs/001-$FEATURE_SLUG/state.yaml"
 
 # Add deployment metadata
 yq eval ".deployment.staging.url = \"$STAGING_URL\"" -i "$STATE_FILE"
@@ -350,6 +373,7 @@ yq eval ".current_phase = \"validate-staging\"" -i "$STATE_FILE"
 
 echo "✅ Workflow state updated"
 ```
+
 </step>
 
 <step number="6" name="display_summary">
@@ -358,6 +382,7 @@ echo "✅ Workflow state updated"
 Show deployment results and next steps.
 
 **Summary format:**
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚀 Staging Deployment Successful!
@@ -385,6 +410,7 @@ Next: Manual Validation
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
 </step>
 </workflow>
 
@@ -441,11 +467,13 @@ vercel --yes
 sleep 10  # Wait for deployment to stabilize
 
 # Check health endpoint
+
 curl -f https://staging.example.com/health || {
-  echo "❌ Health check failed - deployment broken"
-  exit 1
+echo "❌ Health check failed - deployment broken"
+exit 1
 }
-```
+
+````
 **Impact**: Broken staging deployment goes unnoticed, blocks validation
 **Prevention**: Always run automated health checks, verify 200 status and service health
 </pitfall>
@@ -456,14 +484,17 @@ curl -f https://staging.example.com/health || {
 # BAD: CI shows red, deploy anyway
 # "Tests failing but it's probably fine..."
 /ship-staging
-```
+````
+
 **✅ Always wait for CI to pass before deploying**
+
 ```bash
 # GOOD: Check CI status first
 gh run list --branch main --limit 1 --json conclusion --jq '.[0].conclusion'
 # If "success", proceed with deployment
 # If "failure", fix CI first
 ```
+
 **Impact**: Deploying broken code to staging, wasting time debugging obvious failures
 **Prevention**: Make CI passing a prerequisite gate for staging deployment
 </pitfall>
@@ -483,8 +514,10 @@ vercel --yes
 # Railway: railway rollback
 
 # Test rollback works during /ship-staging
+
 # Before /ship-prod
-```
+
+````
 **Impact**: Unable to recover quickly from broken deployment, extended downtime
 **Prevention**: Document and test rollback procedure, include in ship report
 </pitfall>
@@ -495,14 +528,17 @@ vercel --yes
 # BAD: Deploy but don't save deployment ID, URL, timestamp
 vercel --yes
 # Later: "What version is on staging? When was it deployed?"
-```
+````
+
 **✅ Always generate ship report with metadata**
+
 ```bash
 # GOOD: Capture and save deployment info
 DEPLOYMENT_ID=$(vercel --yes | grep -oP 'https://[^ ]+')
 echo "Deployment ID: $DEPLOYMENT_ID" >> staging-ship-report.md
 echo "Deployed at: $(date -Iseconds)" >> staging-ship-report.md
 ```
+
 **Impact**: No audit trail, can't correlate staging issues with deployments
 **Prevention**: Always generate staging-ship-report.md with full metadata
 </pitfall>
@@ -520,13 +556,14 @@ echo "Deployed at: $(date -Iseconds)" >> staging-ship-report.md
 - ✓ API, database, cache services confirmed operational
 - ✓ Deployed version matches expected version
 - ✓ staging-ship-report.md generated in specs/NNN-slug/ directory
-- ✓ workflow-state.yaml updated with staging deployment metadata
+- ✓ state.yaml updated with staging deployment metadata
 - ✓ Next action displayed (/validate-staging)
 
 **Quality gates passed:**
+
 - CI green on main branch before deployment
 - No migration errors during schema updates
 - All health checks passing post-deployment
 - No critical errors in deployment logs
 - Rollback procedure documented and tested
-</success_criteria>
+  </success_criteria>

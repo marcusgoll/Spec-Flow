@@ -1,0 +1,144 @@
+# Phase Sequences Configuration
+# Defines the workflow phase transitions for each deployment model
+#
+# Usage: Read by workflow-state.sh to determine next phase
+# Each model defines: sequence (ordered list) and transitions (phase -> next_phase)
+
+version: "1.0.0"
+
+# Deployment model configurations
+models:
+  staging-prod:
+    description: "Full staging validation before production"
+    sequence:
+      - spec
+      - clarify
+      - plan
+      - tasks
+      - analyze
+      - implement
+      - ship:optimize
+      - ship:ship-staging
+      - ship:validate-staging
+      - ship:ship-prod
+      - ship:finalize
+    transitions:
+      spec-flow: clarify
+      clarify: plan
+      plan: tasks
+      tasks: analyze
+      analyze: implement
+      implement: ship:optimize
+      ship:optimize: ship:ship-staging
+      ship:ship-staging: ship:validate-staging
+      ship:validate-staging: ship:ship-prod
+      ship:ship-prod: ship:finalize
+      ship:finalize: ""
+
+  direct-prod:
+    description: "Direct deployment to production without staging"
+    sequence:
+      - spec
+      - clarify
+      - plan
+      - tasks
+      - analyze
+      - implement
+      - ship:optimize
+      - ship:deploy-prod
+      - ship:finalize
+    transitions:
+      spec-flow: clarify
+      clarify: plan
+      plan: tasks
+      tasks: analyze
+      analyze: implement
+      implement: ship:optimize
+      ship:optimize: ship:deploy-prod
+      ship:deploy-prod: ship:finalize
+      ship:finalize: ""
+
+  local-only:
+    description: "Local build validation without remote deployment"
+    sequence:
+      - spec
+      - clarify
+      - plan
+      - tasks
+      - analyze
+      - implement
+      - ship:optimize
+      - ship:build-local
+      - ship:finalize
+    transitions:
+      spec-flow: clarify
+      clarify: plan
+      plan: tasks
+      tasks: analyze
+      analyze: implement
+      implement: ship:optimize
+      ship:optimize: ship:build-local
+      ship:build-local: ship:finalize
+      ship:finalize: ""
+
+# Epic workflow phases (extends base with additional gates)
+epic:
+  additional_phases:
+    - contract-lock
+    - sprint-execution
+    - audit-workflow
+  quality_gates:
+    - e2e-tests
+    - contract-validation
+    - load-testing
+    - migration-integrity
+
+# Manual gates that pause workflow for human approval
+manual_gates:
+  staging-prod:
+    - ship:validate-staging
+  direct-prod: []
+  local-only: []
+
+# Phase metadata
+phase_metadata:
+  spec:
+    command: "/spec"
+    outputs: ["spec.md", "NOTES.md", "visuals/README.md"]
+  clarify:
+    command: "/clarify"
+    outputs: ["clarification in spec.md"]
+  plan:
+    command: "/plan"
+    outputs: ["plan.md", "research.md"]
+  tasks:
+    command: "/tasks"
+    outputs: ["tasks.md"]
+  analyze:
+    command: "/validate"
+    outputs: ["analysis-report.md"]
+  implement:
+    command: "/implement"
+    outputs: ["task completions"]
+  ship:optimize:
+    command: "/optimize"
+    outputs: ["optimization-report.md", "code-review-report.md"]
+  ship:ship-staging:
+    command: "/ship-staging"
+    outputs: ["staging-ship-report.md", "deployment-metadata.json"]
+  ship:validate-staging:
+    command: "/validate-staging"
+    outputs: ["staging-validation-report.md"]
+    manual_gate: true
+  ship:ship-prod:
+    command: "/ship-prod"
+    outputs: ["production-ship-report.md", "GitHub release"]
+  ship:deploy-prod:
+    command: "/deploy-prod"
+    outputs: ["production-ship-report.md"]
+  ship:build-local:
+    command: "/build-local"
+    outputs: ["local-build-report.md"]
+  ship:finalize:
+    command: "/finalize"
+    outputs: ["CHANGELOG update", "README update", "branch cleanup"]

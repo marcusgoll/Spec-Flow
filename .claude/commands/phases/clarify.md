@@ -12,11 +12,11 @@ updated: 2025-11-19
 <context>
 **User Input**: $ARGUMENTS
 
-**Workflow Detection**: Auto-detected via workspace files, branch pattern, or workflow-state.yaml
+**Workflow Detection**: Auto-detected via workspace files, branch pattern, or state.yaml
 
 **Feature Directory**: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>$null | jq -r '.FEATURE_DIR'`
 
-**Current Spec**: Auto-detected (epics/*/epic-spec.md OR specs/*/spec.md)
+**Current Spec**: Auto-detected (epics/_/epic-spec.md OR specs/_/spec.md)
 
 **Question Bank**: @.claude/skills/clarify/references/question-bank.md
 
@@ -31,6 +31,7 @@ updated: 2025-11-19
 Reduce specification ambiguity through targeted, interactive questions with adaptive auto-invocation.
 
 Transform ambiguous specifications into clear, implementable requirements by:
+
 1. Analyzing spec.md across 10 coverage categories
 2. Mapping ambiguities to centralized question bank templates
 3. Using interactive AskUserQuestion for structured clarification (batches of 3)
@@ -40,32 +41,37 @@ Transform ambiguous specifications into clear, implementable requirements by:
 **Key principle**: Planning is 80% of success — thorough clarification prevents costly rework during implementation.
 
 **Operating Constraints**:
+
 - Question cap: max 10 per session; show 3-5 at a time
 - Recommended answers backed by repo precedents when available
 - Incremental saves: atomic update after each answer
 - Git safety: checkpoint before each file write; rollback on failure
-</objective>
+  </objective>
 
 ## Anti-Hallucination Rules
 
 **CRITICAL**: Follow these rules to prevent fabricating ambiguities or solutions.
 
 1. **Never invent ambiguities** not present in `spec.md`.
+
    - ❌ BAD: "The spec doesn't mention how to handle edge cases" (without reading it)
    - ✅ GOOD: Read spec.md, quote ambiguous sections: "spec.md:45 says 'users can edit' but doesn't specify edit permissions"
    - **Quote verbatim with line numbers:** `spec.md:120-125: '[exact quote]'`
 
 2. **Always quote the unclear text** and cite **line numbers** for every question.
+
    - When flagging ambiguity: `spec.md:120-125: '[exact quote]' - unclear whether this means X or Y`
    - Don't paraphrase unclear text - show it verbatim
    - Cite line numbers for all ambiguities
 
 3. **Never invent "best practice"** without evidence.
+
    - Don't say "Best practice is..." without evidence
    - Source recommendations: "Similar feature in specs/002-auth used JWT per plan.md:45"
    - If no precedent exists, say: "No existing pattern found, recommend researching..."
 
 4. **Verify question relevance before asking user**.
+
    - Before asking technical question, check if answer exists in codebase
    - Use Grep/Glob to search for existing implementations
    - Don't ask "Should we use PostgreSQL?" if package.json already has pg installed
@@ -96,6 +102,7 @@ Let me analyze this ambiguity:
 </answer>
 
 **When to use structured thinking:**
+
 - Deciding whether ambiguity is worth asking about (impacts implementation vs cosmetic)
 - Prioritizing multiple clarification questions (most impactful first)
 - Determining if context provides sufficient hints to skip question
@@ -184,6 +191,7 @@ echo "📄 Using spec: $SPEC_FILE"
 ```
 
 **Remaining Ambiguities Check:**
+
 ```bash
 AMBIGUITY_COUNT=$(grep -c "\[NEEDS CLARIFICATION\]" "$SPEC_FILE" 2>/dev/null || echo "0")
 echo "🔍 Found $AMBIGUITY_COUNT [NEEDS CLARIFICATION] markers"
@@ -200,13 +208,23 @@ The /epic command may auto-invoke /clarify based on ambiguity detection. This se
 ### Ambiguity Score Calculation
 
 **Analyze epic-spec.md or spec.md:**
+
 ```javascript
 const ambiguityScore = calculateAmbiguityScore({
-  missing_subsystems: epic_spec.subsystems.filter(s => s.involved === 'unknown').length,
-  vague_objectives: epic_spec.objective.business_value.includes('[NEEDS CLARIFICATION]') ? 10 : 0,
-  missing_success_metrics: epic_spec.objective.success_metrics === '' ? 15 : 0,
-  unclear_technical_approach: epic_spec.clarifications.length === 0 && epic_spec.constraints === '' ? 10 : 0,
-  placeholder_count: countPlaceholders(epic_spec) * 5
+  missing_subsystems: epic_spec.subsystems.filter(
+    (s) => s.involved === "unknown"
+  ).length,
+  vague_objectives: epic_spec.objective.business_value.includes(
+    "[NEEDS CLARIFICATION]"
+  )
+    ? 10
+    : 0,
+  missing_success_metrics: epic_spec.objective.success_metrics === "" ? 15 : 0,
+  unclear_technical_approach:
+    epic_spec.clarifications.length === 0 && epic_spec.constraints === ""
+      ? 10
+      : 0,
+  placeholder_count: countPlaceholders(epic_spec) * 5,
 });
 
 // Score interpretation:
@@ -219,46 +237,56 @@ const ambiguityScore = calculateAmbiguityScore({
 
 ```javascript
 if (ambiguityScore > 30) {
-  log('🔍 Ambiguity detected (score: ' + ambiguityScore + ') - Auto-invoking /clarify');
+  log(
+    "🔍 Ambiguity detected (score: " +
+      ambiguityScore +
+      ") - Auto-invoking /clarify"
+  );
   // Proceed with clarification workflow
 } else if (ambiguityScore > 0 && ambiguityScore <= 30) {
   // Use AskUserQuestion to confirm
   AskUserQuestion({
-    questions: [{
-      question: `Minor ambiguities detected (score: ${ambiguityScore}). Clarify now or proceed?`,
-      header: "Clarification",
-      multiSelect: false,
-      options: [
-        {
-          label: "Clarify now",
-          description: `Ask ${Math.ceil(ambiguityScore / 10)} questions to resolve ambiguities`
-        },
-        {
-          label: "Skip for now",
-          description: "Proceed to planning, may need to backtrack later"
-        }
-      ]
-    }]
+    questions: [
+      {
+        question: `Minor ambiguities detected (score: ${ambiguityScore}). Clarify now or proceed?`,
+        header: "Clarification",
+        multiSelect: false,
+        options: [
+          {
+            label: "Clarify now",
+            description: `Ask ${Math.ceil(
+              ambiguityScore / 10
+            )} questions to resolve ambiguities`,
+          },
+          {
+            label: "Skip for now",
+            description: "Proceed to planning, may need to backtrack later",
+          },
+        ],
+      },
+    ],
   });
 
   if (userChoice === "Skip for now") {
-    log('⏭️  Skipping clarification - proceeding to planning');
-    return { skipped: true, reason: 'User opted to skip' };
+    log("⏭️  Skipping clarification - proceeding to planning");
+    return { skipped: true, reason: "User opted to skip" };
   }
 } else {
-  log('✅ No ambiguities detected - skipping clarification phase');
-  return { skipped: true, reason: 'No ambiguities detected' };
+  log("✅ No ambiguities detected - skipping clarification phase");
+  return { skipped: true, reason: "No ambiguities detected" };
 }
 ```
 
 ### Adaptive Question Count
 
 Based on ambiguity score, adjust question count:
+
 - **Score 0-30**: Ask 2-3 questions max
 - **Score 31-60**: Ask 4-5 questions
 - **Score 61+**: Ask 6-10 questions
 
 Store in variable for use in question generation phase:
+
 ```javascript
 const maxQuestions = ambiguityScore <= 30 ? 3 : ambiguityScore <= 60 ? 5 : 10;
 ```
@@ -275,6 +303,7 @@ cat .claude/skills/clarify/references/question-bank.md
 **Purpose**: The question bank contains 40+ pre-structured questions organized by category. Use these templates to construct AskUserQuestion calls with consistent format, precedent visibility, and multiSelect support.
 
 **Categories available:**
+
 - Universal (baseline, user stories)
 - Architecture (component placement, integration, scale)
 - Data Model (entities, persistence, migration)
@@ -356,6 +385,7 @@ For each ambiguous section:
 **Priority order:** Architecture/Domain > UX > NFR > Integration > Edge > Constraints > Terminology > Completion > Placeholders
 
 **Output:** List of ambiguities with:
+
 - Spec quote + line numbers
 - Category
 - Question bank template to use
@@ -376,19 +406,40 @@ For each ambiguous section:
 // Example: Group architecture questions together
 const batches = [
   [
-    { category: "Architecture", question: questionBank.architecture.component_placement, ambiguity: spec_line_120 },
-    { category: "Architecture", question: questionBank.architecture.integration_pattern, ambiguity: spec_line_145 },
-    { category: "Architecture", question: questionBank.architecture.scalability_requirements, ambiguity: spec_line_180 }
+    {
+      category: "Architecture",
+      question: questionBank.architecture.component_placement,
+      ambiguity: spec_line_120,
+    },
+    {
+      category: "Architecture",
+      question: questionBank.architecture.integration_pattern,
+      ambiguity: spec_line_145,
+    },
+    {
+      category: "Architecture",
+      question: questionBank.architecture.scalability_requirements,
+      ambiguity: spec_line_180,
+    },
   ],
   [
-    { category: "Data Model", question: questionBank.data_model.entity_identification, ambiguity: spec_line_200 },
-    { category: "Data Model", question: questionBank.data_model.persistence_strategy, ambiguity: spec_line_220 }
-  ]
+    {
+      category: "Data Model",
+      question: questionBank.data_model.entity_identification,
+      ambiguity: spec_line_200,
+    },
+    {
+      category: "Data Model",
+      question: questionBank.data_model.persistence_strategy,
+      ambiguity: spec_line_220,
+    },
+  ],
   // ... more batches
 ];
 ```
 
 **Batching rules:**
+
 - Max 3 questions per AskUserQuestion call
 - Group by category when possible (Architecture, Data Model, etc.)
 - High-priority questions in earlier batches
@@ -411,64 +462,75 @@ For each batch:
 ### Interactive Question Format
 
 **Example: Architecture question**
+
 ```javascript
 AskUserQuestion({
-  questions: [{
-    question: "spec.md:120-126 is ambiguous about authentication approach. Which should we use?",
-    header: "Authentication",
-    multiSelect: false,
-    options: [
-      {
-        label: "JWT tokens",
-        description: "Stateless, scales horizontally. Used in specs/002-auth per plan.md:45"
-      },
-      {
-        label: "Session-based",
-        description: "Server-side sessions with Redis. Used in specs/005-admin"
-      },
-      {
-        label: "OAuth 2.1",
-        description: "Delegate to external provider (Google, GitHub, etc.)"
-      },
-      {
-        label: "Other",
-        description: "I'll provide a custom answer"
-      }
-    ]
-  }]
+  questions: [
+    {
+      question:
+        "spec.md:120-126 is ambiguous about authentication approach. Which should we use?",
+      header: "Authentication",
+      multiSelect: false,
+      options: [
+        {
+          label: "JWT tokens",
+          description:
+            "Stateless, scales horizontally. Used in specs/002-auth per plan.md:45",
+        },
+        {
+          label: "Session-based",
+          description:
+            "Server-side sessions with Redis. Used in specs/005-admin",
+        },
+        {
+          label: "OAuth 2.1",
+          description: "Delegate to external provider (Google, GitHub, etc.)",
+        },
+        {
+          label: "Other",
+          description: "I'll provide a custom answer",
+        },
+      ],
+    },
+  ],
 });
 ```
 
 **Example: Data model question**
+
 ```javascript
 AskUserQuestion({
-  questions: [{
-    question: "spec.md:45-50 mentions 'users can edit profiles' but doesn't specify permission model. What approach?",
-    header: "Permissions",
-    multiSelect: false,
-    options: [
-      {
-        label: "Owner-only",
-        description: "Users can only edit their own profile"
-      },
-      {
-        label: "RBAC (Role-Based)",
-        description: "Admins can edit any profile, users only their own"
-      },
-      {
-        label: "ACL (Access Control Lists)",
-        description: "Fine-grained per-user permissions"
-      },
-      {
-        label: "Other",
-        description: "I'll provide a custom answer"
-      }
-    ]
-  }]
+  questions: [
+    {
+      question:
+        "spec.md:45-50 mentions 'users can edit profiles' but doesn't specify permission model. What approach?",
+      header: "Permissions",
+      multiSelect: false,
+      options: [
+        {
+          label: "Owner-only",
+          description: "Users can only edit their own profile",
+        },
+        {
+          label: "RBAC (Role-Based)",
+          description: "Admins can edit any profile, users only their own",
+        },
+        {
+          label: "ACL (Access Control Lists)",
+          description: "Fine-grained per-user permissions",
+        },
+        {
+          label: "Other",
+          description: "I'll provide a custom answer",
+        },
+      ],
+    },
+  ],
 });
 ```
 
 **Example: Multi-question batch**
+
 ```javascript
 // Ask up to 3 related questions at once
 AskUserQuestion({
@@ -478,10 +540,13 @@ AskUserQuestion({
       header: "Database",
       multiSelect: false,
       options: [
-        { label: "PostgreSQL", description: "Relational, ACID, used in 3 other features" },
+        {
+          label: "PostgreSQL",
+          description: "Relational, ACID, used in 3 other features",
+        },
         { label: "MongoDB", description: "Document store, flexible schema" },
-        { label: "Other", description: "Custom answer" }
-      ]
+        { label: "Other", description: "Custom answer" },
+      ],
     },
     {
       question: "How should we handle file uploads?",
@@ -491,8 +556,8 @@ AskUserQuestion({
         { label: "Local filesystem", description: "Simple, no external deps" },
         { label: "S3/CloudStorage", description: "Scalable, CDN-friendly" },
         { label: "Database BLOBs", description: "Keep everything in DB" },
-        { label: "Other", description: "Custom answer" }
-      ]
+        { label: "Other", description: "Custom answer" },
+      ],
     },
     {
       question: "What's the expected scale?",
@@ -502,10 +567,10 @@ AskUserQuestion({
         { label: "< 1K users", description: "Optimize for simplicity" },
         { label: "1K-10K users", description: "Plan for horizontal scaling" },
         { label: "10K+ users", description: "Distributed architecture needed" },
-        { label: "Other", description: "Custom answer" }
-      ]
-    }
-  ]
+        { label: "Other", description: "Custom answer" },
+      ],
+    },
+  ],
 });
 ```
 
@@ -526,7 +591,12 @@ for (const [questionHeader, selectedOption] of Object.entries(answers)) {
     const customAnswer = answers[`${questionHeader}_custom`];
     applyAnswerAtomically(questionHeader, customAnswer, specQuote, lineNumbers);
   } else {
-    applyAnswerAtomically(questionHeader, selectedOption, specQuote, lineNumbers);
+    applyAnswerAtomically(
+      questionHeader,
+      selectedOption,
+      specQuote,
+      lineNumbers
+    );
   }
 
   console.log(`✅ Applied: ${questionHeader} → ${selectedOption}`);
@@ -567,6 +637,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>" --no-verify
 ```
 
 **Progress tracking:** After each answer is applied, update the user:
+
 - `✅ Applied: Architecture → Backend API`
 - `✅ Applied: Database → PostgreSQL`
 - `📊 Progress: 3 of 8 questions answered`
@@ -576,18 +647,18 @@ Co-Authored-By: Claude <noreply@anthropic.com>" --no-verify
 After completing all interactive question batches, display coverage analysis:
 
 ```markdown
-| Category | Status | Notes |
-|----------|--------|-------|
-| Functional Scope & Behavior | ✅ Resolved | Sufficient detail |
-| Domain & Data Model | ✅ Resolved | Sufficient detail |
-| Interaction & UX Flow | ⚠️ Deferred | Low impact, clarify later if needed |
-| Non-Functional Quality | ✅ Resolved | Sufficient detail |
-| Integration & Dependencies | ✅ Resolved | Sufficient detail |
+| Category                      | Status      | Notes                               |
+| ----------------------------- | ----------- | ----------------------------------- |
+| Functional Scope & Behavior   | ✅ Resolved | Sufficient detail                   |
+| Domain & Data Model           | ✅ Resolved | Sufficient detail                   |
+| Interaction & UX Flow         | ⚠️ Deferred | Low impact, clarify later if needed |
+| Non-Functional Quality        | ✅ Resolved | Sufficient detail                   |
+| Integration & Dependencies    | ✅ Resolved | Sufficient detail                   |
 | Edge Cases & Failure Handling | ⚠️ Deferred | Low impact, clarify later if needed |
-| Constraints & Tradeoffs | ✅ Resolved | Sufficient detail |
-| Terminology & Consistency | ✅ Resolved | Sufficient detail |
-| Completion Signals | ✅ Resolved | Sufficient detail |
-| Placeholders & Ambiguity | ✅ Resolved | Sufficient detail |
+| Constraints & Tradeoffs       | ✅ Resolved | Sufficient detail                   |
+| Terminology & Consistency     | ✅ Resolved | Sufficient detail                   |
+| Completion Signals            | ✅ Resolved | Sufficient detail                   |
+| Placeholders & Ambiguity      | ✅ Resolved | Sufficient detail                   |
 ```
 
 ### Step 8: Decision Tree
@@ -663,27 +734,32 @@ EOF
 **Clarification successfully completed when:**
 
 1. **All ambiguities addressed**:
+
    - `[NEEDS CLARIFICATION]` markers resolved or documented
    - Remaining ambiguity count = 0 OR explicitly deferred with justification
    - All high-priority categories (Architecture, Data Model) have sufficient detail
 
 2. **Interactive questions completed**:
+
    - All question batches processed (max 10 questions total)
    - User answers recorded in spec.md Clarifications section
    - Each answer applied atomically with git commit
 
 3. **Coverage analysis shows progress**:
+
    - Clear: ≥8/10 categories
    - Partial: ≤2/10 categories
    - Missing: 0/10 categories
    - Coverage summary table generated
 
 4. **Git safety maintained**:
+
    - All changes committed atomically (checkpoint + apply pattern)
    - Git history shows individual Q/A commits
-   - No uncommitted changes in specs/*/spec.md
+   - No uncommitted changes in specs/\*/spec.md
 
 5. **Documentation updated**:
+
    - spec.md has ## Clarifications section with session header
    - NOTES.md checkpoint appended with summary
    - Remaining ambiguities count recorded
@@ -691,33 +767,41 @@ EOF
 6. **Next step identified**:
    - Decision tree executed
    - User informed of recommendation (/plan if clear, /clarify if ambiguities remain)
-</success_criteria>
+     </success_criteria>
 
 <verification>
 **Before marking clarification complete, verify:**
 
 1. **Count remaining ambiguities**:
+
    ```bash
    grep -c "\[NEEDS CLARIFICATION\]" specs/*/spec.md || echo 0
    ```
+
    Should be 0 or explicit deferred markers with justification
 
 2. **Check Clarifications section exists**:
+
    ```bash
    grep "## Clarifications" specs/*/spec.md
    ```
+
    Should return section with session header and Q/A entries
 
 3. **Verify git commits**:
+
    ```bash
    git log --oneline --grep="clarify" -10
    ```
+
    Should show checkpoint commits and Q/A application commits
 
 4. **Validate NOTES.md updated**:
+
    ```bash
    grep -A 10 "Phase 0.5: Clarify" specs/*/NOTES.md
    ```
+
    Should show checkpoint with question count and remaining ambiguities
 
 5. **Check coverage summary displayed**:
@@ -733,19 +817,22 @@ EOF
 **Files created/modified by this command:**
 
 **Feature spec** (specs/NNN-slug/):
+
 - spec.md — Updated with Clarifications section (session-dated Q/A entries)
 - spec.md — Ambiguous sections updated with answers applied
 - NOTES.md — Phase 0.5 checkpoint appended
 
 **Git commits** (atomic):
+
 - Multiple commits: `clarify: checkpoint Q[N]` (before each update)
 - Multiple commits: `clarify: apply Q/A for [topic]` (after each answer)
 
 **Console output**:
+
 - Coverage analysis table (10 categories)
 - Progress indicators during question batches
 - Decision tree with next step recommendation
-</output>
+  </output>
 
 ---
 
@@ -763,14 +850,14 @@ EOF
 
 **Comparison to previous approach:**
 
-| Aspect | Old (Passive) | New (Interactive) |
-|--------|---------------|-------------------|
-| Question format | Free-form markdown | Structured YAML templates |
-| User response | Free-text typing | Select from options |
-| Batch size | 1 question at a time | 3 questions per batch |
-| Precedent visibility | Manual citation | Automatic from question bank |
-| Time per question | ~2-3 min | ~30 sec |
-| Ambiguous answers | Common (free-text) | Rare (structured options) |
+| Aspect               | Old (Passive)        | New (Interactive)            |
+| -------------------- | -------------------- | ---------------------------- |
+| Question format      | Free-form markdown   | Structured YAML templates    |
+| User response        | Free-text typing     | Select from options          |
+| Batch size           | 1 question at a time | 3 questions per batch        |
+| Precedent visibility | Manual citation      | Automatic from question bank |
+| Time per question    | ~2-3 min             | ~30 sec                      |
+| Ambiguous answers    | Common (free-text)   | Rare (structured options)    |
 
 **Expected velocity improvement:** 3-5x faster clarification phase
 

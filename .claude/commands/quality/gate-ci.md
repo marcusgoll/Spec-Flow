@@ -15,18 +15,20 @@ allowed-tools: [Bash(npm *), Bash(pnpm *), Bash(npx *), Bash(pytest *), Bash(bla
 **Git Status**: !`git status --short 2>$null || echo "clean"`
 
 **Project Type Detection**:
+
 - Node.js: !`test -f package.json && echo "node" || echo ""`
 - Python: !`test -f requirements.txt && echo "python" || echo ""`
 - Rust: !`test -f Cargo.toml && echo "rust" || echo ""`
 - Go: !`test -f go.mod && echo "go" || echo ""`
 
-**Workflow State**: @.spec-flow/memory/workflow-state.yaml
+**Workflow State**: @.spec-flow/memory/state.yaml
 </context>
 
 <objective>
 Run CI quality checks as a blocking gate before epics can transition from Review → Integrated state.
 
 **Checks**:
+
 1. **Unit & Integration Tests**: All tests must pass
 2. **Linters**: Code style compliance (ESLint/Prettier, Black/Flake8, clippy, golint)
 3. **Type Checks**: TypeScript/Python/Rust/Go type safety
@@ -37,32 +39,37 @@ Run CI quality checks as a blocking gate before epics can transition from Review
 **Purpose**: Ensures code meets quality standards before deployment.
 
 **Arguments**:
+
 - `--epic <name>`: Track gate per-epic (optional)
 - `--verbose`: Show detailed test/lint output (optional)
-</objective>
+  </objective>
 
 ## Anti-Hallucination Rules
 
 **CRITICAL**: Follow these rules to prevent fabricating gate results.
 
 1. **Never claim tests pass without running them**
+
    - Always execute actual test commands: `npm test`, `pytest`, `cargo test`, `go test`
    - Report actual exit codes and output
    - Don't say "passed" until verification succeeds
 
 2. **Quote real command output**
+
    - Show actual test failures, lint errors, type errors
    - Include file:line references from real output
    - Never invent error messages
 
 3. **Verify coverage from actual reports**
+
    - Read coverage/coverage-summary.json (Node.js)
    - Read coverage.xml or .coverage (Python)
    - Parse actual coverage percentages
    - Don't guess at coverage numbers
 
-4. **Check workflow-state.yaml was updated**
-   - Read .spec-flow/memory/workflow-state.yaml after recording gate
+4. **Check state.yaml was updated**
+
+   - Read .spec-flow/memory/state.yaml after recording gate
    - Verify gate status matches actual results
    - Confirm timestamp recorded
 
@@ -82,6 +89,7 @@ Run CI quality checks as a blocking gate before epics can transition from Review
 **Extract epic name and verbose flag from $ARGUMENTS**:
 
 Parse flags:
+
 - If `--epic <name>` present, extract epic name for per-epic tracking
 - If `--verbose` present, set verbose mode for detailed output
 - Default: Run gate for current branch/project
@@ -253,16 +261,16 @@ if [ "$TESTS_PASSED" = true ] && \
 fi
 ```
 
-### Step 8: Record Gate Result in workflow-state.yaml
+### Step 8: Record Gate Result in state.yaml
 
 **Update workflow state with gate results**:
 
-Use Edit tool to update `.spec-flow/memory/workflow-state.yaml`:
+Use Edit tool to update `.spec-flow/memory/state.yaml`:
 
 ```yaml
 quality_gates:
   ci:
-    status: passed  # or failed
+    status: passed # or failed
     timestamp: 2025-11-20T10:00:00Z
     tests: true
     linters: true
@@ -271,12 +279,13 @@ quality_gates:
 ```
 
 **If epic-specific** (--epic flag provided):
+
 ```yaml
 epics:
   - name: <epic-name>
     gates:
       ci:
-        status: passed  # or failed
+        status: passed # or failed
         timestamp: 2025-11-20T10:00:00Z
 ```
 
@@ -323,29 +332,34 @@ fi
 
 1. **All checks executed**: Tests, linters, type checks, coverage all run
 2. **Results accurate**: Exit codes and output match actual command results
-3. **Gate status recorded**: workflow-state.yaml updated with pass/fail and timestamp
+3. **Gate status recorded**: state.yaml updated with pass/fail and timestamp
 4. **Summary displayed**: Clear pass/fail status shown to user
 5. **Failures detailed**: If failed, specific failures listed with remediation steps
 6. **Epic tracking** (if --epic flag): Gate recorded per-epic in workflow state
-</success_criteria>
+   </success_criteria>
 
 <verification>
 **Before marking gate complete, verify:**
 
-1. **Check workflow-state.yaml updated**:
+1. **Check state.yaml updated**:
+
    ```bash
-   cat .spec-flow/memory/workflow-state.yaml | grep -A5 "quality_gates"
+   cat .spec-flow/memory/state.yaml | grep -A5 "quality_gates"
    ```
+
    Should show ci gate status and timestamp
 
 2. **Verify test results match reported status**:
+
    - If tests reported as passing, exit code should be 0
    - If tests reported as failing, should have actual failure output
 
 3. **Confirm coverage calculation**:
+
    ```bash
    cat coverage/coverage-summary.json | jq '.total.lines.pct'
    ```
+
    Should match reported coverage percentage
 
 4. **Validate gate decision logic**:
@@ -359,20 +373,23 @@ fi
 **Files created/modified by this command:**
 
 **Workflow state**:
-- `.spec-flow/memory/workflow-state.yaml` - Gate results and timestamp recorded
+
+- `.spec-flow/memory/state.yaml` - Gate results and timestamp recorded
 
 **Console output**:
+
 - Gate summary (tests, linters, types, coverage status)
 - Pass/fail verdict
 - Remediation steps if failed
 - Epic transition guidance if passed
-</output>
+  </output>
 
 ---
 
 ## Notes
 
 **Supported Project Types**:
+
 - **Node.js**: Jest/Vitest, ESLint/Prettier, TypeScript
 - **Python**: pytest, Black/Flake8, mypy
 - **Rust**: cargo test, clippy, rustfmt
@@ -383,10 +400,12 @@ fi
 **Gate Blocking**: Epic cannot transition from Review → Integrated until gate passes
 
 **Manual vs Automatic**:
+
 - Automatic: Triggered by CI/CD on PR merge
 - Manual: Developer runs locally before PR
 
 **Troubleshooting**:
+
 - Tests pass locally, fail in CI: Check Node/Python version, env vars
 - Coverage not working: Regenerate report with `--coverage` flag
 - Linters too strict: Customize rules in .eslintrc.js or .flake8

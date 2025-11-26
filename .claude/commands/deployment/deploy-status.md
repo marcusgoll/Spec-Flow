@@ -1,25 +1,35 @@
 ---
 description: Display comprehensive deployment workflow status showing current phase, completed tasks, quality gates, and deployment information
-allowed-tools: [Read, Bash(ls:*), Bash(yq:*), Bash(cat:*), Bash(grep:*), Bash(wc:*), Bash(test:*)]
+allowed-tools:
+  [
+    Read,
+    Bash(ls:*),
+    Bash(yq:*),
+    Bash(cat:*),
+    Bash(grep:*),
+    Bash(wc:*),
+    Bash(test:*),
+  ]
 argument-hint: (no arguments - displays status for most recent feature)
 ---
 
 <context>
 Most recent feature directory: !`ls -td specs/*/ 2>/dev/null | head -1 | tr -d '\n'`
 
-Workflow state file exists: !`test -f $(ls -td specs/*/ 2>/dev/null | head -1)workflow-state.yaml && echo "✅ Found" || echo "❌ Missing"`
+Workflow state file exists: !`test -f $(ls -td specs/*/ 2>/dev/null | head -1)state.yaml && echo "✅ Found" || echo "❌ Missing"`
 
-Current phase: !`yq eval '.workflow.phase // "unknown"' $(ls -td specs/*/ 2>/dev/null | head -1)workflow-state.yaml 2>/dev/null || echo "N/A"`
+Current phase: !`yq eval '.workflow.phase // "unknown"' $(ls -td specs/*/ 2>/dev/null | head -1)state.yaml 2>/dev/null || echo "N/A"`
 
-Workflow status: !`yq eval '.workflow.status // "unknown"' $(ls -td specs/*/ 2>/dev/null | head -1)workflow-state.yaml 2>/dev/null || echo "N/A"`
+Workflow status: !`yq eval '.workflow.status // "unknown"' $(ls -td specs/*/ 2>/dev/null | head -1)state.yaml 2>/dev/null || echo "N/A"`
 
-Deployment model: !`yq eval '.deployment_model // "unknown"' $(ls -td specs/*/ 2>/dev/null | head -1)workflow-state.yaml 2>/dev/null || echo "N/A"`
+Deployment model: !`yq eval '.deployment_model // "unknown"' $(ls -td specs/*/ 2>/dev/null | head -1)state.yaml 2>/dev/null || echo "N/A"`
 </context>
 
 <objective>
 Display a comprehensive, formatted view of the current deployment workflow status.
 
 **What it does:**
+
 - Shows feature metadata (title, slug, timestamps)
 - Displays deployment model and path
 - Shows current phase and workflow status
@@ -30,16 +40,18 @@ Display a comprehensive, formatted view of the current deployment workflow statu
 - Provides context-aware next steps
 
 **Operating constraints:**
-- **Read-Only** — Never modifies workflow-state.yaml
-- **Most Recent Feature** — Automatically uses latest specs/*/ directory
+
+- **Read-Only** — Never modifies state.yaml
+- **Most Recent Feature** — Automatically uses latest specs/\*/ directory
 - **Auto-Migration** — Detects workflow-state.json and suggests migration
 - **Graceful Degradation** — Handles missing sections elegantly
 
 **Dependencies:**
+
 - At least one feature directory in specs/
-- workflow-state.yaml file in feature directory
+- state.yaml file in feature directory
 - yq command-line tool for YAML parsing
-</objective>
+  </objective>
 
 <process>
 1. **Find most recent feature directory**:
@@ -50,20 +62,24 @@ Display a comprehensive, formatted view of the current deployment workflow statu
    - If no features found, display error message and exit
 
 2. **Locate workflow state file**:
+
    ```bash
-   STATE_FILE="$FEATURE_DIR/workflow-state.yaml"
+   STATE_FILE="$FEATURE_DIR/state.yaml"
    ```
+
    - Check if STATE_FILE exists
    - If not, check for workflow-state.json and suggest migration
    - If neither exists, display helpful error
 
 3. **Extract feature information** using yq:
+
    - Feature slug: `.feature.slug`
    - Feature title: `.feature.title`
    - Created timestamp: `.feature.created`
    - Last updated timestamp: `.feature.last_updated`
 
 4. **Extract deployment model**:
+
    - Deployment model: `.deployment_model`
    - Interpret model type:
      - `staging-prod` → "Path: Staging → Validation → Production"
@@ -71,38 +87,44 @@ Display a comprehensive, formatted view of the current deployment workflow statu
      - `local-only` → "Path: Local Build Only"
 
 5. **Extract current status**:
+
    - Current phase: `.workflow.phase`
    - Workflow status: `.workflow.status`
    - Map status to emoji:
      - `in_progress` → 🔄 IN PROGRESS
      - `completed` → ✅ COMPLETED
      - `failed` → ❌ FAILED
-     - `pending` → ⏸️  PENDING
+     - `pending` → ⏸️ PENDING
 
 6. **Extract completed phases**:
+
    - Completed phases list: `.workflow.completed_phases[]`
    - Display each phase with ✅ checkmark
    - If empty, show "No phases completed yet"
 
 7. **Extract failed phases** (if any):
+
    - Failed phases list: `.workflow.failed_phases[]`
    - Display each phase with ❌ X mark
    - Only show section if failures exist
 
 8. **Extract manual gates** (if defined):
+
    - Manual gates: `.workflow.manual_gates | to_entries`
    - For each gate, extract name and status
    - Map status to emoji:
-     - `pending` → ⏸️  PENDING
+     - `pending` → ⏸️ PENDING
      - `approved` → ✅ APPROVED
      - `rejected` → ❌ REJECTED
 
 9. **Extract quality gates** (if defined):
+
    - Quality gates: `.quality_gates | to_entries`
    - For each gate, extract name and passed boolean
    - Display with ✅ PASSED or ❌ FAILED
 
 10. **Extract deployment information**:
+
     - **Staging**:
       - Deployed: `.deployment.staging.deployed`
       - If deployed, extract: URL, timestamp, commit SHA, deployment IDs
@@ -113,6 +135,7 @@ Display a comprehensive, formatted view of the current deployment workflow statu
     - If neither deployed, show "No deployments yet"
 
 11. **Determine next steps** based on workflow status:
+
     - **completed**:
       - If current phase is "finalize", show completion message with monitoring tips
       - Otherwise, show "Ready for next phase" with `/ship continue`
@@ -144,7 +167,7 @@ See `.claude/skills/deploy-status/references/reference.md` for detailed data ext
 <verification>
 Before completing, verify:
 - Feature directory found successfully
-- workflow-state.yaml file read correctly
+- state.yaml file read correctly
 - All sections extracted without errors
 - Status emoji indicators applied correctly
 - Manual and quality gates displayed if present
@@ -156,6 +179,7 @@ Before completing, verify:
 
 <success_criteria>
 **Data extraction:**
+
 - Feature metadata displayed (title, slug, created, updated)
 - Deployment model correctly interpreted
 - Current phase and status shown with emoji
@@ -163,22 +187,26 @@ Before completing, verify:
 - Failed phases shown if any exist
 
 **Gate status:**
+
 - Manual gates displayed with status emoji
 - Quality gates shown with pass/fail indicators
 - Only display gate sections if gates exist in state file
 
 **Deployment information:**
+
 - Staging deployment details if deployed (URL, timestamp, commit, IDs)
 - Production deployment details if deployed (URL, timestamp, commit, version, IDs)
 - "No deployments yet" if neither deployed
 
 **Next steps guidance:**
+
 - Context-aware based on workflow status
 - Actionable commands provided
 - Specific instructions for manual gates
 - Clear completion message when workflow done
 
 **Visual formatting:**
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚀 Deployment Status
@@ -230,6 +258,7 @@ Status: {emoji} {STATUS}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
 </success_criteria>
 
 <standards>
@@ -238,13 +267,14 @@ Status: {emoji} {STATUS}
 - **Unicode Box Drawing**: [Wikipedia](https://en.wikipedia.org/wiki/Box-drawing_character) for visual hierarchy
 
 **Workflow Standards:**
+
 - Read-only operations (never modify state)
 - Graceful error handling for missing data
 - Auto-migration detection for JSON → YAML
 - Context-aware next steps based on current status
 - Clear visual hierarchy with section separators
 - Emoji indicators for quick status recognition
-</standards>
+  </standards>
 
 <notes>
 **Command location**: `.claude/commands/deployment/deploy-status.md`
@@ -254,31 +284,37 @@ Status: {emoji} {STATUS}
 **Version**: v2.0 (2025-11-20) — Refactored to XML structure, added dynamic context, tool restrictions
 
 **Usage aliases:**
+
 - `/deploy-status`
 - `/deploy status`
 - `/ship status` (via /ship integration)
 
 **Error handling:**
+
 - **No features found**: Display helpful error with `/spec-flow` suggestion
-- **No workflow-state.yaml**: Detect and suggest migration if JSON exists
+- **No state.yaml**: Detect and suggest migration if JSON exists
 - **Missing sections**: Gracefully skip optional sections (gates, deployments)
 
 **Status emoji mapping:**
+
 - 🔄 = in_progress (phase executing)
 - ✅ = completed (phase finished)
 - ❌ = failed (phase encountered errors)
 - ⏸️ = pending (waiting for approval/trigger)
 
 **Deployment models:**
+
 - **staging-prod**: Two-stage deployment (staging validation before production)
 - **direct-prod**: Single-stage deployment (direct to production)
 - **local-only**: No remote deployment (local build validation only)
 
 **Gate types:**
+
 - **Manual Gates**: preview, validate-staging (require user approval)
 - **Quality Gates**: pre_flight, code_review, rollback_capability (automated checks)
 
 **Related commands:**
+
 - `/ship` - Deployment orchestration (can call `/deploy-status` via `status` arg)
 - `/ship continue` - Resume workflow from last phase
 - `/validate-staging` - Staging environment validation
@@ -286,6 +322,7 @@ Status: {emoji} {STATUS}
 
 **Integration:**
 The `/ship` command can invoke this command via:
+
 ```bash
 if [ "$1" = "status" ]; then
   /deploy-status
@@ -294,9 +331,10 @@ fi
 ```
 
 **Characteristics:**
+
 - Real-time status reflecting current workflow state
 - Comprehensive view of all phases, gates, and deployments
 - Actionable next steps with specific commands
 - Context-aware guidance based on deployment model
 - Safe read-only operations (no state modifications)
-</notes>
+  </notes>

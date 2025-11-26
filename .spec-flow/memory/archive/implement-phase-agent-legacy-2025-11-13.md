@@ -45,7 +45,7 @@ TASKS_FILE="$FEATURE_DIR/tasks.md"
 NOTES_FILE="$FEATURE_DIR/NOTES.md"
 PLAN_FILE="$FEATURE_DIR/plan.md"
 SPEC_FILE="$FEATURE_DIR/spec.md"
-STATE_FILE="$FEATURE_DIR/workflow-state.yaml"
+STATE_FILE="$FEATURE_DIR/state.yaml"
 ERROR_LOG="$FEATURE_DIR/error-log.md"
 
 # Read all context files

@@ -11,8 +11,8 @@
   - Now correctly detects epics/ and specs/ directories using JSON-based workflow detection
   - Eliminates "No feature directory found" errors when running /optimize on epic workflows
   - Result: /optimize phase now works correctly for all epic workflows (6930bb5)
-- **Epic Sprint Tracking**: Added fallback for missing sprint workflow-state.yaml files
-  - Verifies sprint agents created workflow-state.yaml after sprint completion
+- **Epic Sprint Tracking**: Added fallback for missing sprint state.yaml files
+  - Verifies sprint agents created state.yaml after sprint completion
   - Creates minimal fallback state file with warnings if agent forgets
   - Prevents silent failures in sprint status tracking during epic orchestration
   - Result: Epic progress monitoring always visible even if agents miss state updates (8f1a197)
@@ -87,6 +87,7 @@ Enables parallel development of multiple epics and features by running separate 
 Comprehensive HTML blueprint system for design-first epic frontend development with automatic TSX conversion support.
 
 - **Blueprint Generation**:
+
   - Auto-generates `epic-overview.html` navigation hub during `/plan` when Frontend subsystem detected
   - Generates `sprint-N/screen-*.html` blueprints during `/tasks` from sprint-plan.md
   - Pure HTML + Tailwind classes, design token integration (tokens.css)
@@ -94,6 +95,7 @@ Comprehensive HTML blueprint system for design-first epic frontend development w
   - WCAG 2.1 AA accessibility baseline, keyboard navigation (H for hub)
 
 - **TSX Conversion Workflow**:
+
   - Optional approval gate during `/implement-epic` (default: continue, `--auto`: skip)
   - Blueprint pattern extraction (`blueprint-patterns.md`)
   - Edge case guidance (`conversion-edge-cases.md`) covering 10 common HTML→TSX issues
@@ -101,17 +103,20 @@ Comprehensive HTML blueprint system for design-first epic frontend development w
   - Optional validation via `validate-tsx-conversion.sh` (skippable with `--skip-validation`)
 
 - **Cleanup Strategy (Defense-in-Depth)**:
+
   - `.gitignore`: `**/mockups/` pattern (blueprints never committed)
   - `/optimize`: Deletes mockups/ directory before quality gates (Step 0.75)
   - Next.js build: Naturally excludes non-imported files
   - `blueprint-patterns.md` preserved for reference
 
 - **New Templates**:
+
   - `.spec-flow/templates/mockups/epic-overview.html` - Navigation hub with sprint sections
   - `.spec-flow/templates/mockups/sprint-screen.html` - Individual screen with 4 state variants
   - `.spec-flow/templates/tsx-conversion-checklist.md` - Progress tracker for conversion phases
 
 - **New Scripts** (6 bash scripts):
+
   - `generate-epic-mockups.sh` - Creates overview after /plan
   - `generate-sprint-mockups.sh` - Creates sprint screens during /tasks
   - `extract-blueprint-patterns.sh` - Extracts Tailwind class patterns for TSX mirroring
@@ -127,6 +132,7 @@ Comprehensive HTML blueprint system for design-first epic frontend development w
 ### 🔧 Changed
 
 - **Workflow Integration**:
+
   - `/plan` command: Added Step 2 for epic blueprint generation (when Frontend subsystem detected)
   - `/implement-epic` command: Added Step 2.75 for optional blueprint approval gate
   - `/optimize` command: Added Step 0.75 for mockup cleanup before quality gates
@@ -149,15 +155,17 @@ HTML blueprints are temporary development artifacts that enable design iteration
 **Automatic Artifact Archival System**
 
 - **Archival Infrastructure**:
+
   - Created `epics/completed/` and `specs/completed/` directories
   - Automatic archival during `/finalize` command (Step 12)
   - Pattern matches `/run-prompt`'s prompts/completed/ system
 
 - **Archive_artifacts() Function**:
+
   - Moves all planning artifacts to `{workspace}/completed/`
   - Epic artifacts: epic-spec.md, plan.md, sprint-plan.md, tasks.md, NOTES.md, research.md, walkthrough.md
   - Feature artifacts: spec.md, plan.md, tasks.md, NOTES.md
-  - Keeps workflow-state.yaml in root for metrics/history
+  - Keeps state.yaml in root for metrics/history
 
 - **Benefits**:
   - Clean workspace - only active work visible
@@ -187,6 +195,7 @@ HTML blueprints are temporary development artifacts that enable design iteration
 **Feedback Loop Mechanism for Epic and Feature Workflows**
 
 - **Gap Discovery and Scope Validation**:
+
   - Automatic gap capture during `/validate-staging` phase
   - Interactive gap capture wizard (`Invoke-GapCaptureWizard.ps1`)
   - 4-check scope validation algorithm:
@@ -198,7 +207,8 @@ HTML blueprints are temporary development artifacts that enable design iteration
   - Feature creep prevention: blocks gaps in "Out of Scope" section
 
 - **Iteration System**:
-  - workflow-state.yaml v3.0.0 with iteration tracking:
+
+  - state.yaml v3.0.0 with iteration tracking:
     - `iteration.current`, `iteration.max_iterations` (3), `iteration.history`
     - Gap statistics: discovered_count, in_scope_count, out_of_scope_count
     - Supplemental task tracking
@@ -207,6 +217,7 @@ HTML blueprints are temporary development artifacts that enable design iteration
   - 40-60% performance improvement for iteration 2+ (focused quality gates)
 
 - **Supplemental Task Generation**:
+
   - Automatic task creation for in-scope gaps (`New-SupplementalTasks.ps1`)
   - Smart dependency detection (30% keyword matching)
   - Generates implementation, test, and documentation tasks
@@ -214,15 +225,18 @@ HTML blueprints are temporary development artifacts that enable design iteration
   - Iteration markers in tasks.md: "## Iteration N: Gap Closure"
 
 - **PowerShell Scripts**:
+
   - `Invoke-ScopeValidation.ps1`: Core validation algorithm
   - `Invoke-GapCaptureWizard.ps1`: Interactive gap collection
   - `New-SupplementalTasks.ps1`: Supplemental task generation
 
 - **Templates**:
+
   - `gaps-template.md`: Gap documentation template
   - `scope-validation-report-template.md`: Detailed validation evidence
 
 - **Command Integration**:
+
   - `/validate-staging`: Added Step 9 gap capture with `--capture-gaps` flag
   - `/implement`: Added Step 0.5 iteration detection and task filtering
   - `/optimize`: Added Step 0.5 iteration-specific quality gates
@@ -260,6 +274,7 @@ HTML blueprints are temporary development artifacts that enable design iteration
 **Comprehensive Validation for Epic Workflows**
 
 - **E2E Test Generation** in `/tasks` phase:
+
   - Auto-generates ≥3 critical user journey tests from spec.md user stories
   - Creates `e2e-tests.md` with complete workflows (start → finish)
   - Includes external integration testing (APIs, CLIs, webhooks)
@@ -267,13 +282,16 @@ HTML blueprints are temporary development artifacts that enable design iteration
   - Production system verification (GitHub commits, DB records, notifications)
 
 - **10 Parallel Quality Gates** in `/optimize` phase (expanded from 6):
+
   - **Gate 7 - E2E Testing** (Epic workflows):
+
     - Validates complete user workflows end-to-end
     - Tests external integrations (GitHub CLI, APIs)
     - Verifies outcomes in production systems
     - Auto-retry: restart-services, check-ports, re-run-flaky-tests
 
   - **Gate 8 - Contract Validation** (Epic workflows):
+
     - Validates all API contracts (OpenAPI 3.0) are implemented
     - Checks contract compliance (endpoints, request/response schemas)
     - Runs Pact CDC tests if present
@@ -281,6 +299,7 @@ HTML blueprints are temporary development artifacts that enable design iteration
     - Auto-retry: regenerate-schemas, sync-contracts, re-run-contract-tests
 
   - **Gate 9 - Load Testing** (Epic workflows, optional):
+
     - Performance validation under production-like load
     - Default: 100 VUs, 30s duration
     - Checks p95 latency, error rate < 1%, throughput targets
@@ -295,6 +314,7 @@ HTML blueprints are temporary development artifacts that enable design iteration
     - Auto-retry: reset-test-db, re-run-migration, fix-seed-data
 
 - **Auto-Retry Intelligence**:
+
   - Failure classification: CRITICAL (block immediately) vs FIXABLE (auto-retry)
   - Progressive delays: 5s, 10s, 15s between retry attempts
   - Max 3 retry attempts per gate
@@ -317,6 +337,7 @@ HTML blueprints are temporary development artifacts that enable design iteration
 ### 📈 Impact
 
 **Quality Improvements** (expected):
+
 - ↑ 90% reduction in integration bugs (E2E catches early)
 - ↑ 100% contract compliance (all APIs validated before deployment)
 - ↑ 80% reduction in performance regressions (load testing catches slowdowns)
@@ -324,6 +345,7 @@ HTML blueprints are temporary development artifacts that enable design iteration
 - ↓ 60% reduction in false-positive failures (auto-retry handles transient issues)
 
 **Validation Philosophy**:
+
 - Test complete user workflows (not just internal APIs)
 - Validate external integrations (CLIs, APIs, webhooks)
 - Verify outcomes in production systems (DB, commits, notifications)
@@ -410,7 +432,7 @@ HTML blueprints are temporary development artifacts that enable design iteration
 - **Epic auto-mode stopping for fixable issues**: Auto-mode was stopping for ALL failures (test failures, npm errors, infrastructure issues) instead of only critical blockers (CI failures, security issues, deployment errors)
   - Root cause: `auto_mode` flag was never passed from `epic.md` to `implement-epic.md`
   - Impact: Made unattended epic execution impossible despite auto-mode promise
-- **Missing workflow-state.yaml updates**: Sprint completion never updated workflow-state.yaml
+- **Missing state.yaml updates**: Sprint completion never updated state.yaml
 - **Manual gates staying 'pending' in auto-mode**: Gates should be marked `auto_skipped` when running in auto-mode
 
 ---
@@ -438,7 +460,7 @@ HTML blueprints are temporary development artifacts that enable design iteration
 
 **Epic Workflow State Tracking**
 
-- Add workflow-state.yaml tracking for epic sprints (fixes missing sprint completion tracking)
+- Add state.yaml tracking for epic sprints (fixes missing sprint completion tracking)
 - Add auto-mode manual gates with `auto_skipped` status (fixes pending gate issue in auto-mode)
 - Add sprint completion tracking in `/implement-epic` command
 - Add layer completion tracking at epic level
@@ -455,7 +477,7 @@ HTML blueprints are temporary development artifacts that enable design iteration
 ### 🔧 Changed
 
 - Epic templates migrated from `.xml` to `.md` format
-- Workflow-state.yaml now includes detailed sprint execution metadata
+- state.yaml now includes detailed sprint execution metadata
 - Manual gates properly reflect auto-mode vs interactive mode execution state
 
 ---
@@ -544,9 +566,9 @@ This release consolidates breaking changes that were introduced incrementally in
 
 #### Workflow State Schema Changes (from v6.9.0)
 
-- **Removed**: `preview` phase from workflow-state.yaml schema
+- **Removed**: `preview` phase from state.yaml schema
 - **Removed**: `manual_gates.preview` section
-- **Impact**: Existing features may need workflow-state.yaml migration
+- **Impact**: Existing features may need state.yaml migration
 - **Migration**: Remove `preview` phase references from existing feature specs
 
 #### Ship-Prod Version Selection (from v6.9.0)
@@ -655,7 +677,7 @@ This release consolidates breaking changes that were introduced incrementally in
    grep -r "/preview" .spec-flow/ .claude/
    ```
 
-2. **Update workflow-state.yaml Schema**:
+2. **Update state.yaml Schema**:
 
    ```yaml
    # Remove these sections from existing feature specs
@@ -731,8 +753,8 @@ This release consolidates breaking changes that were introduced incrementally in
 - **/ship-prod Version Selection**: No longer prompts for version interactively
   - Defaults to patch bump (most common)
   - Use `--version major|minor` flag to override
-- **workflow-state.yaml Schema**: `preview` phase and `manual_gates.preview` removed
-  - Existing features may need workflow-state.yaml migration
+- **state.yaml Schema**: `preview` phase and `manual_gates.preview` removed
+  - Existing features may need state.yaml migration
 
 ---
 
@@ -933,7 +955,7 @@ This release consolidates breaking changes that were introduced incrementally in
   - Automatic HTML → Next.js conversion after approval preserves accessibility and design tokens
   - Agent proposes tokens.css updates when user requests design changes (approval required)
   - Component reuse enforcement: Checks ui-inventory.md before creating custom components
-  - Workflow integration: mockup_approval gate in workflow-state.yaml blocks `/implement` until approved
+  - Workflow integration: mockup_approval gate in state.yaml blocks `/implement` until approved
 
 ### Changed
 
@@ -1355,7 +1377,7 @@ This release consolidates breaking changes that were introduced incrementally in
 - `/scheduler.assign`, `/scheduler.park`, `/scheduler.list` commands
 - WIP tracker (`.spec-flow/memory/wip-tracker.yaml`) enforcing 1 epic per agent
 - Dependency graph parser (topological sort, circular dependency detection)
-- workflow-state.yaml schema v2.0.0 (epic tracking, quality gates)
+- state.yaml schema v2.0.0 (epic tracking, quality gates)
 
 **Phase 4: Quality Gates** (5 tasks)
 
@@ -1363,7 +1385,7 @@ This release consolidates breaking changes that were introduced incrementally in
 - `/gate.sec` command (SAST, secrets detection, dependency vulnerabilities)
 - GitHub Actions integration (quality-gates.yml)
 - Epic state transitions gated by CI + Security gates
-- Gate status tracking in workflow-state.yaml
+- Gate status tracking in state.yaml
 
 **Phase 5: DORA Metrics** (6 tasks)
 

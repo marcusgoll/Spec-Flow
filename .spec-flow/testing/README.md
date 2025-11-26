@@ -5,6 +5,7 @@ Comprehensive testing infrastructure for smoke testing slash commands, skills, a
 ## Overview
 
 This testing sandbox provides:
+
 - **Automated smoke tests** for command/skill/agent validation
 - **Multiple test scenarios** (greenfield, brownfield, feature, epic, UI-first)
 - **Validation modules** for artifacts, state, and structure
@@ -18,7 +19,7 @@ This testing sandbox provides:
 ├── test-report-template.md   # Sample test report format
 ├── validators/
 │   ├── artifact-validator.mjs    # Validate generated files
-│   ├── state-validator.mjs       # Validate workflow-state.yaml
+│   ├── state-validator.mjs       # Validate state.yaml
 │   └── structure-validator.mjs   # Validate directory structure
 ├── scenarios/
 │   ├── 01-greenfield/        # Empty project scenario
@@ -44,11 +45,13 @@ This testing sandbox provides:
 ### Running Tests
 
 Run all scenarios:
+
 ```bash
 node .spec-flow/testing/test-harness.mjs
 ```
 
 Run specific scenario:
+
 ```bash
 node .spec-flow/testing/test-harness.mjs --scenario greenfield
 ```
@@ -85,15 +88,18 @@ Summary: 20/20 tests passed
 ## Test Scenarios
 
 ### 1. Greenfield Project
+
 **Purpose**: Verify workflow on fresh project with no existing code
 
 **Tests**:
+
 - Directory structure validation
 - `/init-project` command structure
 - `/feature` command structure
 - Deployment model detection (local-only)
 
 **Key Validations**:
+
 - 8 project docs generation capability
 - Design system initialization (--with-design)
 - Foundation issue creation (#1)
@@ -103,14 +109,17 @@ Summary: 20/20 tests passed
 ---
 
 ### 2. Brownfield Project
+
 **Purpose**: Verify workflow on existing codebase with auto-scan
 
 **Tests**:
+
 - Fixture files present (package.json, docker-compose.yml)
 - Anti-duplication skill validation
 - Technology detection capability
 
 **Key Validations**:
+
 - Tech stack extraction from package.json
 - ERD generation from migrations
 - Reuse analysis for existing patterns
@@ -120,15 +129,18 @@ Summary: 20/20 tests passed
 ---
 
 ### 3. Feature Workflow
+
 **Purpose**: Verify standard feature workflow end-to-end
 
 **Tests**:
+
 - `/spec` command validation
 - `/plan` command validation
 - `/tasks` command validation
 - Workflow state schema validation
 
 **Key Validations**:
+
 - Sequential phase progression
 - Manual gates (spec, plan, staging validation)
 - Artifact generation (spec.md, plan.md, tasks.md)
@@ -139,15 +151,18 @@ Summary: 20/20 tests passed
 ---
 
 ### 4. Epic Workflow
+
 **Purpose**: Verify multi-sprint epic workflow with parallel execution
 
 **Tests**:
+
 - `/epic` command validation
 - `/implement-epic` command validation
 - Epic skill validation
 - Question bank validation (5 rounds, 8-9 questions)
 
 **Key Validations**:
+
 - Interactive scoping questionnaire
 - Meta-prompting (research → plan)
 - Sprint breakdown with dependency graph
@@ -159,14 +174,17 @@ Summary: 20/20 tests passed
 ---
 
 ### 5. UI-First Workflow
+
 **Purpose**: Verify mockup-first workflow with approval gates
 
 **Tests**:
+
 - `/tasks --ui-first` flag validation
 - Mockup approval checklist template
 - Design system skills validation
 
 **Key Validations**:
+
 - Mockup generation (HTML files)
 - Navigation hub for multi-screen (≥3 screens)
 - Approval gate blocking mechanism
@@ -179,9 +197,11 @@ Summary: 20/20 tests passed
 ## Validators
 
 ### Artifact Validator
+
 Validates generated files match expected templates.
 
 **Functions**:
+
 - `validateSpec(specPath)` - Validate spec.md structure
 - `validatePlan(planPath)` - Validate plan.md structure
 - `validateTasks(tasksPath)` - Validate tasks.md (5-30 tasks)
@@ -191,21 +211,24 @@ Validates generated files match expected templates.
 - `validateMockups(mockupsDir)` - Validate HTML mockups
 
 **Usage**:
-```javascript
-import { validateSpec } from './validators/artifact-validator.mjs';
 
-const result = validateSpec('specs/001-feature/spec.md');
+```javascript
+import { validateSpec } from "./validators/artifact-validator.mjs";
+
+const result = validateSpec("specs/001-feature/spec.md");
 if (!result.valid) {
-  console.error('Validation errors:', result.errors);
+  console.error("Validation errors:", result.errors);
 }
 ```
 
 ---
 
 ### State Validator
-Validates workflow-state.yaml structure and transitions.
+
+Validates state.yaml structure and transitions.
 
 **Functions**:
+
 - `validateWorkflowState(statePath)` - Validate YAML structure
 - `validateEpicState(epicState)` - Validate epic state machine
 - `validatePhaseTransition(current, next)` - Validate transitions
@@ -214,6 +237,7 @@ Validates workflow-state.yaml structure and transitions.
 - `validateDeploymentInfo(state)` - Validate deployment metadata
 
 **Valid Phases**:
+
 ```
 initialization → specification → clarification → planning →
 task_breakdown → validation → implementation → optimization →
@@ -226,21 +250,24 @@ finalization → completed
 **Valid Epic States**: Planned, ContractsLocked, Implementing, Review, Integrated, Released
 
 **Usage**:
-```javascript
-import { validateWorkflowState } from './validators/state-validator.mjs';
 
-const result = validateWorkflowState('specs/001-feature/workflow-state.yaml');
+```javascript
+import { validateWorkflowState } from "./validators/state-validator.mjs";
+
+const result = validateWorkflowState("specs/001-feature/state.yaml");
 if (!result.valid) {
-  console.error('State validation errors:', result.errors);
+  console.error("State validation errors:", result.errors);
 }
 ```
 
 ---
 
 ### Structure Validator
+
 Validates directory structure and file organization.
 
 **Functions**:
+
 - `validateFeatureStructure(featureDir)` - Validate feature workspace
 - `validateEpicStructure(epicDir)` - Validate epic workspace
 - `validateProjectStructure(projectDir)` - Validate project structure
@@ -252,12 +279,13 @@ Validates directory structure and file organization.
 - `validateGitHubActionsStructure(projectDir)` - Validate CI/CD workflows
 
 **Usage**:
-```javascript
-import { validateFeatureStructure } from './validators/structure-validator.mjs';
 
-const result = validateFeatureStructure('specs/001-feature');
+```javascript
+import { validateFeatureStructure } from "./validators/structure-validator.mjs";
+
+const result = validateFeatureStructure("specs/001-feature");
 if (!result.valid) {
-  console.error('Structure validation errors:', result.errors);
+  console.error("Structure validation errors:", result.errors);
 }
 ```
 
@@ -268,6 +296,7 @@ if (!result.valid) {
 ### Report Format
 
 Test reports are generated in Markdown format with:
+
 - Summary statistics (total, passed, failed, skipped, success rate)
 - Per-scenario results with test details
 - Error details for failures
@@ -296,12 +325,12 @@ Test reports are generated in Markdown format with:
 
 **Results**: 4/4 passed
 
-| Test | Status | Duration |
-|------|--------|----------|
-| Directory structure exists | ✓ passed | 45ms |
-| /init-project command structure | ✓ passed | 120ms |
-| /feature command structure | ✓ passed | 95ms |
-| Deployment model detection | ✓ passed | 80ms |
+| Test                            | Status   | Duration |
+| ------------------------------- | -------- | -------- |
+| Directory structure exists      | ✓ passed | 45ms     |
+| /init-project command structure | ✓ passed | 120ms    |
+| /feature command structure      | ✓ passed | 95ms     |
+| Deployment model detection      | ✓ passed | 80ms     |
 ```
 
 ### Report Location
@@ -315,6 +344,7 @@ Reports are saved to: `.spec-flow/testing/reports/test-report-[timestamp].md`
 ### Adding New Test Scenarios
 
 1. Create scenario directory:
+
 ```bash
 mkdir -p .spec-flow/testing/scenarios/06-my-scenario
 ```
@@ -322,37 +352,36 @@ mkdir -p .spec-flow/testing/scenarios/06-my-scenario
 2. Create README.md documenting the scenario
 
 3. Add scenario to test-harness.mjs:
+
 ```javascript
 function createMyScenario() {
-  return new TestScenario(
-    'My Scenario',
-    'Description of what this tests',
-    [
-      new Test('Test 1', async () => {
-        // Test implementation
-      }),
-      new Test('Test 2', async () => {
-        // Test implementation
-      })
-    ]
-  );
+  return new TestScenario("My Scenario", "Description of what this tests", [
+    new Test("Test 1", async () => {
+      // Test implementation
+    }),
+    new Test("Test 2", async () => {
+      // Test implementation
+    }),
+  ]);
 }
 
 // Add to scenarios array
 const scenarios = [
   // ... existing scenarios
-  createMyScenario()
+  createMyScenario(),
 ];
 ```
 
 ### Adding New Validators
 
 1. Create validator file:
+
 ```bash
 touch .spec-flow/testing/validators/my-validator.mjs
 ```
 
 2. Implement validator:
+
 ```javascript
 export function validateMyArtifact(path) {
   const errors = [];
@@ -374,11 +403,13 @@ export function validateMyArtifact(path) {
 ### Tests Failing
 
 1. **Command files not found**
+
    - Check `.claude/commands/` directory structure
    - Verify command file names match expectations
    - Ensure working directory is project root
 
 2. **Validator errors**
+
    - Check Node.js version (requires 18+)
    - Install dependencies: `npm install js-yaml`
    - Verify file paths are correct
@@ -390,6 +421,7 @@ export function validateMyArtifact(path) {
 ### Missing Dependencies
 
 Install required packages:
+
 ```bash
 npm install js-yaml
 ```
@@ -397,6 +429,7 @@ npm install js-yaml
 ### Permission Errors
 
 Ensure read access to:
+
 - `.claude/` directory
 - `.spec-flow/` directory
 - `specs/` directory (if testing feature workflows)
@@ -408,6 +441,7 @@ Ensure read access to:
 ### Test Isolation
 
 Each scenario should be independent:
+
 - Don't rely on state from other scenarios
 - Use fixtures for test data
 - Clean up temporary files
@@ -415,12 +449,14 @@ Each scenario should be independent:
 ### Validation Depth
 
 Smoke tests should validate:
+
 - File existence and structure
 - Command/skill/agent configuration
 - Basic YAML/XML parsing
 - Required sections present
 
 Smoke tests should NOT:
+
 - Execute actual commands (use mocks)
 - Generate real artifacts (use templates)
 - Make external API calls
@@ -429,9 +465,10 @@ Smoke tests should NOT:
 ### Test Coverage
 
 Prioritize testing:
+
 1. Critical paths (feature, epic workflows)
 2. Integration points (GitHub, deployment)
-3. State management (workflow-state.yaml)
+3. State management (state.yaml)
 4. Manual gates (approval blocking)
 5. Error handling (validation failures)
 
@@ -440,6 +477,7 @@ Prioritize testing:
 ## Future Enhancements
 
 Planned improvements:
+
 - [ ] Integration tests (actual command execution)
 - [ ] End-to-end workflow tests
 - [ ] Performance benchmarking
@@ -465,6 +503,7 @@ To contribute new tests:
 ## Support
 
 For issues or questions:
+
 - Check scenario README files for details
 - Review validator documentation
 - Examine sample test reports

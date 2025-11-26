@@ -7,8 +7,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-WORKFLOW_STATE="$PROJECT_ROOT/.spec-flow/memory/workflow-state.yaml"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || cd "$SCRIPT_DIR/../../.." && pwd)"
+WORKFLOW_STATE="$REPO_ROOT/.spec-flow/memory/state.yaml"
 
 # Colors
 RED='\033[0;31m'
@@ -67,13 +67,13 @@ command_exists() {
 # Detect project type
 #######################################
 detect_project_type() {
-  if [[ -f "$PROJECT_ROOT/package.json" ]]; then
+  if [[ -f "$REPO_ROOT/package.json" ]]; then
     echo "node"
-  elif [[ -f "$PROJECT_ROOT/requirements.txt" ]] || [[ -f "$PROJECT_ROOT/pyproject.toml" ]]; then
+  elif [[ -f "$REPO_ROOT/requirements.txt" ]] || [[ -f "$REPO_ROOT/pyproject.toml" ]]; then
     echo "python"
-  elif [[ -f "$PROJECT_ROOT/Cargo.toml" ]]; then
+  elif [[ -f "$REPO_ROOT/Cargo.toml" ]]; then
     echo "rust"
-  elif [[ -f "$PROJECT_ROOT/go.mod" ]]; then
+  elif [[ -f "$REPO_ROOT/go.mod" ]]; then
     echo "go"
   else
     echo "unknown"
@@ -148,7 +148,7 @@ check_secrets() {
 
   local secrets_found=false
   for pattern in "${secret_patterns[@]}"; do
-    if grep -rEi "$pattern" "$PROJECT_ROOT" \
+    if grep -rEi "$pattern" "$REPO_ROOT" \
       --exclude-dir=node_modules \
       --exclude-dir=.git \
       --exclude-dir=dist \
@@ -156,7 +156,7 @@ check_secrets() {
       > /dev/null 2>&1; then
 
       if [[ "$VERBOSE" == true ]]; then
-        grep -rEin "$pattern" "$PROJECT_ROOT" \
+        grep -rEin "$pattern" "$REPO_ROOT" \
           --exclude-dir=node_modules \
           --exclude-dir=.git \
           --exclude-dir=dist \

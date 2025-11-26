@@ -31,7 +31,7 @@ set -euo pipefail
 
 # Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || cd "$SCRIPT_DIR/../../.." && pwd)"
 
 # Default values
 MODE="default"  # default | force | update | write-missing-only
@@ -369,8 +369,8 @@ render_docs() {
   )
 
   for doc in "${docs[@]}"; do
-    local template="$PROJECT_ROOT/.spec-flow/templates/project/${doc}.md"
-    local output="$PROJECT_ROOT/docs/project/${doc}.md"
+    local template="$REPO_ROOT/.spec-flow/templates/project/${doc}.md"
+    local output="$REPO_ROOT/docs/project/${doc}.md"
 
     # Check if should skip (write-missing-only mode)
     if [[ "$MODE" == "write-missing-only" ]] && [[ -f "$output" ]]; then
@@ -380,13 +380,13 @@ render_docs() {
 
     # Render with Node.js
     if [[ "$mode" == "update" ]]; then
-      node "$PROJECT_ROOT/.spec-flow/scripts/node/render.js" \
+      node "$REPO_ROOT/.spec-flow/scripts/node/render.js" \
         --template "$template" \
         --output "$output" \
         --answers "$answers_file" \
         --mode update
     else
-      node "$PROJECT_ROOT/.spec-flow/scripts/node/render.js" \
+      node "$REPO_ROOT/.spec-flow/scripts/node/render.js" \
         --template "$template" \
         --output "$output" \
         --answers "$answers_file"
@@ -398,7 +398,7 @@ render_docs() {
 
 # Create ADR-0001
 create_adr_baseline() {
-  local adr_dir="$PROJECT_ROOT/docs/adr"
+  local adr_dir="$REPO_ROOT/docs/adr"
   mkdir -p "$adr_dir"
 
   local adr_file="$adr_dir/0001-project-architecture-baseline.md"
@@ -488,7 +488,7 @@ run_quality_gates() {
   echo ""
 
   # Gate 1: Check for [NEEDS CLARIFICATION] tokens
-  if grep -r "NEEDS CLARIFICATION" "$PROJECT_ROOT/docs/project/" > /dev/null 2>&1; then
+  if grep -r "NEEDS CLARIFICATION" "$REPO_ROOT/docs/project/" > /dev/null 2>&1; then
     warning "Found [NEEDS CLARIFICATION] tokens in documentation"
     warning "Review and fill missing information"
 
@@ -503,7 +503,7 @@ run_quality_gates() {
   # Gate 2: Markdown linting (if markdownlint installed)
   if command -v markdownlint > /dev/null 2>&1; then
     info "Running markdownlint..."
-    if markdownlint "$PROJECT_ROOT/docs/project/" > /dev/null 2>&1; then
+    if markdownlint "$REPO_ROOT/docs/project/" > /dev/null 2>&1; then
       success "Markdown linting passed"
     else
       warning "Markdown linting failed (non-blocking)"
@@ -513,7 +513,7 @@ run_quality_gates() {
   # Gate 3: Link checking (if lychee installed)
   if command -v lychee > /dev/null 2>&1; then
     info "Running link checker..."
-    if lychee "$PROJECT_ROOT/docs/project/" > /dev/null 2>&1; then
+    if lychee "$REPO_ROOT/docs/project/" > /dev/null 2>&1; then
       success "Link checking passed"
     else
       warning "Link checking failed (non-blocking)"
@@ -522,9 +522,9 @@ run_quality_gates() {
 
   # Gate 4: Validate C4 model sections exist
   local required_sections=("Context" "Containers" "Components")
-  if [[ -f "$PROJECT_ROOT/docs/project/system-architecture.md" ]]; then
+  if [[ -f "$REPO_ROOT/docs/project/system-architecture.md" ]]; then
     for section in "${required_sections[@]}"; do
-      if grep -q "## $section" "$PROJECT_ROOT/docs/project/system-architecture.md"; then
+      if grep -q "## $section" "$REPO_ROOT/docs/project/system-architecture.md"; then
         success "C4 section found: $section"
       else
         warning "Missing C4 section: $section"
@@ -554,7 +554,7 @@ commit_documentation() {
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 
-  cd "$PROJECT_ROOT"
+  cd "$REPO_ROOT"
 
   git add docs/project/
   git add docs/adr/

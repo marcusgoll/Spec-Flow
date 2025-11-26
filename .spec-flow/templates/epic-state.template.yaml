@@ -1,0 +1,20 @@
+# Copy into epics/<epic-slug>/state.yaml when initializing an epic.
+epic: your-epic-slug
+status: planning
+phases:
+  spec: pending
+  clarify: pending
+  plan: pending
+  tasks: pending
+  implement: pending
+  optimize: pending
+  ship: pending
+sprints:
+  - id: s01
+    status: pending
+    notes: ""
+features:
+  - slug: f001
+    status: pending
+    summary: ""
+last_updated: 1970-01-01T00:00:00Z

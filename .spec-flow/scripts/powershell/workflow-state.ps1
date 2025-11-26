@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Provides functions to initialize, update, and query workflow state across
-    the entire feature delivery lifecycle. State is stored in workflow-state.yaml
+    the entire feature delivery lifecycle. State is stored in state.yaml
     within each feature directory.
 
     Auto-migrates from JSON to YAML format for backward compatibility.
@@ -36,12 +36,12 @@ function Test-MigrateJsonToYaml {
         Test-MigrateJsonToYaml -FeatureDir "specs/001-login"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir
     )
 
     $jsonFile = Join-Path $FeatureDir "workflow-state.json"
-    $yamlFile = Join-Path $FeatureDir "workflow-state.yaml"
+    $yamlFile = Join-Path $FeatureDir "state.yaml"
 
     # If YAML exists, we're good
     if (Test-Path $yamlFile) {
@@ -86,76 +86,76 @@ function Initialize-WorkflowState {
         Initialize-WorkflowState -FeatureDir "specs/001-login" -Slug "001-login" -Title "User Login" -BranchName "feat/001-login"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Slug,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Title,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]$BranchName = "local"
     )
 
-    $stateFile = Join-Path $FeatureDir "workflow-state.yaml"
+    $stateFile = Join-Path $FeatureDir "state.yaml"
 
     # Detect deployment model
     $deploymentModel = Get-DeploymentModel
 
     $state = @{
-        feature = @{
-            slug = $Slug
-            title = $Title
-            branch_name = $BranchName
-            created = (Get-Date).ToUniversalTime().ToString("o")
-            last_updated = (Get-Date).ToUniversalTime().ToString("o")
+        feature          = @{
+            slug           = $Slug
+            title          = $Title
+            branch_name    = $BranchName
+            created        = (Get-Date).ToUniversalTime().ToString("o")
+            last_updated   = (Get-Date).ToUniversalTime().ToString("o")
             roadmap_status = "in_progress"  # Options: backlog, next, in_progress, shipped
         }
         deployment_model = $deploymentModel
-        workflow = @{
-            phase = "spec-flow"
-            status = "in_progress"
+        workflow         = @{
+            phase            = "spec-flow"
+            status           = "in_progress"
             completed_phases = @()
-            failed_phases = @()
-            manual_gates = @{}
-            phase_timing = @{}
-            metrics = @{}
+            failed_phases    = @()
+            manual_gates     = @{}
+            phase_timing     = @{}
+            metrics          = @{}
         }
-        context = @{
+        context          = @{
             token_budget = @{
-                phase = "planning"
-                budget = 75000
-                estimated_usage = 0
+                phase             = "planning"
+                budget            = 75000
+                estimated_usage   = 0
                 compaction_needed = $false
             }
         }
-        deployment = @{
-            staging = @{
-                deployed = $false
-                url = $null
+        deployment       = @{
+            staging    = @{
+                deployed       = $false
+                url            = $null
                 deployment_ids = @{}
-                health_checks = @{}
+                health_checks  = @{}
             }
             production = @{
-                deployed = $false
-                version = $null
-                url = $null
+                deployed       = $false
+                version        = $null
+                url            = $null
                 deployment_ids = @{}
             }
         }
-        artifacts = @{
-            spec = "specs/$Slug/spec.md"
-            plan = $null
-            tasks = $null
+        artifacts        = @{
+            spec                = "specs/$Slug/spec.md"
+            plan                = $null
+            tasks               = $null
             optimization_report = $null
-            staging_validation = $null
-            ship_report = $null
+            staging_validation  = $null
+            ship_report         = $null
         }
-        quality_gates = @{}
-        metadata = @{
-            schema_version = "2.1.0"
+        quality_gates    = @{}
+        metadata         = @{
+            schema_version   = "2.1.0"
             workflow_version = "2.1.0"
         }
     }
@@ -192,13 +192,13 @@ function Update-WorkflowPhase {
         Update-WorkflowPhase -FeatureDir "specs/001-login" -Phase "plan" -Status "completed"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Phase,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [ValidateSet("in_progress", "completed", "failed")]
         [string]$Status = "completed"
     )
@@ -216,7 +216,8 @@ function Update-WorkflowPhase {
     # Update phase
     if ($Status -eq "completed" -and $state.workflow.completed_phases -notcontains $Phase) {
         $state.workflow.completed_phases += $Phase
-    } elseif ($Status -eq "failed" -and $state.workflow.failed_phases -notcontains $Phase) {
+    }
+    elseif ($Status -eq "failed" -and $state.workflow.failed_phases -notcontains $Phase) {
         $state.workflow.failed_phases += $Phase
     }
 
@@ -251,14 +252,14 @@ function Update-DeploymentState {
         Update-DeploymentState -FeatureDir "specs/001-login" -Environment "staging" -DeploymentData $data
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateSet("staging", "production")]
         [string]$Environment,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [hashtable]$DeploymentData
     )
 
@@ -309,20 +310,20 @@ function Update-DeploymentIds {
             -ApiImage "ghcr.io/org/api:sha789"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateSet("staging", "production")]
         [string]$Environment,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]$MarketingId,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]$AppId,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]$ApiImage
     )
 
@@ -377,13 +378,13 @@ function Update-QualityGate {
         Update-QualityGate -FeatureDir "specs/001-login" -GateName "pre_flight" -GateData $gateData
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$GateName,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [hashtable]$GateData
     )
 
@@ -424,17 +425,17 @@ function Update-ManualGate {
         Update-ManualGate -FeatureDir "specs/001-login" -GateName "preview" -Status "approved" -ApprovedBy "user"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$GateName,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateSet("pending", "approved", "rejected")]
         [string]$Status,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]$ApprovedBy
     )
 
@@ -485,7 +486,7 @@ function Get-WorkflowState {
         $state = Get-WorkflowState -FeatureDir "specs/001-login"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir
     )
 
@@ -517,10 +518,10 @@ function Test-PhaseCompleted {
         }
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Phase
     )
 
@@ -544,7 +545,7 @@ function Get-NextPhase {
         $nextPhase = Get-NextPhase -FeatureDir "specs/001-login"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir
     )
 
@@ -563,11 +564,11 @@ function Get-NextPhase {
             "ship:optimize", "ship:preview", "ship:phase-1-ship",
             "ship:validate-staging", "ship:phase-2-ship", "ship:finalize"
         )
-        "direct-prod" = @(
+        "direct-prod"  = @(
             "spec-flow", "clarify", "plan", "tasks", "analyze", "implement",
             "ship:optimize", "ship:preview", "ship:deploy-prod", "ship:finalize"
         )
-        "local-only" = @(
+        "local-only"   = @(
             "spec-flow", "clarify", "plan", "tasks", "analyze", "implement",
             "ship:optimize", "ship:preview", "ship:build-local", "ship:finalize"
         )
@@ -611,14 +612,16 @@ function Get-DeploymentModel {
     # Auto-detect
     $hasRemote = (git remote -v 2>$null) -match "origin"
     $hasStagingBranch = (git show-ref --verify refs/heads/staging 2>$null) -or
-                        (git show-ref --verify refs/remotes/origin/staging 2>$null)
+    (git show-ref --verify refs/remotes/origin/staging 2>$null)
     $hasStagingWorkflow = Test-Path ".github/workflows/deploy-staging.yml"
 
     if ($hasRemote -and $hasStagingBranch -and $hasStagingWorkflow) {
         return "staging-prod"
-    } elseif ($hasRemote) {
+    }
+    elseif ($hasRemote) {
         return "direct-prod"
-    } else {
+    }
+    else {
         return "local-only"
     }
 }
@@ -643,10 +646,10 @@ function Start-PhaseTiming {
         Start-PhaseTiming -FeatureDir "specs/001-login" -Phase "implement"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Phase
     )
 
@@ -667,7 +670,7 @@ function Start-PhaseTiming {
 
     $state.workflow.phase_timing[$Phase] = @{
         started_at = $timestamp
-        status = "in_progress"
+        status     = "in_progress"
     }
 
     $state.feature.last_updated = $timestamp
@@ -690,10 +693,10 @@ function Complete-PhaseTiming {
         Complete-PhaseTiming -FeatureDir "specs/001-login" -Phase "implement"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Phase
     )
 
@@ -715,7 +718,7 @@ function Complete-PhaseTiming {
         }
         $state.workflow.phase_timing[$Phase] = @{
             completed_at = $timestamp
-            status = "completed"
+            status       = "completed"
         }
         $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
         return
@@ -744,7 +747,8 @@ function Complete-PhaseTiming {
         $state.feature.last_updated = $timestamp
 
         $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
-    } catch {
+    }
+    catch {
         Write-Warning "Unable to parse date format, skipping duration calculation: $_"
         $state.workflow.phase_timing[$Phase].completed_at = $timestamp
         $state.workflow.phase_timing[$Phase].status = "completed"
@@ -770,13 +774,13 @@ function Start-SubPhaseTiming {
         Start-SubPhaseTiming -FeatureDir "specs/001-login" -ParentPhase "optimize" -SubPhase "performance"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$ParentPhase,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$SubPhase
     )
 
@@ -826,13 +830,13 @@ function Complete-SubPhaseTiming {
         Complete-SubPhaseTiming -FeatureDir "specs/001-login" -ParentPhase "optimize" -SubPhase "performance"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$ParentPhase,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$SubPhase
     )
 
@@ -875,7 +879,8 @@ function Complete-SubPhaseTiming {
         $state.workflow.phase_timing[$ParentPhase].sub_phases[$SubPhase].duration_seconds = $duration
 
         $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
-    } catch {
+    }
+    catch {
         Write-Warning "Unable to parse date format, skipping duration calculation: $_"
         $state.workflow.phase_timing[$ParentPhase].sub_phases[$SubPhase].completed_at = $timestamp
         $state | ConvertTo-Yaml | Set-Content -Path $stateFile -Encoding UTF8
@@ -894,7 +899,7 @@ function Get-WorkflowMetrics {
         Get-WorkflowMetrics -FeatureDir "specs/001-login"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir
     )
 
@@ -934,7 +939,8 @@ function Get-WorkflowMetrics {
 
                     # Store wait duration in gate entry
                     $state.workflow.manual_gates[$gate].wait_duration_seconds = $gateWait
-                } catch {
+                }
+                catch {
                     # Skip if unable to parse
                     continue
                 }
@@ -978,17 +984,19 @@ function Format-Duration {
         # Returns "1h 1m"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [int]$Seconds
     )
 
     if ($Seconds -lt 60) {
         return "${Seconds}s"
-    } elseif ($Seconds -lt 3600) {
+    }
+    elseif ($Seconds -lt 3600) {
         $minutes = [Math]::Floor($Seconds / 60)
         $secs = $Seconds % 60
         return "${minutes}m ${secs}s"
-    } else {
+    }
+    else {
         $hours = [Math]::Floor($Seconds / 3600)
         $minutes = [Math]::Floor(($Seconds % 3600) / 60)
         return "${hours}h ${minutes}m"
@@ -1007,7 +1015,7 @@ function Show-WorkflowSummary {
         Show-WorkflowSummary -FeatureDir "specs/001-login"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir
     )
 

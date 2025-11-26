@@ -5,7 +5,7 @@ argument-hint: [feature-slug] (optional - defaults to current branch)
 internal: true
 ---
 
-> **⚠️  INTERNAL COMMAND**: This command is called automatically by `/ship`.
+> **⚠️ INTERNAL COMMAND**: This command is called automatically by `/ship`.
 > Most users should use `/ship` instead of calling this directly.
 
 <context>
@@ -30,6 +30,7 @@ Deployment quota remaining: !`SINCE=$(date --version 2>/dev/null | grep -q GNU &
 Ship feature to staging environment by creating a pull request with auto-merge enabled, triggering the CI/CD pipeline deployment.
 
 **What it does:**
+
 1. Validates pre-flight conditions (remote, clean tree, optimization complete)
 2. Runs pre-deployment checks (quota, environment variables)
 3. Selects deployment mode (staging or preview)
@@ -41,6 +42,7 @@ Ship feature to staging environment by creating a pull request with auto-merge e
 9. Generates staging-ship-report.md with deployment details
 
 **Operating constraints:**
+
 - **Internal Command** — Called by `/ship`, not directly by users
 - **Feature Branch Only** — Cannot ship from main or staging branches
 - **Auto-Merge** — Automatically merges when CI passes
@@ -48,12 +50,13 @@ Ship feature to staging environment by creating a pull request with auto-merge e
 - **Quota Aware** — Checks Vercel quota before deploying
 
 **Dependencies:**
+
 - Git repository with remote origin configured
 - Staging branch exists (local or remote)
 - GitHub CLI authenticated
 - Optimization phase complete (/optimize)
 - Clean working tree (no uncommitted changes)
-</objective>
+  </objective>
 
 <process>
 1. **Load feature slug**:
@@ -62,6 +65,7 @@ Ship feature to staging environment by creating a pull request with auto-merge e
    - Validate feature directory exists
 
 2. **Validate on feature branch**:
+
    - Get current branch name
    - Ensure NOT on main or staging:
      ```
@@ -72,38 +76,46 @@ Ship feature to staging environment by creating a pull request with auto-merge e
 3. **Run pre-flight validation** (6 checks):
 
    **Check 1: Remote repository**
+
    - Verify git remote origin exists
    - Verify staging branch exists (local or remote)
    - If missing, display setup instructions
 
    **Check 2: Clean working tree**
+
    - Run `git status --porcelain`
    - If uncommitted changes, prompt user to commit or stash
 
    **Check 3: Optimization complete**
+
    - Verify optimization-report.md exists in specs/{slug}/
    - Verify quality gates passed
    - If missing, require `/optimize` first
 
    **Check 4: Pre-flight smoke tests**
+
    - Run quick local validation (type-check, lint)
    - Execute fast unit tests subset
    - Validate build if applicable
 
    **Check 5: Deployment budget**
+
    - Count Vercel deployments in last 24h
    - Calculate remaining quota: 100 - used
    - If < 10 remaining: Block deployment, suggest preview mode
    - If < 20 remaining: Warn, suggest careful deployment
 
    **Check 6: Environment variables**
+
    - Verify .env.staging exists (if required)
    - Check required variables are set
 
 4. **Select deployment mode**:
+
    - **Staging mode**: Updates staging.{domain}.com, consumes quota (2 deployments)
    - **Preview mode**: CI testing only, no quota cost, unlimited usage
    - Prompt user to select mode:
+
      ```
      Deployment mode:
        1) Staging (updates staging environment) - Consumes quota
@@ -113,12 +125,14 @@ Ship feature to staging environment by creating a pull request with auto-merge e
      ```
 
 5. **Load metadata**:
+
    - Read feature title from spec.md
    - Extract implementation highlights
    - Get current commit SHA
    - Generate PR title: `feat: {title} ({slug})`
 
 6. **Create pull request**:
+
    - Create PR with title and body
    - Base: main, Head: current feature branch
    - Body includes:
@@ -138,6 +152,7 @@ Ship feature to staging environment by creating a pull request with auto-merge e
      ```
 
 7. **Enable auto-merge**:
+
    - Get PR number: `gh pr view --json number --jq '.number'`
    - Enable auto-merge with squash commit:
      ```bash
@@ -149,6 +164,7 @@ Ship feature to staging environment by creating a pull request with auto-merge e
    - Display PR URL and auto-merge status
 
 8. **Monitor CI pipeline**:
+
    - Wait 10 seconds for CI to trigger
    - Check CI status every 30 seconds
    - Timeout after 10 minutes
@@ -158,36 +174,41 @@ Ship feature to staging environment by creating a pull request with auto-merge e
 9. **Run health checks** (after deployment completes):
 
    **Check 1: URL accessibility**
+
    - Marketing: `curl -sS -o /dev/null -w "%{http_code}" https://staging.{domain}.com`
    - App: `curl -sS -o /dev/null -w "%{http_code}" https://app.staging.{domain}.com`
    - Expected: 200 OK
 
    **Check 2: API health endpoint**
+
    - `curl -sS https://app.staging.{domain}.com/api/health | jq`
    - Expected: `{"status":"ok","database":"connected"}`
 
    **Check 3: Deployment metadata**
+
    - Verify Vercel deployment IDs exist
    - Check build timestamps
 
 10. **Capture deployment metadata**:
+
     - Get Vercel deployment IDs (marketing, app)
     - Capture commit SHA, PR number, timestamp
-    - Update workflow-state.yaml:
+    - Update state.yaml:
       ```yaml
       deployment:
         staging:
           deployed: true
-          timestamp: {ISO 8601}
-          commit_sha: {SHA}
-          pr_number: {number}
+          timestamp: { ISO 8601 }
+          commit_sha: { SHA }
+          pr_number: { number }
           deployment_ids:
-            marketing: {vercel-url}
-            app: {vercel-url}
+            marketing: { vercel-url }
+            app: { vercel-url }
       ```
     - Create deployment-metadata.json with rollback info
 
 11. **Generate staging-ship-report.md**:
+
     - Create report in specs/{slug}/staging-ship-report.md
     - Sections:
       - Deployment Summary (status, timestamp, commit, PR)
@@ -197,12 +218,14 @@ Ship feature to staging environment by creating a pull request with auto-merge e
       - Next Steps (validation checklist, /ship-prod)
 
 12. **Update workflow state**:
+
     - Mark ship:phase-1-ship as completed
     - Set next phase: ship:validate-staging
     - Update last_updated timestamp
     - Commit state changes to git
 
 13. **Display summary and next steps**:
+
     ```
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     ✅ Staging Deployment Complete
@@ -256,13 +279,14 @@ Before completing, verify:
 - Health checks passed (HTTP, API, database)
 - Deployment metadata captured (IDs, URLs, timestamps)
 - staging-ship-report.md generated
-- workflow-state.yaml updated
+- state.yaml updated
 - Git state committed
 - Summary displayed with next steps
 </verification>
 
 <success_criteria>
 **Pre-flight validation:**
+
 - Remote repository configured
 - Staging branch exists
 - Working tree clean (no uncommitted changes)
@@ -271,44 +295,51 @@ Before completing, verify:
 - Environment variables validated
 
 **Pull request:**
+
 - PR created with proper title format: `feat: {title} ({slug})`
 - PR body includes summary, highlights, testing notes, next steps
 - Auto-merge enabled with squash commit
 - Delete branch after merge configured
 
 **CI pipeline:**
+
 - CI triggered within 10 seconds
 - CI status monitored every 30 seconds
 - CI completed within 10-minute timeout
 - CI passed all required checks
 
 **Health checks:**
+
 - Marketing URL returns 200 OK
 - App URL returns 200 OK
 - API health endpoint returns {"status":"ok"}
 - Database connectivity confirmed
 
 **Deployment metadata:**
+
 - Vercel deployment IDs captured (marketing, app)
 - Commit SHA recorded
 - PR number stored
 - Timestamp in ISO 8601 format
 - URLs saved
-- workflow-state.yaml updated correctly
+- state.yaml updated correctly
 
 **Report generation:**
+
 - staging-ship-report.md created in specs/{slug}/
 - Contains all required sections (summary, details, gates, rollback, next)
 - Rollback commands documented
 - Validation checklist provided
 
 **Workflow state:**
+
 - ship:phase-1-ship marked completed
 - Next phase set to ship:validate-staging
 - last_updated timestamp current
 - State committed to git
 
 **User presentation:**
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ Staging Deployment Complete
@@ -338,6 +369,7 @@ Next Steps:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
 </success_criteria>
 
 <standards>
@@ -348,6 +380,7 @@ Next Steps:
 - **Deployment Best Practices**: [The Twelve-Factor App](https://12factor.net/) for deployment methodology
 
 **Workflow Standards:**
+
 - Auto-merge with squash commit (clean history)
 - Delete feature branch after merge
 - Health checks after deployment
@@ -355,7 +388,7 @@ Next Steps:
 - Staging environment validation before production
 - Quota-aware deployment (check before consuming)
 - Non-destructive preview mode for testing
-</standards>
+  </standards>
 
 <notes>
 **Command location**: `.claude/commands/deployment/ship-staging.md`
@@ -367,40 +400,47 @@ Next Steps:
 **Internal command**: Called by `/ship` parent orchestrator, not intended for direct user invocation
 
 **Workflow position**:
+
 ```
 /feature → /clarify → /plan → /tasks → /analyze → /implement →
 /optimize → /preview → **/ship-staging** → /validate-staging → /ship-prod
 ```
 
 **Deployment modes:**
+
 - **Staging**: Updates staging.{domain}.com, consumes Vercel quota (2 deployments per ship)
 - **Preview**: CI testing only, no quota cost, unlimited usage, preview URL expires after 7 days
 
 **Auto-merge behavior:**
+
 - Enabled by default
 - Merges when all CI checks pass
 - Squash commit (combines all feature commits)
 - Deletes feature branch after merge
 
 **Health checks:**
+
 - Run automatically after deployment completes
 - Validates HTTP accessibility (200 OK)
 - Checks API health endpoint
 - Verifies database connectivity
 
 **Deployment metadata:**
+
 - Captured for rollback capability
 - Includes Vercel deployment IDs, commit SHA, PR number, timestamps
-- Stored in workflow-state.yaml and deployment-metadata.json
+- Stored in state.yaml and deployment-metadata.json
 - Enables quick rollback if issues discovered
 
 **Quota management:**
+
 - Pre-flight check verifies sufficient quota (>= 2 remaining for staging mode)
 - < 10 remaining: Blocks deployment, suggests preview mode
 - < 20 remaining: Warns, suggests careful deployment
 - Preview mode: 0 quota cost, unlimited usage
 
 **Related commands:**
+
 - `/ship` - Parent orchestrator (calls ship-staging automatically)
 - `/optimize` - Quality gates (must run before shipping)
 - `/preview` - Local testing (recommended before shipping)
@@ -410,6 +450,7 @@ Next Steps:
 - `/deployment-budget` - Check quota before shipping
 
 **Error handling:**
+
 - **No remote**: Display setup instructions for adding remote and creating staging branch
 - **Uncommitted changes**: Prompt to commit or stash before continuing
 - **Optimization missing**: Require `/optimize` before proceeding
@@ -418,12 +459,14 @@ Next Steps:
 - **Health check failure**: Report failure, provide troubleshooting steps
 
 **Rollback capability:**
+
 - Previous commit SHA captured
 - Rollback commands documented in report
 - Revert via new PR or direct git revert + push
 - Vercel deployment promotion for immediate rollback
 
 **Best practices:**
+
 - Always run `/optimize` before shipping
 - Check `/deployment-budget` to avoid quota exhaustion
 - Use preview mode for testing without quota cost
@@ -431,4 +474,4 @@ Next Steps:
 - Run health checks after deployment
 - Validate staging before production deployment
 - Document any issues in validation report
-</notes>
+  </notes>

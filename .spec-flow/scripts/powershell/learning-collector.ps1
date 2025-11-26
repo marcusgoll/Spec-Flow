@@ -219,7 +219,7 @@ function Add-PhaseMetrics {
         [string]$FeatureDir
     )
 
-    $stateFile = Join-Path -Path $FeatureDir -ChildPath 'workflow-state.yaml'
+    $stateFile = Join-Path -Path $FeatureDir -ChildPath 'state.yaml'
     if (-not (Test-Path -LiteralPath $stateFile -PathType Leaf)) {
         Write-Warning "Workflow state not found: $stateFile"
         return

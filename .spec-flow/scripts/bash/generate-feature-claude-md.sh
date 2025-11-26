@@ -50,11 +50,11 @@ fi
 
 FEATURE_DIR="$1"
 CLAUDE_MD_FILE="$FEATURE_DIR/CLAUDE.md"
-STATE_FILE="$FEATURE_DIR/workflow-state.yaml"
+STATE_FILE="$FEATURE_DIR/state.yaml"
 SPEC_FILE="$FEATURE_DIR/spec.md"
 
 if [ ! -f "$STATE_FILE" ]; then
-    log_error "No workflow-state.yaml found in $FEATURE_DIR"
+    log_error "No state.yaml found in $FEATURE_DIR"
     exit 1
 fi
 
@@ -238,7 +238,7 @@ $RECENT_PROGRESS
 - \`plan.md\` - Technical design and architecture approach
 - \`tasks.md\` - Task breakdown with progress tracking
 - \`NOTES.md\` - Complete implementation journal with detailed notes
-- \`workflow-state.yaml\` - Machine-readable workflow state
+- \`state.yaml\` - Machine-readable workflow state
 
 $(if [ -n "$GITHUB_ISSUE" ]; then
     echo "**GitHub Issue**: #$GITHUB_ISSUE"

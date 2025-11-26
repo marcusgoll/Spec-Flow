@@ -11,6 +11,7 @@ updated: 2025-11-19
 **Command**: `/workflow-health [--detailed | --trends | --compare]`
 
 **When to use**:
+
 - Check workflow system health across all epics
 - Identify velocity trends over time
 - Measure ROI of workflow improvements
@@ -25,16 +26,18 @@ updated: 2025-11-19
 ### Step 1: Discover Completed Epics
 
 **Scan for all epic workspaces:**
+
 ```bash
 EPIC_DIRS=$(find epics -maxdepth 1 -type d -name '[0-9]*' | sort)
 EPIC_COUNT=$(echo "$EPIC_DIRS" | wc -l)
 ```
 
 **Filter for completed epics:**
+
 ```bash
 COMPLETED_EPICS=()
 for dir in $EPIC_DIRS; do
-  if grep -q "status: completed" "$dir/workflow-state.yaml"; then
+  if grep -q "status: completed" "$dir/state.yaml"; then
     COMPLETED_EPICS+=("$dir")
   fi
 done
@@ -45,11 +48,12 @@ COMPLETED_COUNT=${#COMPLETED_EPICS[@]}
 ### Step 2: Aggregate Core Metrics
 
 **For each completed epic, extract:**
+
 ```javascript
 const epicMetrics = [];
 
 for (const epicDir of completedEpics) {
-  const state = readYAML(`${epicDir}/workflow-state.yaml`);
+  const state = readYAML(`${epicDir}/state.yaml`);
   const audit = readXML(`${epicDir}/audit-report.xml`); // if exists
   const walkthrough = readXML(`${epicDir}/walkthrough.md`); // if exists
 
@@ -59,11 +63,11 @@ for (const epicDir of completedEpics) {
     start_date: state.created_at,
     end_date: state.completed_at,
     duration_hours: calculateDuration(state),
-    velocity_multiplier: audit?.velocity_impact?.actual_multiplier || 'N/A',
+    velocity_multiplier: audit?.velocity_impact?.actual_multiplier || "N/A",
     sprint_count: state.sprints?.length || 0,
     tasks_completed: state.tasks_completed || 0,
-    quality_score: audit?.overall_score || 'N/A',
-    improvements_applied: countHealingReports(epicDir)
+    quality_score: audit?.overall_score || "N/A",
+    improvements_applied: countHealingReports(epicDir),
   });
 }
 ```
@@ -71,12 +75,13 @@ for (const epicDir of completedEpics) {
 ### Step 3: Calculate Aggregate Statistics
 
 **Velocity trends:**
+
 ```javascript
 const velocityStats = {
-  average: calculateAverage(epicMetrics.map(e => e.velocity_multiplier)),
-  trend: calculateTrend(epicMetrics.map(e => e.velocity_multiplier)),
-  best: Math.max(...epicMetrics.map(e => e.velocity_multiplier)),
-  worst: Math.min(...epicMetrics.map(e => e.velocity_multiplier))
+  average: calculateAverage(epicMetrics.map((e) => e.velocity_multiplier)),
+  trend: calculateTrend(epicMetrics.map((e) => e.velocity_multiplier)),
+  best: Math.max(...epicMetrics.map((e) => e.velocity_multiplier)),
+  worst: Math.min(...epicMetrics.map((e) => e.velocity_multiplier)),
 };
 
 // Trend calculation
@@ -88,35 +93,46 @@ const trend = linearRegression(
 ```
 
 **Quality trends:**
+
 ```javascript
 const qualityStats = {
-  average: calculateAverage(epicMetrics.map(e => e.quality_score)),
-  trend: calculateTrend(epicMetrics.map(e => e.quality_score)),
-  passing_rate: epicMetrics.filter(e => e.quality_score >= 80).length / epicMetrics.length
+  average: calculateAverage(epicMetrics.map((e) => e.quality_score)),
+  trend: calculateTrend(epicMetrics.map((e) => e.quality_score)),
+  passing_rate:
+    epicMetrics.filter((e) => e.quality_score >= 80).length /
+    epicMetrics.length,
 };
 ```
 
 **Duration trends:**
+
 ```javascript
 const durationStats = {
-  average_hours: calculateAverage(epicMetrics.map(e => e.duration_hours)),
-  trend: calculateTrend(epicMetrics.map(e => e.duration_hours)),
-  total_hours: sum(epicMetrics.map(e => e.duration_hours))
+  average_hours: calculateAverage(epicMetrics.map((e) => e.duration_hours)),
+  trend: calculateTrend(epicMetrics.map((e) => e.duration_hours)),
+  total_hours: sum(epicMetrics.map((e) => e.duration_hours)),
 };
 ```
 
 **Improvement effectiveness:**
+
 ```javascript
 const improvementStats = {
-  total_improvements_applied: sum(epicMetrics.map(e => e.improvements_applied)),
-  average_per_epic: calculateAverage(epicMetrics.map(e => e.improvements_applied)),
-  epics_with_improvements: epicMetrics.filter(e => e.improvements_applied > 0).length
+  total_improvements_applied: sum(
+    epicMetrics.map((e) => e.improvements_applied)
+  ),
+  average_per_epic: calculateAverage(
+    epicMetrics.map((e) => e.improvements_applied)
+  ),
+  epics_with_improvements: epicMetrics.filter((e) => e.improvements_applied > 0)
+    .length,
 };
 ```
 
 ### Step 4: Display Dashboard
 
 **Default view (summary):**
+
 ```
 Workflow Health Dashboard
 ═══════════════════════════════════════════════════════════════
@@ -184,6 +200,7 @@ Run with --compare to compare epic performance
 ### Step 5: Detailed View (--detailed flag)
 
 **Per-epic breakdown:**
+
 ```
 Epic Detailed Analysis
 ═══════════════════════════════════════════════════════════════
@@ -233,6 +250,7 @@ Lessons Learned:
 ### Step 6: Trends View (--trends flag)
 
 **Historical trend charts:**
+
 ```
 Velocity Trend (Last 5 Epics)
 ═══════════════════════════════════════════════════════════════
@@ -302,6 +320,7 @@ Forecast (next 3 epics): 20h, 16h, 12h
 ### Step 7: Comparison View (--compare flag)
 
 **Compare epic performance:**
+
 ```
 Epic Comparison Matrix
 ═══════════════════════════════════════════════════════════════
@@ -338,51 +357,55 @@ Pattern Analysis:
 ### Step 8: Health Alerts
 
 **Detect workflow health issues:**
+
 ```javascript
 const alerts = [];
 
 // Velocity degradation
 if (velocityStats.trend < 0) {
   alerts.push({
-    severity: 'warning',
-    category: 'velocity',
+    severity: "warning",
+    category: "velocity",
     message: `Velocity declining by ${Math.abs(velocityStats.trend)}x per epic`,
-    recommendation: 'Run /audit-workflow to identify bottlenecks'
+    recommendation: "Run /audit-workflow to identify bottlenecks",
   });
 }
 
 // Quality degradation
 if (qualityStats.trend < 0) {
   alerts.push({
-    severity: 'warning',
-    category: 'quality',
-    message: `Quality score declining by ${Math.abs(qualityStats.trend)} pts per epic`,
-    recommendation: 'Review quality gates effectiveness'
+    severity: "warning",
+    category: "quality",
+    message: `Quality score declining by ${Math.abs(
+      qualityStats.trend
+    )} pts per epic`,
+    recommendation: "Review quality gates effectiveness",
   });
 }
 
 // Duration increasing
 if (durationStats.trend > 0) {
   alerts.push({
-    severity: 'warning',
-    category: 'duration',
+    severity: "warning",
+    category: "duration",
     message: `Epic duration increasing by ${durationStats.trend}h per epic`,
-    recommendation: 'Check for scope creep or estimation issues'
+    recommendation: "Check for scope creep or estimation issues",
   });
 }
 
 // Low improvement adoption
 if (improvementStats.average_per_epic < 1) {
   alerts.push({
-    severity: 'info',
-    category: 'improvement',
-    message: 'Low improvement adoption rate',
-    recommendation: 'Consider running /heal-workflow more frequently'
+    severity: "info",
+    category: "improvement",
+    message: "Low improvement adoption rate",
+    recommendation: "Consider running /heal-workflow more frequently",
   });
 }
 ```
 
 **Display alerts:**
+
 ```
 ⚠️ HEALTH ALERTS
 ────────────────────────────────────────────────────────────────
@@ -400,6 +423,7 @@ No critical issues detected
 ### Step 9: Export Options
 
 **Offer data export:**
+
 ```
 Export workflow health data?
 
@@ -410,6 +434,7 @@ Export workflow health data?
 ```
 
 **CSV export example:**
+
 ```csv
 epic_number,slug,start_date,end_date,duration_hours,velocity_multiplier,sprint_count,tasks_completed,quality_score,improvements_applied
 001,auth-epic,2025-11-01,2025-11-03,48,3.2,3,28,85,2
@@ -437,13 +462,13 @@ epic_number,slug,start_date,end_date,duration_hours,velocity_multiplier,sprint_c
 ## Anti-Hallucination Rules
 
 1. **Only include completed epics**
-   Check workflow-state.yaml status before including in metrics.
+   Check state.yaml status before including in metrics.
 
 2. **Calculate trends from actual data**
    Use linear regression, don't estimate trends.
 
 3. **Don't invent metrics not in artifacts**
-   All metrics must come from workflow-state.yaml, audit-report.xml, or walkthrough.md.
+   All metrics must come from state.yaml, audit-report.xml, or walkthrough.md.
 
 4. **Show N/A for missing data**
    If audit report doesn't exist, show 'N/A', don't fabricate scores.
@@ -456,12 +481,14 @@ epic_number,slug,start_date,end_date,duration_hours,velocity_multiplier,sprint_c
 ## Integration Points
 
 **Aggregates data from:**
-- `epics/*/workflow-state.yaml` (phase timing, completion status)
+
+- `epics/*/state.yaml` (phase timing, completion status)
 - `epics/*/audit-report.xml` (velocity, quality scores)
 - `epics/*/healing-report.xml` (improvements applied)
 - `epics/*/walkthrough.md` (lessons learned)
 
 **Used by:**
+
 - Project stakeholders (progress reporting)
 - Developers (workflow effectiveness validation)
 - `/heal-workflow` (improvement prioritization)

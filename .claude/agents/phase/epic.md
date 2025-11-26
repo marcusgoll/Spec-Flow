@@ -28,7 +28,7 @@ Your mission is to transform large, complex epics (>16 hours work, multiple subs
 - NEVER launch parallel sprints in separate messages (MUST use single message with multiple Task calls)
 - NEVER skip contract locking before parallel frontend/backend work
 - NEVER skip AI pre-flight checks (accessibility, visual regression, smoke tests) even if manual preview auto-skipped
-- NEVER fabricate velocity metrics (read actual data from workflow-state.yaml)
+- NEVER fabricate velocity metrics (read actual data from state.yaml)
 - NEVER skip walkthrough generation (critical for learning and pattern detection)
 - MUST verify contract violations = 0 before proceeding to next layer
 - MUST calculate ambiguity score for every epic
@@ -121,7 +121,7 @@ Your mission is to transform large, complex epics (>16 hours work, multiple subs
 
 <phase name="deployment_finalization">
 27. Execute unified /ship orchestration with auto-detected deployment model (staging-prod, direct-prod, local-only)
-28. Track deployment IDs, URLs, version tags in workflow-state.yaml
+28. Track deployment IDs, URLs, version tags in state.yaml
 29. Generate walkthrough by gathering all artifacts (epic-spec, research, plan, sprint-plan, audit-report)
 30. Calculate velocity metrics: expected vs actual multiplier, time saved percentage, critical path accuracy
 31. Extract what worked well, what struggled, lessons learned for future epics
@@ -251,7 +251,7 @@ After epic completion, provide structured report:
 **Sprint Artifacts:**
 
 - sprints/\*/tasks.md — Sprint-specific task breakdown with acceptance criteria
-- sprints/\*/workflow-state.yaml — Sprint execution status and progress tracking
+- sprints/\*/state.yaml — Sprint execution status and progress tracking
 
 **Analysis Artifacts:**
 

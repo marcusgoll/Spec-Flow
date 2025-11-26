@@ -9,15 +9,16 @@ Validate staging deployment before promoting to production through systematic ma
 This skill orchestrates the staging validation phase, which occurs after /ship-staging and before /ship-prod in the staging-prod deployment workflow.
 
 **Core responsibilities**:
+
 - Run automated smoke tests on staging environment
 - Test critical user flows manually (authentication, core features, payments)
 - Verify data migrations executed successfully
 - Test rollback capability (actual rollback + roll-forward)
 - Document sign-off decision (approve/reject with justification)
-- Update workflow-state.yaml with validation results
+- Update state.yaml with validation results
 
 Inputs: Staging deployment (URL, deployment ID, migration results)
-Outputs: Validation report, sign-off decision, workflow-state.yaml update
+Outputs: Validation report, sign-off decision, state.yaml update
 Expected duration: 30-60 minutes
 </objective>
 
@@ -25,18 +26,22 @@ Expected duration: 30-60 minutes
 Execute staging validation in 5 steps:
 
 1. **Run smoke tests** - Execute automated smoke test suite on staging URL
+
    ```bash
    npm run test:smoke -- --url=$STAGING_URL
    ```
+
    Verify: homepage loads (200), API health endpoint (200), database connection
 
 2. **Test critical user flows** - Manual testing of core functionality
+
    - Authentication (login, logout, password reset)
    - Primary user workflow (feature-specific)
    - Payment processing (if applicable)
    - Data CRUD operations
 
 3. **Verify data migrations** - Check staging database for migration results
+
    ```bash
    # Connect to staging database
    psql $STAGING_DATABASE_URL -c "SELECT version FROM alembic_version;"
@@ -44,6 +49,7 @@ Execute staging validation in 5 steps:
    ```
 
 4. **Test rollback capability** - Execute actual rollback test
+
    ```bash
    # Rollback to previous deployment
    vercel rollback $PREVIOUS_DEPLOYMENT_ID
@@ -52,14 +58,14 @@ Execute staging validation in 5 steps:
    vercel promote $CURRENT_DEPLOYMENT_ID
    ```
 
-5. **Document sign-off** - Update workflow-state.yaml
+5. **Document sign-off** - Update state.yaml
    ```yaml
    manual_gates:
      staging_validation:
-       status: approved  # or rejected
+       status: approved # or rejected
        approver: "Your Name"
        timestamp: "2025-11-19T10:30:00Z"
-       blockers: []  # or list of issues if rejected
+       blockers: [] # or list of issues if rejected
    ```
 
 Key principle: Test as if this is production. All failures must be fixed before production deployment.
@@ -78,6 +84,7 @@ Before running staging validation:
 
 <knowledge_requirements>
 Required understanding before validation:
+
 - **Smoke tests**: What automated tests exist, how to run them, what they verify
 - **Critical user flows**: Which workflows are essential for production (auth, core feature, payments)
 - **Data migrations**: What schema changes were made, how to verify them
@@ -91,7 +98,7 @@ See deployment-strategy.md in project docs for platform-specific rollback proced
 - **Skip at your own risk**: Staging validation is the last quality gate before production. Skipping it risks deploying broken code to users.
 - **Insufficient smoke tests**: Testing only homepage is inadequate. Must verify API, database, authentication, core features.
 - **Assumed rollback works**: Must actually test rollback, not assume it works. Many rollback failures discovered during tests.
-- **Vague sign-off**: "Looks good" is not a documented sign-off. Must update workflow-state.yaml with name, timestamp, decision.
+- **Vague sign-off**: "Looks good" is not a documented sign-off. Must update state.yaml with name, timestamp, decision.
 </warnings>
 </prerequisites>
 
@@ -102,6 +109,7 @@ See deployment-strategy.md in project docs for platform-specific rollback proced
 Execute smoke test suite on staging environment.
 
 **Smoke Test Suite**:
+
 ```bash
 # Run smoke tests against staging URL
 npm run test:smoke -- --url=$STAGING_URL
@@ -115,12 +123,14 @@ npm run test:smoke -- --url=$STAGING_URL
 ```
 
 **Success Criteria**:
+
 - All smoke tests pass (0 failures)
 - No 500 errors in server logs
 - No console errors in browser DevTools
 - Response times <2s for all endpoints
 
 **If smoke tests fail**:
+
 1. Document failures in validation report
 2. Mark sign-off as "rejected" with blocker list
 3. Return to /implement to fix issues
@@ -136,6 +146,7 @@ npm run test:smoke -- --url=$STAGING_URL
 Manually test essential user journeys on staging.
 
 **Authentication Flow**:
+
 ```
 1. Navigate to staging URL
 2. Click "Login" or navigate to /login
@@ -147,6 +158,7 @@ Manually test essential user journeys on staging.
 ```
 
 **Core Feature Flow** (feature-specific):
+
 ```
 Example for "Student Progress Dashboard" feature:
 1. Login as teacher
@@ -159,6 +171,7 @@ Example for "Student Progress Dashboard" feature:
 ```
 
 **Payment Processing Flow** (if applicable):
+
 ```
 1. Add item to cart
 2. Proceed to checkout
@@ -170,6 +183,7 @@ Example for "Student Progress Dashboard" feature:
 ```
 
 **Data CRUD Operations**:
+
 ```
 1. Create: Add new entity (student, lesson, order)
 2. Read: View entity details
@@ -179,6 +193,7 @@ Example for "Student Progress Dashboard" feature:
 ```
 
 **Success Criteria**:
+
 - All critical flows complete without errors
 - UI displays correctly (no layout issues, missing data)
 - Data persists correctly (create/update/delete operations work)
@@ -194,6 +209,7 @@ Example for "Student Progress Dashboard" feature:
 Check that database migrations executed successfully in staging.
 
 **Migration Verification**:
+
 ```bash
 # Connect to staging database
 psql $STAGING_DATABASE_URL
@@ -212,6 +228,7 @@ SELECT COUNT(*) FROM users WHERE email_verified IS NOT NULL;
 ```
 
 **Schema Validation**:
+
 - [ ] New tables exist (if migrations added tables)
 - [ ] New columns exist with correct types (if migrations added columns)
 - [ ] Constraints applied (NOT NULL, UNIQUE, FOREIGN KEY)
@@ -219,17 +236,20 @@ SELECT COUNT(*) FROM users WHERE email_verified IS NOT NULL;
 - [ ] Old columns removed (if migrations dropped columns)
 
 **Data Validation**:
+
 - [ ] Backfill operations completed (if migrations populated data)
 - [ ] Default values applied (if migrations set defaults)
 - [ ] Data integrity maintained (no orphaned records, referential integrity)
 
 **Success Criteria**:
+
 - Migration version matches expected version
 - All schema changes present in staging database
 - Data migrations completed (if applicable)
 - No migration errors in deployment logs
 
 **If migrations failed**:
+
 1. Check deployment logs for migration errors
 2. Document failure in validation report
 3. Mark sign-off as "rejected"
@@ -247,6 +267,7 @@ Execute actual rollback test to verify production safety net.
 **Rollback Test Procedure**:
 
 **Step 4a: Identify Previous Deployment**:
+
 ```bash
 # For Vercel deployments
 vercel list --limit=5
@@ -258,6 +279,7 @@ PREVIOUS_DEPLOYMENT_ID="<previous-production-deployment>"
 ```
 
 **Step 4b: Execute Rollback**:
+
 ```bash
 # Rollback to previous deployment
 vercel rollback $PREVIOUS_DEPLOYMENT_ID --yes
@@ -267,6 +289,7 @@ vercel alias set $PREVIOUS_DEPLOYMENT_ID <staging-alias>
 ```
 
 **Step 4c: Verify Previous Version Live**:
+
 ```
 1. Navigate to staging URL
 2. Verify previous version is live (check version number, feature presence)
@@ -275,12 +298,14 @@ vercel alias set $PREVIOUS_DEPLOYMENT_ID <staging-alias>
 ```
 
 **Step 4d: Roll Forward**:
+
 ```bash
 # Restore current deployment
 vercel alias set $CURRENT_DEPLOYMENT_ID <staging-alias>
 ```
 
 **Step 4e: Verify Current Version Restored**:
+
 ```
 1. Navigate to staging URL
 2. Verify current version is live (feature present)
@@ -289,6 +314,7 @@ vercel alias set $CURRENT_DEPLOYMENT_ID <staging-alias>
 ```
 
 **Success Criteria**:
+
 - Rollback completed in <2 minutes
 - Previous deployment verified live and functional
 - Roll-forward completed successfully
@@ -296,6 +322,7 @@ vercel alias set $CURRENT_DEPLOYMENT_ID <staging-alias>
 - No downtime >30 seconds
 
 **If rollback test fails**:
+
 1. Document failure (which step failed, error message)
 2. Mark sign-off as "rejected" with blocker: "Rollback capability not verified"
 3. **BLOCK production deployment** - DO NOT proceed to /ship-prod
@@ -308,9 +335,10 @@ vercel alias set $CURRENT_DEPLOYMENT_ID <staging-alias>
 <step number="5">
 **Document Sign-Off Decision**
 
-Update workflow-state.yaml with validation results and approval decision.
+Update state.yaml with validation results and approval decision.
 
 **Approval Criteria**:
+
 ```
 Sign-off as "approved" ONLY if:
 - All smoke tests pass (0 failures)
@@ -321,6 +349,7 @@ Sign-off as "approved" ONLY if:
 ```
 
 **Rejection Criteria**:
+
 ```
 Sign-off as "rejected" if ANY of:
 - Smoke tests fail
@@ -330,9 +359,10 @@ Sign-off as "rejected" if ANY of:
 - Blocking bugs found (security issue, data corruption, critical UX bug)
 ```
 
-**workflow-state.yaml Update**:
+**state.yaml Update**:
 
 **Approval Example**:
+
 ```yaml
 manual_gates:
   staging_validation:
@@ -348,6 +378,7 @@ manual_gates:
 ```
 
 **Rejection Example**:
+
 ```yaml
 manual_gates:
   staging_validation:
@@ -365,6 +396,7 @@ manual_gates:
 ```
 
 **Next Steps After Sign-Off**:
+
 - If approved → Run `/ship-prod` to deploy to production
 - If rejected → Return to `/implement`, fix blockers, re-deploy to staging, re-run validation
 
@@ -381,6 +413,7 @@ manual_gates:
 - [ ] Database migration logs accessible
 
 **During validation**:
+
 - [ ] Smoke tests executed and passed
 - [ ] Authentication flow tested (login, logout, password reset)
 - [ ] Core feature flow tested (feature-specific)
@@ -390,35 +423,39 @@ manual_gates:
 - [ ] No blocking bugs found
 
 **Post-validation**:
-- [ ] workflow-state.yaml updated with sign-off
+
+- [ ] state.yaml updated with sign-off
 - [ ] Validation summary documented
 - [ ] Blockers listed (if rejected)
 - [ ] Next steps clear (ship-prod or return to implement)
-</phase_checklist>
+      </phase_checklist>
 
 <quality_standards>
 **Good staging validation**:
+
 - All smoke tests pass (automated verification)
 - Critical flows tested thoroughly (manual verification)
 - Data migrations verified (database inspection)
 - Rollback tested (actual rollback, not assumed)
-- Sign-off documented (workflow-state.yaml with approver, timestamp)
+- Sign-off documented (state.yaml with approver, timestamp)
 - Duration: 30-60 minutes (efficient but thorough)
 
 **Bad staging validation**:
+
 - Only homepage tested (insufficient coverage)
 - Rollback assumed to work (not actually tested)
 - Verbal approval only (no documented sign-off)
 - Blocking bugs ignored ("we'll fix in production")
 - Rushed (<15 minutes, corners cut)
-</quality_standards>
-</validation>
+  </quality_standards>
+  </validation>
 
 <anti_patterns>
 <pitfall name="insufficient_smoke_tests">
 **Impact**: Deploys broken code to production
 
 **Scenario**:
+
 ```
 Tester: "I checked the homepage, looks good!"
 Reality: API returns 500 errors, authentication broken, database connection failing
@@ -426,34 +463,40 @@ Result: Production deployment breaks core functionality
 ```
 
 **Prevention**:
+
 - Run full smoke test suite (homepage, API, database, authentication)
 - Verify automated tests pass, not just manual homepage check
 - Check server logs for errors, not just UI
 - Test critical endpoints (health check, auth, core API)
 
 **Good Practice**:
+
 ```bash
 npm run test:smoke -- --url=$STAGING_URL
 # Verifies: homepage (200), API health (200), DB connection (success), auth page (200)
 ```
+
 </pitfall>
 
 <pitfall name="unclear_sign_off">
 **Impact**: No accountability, unclear approval state
 
 **Scenario**:
+
 ```
 Slack message: "Staging looks good 👍"
 Result: No documented approval, unclear who approved, no timestamp, no validation summary
 ```
 
 **Prevention**:
-- Always update workflow-state.yaml with sign-off
+
+- Always update state.yaml with sign-off
 - Include approver name, timestamp, validation summary
 - Document blockers if rejected
 - Make approval explicit and traceable
 
 **Good Practice**:
+
 ```yaml
 manual_gates:
   staging_validation:
@@ -462,12 +505,14 @@ manual_gates:
     timestamp: "2025-11-19T14:30:00Z"
     validation_summary: "All tests pass, rollback verified"
 ```
+
 </pitfall>
 
 <pitfall name="skipped_rollback_test">
 **Impact**: Rollback fails in production when needed
 
 **Scenario**:
+
 ```
 Tester: "Rollback should work, Vercel has rollback feature"
 Reality: Rollback deployed but DNS not updated, or deployment ID incorrect, or database migration not reversible
@@ -475,6 +520,7 @@ Result: Production incident, attempted rollback fails, extended downtime
 ```
 
 **Prevention**:
+
 - **Always test rollback** on staging before production deployment
 - Execute actual rollback (change alias/DNS)
 - Verify previous version is live
@@ -482,6 +528,7 @@ Result: Production incident, attempted rollback fails, extended downtime
 - Document rollback + roll-forward success
 
 **Good Practice**:
+
 ```bash
 # Actual rollback test
 vercel rollback $PREVIOUS_ID
@@ -489,36 +536,42 @@ vercel rollback $PREVIOUS_ID
 vercel alias set $CURRENT_ID staging
 # Verify current version restored (manual test)
 ```
+
 </pitfall>
 
 <pitfall name="ignored_blocking_bugs">
 **Impact**: Deploys known bugs to production
 
 **Scenario**:
+
 ```
 Tester: "Login is broken but we'll fix it in a hotfix"
 Result: Production users cannot login, support tickets spike, revenue impacted
 ```
 
 **Prevention**:
+
 - Mark validation as "rejected" for any blocking bug
 - Blocking bugs: authentication broken, core feature broken, data corruption, security issue
 - Fix blocking bugs before production deployment
 - No "we'll fix it later" for critical issues
 
 **Good Practice**:
+
 ```yaml
 status: rejected
 blockers:
   - "Login redirects to 404 (critical - blocks all users)"
 next_steps: "Fix login redirect, re-deploy to staging, re-validate"
 ```
+
 </pitfall>
 
 <pitfall name="rushed_validation">
 **Impact**: Misses critical bugs, false confidence
 
 **Scenario**:
+
 ```
 Tester: "Validated in 10 minutes, good to go"
 Reality: Only tested happy path, missed edge cases, didn't verify migrations
@@ -526,6 +579,7 @@ Result: Production deployment fails on edge cases (null values, missing data, co
 ```
 
 **Prevention**:
+
 - Allocate 30-60 minutes for thorough validation
 - Test critical flows completely (not just happy path)
 - Verify data migrations (schema + data)
@@ -533,6 +587,7 @@ Result: Production deployment fails on edge cases (null values, missing data, co
 - Don't rush the last quality gate before production
 
 **Good Practice**:
+
 ```
 30-60 minute validation:
 - 10 min: Smoke tests
@@ -541,6 +596,7 @@ Result: Production deployment fails on edge cases (null values, missing data, co
 - 10 min: Rollback test
 - 5 min: Document sign-off
 ```
+
 </pitfall>
 </anti_patterns>
 
@@ -549,54 +605,62 @@ Result: Production deployment fails on edge cases (null values, missing data, co
 **When to use**: Always, for every staging deployment
 
 **Approach**:
+
 1. Create smoke test suite that runs against any URL
 2. Include tests for: homepage, API health, database connection, authentication page
 3. Run via npm script: `npm run test:smoke -- --url=$STAGING_URL`
 4. Verify all tests pass before manual testing
 
 **Benefits**:
+
 - Catches deployment issues immediately (before manual testing)
 - Automated, repeatable, fast (2-3 minutes)
 - Provides confidence baseline for manual testing
 
 **Example**:
+
 ```javascript
 // tests/smoke.test.js
-describe('Smoke Tests', () => {
-  const baseURL = process.env.TEST_URL || 'http://localhost:3000';
+describe("Smoke Tests", () => {
+  const baseURL = process.env.TEST_URL || "http://localhost:3000";
 
-  test('homepage loads', async () => {
+  test("homepage loads", async () => {
     const response = await fetch(baseURL);
     expect(response.status).toBe(200);
   });
 
-  test('API health endpoint responds', async () => {
+  test("API health endpoint responds", async () => {
     const response = await fetch(`${baseURL}/api/health`);
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.database).toBe('connected');
+    expect(data.database).toBe("connected");
   });
 });
 ```
+
 </smoke_test_automation>
 
 <critical_flow_checklist>
 **When to use**: Every staging validation
 
 **Approach**:
+
 1. Identify 3-5 critical user flows (authentication, core feature, payments)
 2. Create checklist for each flow
 3. Test each flow manually on staging
 4. Document results in validation summary
 
 **Benefits**:
+
 - Ensures essential functionality works before production
 - Catches UX bugs that automated tests miss
 - Provides structured testing approach (no guessing)
 
 **Example Checklist**:
+
 ```markdown
 Authentication Flow:
+
 - [ ] Login with valid credentials succeeds
 - [ ] Login with invalid credentials fails (shows error)
 - [ ] Logout succeeds (session cleared)
@@ -604,12 +668,14 @@ Authentication Flow:
 - [ ] Password reset link works
 - [ ] New password accepted
 ```
+
 </critical_flow_checklist>
 
 <rollback_test_discipline>
 **When to use**: Every staging validation (non-negotiable)
 
 **Approach**:
+
 1. Identify previous production deployment ID
 2. Execute rollback to previous deployment
 3. Verify previous version is live (manual test)
@@ -618,11 +684,13 @@ Authentication Flow:
 6. Document rollback + roll-forward success
 
 **Benefits**:
+
 - Verifies safety net works before production deployment
 - Builds muscle memory for production rollback procedure
 - Identifies rollback issues in safe environment (staging)
 
 **Example**:
+
 ```bash
 # Rollback test
 PREVIOUS_ID=$(vercel list --limit=5 | grep production | head -1 | awk '{print $1}')
@@ -631,6 +699,7 @@ vercel rollback $PREVIOUS_ID
 vercel alias set $CURRENT_ID staging
 # Manual verification: Navigate to staging, confirm current version live
 ```
+
 </rollback_test_discipline>
 </best_practices>
 
@@ -641,13 +710,14 @@ Staging validation phase complete when:
 - [ ] All critical user flows verified (authentication, core feature, payments)
 - [ ] Data migrations verified (schema + data correct)
 - [ ] Rollback test succeeds (rollback + roll-forward verified)
-- [ ] Sign-off documented in workflow-state.yaml (approver, timestamp, validation summary)
+- [ ] Sign-off documented in state.yaml (approver, timestamp, validation summary)
 - [ ] Decision is "approved" (ready for production) OR "rejected" (blockers documented, return to implement)
 
 Ready to proceed when:
+
 - If approved → Run `/ship-prod` to deploy to production
 - If rejected → Return to `/implement`, fix blockers, re-deploy to staging, re-run validation
-</success_criteria>
+  </success_criteria>
 
 <troubleshooting>
 **Issue**: Smoke tests failing on staging
@@ -673,21 +743,25 @@ Ready to proceed when:
 For detailed documentation:
 
 **Deployment Procedures**: Project-specific deployment documentation
+
 - Vercel deployment: See `.github/workflows/deploy-staging.yml` for deployment automation
 - Rollback procedures: See `docs/project/deployment-strategy.md` for platform-specific rollback steps
 - Database migrations: See `alembic/README.md` for migration best practices
 
 **Testing Guides**:
+
 - Smoke tests: See `tests/smoke/README.md` for smoke test suite documentation
 - Critical flow testing: See spec.md for feature-specific critical flows
 - Performance testing: See `docs/performance-budgets.md` for performance targets
 
 **Quality Gates**:
+
 - Pre-flight validation: Completed in /optimize phase (performance, accessibility, security)
 - Staging validation: This skill (manual testing, smoke tests, rollback capability)
 - Production validation: Post-deployment verification in /ship-prod (health checks, smoke tests on production)
 
 Next phase after staging validation:
+
 - If approved → `/ship-prod` (deploy to production, run production smoke tests, finalize)
 - If rejected → `/implement` (fix blockers, re-deploy to staging, re-run /validate-staging)
-</reference_guides>
+  </reference_guides>

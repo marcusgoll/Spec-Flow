@@ -66,7 +66,7 @@ check_prerequisites() {
 
     # Check if implementation is complete
     if ! grep -q "implement.*completed\|Phase 3.*Complete" "$FEATURE_DIR/NOTES.md" 2>/dev/null && \
-       ! yq -e '.phases[] | select(.name == "implement" and .status == "completed")' "$FEATURE_DIR/workflow-state.yaml" >/dev/null 2>&1; then
+       ! yq -e '.phases[] | select(.name == "implement" and .status == "completed")' "$FEATURE_DIR/state.yaml" >/dev/null 2>&1; then
         log_error "Implementation phase not complete"
         log_info "Run /implement first"
         exit 1

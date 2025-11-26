@@ -53,7 +53,7 @@ function Find-ActiveFeatures {
         return @()
     }
 
-    $stateFiles = Get-ChildItem -Path $specsDir -Filter "workflow-state.yaml" -Recurse -File
+    $stateFiles = Get-ChildItem -Path $specsDir -Filter "state.yaml" -Recurse -File
 
     foreach ($stateFile in $stateFiles) {
         $featureDir = $stateFile.Directory
@@ -70,12 +70,13 @@ function Find-ActiveFeatures {
             # Only include active features (not completed or failed)
             if ($status -ne "completed" -and $status -ne "failed") {
                 $features += @{
-                    name = $featureName
-                    phase = $phase
+                    name   = $featureName
+                    phase  = $phase
                     status = $status
                 }
             }
-        } catch {
+        }
+        catch {
             Write-Warning "Could not parse $($stateFile.FullName): $_"
         }
     }
@@ -89,9 +90,9 @@ function Get-TechStackSummary {
 
     if (-not (Test-Path $techStackFile)) {
         return @{
-            frontend = ""
-            backend = ""
-            database = ""
+            frontend   = ""
+            backend    = ""
+            database   = ""
             deployment = ""
         }
     }
@@ -117,9 +118,9 @@ function Get-TechStackSummary {
     }
 
     return @{
-        frontend = Extract-Section -Content $content -Header "Frontend"
-        backend = Extract-Section -Content $content -Header "Backend"
-        database = Extract-Section -Content $content -Header "Database"
+        frontend   = Extract-Section -Content $content -Header "Frontend"
+        backend    = Extract-Section -Content $content -Header "Backend"
+        database   = Extract-Section -Content $content -Header "Database"
         deployment = Extract-Section -Content $content -Header "Deployment"
     }
 }
@@ -201,7 +202,8 @@ function New-MarkdownOutput {
 
     if ($ActiveFeatures.Count -eq 0) {
         $markdown += "No active features.`n"
-    } else {
+    }
+    else {
         foreach ($feature in $ActiveFeatures) {
             $markdown += "- **$($feature.name)**: Phase $($feature.phase) ($($feature.status))`n"
         }
@@ -249,7 +251,8 @@ function New-MarkdownOutput {
 
     if ($Patterns.Count -eq 0) {
         $markdown += "No common patterns discovered yet. Patterns are extracted during feature implementation.`n"
-    } else {
+    }
+    else {
         foreach ($pattern in $Patterns) {
             $markdown += "- **$($pattern.name)** - ``$($pattern.path)```n"
         }
@@ -312,11 +315,12 @@ $patterns = Get-CommonPatterns
 if ($Json) {
     $output = @{
         active_features = $activeFeatures
-        tech_stack = $techStack
+        tech_stack      = $techStack
         common_patterns = $patterns
     }
     $output | ConvertTo-Json -Depth 5
-} else {
+}
+else {
     $markdown = New-MarkdownOutput -ActiveFeatures $activeFeatures -TechStack $techStack -Patterns $patterns
     Set-Content -Path $OutputFile -Value $markdown -NoNewline
     Write-Host "[spec-flow] Generated project CLAUDE.md at $OutputFile" -ForegroundColor Green

@@ -1,13 +1,27 @@
 ---
 description: Finalize documentation (CHANGELOG, README, help docs), update GitHub milestones/releases, and cleanup branches after production deployment
-allowed-tools: [Bash(git *), Bash(gh *), Bash(yq *), Bash(jq *), Bash(date *), Bash(python *), Bash(spec-cli.py *), Read, Write, Edit, Grep, Glob]
+allowed-tools:
+  [
+    Bash(git *),
+    Bash(gh *),
+    Bash(yq *),
+    Bash(jq *),
+    Bash(date *),
+    Bash(python *),
+    Bash(spec-cli.py *),
+    Read,
+    Write,
+    Edit,
+    Grep,
+    Glob,
+  ]
 internal: true
 ---
 
 <context>
-Current workflow state: !`cat specs/*/workflow-state.yaml 2>/dev/null | grep -E '(feature\.|deployment\.production\.|version:)' | head -20`
+Current workflow state: !`cat specs/*/state.yaml 2>/dev/null | grep -E '(feature\.|deployment\.production\.|version:)' | head -20`
 
-Recent production deployment: !`yq -r '.deployment.production | "URL: \(.url // "N/A"), Date: \(.completed_at // "N/A"), Status: \(.status // "unknown")"' specs/*/workflow-state.yaml 2>/dev/null`
+Recent production deployment: !`yq -r '.deployment.production | "URL: \(.url // "N/A"), Date: \(.completed_at // "N/A"), Status: \(.status // "unknown")"' specs/*/state.yaml 2>/dev/null`
 
 Required tools check: !`for c in gh jq yq git python; do command -v "$c" >/dev/null 2>&1 && echo "✅ $c" || echo "❌ $c"; done`
 </context>
@@ -18,22 +32,25 @@ Finalize documentation, roadmap, and housekeeping after successful production de
 This command updates CHANGELOG.md, README.md, help docs, GitHub milestones/releases, and cleans up merged branches. For epic workflows (v5.0+), generates comprehensive walkthrough with velocity metrics before standard finalization.
 
 **Dependencies**:
-- Completed production deployment with workflow-state.yaml containing:
+
+- Completed production deployment with state.yaml containing:
   - `feature.title`, `feature.slug`
   - `deployment.production.url`
   - `deployment.production.run_id`
   - `version` (MAJOR.MINOR.PATCH)
 
 **Execution model**:
+
 - **Idempotent**: Safe to re-run; completed tasks are skipped
 - **Deterministic**: No prompts, no editors
 - **Tracked**: Every step logged with clear progress indicators
-</objective>
+  </objective>
 
 <process>
 1. **Check prerequisites** - Verify gh, jq, yq, git, python are installed and gh is authenticated
 
 2. **Execute finalization workflow** via spec-cli.py:
+
    ```bash
    python .spec-flow/scripts/spec-cli.py finalize
    ```
@@ -41,27 +58,29 @@ This command updates CHANGELOG.md, README.md, help docs, GitHub milestones/relea
    The finalize-workflow.sh script performs:
 
    a. **Epic workflows only** (v5.0+):
-      - Generate walkthrough.md with velocity metrics
-      - Calculate sprint results and lessons learned
-      - Run post-mortem audit (/audit-workflow --post-mortem)
-      - Detect patterns across epics (if 2-3+ completed)
-      - Offer workflow healing (/heal-workflow)
+
+   - Generate walkthrough.md with velocity metrics
+   - Calculate sprint results and lessons learned
+   - Run post-mortem audit (/audit-workflow --post-mortem)
+   - Detect patterns across epics (if 2-3+ completed)
+   - Offer workflow healing (/heal-workflow)
 
    b. **Standard finalization** (all workflows):
-      - Update CHANGELOG.md (Keep a Changelog format)
-      - Update README.md (Shields.io version badge + features)
-      - Generate help article at docs/help/features/{slug}.md
-      - Update API docs (conditional if endpoints changed)
-      - Close current milestone, create next milestone
-      - Update roadmap issue to "shipped" status
-      - Update GitHub Release with production deployment info
-      - Commit and push documentation changes
-      - Cleanup feature branch (safe delete if merged)
-      - **Archive workflow artifacts** (v9.3+):
-        * Move all planning artifacts to {workspace}/completed/
-        * Epic: epic-spec.md, plan.md, sprint-plan.md, tasks.md, NOTES.md, research.md, walkthrough.md
-        * Feature: spec.md, plan.md, tasks.md, NOTES.md
-        * workflow-state.yaml remains in root (for metrics/history)
+
+   - Update CHANGELOG.md (Keep a Changelog format)
+   - Update README.md (Shields.io version badge + features)
+   - Generate help article at docs/help/features/{slug}.md
+   - Update API docs (conditional if endpoints changed)
+   - Close current milestone, create next milestone
+   - Update roadmap issue to "shipped" status
+   - Update GitHub Release with production deployment info
+   - Commit and push documentation changes
+   - Cleanup feature branch (safe delete if merged)
+   - **Archive workflow artifacts** (v9.3+):
+     - Move all planning artifacts to {workspace}/completed/
+     - Epic: epic-spec.md, plan.md, sprint-plan.md, tasks.md, NOTES.md, research.md, walkthrough.md
+     - Feature: spec.md, plan.md, tasks.md, NOTES.md
+     - state.yaml remains in root (for metrics/history)
 
 3. **Review summary output** - Verify all tasks completed successfully
 
@@ -70,7 +89,7 @@ This command updates CHANGELOG.md, README.md, help docs, GitHub milestones/relea
    - Announce release (social media, blog, email)
    - Monitor user feedback and error logs
    - Plan next feature from roadmap
-</process>
+     </process>
 
 <verification>
 Before completing, verify:
@@ -84,11 +103,12 @@ Before completing, verify:
 - Feature branch deleted if fully merged (or noted as unmerged)
 - **Workflow artifacts archived** (v9.3+):
   * All planning artifacts moved to {workspace}/completed/
-  * workflow-state.yaml remains in root directory
+  * state.yaml remains in root directory
   * Completed directory contains expected files based on workflow type
 </verification>
 
 <success_criteria>
+
 - All documentation files updated and committed
 - GitHub Release contains production deployment section (if exists)
 - Roadmap issue marked as "shipped" (if exists)
@@ -98,7 +118,7 @@ Before completing, verify:
 - Finalization script exits with status 0
 - No bash commands executed beyond allowed tools
 - Idempotent: Safe to re-run if interrupted
-</success_criteria>
+  </success_criteria>
 
 <standards>
 **Industry Standards**:
@@ -108,11 +128,12 @@ Before completing, verify:
 - **GitHub**: [GitHub CLI Manual](https://cli.github.com/manual/) and [REST API](https://docs.github.com/en/rest)
 
 **Workflow Standards**:
+
 - No prompts or interactive editors (vi, nano)
 - All operations are deterministic and scriptable
 - Safe for CI/CD execution
 - Graceful degradation for optional operations (milestones, roadmap)
-</standards>
+  </standards>
 
 <error_recovery>
 **Idempotency**: Re-running `/finalize` is safe. The finalize-workflow.sh script checks for existing state before modifying files.
@@ -120,14 +141,17 @@ Before completing, verify:
 **Common errors and fixes**:
 
 1. **Git push fails**
+
    - Cause: Need to pull changes first
    - Fix: `git pull --rebase && /finalize`
 
 2. **GitHub CLI not authenticated**
+
    - Cause: Missing gh credentials
    - Fix: `gh auth login` then retry `/finalize`
 
 3. **Missing required tool**
+
    - Cause: gh, jq, yq, or git not installed
    - Fix: Install missing tool (see prerequisites output), then retry
 
@@ -137,6 +161,7 @@ Before completing, verify:
    - Result: Branch preserved, manual review required
 
 **GitHub API safety**:
+
 - All `gh` commands use `|| true` to avoid blocking workflow
 - Optional steps (milestones, roadmap) log warnings but don't fail finalization
 - Rate limiting handled gracefully with warnings
@@ -151,7 +176,8 @@ If finalization is interrupted, simply re-run `/finalize`. The script will skip 
 When /finalize detects an epic workflow (presence of `epics/*/epic-spec.md`), it generates a comprehensive walkthrough before standard finalization.
 
 **Walkthrough generation**:
-1. Load all epic artifacts (epic-spec.md, research.md, plan.md, sprint-plan.md, workflow-state.yaml, audit-report.xml)
+
+1. Load all epic artifacts (epic-spec.md, research.md, plan.md, sprint-plan.md, state.yaml, audit-report.xml)
 2. Calculate velocity metrics (expected vs actual multiplier, time saved)
 3. Extract sprint results (tasks completed, duration, tests passed)
 4. Generate walkthrough.md using .spec-flow/templates/walkthrough.md
@@ -160,6 +186,7 @@ When /finalize detects an epic workflow (presence of `epics/*/epic-spec.md`), it
 7. Offer workflow healing via /heal-workflow
 
 **Walkthrough includes**:
+
 - Epic goal and success metrics
 - Velocity metrics (expected vs actual)
 - Sprint execution results
@@ -170,6 +197,7 @@ When /finalize detects an epic workflow (presence of `epics/*/epic-spec.md`), it
 
 **Pattern detection** (after 2-3 epics):
 Analyzes patterns across completed epics and suggests:
+
 - Estimation multiplier adjustments
 - API contract locking strategies
 - Design system Phase 0.5 opportunities
@@ -187,8 +215,9 @@ See finalize-workflow.sh:59-408 for full walkthrough generation logic.
 **Date format**: Uses ISO-8601 (`YYYY-MM-DD`) for CHANGELOG dates per Keep a Changelog standard.
 
 **Artifact linking**: Production deployment logs can be viewed via:
+
 ```bash
-gh run view $(yq -r '.deployment.production.run_id' specs/*/workflow-state.yaml) --log
+gh run view $(yq -r '.deployment.production.run_id' specs/*/state.yaml) --log
 ```
 
 **Workflow dispatch**: For automated releases via GitHub Actions, ensure target workflow declares `on: workflow_dispatch`. Use `gh workflow run` and `gh run watch` to dispatch and monitor.

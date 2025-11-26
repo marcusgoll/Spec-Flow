@@ -31,6 +31,7 @@ The security gate runs three types of security checks to ensure code meets secur
 **Tool**: Semgrep (recommended)
 
 **What it detects:**
+
 - SQL injection vulnerabilities
 - Cross-Site Scripting (XSS)
 - Path traversal
@@ -41,11 +42,13 @@ The security gate runs three types of security checks to ensure code meets secur
 - Authorization issues
 
 **Command:**
+
 ```bash
 semgrep --config=auto --json .
 ```
 
 **Output format**: JSON with findings including:
+
 - Rule ID
 - Severity (ERROR, WARNING, INFO)
 - File path and line number
@@ -53,6 +56,7 @@ semgrep --config=auto --json .
 - Fix suggestions
 
 **Severity mapping:**
+
 - **CRITICAL**: Semgrep doesn't use this level (treat ERROR as CRITICAL)
 - **ERROR/HIGH**: Must fix before deployment
 - **WARNING**: Should fix but not blocking
@@ -67,6 +71,7 @@ semgrep --config=auto --json .
 **Tool 1**: git-secrets (preferred)
 
 **What it detects:**
+
 - AWS credentials (AKIA..., aws_secret_access_key)
 - API keys in common formats
 - Private keys (RSA, SSH)
@@ -75,6 +80,7 @@ semgrep --config=auto --json .
 - Custom patterns via configuration
 
 **Command:**
+
 ```bash
 git-secrets --scan
 ```
@@ -82,6 +88,7 @@ git-secrets --scan
 **Tool 2**: Fallback regex patterns (if git-secrets not installed)
 
 **Patterns:**
+
 ```regex
 # API keys
 api_key\s*=\s*["'][^"']+["']
@@ -110,6 +117,7 @@ aws_secret_access_key\s*=\s*[A-Za-z0-9/+=]{40}
 **Node.js**: npm audit
 
 **Command:**
+
 ```bash
 npm audit --json
 ```
@@ -119,6 +127,7 @@ npm audit --json
 **Python**: pip-audit or safety
 
 **Command:**
+
 ```bash
 # pip-audit (recommended)
 pip-audit --format json
@@ -128,6 +137,7 @@ safety check --json
 ```
 
 **Severity levels:**
+
 - **CRITICAL**: CVE with CVSS score >= 9.0
 - **HIGH**: CVE with CVSS score >= 7.0
 - **MEDIUM**: CVE with CVSS score >= 4.0
@@ -142,21 +152,25 @@ safety check --json
 ### Semgrep (SAST)
 
 **All platforms:**
+
 ```bash
 pip install semgrep
 ```
 
 **Docker (alternative):**
+
 ```bash
 docker pull semgrep/semgrep
 ```
 
 **Verification:**
+
 ```bash
 semgrep --version
 ```
 
 **Configuration:**
+
 - Default config: `--config=auto` (curated rulesets)
 - Custom config: `.semgrep.yml` in repo root
 - Language-specific: `--config=p/javascript`, `--config=p/python`
@@ -164,11 +178,13 @@ semgrep --version
 ### git-secrets (Secrets Detection)
 
 **macOS:**
+
 ```bash
 brew install git-secrets
 ```
 
 **Linux:**
+
 ```bash
 git clone https://github.com/awslabs/git-secrets
 cd git-secrets
@@ -176,12 +192,14 @@ sudo make install
 ```
 
 **Windows (Git Bash):**
+
 ```bash
 # Download git-secrets manually
 # Add to PATH
 ```
 
 **Setup for repository:**
+
 ```bash
 cd /path/to/repo
 git secrets --install
@@ -189,6 +207,7 @@ git secrets --register-aws  # Add AWS patterns
 ```
 
 **Verification:**
+
 ```bash
 git-secrets --version
 git secrets --list
@@ -199,11 +218,13 @@ git secrets --list
 **Built-in**: Comes with npm 6+
 
 **Verification:**
+
 ```bash
 npm audit --version
 ```
 
 **Usage:**
+
 ```bash
 npm audit                    # Human-readable output
 npm audit --json             # JSON output
@@ -214,16 +235,19 @@ npm audit fix --force        # Apply breaking changes
 ### pip-audit (Python Dependencies)
 
 **Installation:**
+
 ```bash
 pip install pip-audit
 ```
 
 **Verification:**
+
 ```bash
 pip-audit --version
 ```
 
 **Usage:**
+
 ```bash
 pip-audit                    # Human-readable output
 pip-audit --format json      # JSON output
@@ -233,16 +257,19 @@ pip-audit --fix              # Auto-fix (pip-audit 2.0+)
 ### safety (Python Dependencies - Alternative)
 
 **Installation:**
+
 ```bash
 pip install safety
 ```
 
 **Verification:**
+
 ```bash
 safety --version
 ```
 
 **Usage:**
+
 ```bash
 safety check                 # Human-readable output
 safety check --json          # JSON output
@@ -254,31 +281,31 @@ safety check --json          # JSON output
 
 ### SAST Severity Mapping
 
-| Semgrep Level | Gate Severity | Action |
-|---------------|---------------|--------|
-| ERROR | CRITICAL/HIGH | **Block deployment** |
-| WARNING | MEDIUM | Warn only |
-| INFO | LOW | Informational |
+| Semgrep Level | Gate Severity | Action               |
+| ------------- | ------------- | -------------------- |
+| ERROR         | CRITICAL/HIGH | **Block deployment** |
+| WARNING       | MEDIUM        | Warn only            |
+| INFO          | LOW           | Informational        |
 
 **Pass criteria**: Zero ERROR-level findings
 
 ### Secrets Detection Severity
 
-| Detection | Gate Severity | Action |
-|-----------|---------------|--------|
-| Any secret detected | CRITICAL | **Block deployment** |
-| No secrets | N/A | Pass |
+| Detection           | Gate Severity | Action               |
+| ------------------- | ------------- | -------------------- |
+| Any secret detected | CRITICAL      | **Block deployment** |
+| No secrets          | N/A           | Pass                 |
 
 **Pass criteria**: Zero secrets detected
 
 ### Dependency Scan Severity
 
-| CVE CVSS Score | npm audit | pip-audit | Gate Severity | Action |
-|----------------|-----------|-----------|---------------|--------|
-| >= 9.0 | critical | critical | CRITICAL | **Block deployment** |
-| >= 7.0 | high | high | HIGH | **Block deployment** |
-| >= 4.0 | moderate | medium | MEDIUM | Warn only |
-| < 4.0 | low | low | LOW | Informational |
+| CVE CVSS Score | npm audit | pip-audit | Gate Severity | Action               |
+| -------------- | --------- | --------- | ------------- | -------------------- |
+| >= 9.0         | critical  | critical  | CRITICAL      | **Block deployment** |
+| >= 7.0         | high      | high      | HIGH          | **Block deployment** |
+| >= 4.0         | moderate  | medium    | MEDIUM        | Warn only            |
+| < 4.0          | low       | low       | LOW           | Informational        |
 
 **Pass criteria**: Zero CRITICAL and HIGH vulnerabilities
 
@@ -293,12 +320,14 @@ Review → (Security gate passes) → Integrated
 ```
 
 **Conditions for success:**
+
 - SAST: 0 ERROR findings
 - Secrets: 0 secrets detected
 - Dependencies: 0 CRITICAL/HIGH vulnerabilities
 
 **Automated action:**
-- Update `workflow-state.yaml` with `quality_gates.security.status = passed`
+
+- Update `state.yaml` with `quality_gates.security.status = passed`
 - Epic state can transition from Review → Integrated
 
 ### Failure Path
@@ -308,16 +337,19 @@ Review → (Security gate fails) → Review (blocked)
 ```
 
 **Conditions for failure:**
+
 - SAST: 1+ ERROR findings
 - Secrets: 1+ secrets detected
 - Dependencies: 1+ CRITICAL/HIGH vulnerabilities
 
 **Automated action:**
-- Update `workflow-state.yaml` with `quality_gates.security.status = failed`
+
+- Update `state.yaml` with `quality_gates.security.status = failed`
 - Epic state remains in Review
 - Display remediation instructions
 
 **Remediation workflow:**
+
 1. Fix security issues based on gate output
 2. Re-run `/gate-sec`
 3. Verify all checks pass
@@ -348,22 +380,24 @@ Planning → Development → Review → Integrated → Deployed
 ```
 
 **Gate timing:**
+
 - Runs after: Code complete and merged to main
 - Runs before: Epic transitions to Integrated state
 - Re-run: Anytime during Review phase
 
-### workflow-state.yaml Integration
+### state.yaml Integration
 
-**Location**: `.spec-flow/memory/workflow-state.yaml`
+**Location**: `.spec-flow/memory/state.yaml`
 
 **Schema:**
+
 ```yaml
 quality_gates:
   security:
-    status: passed          # passed | failed
+    status: passed # passed | failed
     timestamp: 2025-11-20T14:30:00Z
     checks:
-      sast: true            # true = passed, false = failed
+      sast: true # true = passed, false = failed
       secrets: true
       dependencies: true
     findings:
@@ -374,6 +408,7 @@ quality_gates:
 ```
 
 **Status values:**
+
 - `passed`: All checks passed, epic can proceed
 - `failed`: One or more checks failed, epic blocked
 
@@ -386,12 +421,14 @@ quality_gates:
 **Cause**: Security vulnerabilities detected in source code
 
 **Example findings:**
+
 - SQL injection in database query
 - XSS in template rendering
 - Command injection in subprocess call
 - Path traversal in file operations
 
 **Resolution:**
+
 1. Review Semgrep output: `semgrep --config=auto .`
 2. Understand the vulnerability (read Semgrep explanation)
 3. Apply recommended fix
@@ -399,6 +436,7 @@ quality_gates:
 5. Re-run `/gate-sec`
 
 **Prevention:**
+
 - Use parameterized queries (SQL injection)
 - Escape user input (XSS)
 - Avoid `eval()`, `exec()`, `subprocess.shell=True`
@@ -409,12 +447,14 @@ quality_gates:
 **Cause**: Hardcoded credentials found in code
 
 **Example findings:**
+
 - API keys in source files
 - Database passwords in config files
 - AWS credentials in scripts
 - OAuth tokens in constants
 
 **Resolution:**
+
 1. Move secrets to environment variables (`.env`)
 2. Add `.env` to `.gitignore`
 3. Update code to read from `process.env` (Node.js) or `os.environ` (Python)
@@ -423,6 +463,7 @@ quality_gates:
 6. Re-run `/gate-sec`
 
 **Prevention:**
+
 - Never commit `.env` files
 - Use secret management (AWS Secrets Manager, HashiCorp Vault)
 - Review code before commit
@@ -433,12 +474,14 @@ quality_gates:
 **Cause**: Third-party packages with known security vulnerabilities (CVEs)
 
 **Example findings:**
+
 - lodash < 4.17.21 (prototype pollution)
 - axios < 0.21.2 (SSRF)
 - Django < 3.2.4 (SQL injection)
 - requests < 2.31.0 (proxy-authorization header leak)
 
 **Resolution:**
+
 1. Review vulnerability details: `npm audit` or `pip-audit`
 2. Update package to patched version: `npm update` or `pip install --upgrade`
 3. If no patch available:
@@ -449,6 +492,7 @@ quality_gates:
 5. Re-run `/gate-sec`
 
 **Prevention:**
+
 - Update dependencies regularly (monthly)
 - Use `npm audit fix` or `pip-audit --fix`
 - Monitor security advisories (GitHub Dependabot, Snyk)
@@ -463,6 +507,7 @@ quality_gates:
 **Why**: Catch issues early in development, before CI/CD
 
 **How:**
+
 ```bash
 # Before committing code
 semgrep --config=auto .
@@ -477,6 +522,7 @@ npm audit  # or pip-audit
 **Why**: Prevent hardcoded secrets from being committed
 
 **Pattern:**
+
 ```javascript
 // ❌ BAD
 const apiKey = "sk-1234567890abcdef";
@@ -486,6 +532,7 @@ const apiKey = process.env.API_KEY;
 ```
 
 **Python:**
+
 ```python
 # ❌ BAD
 API_KEY = "sk-1234567890abcdef"
@@ -496,6 +543,7 @@ API_KEY = os.environ.get("API_KEY")
 ```
 
 **Management:**
+
 - Development: `.env` file (gitignored)
 - Staging/Production: Cloud secret management (AWS Secrets Manager, Azure Key Vault)
 
@@ -504,11 +552,13 @@ API_KEY = os.environ.get("API_KEY")
 **Why**: Don't accumulate security debt
 
 **Schedule:**
+
 - **Monthly**: Review and update dependencies
 - **Immediately**: Update CRITICAL vulnerabilities
 - **Quarterly**: Major version updates (with testing)
 
 **Commands:**
+
 ```bash
 # Node.js
 npm outdated
@@ -526,6 +576,7 @@ pip-audit --fix  # (pip-audit 2.0+)
 **Why**: Understand why rules triggered, avoid false positives
 
 **Process:**
+
 1. Read Semgrep explanation for the rule
 2. Examine the code context
 3. Determine if it's a true positive:
@@ -534,6 +585,7 @@ pip-audit --fix  # (pip-audit 2.0+)
 4. Document decision in code or security log
 
 **Example:**
+
 ```javascript
 // nosemgrep: javascript.lang.security.audit.eval-detected
 // Safe usage: evaluating trusted mathematical expression from config file
@@ -545,6 +597,7 @@ const result = eval(trustedExpression);
 **Why**: Prevent secrets from ever being committed
 
 **Setup:**
+
 ```bash
 # Install git-secrets
 git secrets --install
@@ -558,6 +611,7 @@ git secrets --add 'password\s*=\s*["'][^"']+'
 ```
 
 **Verification:**
+
 ```bash
 # Test patterns
 git secrets --scan
@@ -575,23 +629,23 @@ git secrets --scan
 quality_gates:
   security:
     # Gate status
-    status: passed                    # passed | failed
-    timestamp: 2025-11-20T14:30:00Z   # ISO 8601 timestamp
+    status: passed # passed | failed
+    timestamp: 2025-11-20T14:30:00Z # ISO 8601 timestamp
 
     # Individual check results
     checks:
-      sast: true                      # true = passed, false = failed
+      sast: true # true = passed, false = failed
       secrets: true
       dependencies: true
 
     # Finding counts
     findings:
-      sast_errors: 0                  # ERROR-level findings
-      sast_warnings: 5                # WARNING-level (non-blocking)
-      secrets_detected: 0             # Any secret = CRITICAL
-      critical_deps: 0                # CVSS >= 9.0
-      high_deps: 0                    # CVSS >= 7.0
-      medium_deps: 3                  # CVSS >= 4.0 (non-blocking)
+      sast_errors: 0 # ERROR-level findings
+      sast_warnings: 5 # WARNING-level (non-blocking)
+      secrets_detected: 0 # Any secret = CRITICAL
+      critical_deps: 0 # CVSS >= 9.0
+      high_deps: 0 # CVSS >= 7.0
+      medium_deps: 3 # CVSS >= 4.0 (non-blocking)
 
     # Tool versions (for audit trail)
     tools:
@@ -627,6 +681,7 @@ def determine_gate_status(checks, findings):
 ### Example States
 
 **Passing state:**
+
 ```yaml
 quality_gates:
   security:
@@ -646,17 +701,18 @@ quality_gates:
 ```
 
 **Failing state (SAST errors):**
+
 ```yaml
 quality_gates:
   security:
     status: failed
     timestamp: 2025-11-20T14:30:00Z
     checks:
-      sast: false        # Failed
+      sast: false # Failed
       secrets: true
       dependencies: true
     findings:
-      sast_errors: 3     # Blocking
+      sast_errors: 3 # Blocking
       sast_warnings: 7
       secrets_detected: 0
       critical_deps: 0
@@ -665,6 +721,7 @@ quality_gates:
 ```
 
 **Failing state (vulnerable dependencies):**
+
 ```yaml
 quality_gates:
   security:
@@ -673,13 +730,13 @@ quality_gates:
     checks:
       sast: true
       secrets: true
-      dependencies: false  # Failed
+      dependencies: false # Failed
     findings:
       sast_errors: 0
       sast_warnings: 0
       secrets_detected: 0
-      critical_deps: 2     # Blocking
-      high_deps: 1         # Blocking
+      critical_deps: 2 # Blocking
+      high_deps: 1 # Blocking
       medium_deps: 5
 ```
 
@@ -716,11 +773,12 @@ quality_gates:
 **Location**: `.spec-flow/scripts/bash/gate-sec.sh`
 
 **Responsibilities:**
+
 1. Detect project type (Node.js, Python, etc.)
 2. Check if security tools are installed
 3. Run SAST with Semgrep
 4. Run secrets detection with git-secrets or fallback regex
 5. Run dependency scanning with npm audit or pip-audit
 6. Aggregate results and determine pass/fail
-7. Update workflow-state.yaml with gate results
+7. Update state.yaml with gate results
 8. Display formatted output with remediation instructions

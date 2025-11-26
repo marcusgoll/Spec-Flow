@@ -5,11 +5,13 @@
 ### Phase Completion Context
 
 **Detection patterns:**
+
 - Command completion: `/specify`, `/plan`, `/tasks`, `/analyze`, `/optimize`, `/preview`
 - Verbal: "phase N complete", "specification done", "planning finished"
 - File patterns: New files in `specs/*/` matching phase artifacts
 
 **Extract variables:**
+
 ```bash
 PHASE_NAME=$(detect_current_phase)  # spec, plan, tasks, analyze, optimize, preview
 FEATURE_SLUG=$(basename $(pwd) | grep -oP 'specs/\K[^/]+')
@@ -17,6 +19,7 @@ ARTIFACTS=$(git status --porcelain | grep '^??' | awk '{print $2}')
 ```
 
 **Generate commit:**
+
 ```bash
 TYPE="docs"
 SCOPE="$PHASE_NAME"
@@ -30,12 +33,14 @@ git commit -m "docs($PHASE_NAME): $SUBJECT"
 ### Epic Phase Completion Context
 
 **Detection patterns:**
+
 - Command completion: `/epic` (with phase indicators), epic-specific slash commands
 - Verbal: "epic spec complete", "research finished", "layer N complete", "sprint breakdown done"
 - File patterns: New files in `epics/*/` matching epic phase artifacts
 - Branch pattern: Currently on `epic/*` branch
 
 **Epic context detection:**
+
 ```bash
 # Detect if we're in an epic workflow
 IS_EPIC_BRANCH=$(git branch --show-current | grep -q '^epic/' && echo "true" || echo "false")
@@ -44,10 +49,11 @@ EPIC_SLUG=$(basename "$EPIC_DIR" 2>/dev/null || echo "unknown")
 ```
 
 **Extract epic phase variables:**
+
 ```bash
-# From epic workflow-state.yaml
-CURRENT_PHASE=$(yq -r '.epic.current_phase // "unknown"' "$EPIC_DIR/workflow-state.yaml")
-AUTO_MODE=$(yq -r '.epic.auto_mode // "false"' "$EPIC_DIR/workflow-state.yaml")
+# From epic state.yaml
+CURRENT_PHASE=$(yq -r '.epic.current_phase // "unknown"' "$EPIC_DIR/state.yaml")
+AUTO_MODE=$(yq -r '.epic.auto_mode // "false"' "$EPIC_DIR/state.yaml")
 
 # Phase-specific metadata
 case "$CURRENT_PHASE" in
@@ -77,14 +83,14 @@ case "$CURRENT_PHASE" in
     # Layer-specific (detected from layer completion event)
     LAYER_NUM="$1"  # Passed as parameter
     SPRINT_IDS="$2"  # Comma-separated sprint IDs
-    DURATION_HOURS=$(yq -r ".layers[$LAYER_NUM].duration_hours // 0" "$EPIC_DIR/workflow-state.yaml")
-    TASKS_COMPLETED=$(yq -r ".layers[$LAYER_NUM].tasks_completed // 0" "$EPIC_DIR/workflow-state.yaml")
-    TESTS_PASSING=$(yq -r ".layers[$LAYER_NUM].tests_passing // 0" "$EPIC_DIR/workflow-state.yaml")
-    COVERAGE=$(yq -r ".layers[$LAYER_NUM].coverage_percent // 0" "$EPIC_DIR/workflow-state.yaml")
-    CONTRACTS_LOCKED=$(yq -r ".layers[$LAYER_NUM].contracts_locked | length // 0" "$EPIC_DIR/workflow-state.yaml")
-    LAYER_TOTAL=$(yq -r '.layers.total // 0' "$EPIC_DIR/workflow-state.yaml")
-    SPRINTS_COMPLETED=$(yq -r '.sprints.completed // 0' "$EPIC_DIR/workflow-state.yaml")
-    SPRINTS_TOTAL=$(yq -r '.sprints.total // 0' "$EPIC_DIR/workflow-state.yaml")
+    DURATION_HOURS=$(yq -r ".layers[$LAYER_NUM].duration_hours // 0" "$EPIC_DIR/state.yaml")
+    TASKS_COMPLETED=$(yq -r ".layers[$LAYER_NUM].tasks_completed // 0" "$EPIC_DIR/state.yaml")
+    TESTS_PASSING=$(yq -r ".layers[$LAYER_NUM].tests_passing // 0" "$EPIC_DIR/state.yaml")
+    COVERAGE=$(yq -r ".layers[$LAYER_NUM].coverage_percent // 0" "$EPIC_DIR/state.yaml")
+    CONTRACTS_LOCKED=$(yq -r ".layers[$LAYER_NUM].contracts_locked | length // 0" "$EPIC_DIR/state.yaml")
+    LAYER_TOTAL=$(yq -r '.layers.total // 0' "$EPIC_DIR/state.yaml")
+    SPRINTS_COMPLETED=$(yq -r '.sprints.completed // 0' "$EPIC_DIR/state.yaml")
+    SPRINTS_TOTAL=$(yq -r '.sprints.total // 0' "$EPIC_DIR/state.yaml")
     ;;
   optimization)
     PERF_SCORE=$(yq -r '.performance.score // "N/A"' "$EPIC_DIR/optimization-report.md")
@@ -93,13 +99,14 @@ case "$CURRENT_PHASE" in
     QUALITY_SCORE=$(yq -r '.code_quality.score // "N/A"' "$EPIC_DIR/optimization-report.md")
     ;;
   preview)
-    AUTO_CHECKS=$(yq -r '.preview.auto_checks // "N/A"' "$EPIC_DIR/workflow-state.yaml")
-    MANUAL_STATUS=$(yq -r '.manual_gates.preview.status // "N/A"' "$EPIC_DIR/workflow-state.yaml")
+    AUTO_CHECKS=$(yq -r '.preview.auto_checks // "N/A"' "$EPIC_DIR/state.yaml")
+    MANUAL_STATUS=$(yq -r '.manual_gates.preview.status // "N/A"' "$EPIC_DIR/state.yaml")
     ;;
 esac
 ```
 
 **Generate epic commit based on phase:**
+
 ```bash
 case "$CURRENT_PHASE" in
   specification)
@@ -186,6 +193,7 @@ esac
 ```
 
 **Invoke via skill:**
+
 ```bash
 # Auto-invoke after epic phase completion
 /meta:enforce-git-commits --phase "epic-$CURRENT_PHASE"
@@ -199,11 +207,13 @@ esac
 ### Task Completion Context
 
 **Detection patterns:**
+
 - task-tracker command: `mark-done-with-notes -TaskId T###`
 - Verbal: "T### complete", "task ### done", "finished T###"
 - File patterns: Modified files matching task file paths in tasks.md
 
 **Extract variables:**
+
 ```bash
 TASK_ID="T001"  # From task-tracker or conversation
 TASK_DESC=$(grep "$TASK_ID" tasks.md | sed 's/.*\] T[0-9]* //')
@@ -214,6 +224,7 @@ COVERAGE="$3"  # From task-tracker -Coverage parameter
 ```
 
 **Generate commit based on phase marker:**
+
 ```bash
 if [[ "$PHASE_MARKER" == "RED" ]]; then
   TYPE="test"
@@ -252,17 +263,20 @@ $BODY"
 ### File Modification Context
 
 **Detection patterns:**
+
 - git status shows modified files
 - No clear phase or task context
 - User mentions "save progress", "commit changes"
 
 **Extract variables:**
+
 ```bash
 CHANGED_FILES=$(git status --porcelain | awk '{print $2}')
 CHANGE_TYPE=$(infer_change_type_from_files)
 ```
 
 **Infer change type:**
+
 ```bash
 if [[ "$CHANGED_FILES" =~ test ]]; then
   TYPE="test"
@@ -299,7 +313,7 @@ extract_feature_slug() {
   pwd | grep -oP 'specs/\K[^/]+' || echo "unknown"
 
   # Or from workflow state
-  cat .spec-flow/state/workflow-state.yaml | grep 'current_feature:' | awk '{print $2}'
+  cat .spec-flow/state/state.yaml | grep 'current_feature:' | awk '{print $2}'
 }
 ```
 
@@ -308,7 +322,7 @@ extract_feature_slug() {
 ```bash
 extract_phase_name() {
   # From workflow state
-  cat .spec-flow/state/workflow-state.yaml | grep 'current_phase:' | awk '{print $2}'
+  cat .spec-flow/state/state.yaml | grep 'current_phase:' | awk '{print $2}'
 
   # Or infer from artifacts
   if [ -f specs/*/spec.md ] && [ ! -f specs/*/plan.md ]; then
@@ -468,6 +482,7 @@ validate_commit_message() {
 **Context**: `/specify` command completed
 
 **Detection**:
+
 ```bash
 PHASE_NAME="spec"
 FEATURE_SLUG="user-messaging"
@@ -475,6 +490,7 @@ ARTIFACTS="specs/user-messaging/spec.md"
 ```
 
 **Generated commit**:
+
 ```bash
 docs(spec): create specification for user-messaging
 
@@ -490,6 +506,7 @@ docs(spec): create specification for user-messaging
 **Context**: T001 completed with phase marker [RED]
 
 **Detection**:
+
 ```bash
 TASK_ID="T001"
 TASK_DESC="Create Message model tests"
@@ -499,6 +516,7 @@ EVIDENCE="pytest: 0/8 passing (failing as expected)"
 ```
 
 **Generated commit**:
+
 ```bash
 test(red): T001 write failing test for Create Message model tests
 
@@ -514,6 +532,7 @@ Evidence: pytest: 0/8 passing (failing as expected)
 **Context**: T002 completed with phase marker [GREEN]
 
 **Detection**:
+
 ```bash
 TASK_ID="T002"
 TASK_DESC="Implement Message model"
@@ -524,6 +543,7 @@ COVERAGE="93% (+93%)"
 ```
 
 **Generated commit**:
+
 ```bash
 feat(green): T002 implement Implement Message model to pass test
 
@@ -539,6 +559,7 @@ Coverage: 93% (+93%)
 **Context**: README.md modified
 
 **Detection**:
+
 ```bash
 CHANGED_FILES="README.md"
 CHANGE_TYPE="docs"
@@ -546,6 +567,7 @@ SCOPE="readme"
 ```
 
 **Generated commit**:
+
 ```bash
 docs(readme): update documentation
 ```

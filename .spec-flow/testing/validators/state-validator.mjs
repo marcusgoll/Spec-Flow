@@ -1,11 +1,11 @@
 /**
  * State Validator
  *
- * Validates workflow-state.yaml structure and state transitions.
+ * Validates state.yaml structure and state transitions.
  */
 
-import { existsSync, readFileSync } from 'fs';
-import { load } from 'js-yaml';
+import { existsSync, readFileSync } from "fs";
+import { load } from "js-yaml";
 
 /**
  * Validation result
@@ -21,7 +21,10 @@ class ValidationResult {
   }
 
   static failure(errors) {
-    return new ValidationResult(false, Array.isArray(errors) ? errors : [errors]);
+    return new ValidationResult(
+      false,
+      Array.isArray(errors) ? errors : [errors]
+    );
   }
 }
 
@@ -29,45 +32,45 @@ class ValidationResult {
  * Valid workflow phases
  */
 const VALID_PHASES = [
-  'initialization',
-  'specification',
-  'clarification',
-  'planning',
-  'task_breakdown',
-  'validation',
-  'implementation',
-  'optimization',
-  'ship_staging',
-  'validate_staging',
-  'ship_prod',
-  'deploy_prod',
-  'build_local',
-  'finalization',
-  'completed'
+  "initialization",
+  "specification",
+  "clarification",
+  "planning",
+  "task_breakdown",
+  "validation",
+  "implementation",
+  "optimization",
+  "ship_staging",
+  "validate_staging",
+  "ship_prod",
+  "deploy_prod",
+  "build_local",
+  "finalization",
+  "completed",
 ];
 
 /**
  * Valid phase statuses
  */
 const VALID_STATUSES = [
-  'pending',
-  'in_progress',
-  'blocked',
-  'completed',
-  'failed',
-  'skipped'
+  "pending",
+  "in_progress",
+  "blocked",
+  "completed",
+  "failed",
+  "skipped",
 ];
 
 /**
  * Valid epic states
  */
 const VALID_EPIC_STATES = [
-  'Planned',
-  'ContractsLocked',
-  'Implementing',
-  'Review',
-  'Integrated',
-  'Released'
+  "Planned",
+  "ContractsLocked",
+  "Implementing",
+  "Review",
+  "Integrated",
+  "Released",
 ];
 
 /**
@@ -77,19 +80,19 @@ export function validateWorkflowState(statePath) {
   const errors = [];
 
   if (!existsSync(statePath)) {
-    return ValidationResult.failure('workflow-state.yaml not found');
+    return ValidationResult.failure("state.yaml not found");
   }
 
   let state;
   try {
-    const content = readFileSync(statePath, 'utf-8');
+    const content = readFileSync(statePath, "utf-8");
     state = load(content);
   } catch (error) {
     return ValidationResult.failure(`Invalid YAML: ${error.message}`);
   }
 
   // Check required fields
-  const requiredFields = ['version', 'feature_slug', 'phase', 'status'];
+  const requiredFields = ["version", "feature_slug", "phase", "status"];
   for (const field of requiredFields) {
     if (!(field in state)) {
       errors.push(`Missing required field: ${field}`);
@@ -114,13 +117,13 @@ export function validateWorkflowState(statePath) {
   // Validate epic mode
   if (state.epic_mode === true) {
     if (!state.epics || !Array.isArray(state.epics)) {
-      errors.push('Epic mode enabled but epics array missing');
+      errors.push("Epic mode enabled but epics array missing");
     }
   }
 
   // Validate deployment model
   if (state.deployment && state.deployment.model) {
-    const validModels = ['staging-prod', 'direct-prod', 'local-only'];
+    const validModels = ["staging-prod", "direct-prod", "local-only"];
     if (!validModels.includes(state.deployment.model)) {
       errors.push(`Invalid deployment model: ${state.deployment.model}`);
     }
@@ -138,7 +141,7 @@ export function validateEpicState(epicState) {
   const errors = [];
 
   // Check required epic fields
-  const requiredFields = ['name', 'slug', 'state'];
+  const requiredFields = ["name", "slug", "state"];
   for (const field of requiredFields) {
     if (!(field in epicState)) {
       errors.push(`Missing required epic field: ${field}`);
@@ -153,7 +156,7 @@ export function validateEpicState(epicState) {
   // Validate sprints if present
   if (epicState.sprints) {
     if (!Array.isArray(epicState.sprints)) {
-      errors.push('Epic sprints must be an array');
+      errors.push("Epic sprints must be an array");
     } else {
       for (const sprint of epicState.sprints) {
         if (!sprint.id || !sprint.status) {
@@ -187,7 +190,7 @@ export function validatePhaseTransition(currentPhase, nextPhase) {
   const nextIndex = VALID_PHASES.indexOf(nextPhase);
 
   if (currentIndex === -1 || nextIndex === -1) {
-    errors.push('Phase not found in valid phases list');
+    errors.push("Phase not found in valid phases list");
   } else if (nextIndex < currentIndex) {
     errors.push(`Invalid backward transition: ${currentPhase} -> ${nextPhase}`);
   }
@@ -210,21 +213,21 @@ export function validateManualGates(state) {
   // Validate mockup approval gate
   if (state.manual_gates.mockup_approval) {
     const gate = state.manual_gates.mockup_approval;
-    const validStatuses = ['pending', 'approved', 'rejected', 'not_required'];
+    const validStatuses = ["pending", "approved", "rejected", "not_required"];
 
     if (!validStatuses.includes(gate.status)) {
       errors.push(`Invalid mockup approval status: ${gate.status}`);
     }
 
-    if (gate.status === 'approved' && !gate.approved_at) {
-      errors.push('Mockup approval approved but missing approved_at timestamp');
+    if (gate.status === "approved" && !gate.approved_at) {
+      errors.push("Mockup approval approved but missing approved_at timestamp");
     }
   }
 
   // Validate staging validation gate
   if (state.manual_gates.staging_validation) {
     const gate = state.manual_gates.staging_validation;
-    const validStatuses = ['pending', 'validated', 'failed', 'not_required'];
+    const validStatuses = ["pending", "validated", "failed", "not_required"];
 
     if (!validStatuses.includes(gate.status)) {
       errors.push(`Invalid staging validation status: ${gate.status}`);
@@ -246,10 +249,10 @@ export function validateQualityGates(state) {
     return ValidationResult.success(); // Optional section
   }
 
-  const validGateStatuses = ['pending', 'passed', 'failed', 'skipped'];
+  const validGateStatuses = ["pending", "passed", "failed", "skipped"];
 
   // Check common gates
-  const commonGates = ['pre_flight', 'code_review', 'rollback_test'];
+  const commonGates = ["pre_flight", "code_review", "rollback_test"];
   for (const gateName of commonGates) {
     if (state.quality_gates[gateName]) {
       const gate = state.quality_gates[gateName];
@@ -278,12 +281,15 @@ export function validateDeploymentInfo(state) {
   if (state.deployment.staging) {
     const staging = state.deployment.staging;
 
-    if (staging.status && !['pending', 'deployed', 'failed'].includes(staging.status)) {
+    if (
+      staging.status &&
+      !["pending", "deployed", "failed"].includes(staging.status)
+    ) {
       errors.push(`Invalid staging deployment status: ${staging.status}`);
     }
 
-    if (staging.status === 'deployed' && !staging.url) {
-      errors.push('Staging deployed but missing URL');
+    if (staging.status === "deployed" && !staging.url) {
+      errors.push("Staging deployed but missing URL");
     }
   }
 
@@ -291,12 +297,15 @@ export function validateDeploymentInfo(state) {
   if (state.deployment.production) {
     const production = state.deployment.production;
 
-    if (production.status && !['pending', 'deployed', 'failed'].includes(production.status)) {
+    if (
+      production.status &&
+      !["pending", "deployed", "failed"].includes(production.status)
+    ) {
       errors.push(`Invalid production deployment status: ${production.status}`);
     }
 
-    if (production.status === 'deployed' && !production.url) {
-      errors.push('Production deployed but missing URL');
+    if (production.status === "deployed" && !production.url) {
+      errors.push("Production deployed but missing URL");
     }
   }
 
@@ -318,7 +327,7 @@ export function validateCompleteState(statePath) {
   }
 
   // Load state for deeper validation
-  const content = readFileSync(statePath, 'utf-8');
+  const content = readFileSync(statePath, "utf-8");
   const state = load(content);
 
   // Validate epic states if present
@@ -365,5 +374,5 @@ export default {
   ValidationResult,
   VALID_PHASES,
   VALID_STATUSES,
-  VALID_EPIC_STATES
+  VALID_EPIC_STATES,
 };

@@ -386,7 +386,7 @@ fi
 initialize_workflow_state "$FEATURE_DIR" "$SLUG" "${FEATURE_DESCRIPTION:-$SLUG}" "$BRANCH_NAME"
 start_phase_timing "$FEATURE_DIR" "spec-flow"
 
-[ -n "$ISSUE_NUMBER" ] && yq -i ".feature.github_issue = $ISSUE_NUMBER" "$FEATURE_DIR/workflow-state.yaml" || true
+[ -n "$ISSUE_NUMBER" ] && yq -i ".feature.github_issue = $ISSUE_NUMBER" "$FEATURE_DIR/state.yaml" || true
 
 # Optional: generate feature CLAUDE.md
 .spec-flow/scripts/bash/generate-feature-claude-md.sh "$FEATURE_DIR" 2>/dev/null || true

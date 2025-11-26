@@ -6,7 +6,7 @@ Detects workflow type (epic vs feature) and returns base directory.
 Detection priority (as per user preference):
 1. Workspace files (epics/*/epic-spec.md OR specs/*/spec.md)
 2. Git branch pattern (epic/* OR feature/*)
-3. workflow-state.yaml (workflow_type field)
+3. state.yaml (workflow_type field)
 4. Return failure code for fallback to AskUserQuestion
 
 .OUTPUTS
@@ -62,7 +62,7 @@ function Detect-Worktree {
                     $slug = $Matches[2]
 
                     return @{
-                        is_worktree = $true
+                        is_worktree   = $true
                         worktree_path = $worktreePath
                         worktree_type = $type
                         worktree_slug = $slug
@@ -72,7 +72,7 @@ function Detect-Worktree {
 
             # Worktree but not managed by our system
             return @{
-                is_worktree = $true
+                is_worktree   = $true
                 worktree_path = $worktreePath
                 worktree_type = "unknown"
                 worktree_slug = "unknown"
@@ -114,11 +114,11 @@ function Detect-FromFiles {
         $epicSlug = Split-Path -Leaf $epicDir
         $branch = Get-CurrentBranch
         return @{
-            type = "epic"
+            type     = "epic"
             base_dir = "epics"
-            slug = $epicSlug
-            branch = $branch
-            source = "files"
+            slug     = $epicSlug
+            branch   = $branch
+            source   = "files"
         }
     }
 
@@ -129,11 +129,11 @@ function Detect-FromFiles {
         $featureSlug = Split-Path -Leaf $featureDir
         $branch = Get-CurrentBranch
         return @{
-            type = "feature"
+            type     = "feature"
             base_dir = "specs"
-            slug = $featureSlug
-            branch = $branch
-            source = "files"
+            slug     = $featureSlug
+            branch   = $branch
+            source   = "files"
         }
     }
 
@@ -147,11 +147,11 @@ function Detect-FromBranch {
     if ($currentBranch -match '^epic/(.+)$') {
         $slug = $Matches[1]
         return @{
-            type = "epic"
+            type     = "epic"
             base_dir = "epics"
-            slug = $slug
-            branch = $currentBranch
-            source = "branch"
+            slug     = $slug
+            branch   = $currentBranch
+            source   = "branch"
         }
     }
 
@@ -159,11 +159,11 @@ function Detect-FromBranch {
     if ($currentBranch -match '^feature/(.+)$') {
         $slug = $Matches[1]
         return @{
-            type = "feature"
+            type     = "feature"
             base_dir = "specs"
-            slug = $slug
-            branch = $currentBranch
-            source = "branch"
+            slug     = $slug
+            branch   = $currentBranch
+            source   = "branch"
         }
     }
 
@@ -171,8 +171,8 @@ function Detect-FromBranch {
 }
 
 function Detect-FromState {
-    # Check epic workflow-state.yaml
-    $epicStateFiles = Get-ChildItem -Path "epics\*\workflow-state.yaml" -ErrorAction SilentlyContinue
+    # Check epic state.yaml
+    $epicStateFiles = Get-ChildItem -Path "epics\*\state.yaml" -ErrorAction SilentlyContinue
     if ($epicStateFiles) {
         $stateFile = $epicStateFiles[0].FullName
         $content = Get-Content $stateFile -Raw -ErrorAction SilentlyContinue
@@ -190,8 +190,8 @@ function Detect-FromState {
         }
     }
 
-    # Check feature workflow-state.yaml
-    $featureStateFiles = Get-ChildItem -Path "specs\*\workflow-state.yaml" -ErrorAction SilentlyContinue
+    # Check feature state.yaml
+    $featureStateFiles = Get-ChildItem -Path "specs\*\state.yaml" -ErrorAction SilentlyContinue
     if ($featureStateFiles) {
         $stateFile = $featureStateFiles[0].FullName
         $content = Get-Content $stateFile -Raw -ErrorAction SilentlyContinue

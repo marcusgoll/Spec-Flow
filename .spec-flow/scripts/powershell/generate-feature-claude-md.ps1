@@ -35,13 +35,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $claudeMdFile = Join-Path $FeatureDir "CLAUDE.md"
-$stateFile = Join-Path $FeatureDir "workflow-state.yaml"
+$stateFile = Join-Path $FeatureDir "state.yaml"
 $specFile = Join-Path $FeatureDir "spec.md"
 $tasksFile = Join-Path $FeatureDir "tasks.md"
 $notesFile = Join-Path $FeatureDir "NOTES.md"
 
 if (-not (Test-Path $stateFile)) {
-    throw "No workflow-state.yaml found in $FeatureDir"
+    throw "No state.yaml found in $FeatureDir"
 }
 
 # Extract feature name from directory
@@ -61,7 +61,8 @@ function Read-YamlValue {
         $value = & yq eval $Key $File 2>$null
         if ($value -eq "null") { return "" }
         return $value
-    } else {
+    }
+    else {
         # Fallback: simple regex parsing
         $content = Get-Content $File -Raw
         $keyName = $Key -replace '.*\.', ''
@@ -106,7 +107,8 @@ if (Test-Path $notesFile) {
     $scriptPath = Join-Path $PSScriptRoot "extract-notes-summary.ps1"
     try {
         $recentProgress = & $scriptPath -FeatureDir $FeatureDir -Count 3 2>$null
-    } catch {
+    }
+    catch {
         $recentProgress = ""
     }
 }
@@ -238,7 +240,8 @@ $lastUpdated = Get-Date -Format "yyyy-MM-ddTHH:mm:ss"
 
 $githubIssueSection = if ($githubIssue) {
     "`n**GitHub Issue**: #$githubIssue"
-} else { "" }
+}
+else { "" }
 
 $relatedFeaturesSection = if ($relatedFeatures) {
     @"
@@ -246,7 +249,8 @@ $relatedFeaturesSection = if ($relatedFeatures) {
 ## Related Features
 $relatedFeatures
 "@
-} else { "" }
+}
+else { "" }
 
 $content = @"
 # Feature Context: $featureName
@@ -268,7 +272,7 @@ $recentProgress
 - ``plan.md`` - Technical design and architecture approach
 - ``tasks.md`` - Task breakdown with progress tracking
 - ``NOTES.md`` - Complete implementation journal with detailed notes
-- ``workflow-state.yaml`` - Machine-readable workflow state
+- ``state.yaml`` - Machine-readable workflow state
 $githubIssueSection
 
 ## Relevant Specialists for This Feature
@@ -304,9 +308,9 @@ if (-not $Json) {
 
 if ($Json) {
     @{
-        success = $true
-        file = $claudeMdFile
-        phase = $currentPhase
+        success  = $true
+        file     = $claudeMdFile
+        phase    = $currentPhase
         progress = $taskProgress
     } | ConvertTo-Json -Compress
 }

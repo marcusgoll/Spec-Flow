@@ -324,7 +324,7 @@ Integrated comprehensive branch management into the Spec-Flow workflow to enforc
 3. **Branch Name State Tracking**
 
    - Workflow state now tracks branch name for each feature
-   - Added `branch_name` field to feature metadata in workflow-state.yaml
+   - Added `branch_name` field to feature metadata in state.yaml
    - Default: "local" for non-git projects
    - Updated schema version from 1.0.0 to 2.0.0
    - Locations:
@@ -707,7 +707,7 @@ Backlog → Later → Next → In Progress → Shipped
 **State File Migration:**
 
 - All `jq` commands replaced with `yq` equivalents
-- State file references: `workflow-state.json` → `workflow-state.yaml`
+- State file references: `workflow-state.json` → `state.yaml`
 
 ### 📦 New Scripts
 
@@ -771,7 +771,7 @@ Backlog → Later → Next → In Progress → Shipped
 
    ```bash
    # Check for YAML files
-   find specs -name "workflow-state.yaml"
+   find specs -name "state.yaml"
 
    # Verify backups exist
    find specs -name "workflow-state.json.backup"

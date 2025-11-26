@@ -42,6 +42,7 @@ If prerequisites not met, return to /implement phase.
 Validate API response times and page load performance against spec.md targets.
 
 **API Performance Testing**:
+
 ```bash
 # Measure API endpoint response times (10 requests)
 for i in {1..10}; do
@@ -53,6 +54,7 @@ done | sort -n
 ```
 
 **Page Load Testing**:
+
 ```bash
 # Run Lighthouse CI for page load metrics
 npm install -g @lhci/cli
@@ -65,6 +67,7 @@ lhci autorun --url=http://localhost:3000
 ```
 
 **Targets from spec.md**:
+
 - API p50 (median): <200ms
 - API p95 (95th percentile): <500ms
 - Page load (initial): <2 seconds
@@ -81,6 +84,7 @@ See resources/performance-benchmarking.md for detailed testing procedures.
 Validate WCAG 2.1 AA compliance for all UI changes.
 
 **Lighthouse CI Audit**:
+
 ```bash
 # Run Lighthouse accessibility audit
 lhci autorun --collect.settings.onlyCategories=accessibility
@@ -89,6 +93,7 @@ lhci autorun --collect.settings.onlyCategories=accessibility
 ```
 
 **axe-core Validation**:
+
 ```bash
 # Install axe-core DevTools extension
 # Or use axe CLI:
@@ -97,6 +102,7 @@ axe http://localhost:3000 --tags wcag2aa
 ```
 
 **WCAG 2.1 AA Requirements**:
+
 - Color contrast ≥4.5:1 (text), ≥3:1 (UI components)
 - Keyboard navigation (all interactive elements accessible)
 - Screen reader compatibility (ARIA labels, semantic HTML)
@@ -115,6 +121,7 @@ See resources/accessibility-audit.md for comprehensive checklist.
 Scan for vulnerabilities in dependencies and code.
 
 **Dependency Vulnerability Scan**:
+
 ```bash
 # npm audit for Node.js projects
 npm audit --audit-level=moderate
@@ -124,6 +131,7 @@ npm audit --audit-level=moderate
 ```
 
 **OWASP Top 10 Checks**:
+
 - SQL Injection: Parameterized queries, no string concatenation
 - XSS: Input sanitization, output encoding
 - CSRF: CSRF tokens on state-changing endpoints
@@ -131,6 +139,7 @@ npm audit --audit-level=moderate
 - Sensitive Data Exposure: No secrets in code/logs, HTTPS enforced
 
 **Secret Scanning**:
+
 ```bash
 # Check for accidentally committed secrets
 git secrets --scan
@@ -150,6 +159,7 @@ See resources/security-review.md for OWASP top 10 checklist.
 Validate code follows DRY/KISS principles and test coverage standards.
 
 **Test Coverage Check**:
+
 ```bash
 # Run coverage report
 npm run test:coverage
@@ -158,6 +168,7 @@ npm run test:coverage
 ```
 
 **DRY Violations Check**:
+
 ```bash
 # Manual review for code duplication
 # Or use jsinspect (JavaScript):
@@ -168,11 +179,13 @@ jsinspect src/
 ```
 
 **KISS Principle Validation**:
+
 - Functions ≤50 lines (complex functions split)
 - Cyclomatic complexity <10 (no deeply nested logic)
 - No premature optimization (YAGNI principle)
 
 **Code Review Checklist**:
+
 - [ ] No magic numbers (constants extracted)
 - [ ] Descriptive variable/function names
 - [ ] Error handling present (try/catch, error boundaries)
@@ -190,6 +203,7 @@ See resources/code-quality-review.md for complete checklist.
 Create optimization-report.md and code-review-report.md.
 
 **optimization-report.md format**:
+
 ```markdown
 # Optimization Report: [Feature Name]
 
@@ -199,37 +213,45 @@ Create optimization-report.md and code-review-report.md.
 ## Performance Results
 
 ### API Performance
+
 - GET /api/users: p50=145ms ✅, p95=320ms ✅
 - POST /api/orders: p50=230ms ❌, p95=580ms ❌ (exceeds p95 target)
 
 ### Page Load Performance
+
 - Homepage: LCP=1.9s ✅, TTI=2.8s ✅
 - Dashboard: LCP=3.2s ❌ (exceeds target)
 
 ## Accessibility Audit (WCAG 2.1 AA)
+
 - Lighthouse score: 98/100 ✅
 - axe-core violations: 0 ✅
 
 ## Security Review
+
 - npm audit: 0 critical, 0 high ✅
 - OWASP top 10: All checks passed ✅
 - Secret scanning: No secrets detected ✅
 
 ## Code Quality
+
 - Test coverage: 85% ✅
 - DRY violations: 2 ✅
 - Complexity: All functions <10 ✅
 
 ## Blocking Issues
+
 - POST /api/orders p95 exceeds target (580ms vs 500ms)
 - Dashboard LCP exceeds target (3.2s vs 2.5s)
 
 ## Recommendations
+
 - Add caching to /api/orders endpoint (reduce p95 to <500ms)
 - Lazy load dashboard widgets (reduce LCP to <2.5s)
 ```
 
 **code-review-report.md format**:
+
 ```markdown
 # Code Review Report: [Feature Name]
 
@@ -237,24 +259,28 @@ Create optimization-report.md and code-review-report.md.
 **Reviewer**: optimization-phase skill
 
 ## Summary
+
 - Files reviewed: 15
 - Issues found: 7 (3 critical, 4 minor)
 
 ## Critical Issues
+
 1. [src/api/orders.ts:45] Missing input validation on order.total
 2. [src/components/Dashboard.tsx:89] Potential memory leak (event listener not removed)
 3. [src/services/AuthService.ts:23] Password logged in plaintext (security risk)
 
 ## Minor Issues
+
 1. [src/utils/formatDate.ts:12] Magic number 1000 should be constant
 2. [src/components/UserCard.tsx:34] Unused import (React.Fragment)
 
 ## Recommendations
+
 - Fix all critical issues before deployment
 - Consider refactoring Dashboard.tsx (180 lines, split into smaller components)
 ```
 
-Update workflow-state.yaml: `optimization.status = completed`
+Update state.yaml: `optimization.status = completed`
 
 See resources/report-generation.md for report templates.
 </step>
@@ -268,7 +294,7 @@ After optimization phase, verify:
 - code-review-report.md generated with issues documented
 - Critical issues fixed (blocking deployment)
 - Minor issues documented (can defer or fix)
-- workflow-state.yaml updated (optimization.status = completed)
+- state.yaml updated (optimization.status = completed)
 
 If blocking issues found, return to /implement to fix, then re-run /optimize.
 </validation>
@@ -278,6 +304,7 @@ If blocking issues found, return to /implement to fix, then re-run /optimize.
 **Pre-Flight Validation** (Must pass)
 
 Environment checks:
+
 - [ ] Environment variables configured (.env.production exists)
 - [ ] Production build succeeds (npm run build passes)
 - [ ] No TypeScript/lint errors (npm run type-check passes)
@@ -290,10 +317,12 @@ If any check fails, fix before proceeding to quality gates.
 **Performance Gate** (Must meet targets)
 
 API performance:
+
 - [ ] p50 (median) <200ms
 - [ ] p95 (95th percentile) <500ms
 
 Page load performance:
+
 - [ ] Initial load <2 seconds
 - [ ] Time to Interactive <3 seconds
 
@@ -304,6 +333,7 @@ If targets not met, profile and optimize before deployment.
 **Accessibility Gate** (Blocking if UI feature)
 
 WCAG 2.1 AA compliance:
+
 - [ ] Lighthouse accessibility score ≥95/100
 - [ ] axe-core violations: 0 (WCAG 2.1 AA)
 - [ ] Keyboard navigation functional
@@ -316,6 +346,7 @@ Skip if: Backend/API feature with no UI changes.
 **Security Gate** (Must be clean)
 
 Vulnerability scanning:
+
 - [ ] npm audit: 0 critical, 0 high severity
 - [ ] OWASP top 10 checks passed
 - [ ] No secrets in code/logs (gitleaks clean)
@@ -327,6 +358,7 @@ If critical/high vulnerabilities found, fix or accept risk (document).
 **Code Quality Gate** (Blocking if critical)
 
 Quality standards:
+
 - [ ] Test coverage ≥80% (unit + integration)
 - [ ] DRY violations <3 instances
 - [ ] Cyclomatic complexity <10 (all functions)
@@ -343,12 +375,14 @@ Blocking if: Coverage <80% OR >5 DRY violations OR complexity >15.
 **Why**: Even small UI changes can introduce accessibility violations (color contrast, keyboard nav, screen readers). WCAG compliance is non-negotiable for production.
 
 **Example** (bad):
+
 ```
 "This is just a button color change, no need for accessibility audit"
 [Ships button with insufficient color contrast, fails WCAG 2.1 AA]
 ```
 
 **Example** (good):
+
 ```
 "Button color changed from blue to green"
 → Run Lighthouse accessibility audit
@@ -356,6 +390,7 @@ Blocking if: Coverage <80% OR >5 DRY violations OR complexity >15.
 → Verify keyboard focus indicator visible
 → Deploy with confidence
 ```
+
 </pitfall>
 
 <pitfall name="ignoring_performance_regressions">
@@ -365,12 +400,14 @@ Blocking if: Coverage <80% OR >5 DRY violations OR complexity >15.
 **Why**: Performance regressions accumulate over time. Without benchmarking, small slowdowns compound into major UX issues.
 
 **Example** (bad):
+
 ```
 "Dashboard feels fast to me, ship it"
 [Reality: LCP=5s, users complain about slow load]
 ```
 
 **Example** (good):
+
 ```
 Run Lighthouse: LCP=3.2s (target: 2.5s)
 Identify bottleneck: Large uncompressed image
@@ -378,6 +415,7 @@ Fix: Lazy load + WebP format
 Re-test: LCP=1.8s ✅
 Deploy
 ```
+
 </pitfall>
 
 <pitfall name="deferring_critical_security">
@@ -387,6 +425,7 @@ Deploy
 **Why**: Security vulnerabilities in production are exploited quickly. Deferring fixes creates risk.
 
 **Example** (bad):
+
 ```
 npm audit: 2 critical, 5 high vulnerabilities
 "We'll fix these in the next sprint"
@@ -394,6 +433,7 @@ npm audit: 2 critical, 5 high vulnerabilities
 ```
 
 **Example** (good):
+
 ```
 npm audit: 2 critical, 5 high vulnerabilities
 BLOCK deployment
@@ -402,6 +442,7 @@ Or: Manually upgrade vulnerable dependencies
 Re-test: 0 critical, 0 high
 Deploy safely
 ```
+
 </pitfall>
 
 <pitfall name="accepting_low_coverage">
@@ -411,6 +452,7 @@ Deploy safely
 **Why**: Low coverage = high risk of bugs in production. "Later" rarely happens.
 
 **Example** (bad):
+
 ```
 Test coverage: 45%
 "Core functionality is tested, ship it"
@@ -418,6 +460,7 @@ Test coverage: 45%
 ```
 
 **Example** (good):
+
 ```
 Test coverage: 45% ❌
 BLOCK deployment
@@ -425,6 +468,7 @@ Write missing tests (focus on critical paths)
 Re-run: 82% ✅
 Deploy with confidence
 ```
+
 </pitfall>
 
 <pitfall name="manual_optimization_only">
@@ -434,12 +478,14 @@ Deploy with confidence
 **Why**: Manual reviews miss issues that automated tools catch instantly.
 
 **Example** (bad):
+
 ```
 "I reviewed the code, looks good"
 [Ships with 12 accessibility violations, 8 security issues]
 ```
 
 **Example** (good):
+
 ```
 Lighthouse: 15 accessibility violations
 npm audit: 8 vulnerabilities
@@ -448,6 +494,7 @@ Fix all blocking issues
 Re-run all tools
 Deploy when green
 ```
+
 </pitfall>
 </anti_patterns>
 
@@ -475,6 +522,7 @@ Set performance budgets in spec.md success criteria:
 ## Success Criteria
 
 **Performance**:
+
 - API p50 <200ms, p95 <500ms
 - Page load <2s, TTI <3s
 - Lighthouse performance score ≥90/100
@@ -524,7 +572,7 @@ Optimization phase complete when:
 - [ ] code-review-report.md generated with issues documented
 - [ ] Critical issues fixed (blocking deployment)
 - [ ] Minor issues documented (can defer)
-- [ ] workflow-state.yaml updated (optimization.status = completed)
+- [ ] state.yaml updated (optimization.status = completed)
 - [ ] Ready to proceed to /preview (manual UI/UX testing)
 
 If blocking issues remain, return to /implement to fix, then re-run /optimize.
@@ -532,6 +580,7 @@ If blocking issues remain, return to /implement to fix, then re-run /optimize.
 
 <quality_standards>
 **Good optimization**:
+
 - All quality gates automated (CI pipeline enforcement)
 - Performance targets met (benchmarked against spec.md)
 - Accessibility validated (WCAG 2.1 AA compliance)
@@ -540,13 +589,14 @@ If blocking issues remain, return to /implement to fix, then re-run /optimize.
 - Comprehensive reports (optimization-report.md + code-review-report.md)
 
 **Bad optimization**:
+
 - Manual-only review (no automated tools)
 - Performance not measured (subjective "feels fast")
 - Accessibility skipped (ships with violations)
 - Security vulnerabilities deferred (critical issues in production)
 - Low test coverage (<80%, high bug risk)
 - No documentation (no optimization-report.md)
-</quality_standards>
+  </quality_standards>
 
 <troubleshooting>
 **Issue**: Performance targets not met (p95 >500ms)
@@ -570,15 +620,18 @@ If blocking issues remain, return to /implement to fix, then re-run /optimize.
 
 <reference_guides>
 Quality gates (blocking):
+
 - Performance Benchmarking (resources/performance-benchmarking.md) - API p50/p95, page load targets
 - Accessibility Audit (resources/accessibility-audit.md) - WCAG 2.1 AA compliance, Lighthouse CI
 - Security Review (resources/security-review.md) - npm audit, OWASP top 10, secret scanning
 
 Code quality (blocking if critical):
+
 - Code Quality Review (resources/code-quality-review.md) - DRY, KISS, test coverage
 - Code Review Checklist (resources/code-review-checklist.md) - Pre-commit validation
 
 Documentation:
+
 - Report Generation (resources/report-generation.md) - optimization-report.md templates
 - Common Mistakes (resources/common-mistakes.md) - Anti-patterns to avoid
 - Examples (examples.md) - Good vs bad optimization examples

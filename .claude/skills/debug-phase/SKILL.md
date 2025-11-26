@@ -47,6 +47,7 @@ grep "Type: Integration" error-log.md
 ```
 
 If similar error found:
+
 - Review previous fix (workaround or root cause?)
 - Check if error recurred (>2 occurrences = need permanent fix)
 - Note patterns (same component, same conditions, timing)
@@ -64,6 +65,7 @@ Create minimal reproduction:
 3. If intermittent: identify conditions (timing, data state, race conditions)
 
 Example reproduction:
+
 ```bash
 # API error
 curl -X POST http://localhost:3000/api/endpoint \
@@ -83,6 +85,7 @@ curl -X POST http://localhost:3000/api/endpoint \
 **Classify error**
 
 **By type**:
+
 - **Syntax**: Code doesn't compile/parse (typos, missing brackets, linting errors)
 - **Runtime**: Code runs but crashes (null pointer, type error, uncaught exception)
 - **Logic**: Code runs but wrong result (calculation error, wrong branch taken)
@@ -90,12 +93,14 @@ curl -X POST http://localhost:3000/api/endpoint \
 - **Performance**: Code works but too slow (timeout, memory leak, N+1 queries)
 
 **By severity**:
+
 - **Critical**: Data loss, security breach, total system failure
 - **High**: Feature broken, blocks users from core functionality
 - **Medium**: Feature degraded, workaround exists
 - **Low**: Minor UX issue, cosmetic, no functional impact
 
 Example classification:
+
 ```markdown
 Type: Integration (API call to external service fails)
 Severity: High (dashboard doesn't load, blocks teachers)
@@ -112,12 +117,14 @@ See references/error-classification.md for detailed matrix.
 Use systematic techniques:
 
 **Binary search** (for large codebases):
+
 - Add logging at midpoint of suspected code
 - If error before midpoint → investigate first half
 - If error after midpoint → investigate second half
 - Repeat until narrowed to specific function
 
 **Increase logging**:
+
 ```python
 # Add debug logs around suspected area
 logger.debug(f"Before API call: student_id={student_id}, params={params}")
@@ -126,6 +133,7 @@ logger.debug(f"After API call: status={response.status}, data_len={len(response.
 ```
 
 **Use breakpoints** (interactive debugging):
+
 ```bash
 # Python
 python -m pdb script.py
@@ -138,11 +146,13 @@ node inspect server.js
 ```
 
 **Check assumptions**:
+
 - Is variable the value you expect? (log it, don't assume)
 - Is function being called when you expect? (add entry/exit logs)
 - Are external dependencies available? (health check endpoints)
 
 **Apply 5 Whys** (drill down to root cause):
+
 ```markdown
 1. Why did dashboard fail to load?
    → API call to external service timed out
@@ -169,6 +179,7 @@ Root cause: Missing pagination parameter causes over-fetching
 **Implement fix (TDD approach)**
 
 1. Write failing test first:
+
 ```python
 def test_fetch_external_data_with_pagination():
     """Test that API call includes pagination parameter"""
@@ -180,6 +191,7 @@ def test_fetch_external_data_with_pagination():
 ```
 
 2. Implement fix:
+
 ```python
 # Before (broken)
 def fetchExternalData(self, student_id):
@@ -194,6 +206,7 @@ def fetchExternalData(self, student_id, page_size=10):
 ```
 
 3. Verify fix:
+
 ```bash
 # Run test (should pass)
 pytest tests/test_student_progress_service.py
@@ -251,35 +264,42 @@ Create entry with ERR-XXXX ID:
 **Reporter**: QA team (staging environment)
 
 ### Error Description
+
 Dashboard fails to load student progress data, showing timeout error after 30 seconds.
 
 ### Root Cause
+
 API call to external service was missing pagination parameter, causing over-fetching of 1000+ records instead of paginated 10 records. External service took 45 seconds to respond with large dataset, exceeding 30-second client timeout.
 
 ### 5 Whys Analysis
+
 1. Dashboard timeout → API call timeout
 2. API timeout → Request took >30s
-3. >30s request → External service slow (45s)
+3. > 30s request → External service slow (45s)
 4. Service slow → Too much data (1000 records)
 5. Too much data → Missing pagination parameter
 
 **Root cause**: Missing pagination parameter in API call
 
 ### Fix Implemented
+
 - Added `page_size` parameter (default 10) to `fetchExternalData()`
 - Modified API call to include pagination params
 - Response time reduced from 45s → 2s
 
 ### Files Changed
+
 - `src/services/StudentProgressService.ts` (lines 45-52)
 - `tests/StudentProgressService.test.ts` (added regression test)
 
 ### Prevention
+
 - Unit test: Verify pagination parameter included
 - Integration test: Dashboard loads within 5s with large datasets
 - Added performance monitoring alert if response time >10s
 
 ### Related Errors
+
 - Similar to ERR-0015 (pagination missing in different service)
 - Pattern: Always include pagination for external API calls
 ```
@@ -308,7 +328,8 @@ npm test  # or pytest, cargo test, etc.
 # Run full test suite
 ```
 
-Update workflow-state.yaml (if debugging during a phase):
+Update state.yaml (if debugging during a phase):
+
 ```yaml
 debug:
   status: completed
@@ -332,11 +353,12 @@ After debugging, verify:
 - Regression tests added to prevent recurrence
 - Error documented in error-log.md with ERR-XXXX ID
 - No new errors introduced (full test suite passes)
-</validation>
+  </validation>
 
 <anti_patterns>
 <pitfall name="symptom_fixing">
 **❌ Don't**: Fix symptoms without finding root cause
+
 - Adding try/catch to hide error
 - Increasing timeout without investigating why slow
 - Restarting service to "fix" memory leak
@@ -346,6 +368,7 @@ After debugging, verify:
 **Why**: Symptom fixes lead to recurring errors, technical debt, unreliable system
 
 **Example** (bad):
+
 ```python
 # Symptom fix: Hide error with try/catch
 try:
@@ -355,10 +378,12 @@ except TimeoutError:
 ```
 
 **Example** (good):
+
 ```python
 # Root cause fix: Add pagination to prevent timeout
 data = api.fetch(student_id, page_size=10)  # Paginate to reduce data
 ```
+
 </pitfall>
 
 <pitfall name="trial_and_error">
@@ -372,6 +397,7 @@ data = api.fetch(student_id, page_size=10)  # Paginate to reduce data
 **Why**: Can't identify what actually fixed it, might introduce new bugs
 
 **Example** (bad workflow):
+
 ```
 1. Change timeout from 30s to 60s
 2. Also add retry logic
@@ -380,6 +406,7 @@ data = api.fetch(student_id, page_size=10)  # Paginate to reduce data
 ```
 
 **Example** (good workflow):
+
 ```
 1. Hypothesis: Timeout too short
 2. Change only timeout: 30s → 60s
@@ -388,6 +415,7 @@ data = api.fetch(student_id, page_size=10)  # Paginate to reduce data
 5. Add pagination only
 6. Test: Works! Pagination was the fix.
 ```
+
 </pitfall>
 
 <pitfall name="no_documentation">
@@ -397,12 +425,13 @@ data = api.fetch(student_id, page_size=10)  # Paginate to reduce data
 **Why**: Same error may recur, team can't learn from past issues
 
 **Required in error-log.md**:
+
 - ERR-XXXX ID
 - Root cause (5 Whys analysis)
 - Fix implemented
 - Tests added
 - Related errors (if pattern exists)
-</pitfall>
+  </pitfall>
 
 <pitfall name="no_regression_tests">
 **❌ Don't**: Fix bug without adding tests
@@ -411,12 +440,14 @@ data = api.fetch(student_id, page_size=10)  # Paginate to reduce data
 **Why**: Bug may be reintroduced later, no safety net
 
 **Example**:
+
 ```python
 # After fixing ERR-0042, add:
 def test_no_timeout_with_large_datasets():
     """Regression test for ERR-0042: Pagination prevents timeout"""
     # This test will catch if pagination is removed later
 ```
+
 </pitfall>
 
 <pitfall name="insufficient_reproduction">
@@ -432,11 +463,13 @@ def test_no_timeout_with_large_datasets():
 <best_practices>
 <practice name="5_whys_analysis">
 Always use 5 Whys to find root cause:
+
 - Ask "Why?" 5 times to drill down
 - Stop when you reach actionable root cause
 - Document analysis in error-log.md
 
 Example:
+
 ```markdown
 1. Why? Dashboard timeout
 2. Why? API call slow
@@ -498,10 +531,11 @@ Debugging complete when:
 - [ ] error-log.md updated with ERR-XXXX ID, root cause, fix, tests
 - [ ] Full test suite passes (no regressions introduced)
 - [ ] Error no longer reproduces with original steps
-</success_criteria>
+      </success_criteria>
 
 <quality_standards>
 **Good debugging**:
+
 - Root cause identified (5 Whys completed)
 - Failing test written before fix (TDD)
 - Regression tests added (≥1 per error)
@@ -509,12 +543,13 @@ Debugging complete when:
 - No symptom fixes (addresses underlying issue)
 
 **Bad debugging**:
+
 - Symptom fixes (try/catch to hide error, increase timeout without investigation)
 - Trial and error (change multiple things, no hypothesis)
 - No tests added (no regression prevention)
 - No documentation (error-log.md not updated)
 - Insufficient reproduction (can't trigger error reliably)
-</quality_standards>
+  </quality_standards>
 
 <troubleshooting>
 **Issue**: Can't reproduce error consistently

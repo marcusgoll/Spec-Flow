@@ -3,7 +3,7 @@
 # workflow-state.sh - Workflow state management functions for Spec-Flow
 #
 # Provides functions to initialize, update, and query workflow state across
-# the entire feature delivery lifecycle. State is stored in workflow-state.yaml
+# the entire feature delivery lifecycle. State is stored in state.yaml
 # within each feature directory.
 #
 # Version: 2.1.0 (YAML format + Timing Functions)
@@ -25,7 +25,7 @@ fi
 migrate_json_to_yaml_if_needed() {
   local feature_dir="$1"
   local json_file="$feature_dir/workflow-state.json"
-  local yaml_file="$feature_dir/workflow-state.yaml"
+  local yaml_file="$feature_dir/state.yaml"
 
   # If YAML exists, we're good
   if [ -f "$yaml_file" ]; then
@@ -51,7 +51,7 @@ initialize_workflow_state() {
   local title="$3"
   local branch_name="${4:-local}"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   # Detect deployment model
   local deployment_model
@@ -127,7 +127,7 @@ update_workflow_phase() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     echo "Error: Workflow state not found: $state_file" >&2
@@ -138,21 +138,21 @@ update_workflow_phase() {
   local timestamp
   timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-  # Update workflow phase and status
-  yq eval -i ".workflow.phase = \"$phase\"" "$state_file"
-  yq eval -i ".workflow.status = \"$status\"" "$state_file"
-  yq eval -i ".feature.last_updated = \"$timestamp\"" "$state_file"
+  # Update workflow phase and status (using --arg to prevent injection)
+  yq eval -i --arg phase "$phase" --arg status "$status" --arg ts "$timestamp" \
+    '.workflow.phase = $phase | .workflow.status = $status | .feature.last_updated = $ts' \
+    "$state_file"
 
   # Add to completed or failed phases array
   if [ "$status" = "completed" ]; then
     # Check if phase already in completed_phases
-    if ! yq eval ".workflow.completed_phases | contains([\"$phase\"])" "$state_file" | grep -q "true"; then
-      yq eval -i ".workflow.completed_phases += [\"$phase\"]" "$state_file"
+    if ! yq eval --arg phase "$phase" '.workflow.completed_phases | contains([$phase])' "$state_file" | grep -q "true"; then
+      yq eval -i --arg phase "$phase" '.workflow.completed_phases += [$phase]' "$state_file"
     fi
   elif [ "$status" = "failed" ]; then
     # Check if phase already in failed_phases
-    if ! yq eval ".workflow.failed_phases | contains([\"$phase\"])" "$state_file" | grep -q "true"; then
-      yq eval -i ".workflow.failed_phases += [\"$phase\"]" "$state_file"
+    if ! yq eval --arg phase "$phase" '.workflow.failed_phases | contains([$phase])' "$state_file" | grep -q "true"; then
+      yq eval -i --arg phase "$phase" '.workflow.failed_phases += [$phase]' "$state_file"
     fi
   fi
 }
@@ -166,7 +166,7 @@ update_deployment_state() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     echo "Error: Workflow state not found: $state_file" >&2
@@ -176,12 +176,10 @@ update_deployment_state() {
   local timestamp
   timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-  # Update deployment state
-  yq eval -i ".deployment.$environment.deployed = true" "$state_file"
-  yq eval -i ".deployment.$environment.timestamp = \"$timestamp\"" "$state_file"
-  yq eval -i ".deployment.$environment.commit_sha = \"$commit_sha\"" "$state_file"
-  yq eval -i ".deployment.$environment.run_id = \"$run_id\"" "$state_file"
-  yq eval -i ".feature.last_updated = \"$timestamp\"" "$state_file"
+  # Update deployment state (using --arg to prevent injection)
+  yq eval -i --arg env "$environment" --arg ts "$timestamp" --arg sha "$commit_sha" --arg rid "$run_id" \
+    '.deployment.[env].deployed = true | .deployment.[env].timestamp = $ts | .deployment.[env].commit_sha = $sha | .deployment.[env].run_id = $rid | .feature.last_updated = $ts' \
+    "$state_file"
 }
 
 update_deployment_ids() {
@@ -194,24 +192,27 @@ update_deployment_ids() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     echo "Error: Workflow state not found: $state_file" >&2
     return 1
   fi
 
-  # Update deployment IDs (only if provided)
+  # Update deployment IDs (only if provided, using --arg to prevent injection)
   if [ -n "$marketing_id" ]; then
-    yq eval -i ".deployment.$environment.deployment_ids.marketing = \"$marketing_id\"" "$state_file"
+    yq eval -i --arg env "$environment" --arg mid "$marketing_id" \
+      '.deployment.[env].deployment_ids.marketing = $mid' "$state_file"
   fi
 
   if [ -n "$app_id" ]; then
-    yq eval -i ".deployment.$environment.deployment_ids.app = \"$app_id\"" "$state_file"
+    yq eval -i --arg env "$environment" --arg aid "$app_id" \
+      '.deployment.[env].deployment_ids.app = $aid' "$state_file"
   fi
 
   if [ -n "$api_image" ]; then
-    yq eval -i ".deployment.$environment.deployment_ids.api = \"$api_image\"" "$state_file"
+    yq eval -i --arg env "$environment" --arg api "$api_image" \
+      '.deployment.[env].deployment_ids.api = $api' "$state_file"
   fi
 }
 
@@ -223,7 +224,7 @@ update_quality_gate() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     echo "Error: Workflow state not found: $state_file" >&2
@@ -233,9 +234,11 @@ update_quality_gate() {
   local timestamp
   timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-  # Update quality gate
-  yq eval -i ".quality_gates.\"$gate_name\".passed = $passed" "$state_file"
-  yq eval -i ".quality_gates.\"$gate_name\".timestamp = \"$timestamp\"" "$state_file"
+  # Update quality gate (using --arg to prevent injection)
+  # Note: $passed is a boolean (true/false), safe to interpolate directly
+  yq eval -i --arg gate "$gate_name" --arg ts "$timestamp" \
+    ".quality_gates.[\$gate].passed = $passed | .quality_gates.[\$gate].timestamp = \$ts" \
+    "$state_file"
 }
 
 update_quality_gate_detailed() {
@@ -246,7 +249,7 @@ update_quality_gate_detailed() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     echo "Error: Workflow state not found: $state_file" >&2
@@ -267,7 +270,7 @@ update_manual_gate() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     echo "Error: Workflow state not found: $state_file" >&2
@@ -277,21 +280,26 @@ update_manual_gate() {
   local timestamp
   timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-  # Update manual gate status
-  yq eval -i ".workflow.manual_gates.\"$gate_name\".status = \"$status\"" "$state_file"
+  # Update manual gate status (using --arg to prevent injection)
+  yq eval -i --arg gate "$gate_name" --arg st "$status" \
+    '.workflow.manual_gates.[$gate].status = $st' "$state_file"
 
   case "$status" in
     pending)
-      yq eval -i ".workflow.manual_gates.\"$gate_name\".started_at = \"$timestamp\"" "$state_file"
+      yq eval -i --arg gate "$gate_name" --arg ts "$timestamp" \
+        '.workflow.manual_gates.[$gate].started_at = $ts' "$state_file"
       ;;
     approved)
-      yq eval -i ".workflow.manual_gates.\"$gate_name\".approved_at = \"$timestamp\"" "$state_file"
+      yq eval -i --arg gate "$gate_name" --arg ts "$timestamp" \
+        '.workflow.manual_gates.[$gate].approved_at = $ts' "$state_file"
       if [ -n "$approved_by" ]; then
-        yq eval -i ".workflow.manual_gates.\"$gate_name\".approved_by = \"$approved_by\"" "$state_file"
+        yq eval -i --arg gate "$gate_name" --arg by "$approved_by" \
+          '.workflow.manual_gates.[$gate].approved_by = $by' "$state_file"
       fi
       ;;
     rejected)
-      yq eval -i ".workflow.manual_gates.\"$gate_name\".rejected_at = \"$timestamp\"" "$state_file"
+      yq eval -i --arg gate "$gate_name" --arg ts "$timestamp" \
+        '.workflow.manual_gates.[$gate].rejected_at = $ts' "$state_file"
       ;;
   esac
 }
@@ -302,7 +310,7 @@ get_workflow_state() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     echo "Error: Workflow state not found: $state_file" >&2
@@ -319,7 +327,7 @@ test_phase_completed() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     return 1
@@ -335,7 +343,7 @@ get_next_phase() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     echo ""
@@ -347,7 +355,25 @@ get_next_phase() {
   model=$(yq eval '.deployment_model' "$state_file")
   current_phase=$(yq eval '.workflow.phase' "$state_file")
 
-  # Define sequences based on deployment model
+  # Try to read from phases.yaml config (externalized sequences)
+  local phases_config
+  local repo_root
+  repo_root=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
+  phases_config="$repo_root/.spec-flow/config/phases.yaml"
+
+  if [ -f "$phases_config" ]; then
+    # Read next phase from config using safe yq with --arg
+    local next_phase
+    next_phase=$(yq eval --arg model "$model" --arg phase "$current_phase" \
+      '.models[$model].transitions[$phase] // ""' "$phases_config" 2>/dev/null)
+
+    if [ -n "$next_phase" ]; then
+      echo "$next_phase"
+      return 0
+    fi
+  fi
+
+  # Fallback to hardcoded sequences if config not found or lookup failed
   case "$model" in
     staging-prod)
       case "$current_phase" in
@@ -357,11 +383,10 @@ get_next_phase() {
         "tasks") echo "analyze" ;;
         "analyze") echo "implement" ;;
         "implement") echo "ship:optimize" ;;
-        "ship:optimize") echo "ship:preview" ;;
-        "ship:preview") echo "ship:phase-1-ship" ;;
-        "ship:phase-1-ship") echo "ship:validate-staging" ;;
-        "ship:validate-staging") echo "ship:phase-2-ship" ;;
-        "ship:phase-2-ship") echo "ship:finalize" ;;
+        "ship:optimize") echo "ship:ship-staging" ;;
+        "ship:ship-staging") echo "ship:validate-staging" ;;
+        "ship:validate-staging") echo "ship:ship-prod" ;;
+        "ship:ship-prod") echo "ship:finalize" ;;
         "ship:finalize") echo "" ;;
         *) echo "" ;;
       esac
@@ -374,8 +399,7 @@ get_next_phase() {
         "tasks") echo "analyze" ;;
         "analyze") echo "implement" ;;
         "implement") echo "ship:optimize" ;;
-        "ship:optimize") echo "ship:preview" ;;
-        "ship:preview") echo "ship:deploy-prod" ;;
+        "ship:optimize") echo "ship:deploy-prod" ;;
         "ship:deploy-prod") echo "ship:finalize" ;;
         "ship:finalize") echo "" ;;
         *) echo "" ;;
@@ -389,8 +413,7 @@ get_next_phase() {
         "tasks") echo "analyze" ;;
         "analyze") echo "implement" ;;
         "implement") echo "ship:optimize" ;;
-        "ship:optimize") echo "ship:preview" ;;
-        "ship:preview") echo "ship:build-local" ;;
+        "ship:optimize") echo "ship:build-local" ;;
         "ship:build-local") echo "ship:finalize" ;;
         "ship:finalize") echo "" ;;
         *) echo "" ;;
@@ -458,7 +481,7 @@ start_phase_timing() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     echo "Error: Workflow state not found: $state_file" >&2
@@ -468,10 +491,10 @@ start_phase_timing() {
   local timestamp
   timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-  # Initialize phase timing entry
-  yq eval -i ".workflow.phase_timing.\"$phase\".started_at = \"$timestamp\"" "$state_file"
-  yq eval -i ".workflow.phase_timing.\"$phase\".status = \"in_progress\"" "$state_file"
-  yq eval -i ".feature.last_updated = \"$timestamp\"" "$state_file"
+  # Initialize phase timing entry (using --arg to prevent injection)
+  yq eval -i --arg phase "$phase" --arg ts "$timestamp" \
+    '.workflow.phase_timing.[$phase].started_at = $ts | .workflow.phase_timing.[$phase].status = "in_progress" | .feature.last_updated = $ts' \
+    "$state_file"
 }
 
 complete_phase_timing() {
@@ -481,7 +504,7 @@ complete_phase_timing() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     echo "Error: Workflow state not found: $state_file" >&2
@@ -491,14 +514,14 @@ complete_phase_timing() {
   local timestamp
   timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-  # Get started_at timestamp
+  # Get started_at timestamp (using --arg to prevent injection)
   local started_at
-  started_at=$(yq eval ".workflow.phase_timing.\"$phase\".started_at" "$state_file")
+  started_at=$(yq eval --arg phase "$phase" '.workflow.phase_timing.[$phase].started_at' "$state_file")
 
   if [ "$started_at" = "null" ] || [ -z "$started_at" ]; then
     echo "Warning: Phase $phase has no start time, skipping duration calculation" >&2
-    yq eval -i ".workflow.phase_timing.\"$phase\".completed_at = \"$timestamp\"" "$state_file"
-    yq eval -i ".workflow.phase_timing.\"$phase\".status = \"completed\"" "$state_file"
+    yq eval -i --arg phase "$phase" --arg ts "$timestamp" \
+      '.workflow.phase_timing.[$phase].completed_at = $ts | .workflow.phase_timing.[$phase].status = "completed"' "$state_file"
     return 0
   fi
 
@@ -516,18 +539,18 @@ complete_phase_timing() {
     completed_epoch=$(date +%s)
   else
     echo "Warning: Unable to parse date format, skipping duration calculation" >&2
-    yq eval -i ".workflow.phase_timing.\"$phase\".completed_at = \"$timestamp\"" "$state_file"
-    yq eval -i ".workflow.phase_timing.\"$phase\".status = \"completed\"" "$state_file"
+    yq eval -i --arg phase "$phase" --arg ts "$timestamp" \
+      '.workflow.phase_timing.[$phase].completed_at = $ts | .workflow.phase_timing.[$phase].status = "completed"' "$state_file"
     return 0
   fi
 
   duration=$((completed_epoch - started_epoch))
 
-  # Update phase timing
-  yq eval -i ".workflow.phase_timing.\"$phase\".completed_at = \"$timestamp\"" "$state_file"
-  yq eval -i ".workflow.phase_timing.\"$phase\".duration_seconds = $duration" "$state_file"
-  yq eval -i ".workflow.phase_timing.\"$phase\".status = \"completed\"" "$state_file"
-  yq eval -i ".feature.last_updated = \"$timestamp\"" "$state_file"
+  # Update phase timing (using --arg to prevent injection)
+  # Note: $duration is a numeric value, safe to interpolate directly
+  yq eval -i --arg phase "$phase" --arg ts "$timestamp" \
+    ".workflow.phase_timing.[\$phase].completed_at = \$ts | .workflow.phase_timing.[\$phase].duration_seconds = $duration | .workflow.phase_timing.[\$phase].status = \"completed\" | .feature.last_updated = \$ts" \
+    "$state_file"
 }
 
 start_sub_phase_timing() {
@@ -538,7 +561,7 @@ start_sub_phase_timing() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     echo "Error: Workflow state not found: $state_file" >&2
@@ -548,8 +571,9 @@ start_sub_phase_timing() {
   local timestamp
   timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-  # Initialize sub-phase timing entry
-  yq eval -i ".workflow.phase_timing.\"$parent_phase\".sub_phases.\"$sub_phase\".started_at = \"$timestamp\"" "$state_file"
+  # Initialize sub-phase timing entry (using --arg to prevent injection)
+  yq eval -i --arg parent "$parent_phase" --arg sub "$sub_phase" --arg ts "$timestamp" \
+    '.workflow.phase_timing.[$parent].sub_phases.[$sub].started_at = $ts' "$state_file"
 }
 
 complete_sub_phase_timing() {
@@ -560,7 +584,7 @@ complete_sub_phase_timing() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     echo "Error: Workflow state not found: $state_file" >&2
@@ -570,13 +594,15 @@ complete_sub_phase_timing() {
   local timestamp
   timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-  # Get started_at timestamp
+  # Get started_at timestamp (using --arg to prevent injection)
   local started_at
-  started_at=$(yq eval ".workflow.phase_timing.\"$parent_phase\".sub_phases.\"$sub_phase\".started_at" "$state_file")
+  started_at=$(yq eval --arg parent "$parent_phase" --arg sub "$sub_phase" \
+    '.workflow.phase_timing.[$parent].sub_phases.[$sub].started_at' "$state_file")
 
   if [ "$started_at" = "null" ] || [ -z "$started_at" ]; then
     echo "Warning: Sub-phase $sub_phase has no start time, skipping duration calculation" >&2
-    yq eval -i ".workflow.phase_timing.\"$parent_phase\".sub_phases.\"$sub_phase\".completed_at = \"$timestamp\"" "$state_file"
+    yq eval -i --arg parent "$parent_phase" --arg sub "$sub_phase" --arg ts "$timestamp" \
+      '.workflow.phase_timing.[$parent].sub_phases.[$sub].completed_at = $ts' "$state_file"
     return 0
   fi
 
@@ -591,15 +617,18 @@ complete_sub_phase_timing() {
     completed_epoch=$(date +%s)
   else
     echo "Warning: Unable to parse date format, skipping duration calculation" >&2
-    yq eval -i ".workflow.phase_timing.\"$parent_phase\".sub_phases.\"$sub_phase\".completed_at = \"$timestamp\"" "$state_file"
+    yq eval -i --arg parent "$parent_phase" --arg sub "$sub_phase" --arg ts "$timestamp" \
+      '.workflow.phase_timing.[$parent].sub_phases.[$sub].completed_at = $ts' "$state_file"
     return 0
   fi
 
   duration=$((completed_epoch - started_epoch))
 
-  # Update sub-phase timing
-  yq eval -i ".workflow.phase_timing.\"$parent_phase\".sub_phases.\"$sub_phase\".completed_at = \"$timestamp\"" "$state_file"
-  yq eval -i ".workflow.phase_timing.\"$parent_phase\".sub_phases.\"$sub_phase\".duration_seconds = $duration" "$state_file"
+  # Update sub-phase timing (using --arg to prevent injection)
+  # Note: $duration is a numeric value, safe to interpolate directly
+  yq eval -i --arg parent "$parent_phase" --arg sub "$sub_phase" --arg ts "$timestamp" \
+    ".workflow.phase_timing.[\$parent].sub_phases.[\$sub].completed_at = \$ts | .workflow.phase_timing.[\$parent].sub_phases.[\$sub].duration_seconds = $duration" \
+    "$state_file"
 }
 
 calculate_workflow_metrics() {
@@ -608,7 +637,7 @@ calculate_workflow_metrics() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     echo "Error: Workflow state not found: $state_file" >&2
@@ -630,8 +659,9 @@ calculate_workflow_metrics() {
   if [ -n "$gate_names" ]; then
     for gate in $gate_names; do
       local started_at approved_at
-      started_at=$(yq eval ".workflow.manual_gates.\"$gate\".started_at" "$state_file")
-      approved_at=$(yq eval ".workflow.manual_gates.\"$gate\".approved_at" "$state_file")
+      # Using --arg to prevent injection
+      started_at=$(yq eval --arg gate "$gate" '.workflow.manual_gates.[$gate].started_at' "$state_file")
+      approved_at=$(yq eval --arg gate "$gate" '.workflow.manual_gates.[$gate].approved_at' "$state_file")
 
       if [ "$started_at" != "null" ] && [ "$approved_at" != "null" ]; then
         local started_epoch approved_epoch gate_wait
@@ -649,8 +679,9 @@ calculate_workflow_metrics() {
         gate_wait=$((approved_epoch - started_epoch))
         manual_wait=$((manual_wait + gate_wait))
 
-        # Store wait duration in gate entry
-        yq eval -i ".workflow.manual_gates.\"$gate\".wait_duration_seconds = $gate_wait" "$state_file"
+        # Store wait duration in gate entry (using --arg to prevent injection)
+        # Note: $gate_wait is a numeric value, safe to interpolate directly
+        yq eval -i --arg gate "$gate" ".workflow.manual_gates.[\$gate].wait_duration_seconds = $gate_wait" "$state_file"
       fi
     done
   fi
@@ -694,7 +725,7 @@ display_workflow_summary() {
   # Auto-migrate if needed
   migrate_json_to_yaml_if_needed "$feature_dir"
 
-  local state_file="$feature_dir/workflow-state.yaml"
+  local state_file="$feature_dir/state.yaml"
 
   if [ ! -f "$state_file" ]; then
     echo "Error: Workflow state not found: $state_file" >&2

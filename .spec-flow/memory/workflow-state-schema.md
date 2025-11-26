@@ -1,13 +1,14 @@
 # Workflow State Schema
 
 **Version**: 2.1.0 (Workflow Type Detection)
-**File**: `.spec-flow/memory/workflow-state.yaml`
+**File**: `.spec-flow/memory/state.yaml`
 
 ## Overview
 
 The workflow state file tracks the current phase, progress, and epic-level coordination for feature development. It serves as the single source of truth for workflow progression.
 
 **Version History**:
+
 - v1.0.0: Basic feature tracking (phase, status, artifacts)
 - v2.0.0: Epic mode extensions (parallel development, WIP tracking)
 - v2.1.0: Explicit workflow type and base directory tracking
@@ -18,58 +19,58 @@ The workflow state file tracks the current phase, progress, and epic-level coord
 
 ```yaml
 # Feature-level tracking (v1.0.0)
-phase: string              # Current workflow phase
-status: string             # Phase status (in_progress, completed, failed)
-current_feature: string    # Feature name or ID
-started: ISO8601           # When feature work started
-last_updated: ISO8601      # Last modification timestamp
+phase: string # Current workflow phase
+status: string # Phase status (in_progress, completed, failed)
+current_feature: string # Feature name or ID
+started: ISO8601 # When feature work started
+last_updated: ISO8601 # Last modification timestamp
 
 # Workflow type detection (v2.1.0)
-workflow_type: string      # Workflow type: "epic" or "feature"
-base_directory: string     # Workspace directory: "epics" or "specs"
+workflow_type: string # Workflow type: "epic" or "feature"
+base_directory: string # Workspace directory: "epics" or "specs"
 
 # Epic mode extensions (v2.0.0)
-epic_mode: boolean         # True if feature uses epic parallelization
-epics: array               # List of epic objects (see below)
-wip_limits: object         # WIP enforcement configuration
+epic_mode: boolean # True if feature uses epic parallelization
+epics: array # List of epic objects (see below)
+wip_limits: object # WIP enforcement configuration
 ```
 
 ### Epic Object
 
 ```yaml
 epics:
-  - name: string                    # Epic identifier (e.g., "epic-auth-api")
-    state: string                   # Epic state (see state machine)
-    agent: string                   # Assigned agent name
-    started: ISO8601                # When implementation started
-    contracts_locked_at: ISO8601    # When contracts were locked
-    parked_at: ISO8601              # When epic was parked (if Parked state)
-    parked_reason: string           # Why epic was parked
-    blocked_by: string              # Who/what is blocking
-    tasks_complete: number          # Tasks completed
-    tasks_total: number             # Total tasks for epic
-    feature_flag: string            # Associated feature flag name
-    waiting_for_wip_slot: boolean   # True if queued for WIP slot
+  - name: string # Epic identifier (e.g., "epic-auth-api")
+    state: string # Epic state (see state machine)
+    agent: string # Assigned agent name
+    started: ISO8601 # When implementation started
+    contracts_locked_at: ISO8601 # When contracts were locked
+    parked_at: ISO8601 # When epic was parked (if Parked state)
+    parked_reason: string # Why epic was parked
+    blocked_by: string # Who/what is blocking
+    tasks_complete: number # Tasks completed
+    tasks_total: number # Total tasks for epic
+    feature_flag: string # Associated feature flag name
+    waiting_for_wip_slot: boolean # True if queued for WIP slot
 ```
 
 ### Epic States
 
-| State             | Description                                       |
-| ----------------- | ------------------------------------------------- |
-| `Planned`         | Epic defined in plan.md, contracts not designed   |
-| `ContractsLocked` | API schemas locked, ready for implementation      |
-| `Implementing`    | Active development with agent assigned            |
-| `Parked`          | Blocked by external dependency                    |
-| `Review`          | Code complete, quality gates running              |
-| `Integrated`      | Merged to main, feature flag enabled              |
-| `Released`        | Feature flag retired, fully deployed              |
+| State             | Description                                     |
+| ----------------- | ----------------------------------------------- |
+| `Planned`         | Epic defined in plan.md, contracts not designed |
+| `ContractsLocked` | API schemas locked, ready for implementation    |
+| `Implementing`    | Active development with agent assigned          |
+| `Parked`          | Blocked by external dependency                  |
+| `Review`          | Code complete, quality gates running            |
+| `Integrated`      | Merged to main, feature flag enabled            |
+| `Released`        | Feature flag retired, fully deployed            |
 
 ### WIP Limits Object
 
 ```yaml
 wip_limits:
-  max_per_agent: number        # Max epics per agent (default: 1)
-  current_utilization: string  # Format: "N/M" (N occupied of M total)
+  max_per_agent: number # Max epics per agent (default: 1)
+  current_utilization: string # Format: "N/M" (N occupied of M total)
 ```
 
 ### Deployment Object
@@ -78,42 +79,44 @@ Tracks deployment status, version information, and finalization progress.
 
 ```yaml
 deployment:
-  model: string                 # Deployment model: staging-prod | direct-prod | local-only
-  version: string               # Semantic version (e.g., "1.2.3" without 'v' prefix)
+  model: string # Deployment model: staging-prod | direct-prod | local-only
+  version: string # Semantic version (e.g., "1.2.3" without 'v' prefix)
 
   staging:
-    url: string                 # Staging deployment URL
-    deployed_at: ISO8601        # Staging deployment timestamp
-    deployment_id: string       # Platform-specific deployment ID (Vercel/Railway/etc)
-    validated: boolean          # True if /validate-staging passed
-    validated_at: ISO8601       # Staging validation timestamp
+    url: string # Staging deployment URL
+    deployed_at: ISO8601 # Staging deployment timestamp
+    deployment_id: string # Platform-specific deployment ID (Vercel/Railway/etc)
+    validated: boolean # True if /validate-staging passed
+    validated_at: ISO8601 # Staging validation timestamp
 
   production:
-    url: string                 # Production deployment URL
-    deployed_at: ISO8601        # Production deployment timestamp
-    deployment_id: string       # Platform-specific deployment ID
-    tag: string                 # Git tag used for deployment (e.g., "v1.2.3")
-    tag_created_at: ISO8601     # Tag creation timestamp
-    github_release_url: string  # GitHub release URL for this version
+    url: string # Production deployment URL
+    deployed_at: ISO8601 # Production deployment timestamp
+    deployment_id: string # Platform-specific deployment ID
+    tag: string # Git tag used for deployment (e.g., "v1.2.3")
+    tag_created_at: ISO8601 # Tag creation timestamp
+    github_release_url: string # GitHub release URL for this version
 
   finalization:
-    essential_complete: boolean        # True if roadmap updated + branch cleaned
-    essential_completed_at: ISO8601    # Essential finalization timestamp
-    full_complete: boolean             # True if CHANGELOG, README, docs updated
-    full_completed_at: ISO8601         # Full finalization timestamp
-    changelog_updated: boolean         # CHANGELOG.md versioned
-    readme_updated: boolean            # README.md updated
-    help_docs_updated: boolean         # User documentation updated
-    milestone_closed: boolean          # GitHub milestone closed
-    release_created: boolean           # GitHub release created
+    essential_complete: boolean # True if roadmap updated + branch cleaned
+    essential_completed_at: ISO8601 # Essential finalization timestamp
+    full_complete: boolean # True if CHANGELOG, README, docs updated
+    full_completed_at: ISO8601 # Full finalization timestamp
+    changelog_updated: boolean # CHANGELOG.md versioned
+    readme_updated: boolean # README.md updated
+    help_docs_updated: boolean # User documentation updated
+    milestone_closed: boolean # GitHub milestone closed
+    release_created: boolean # GitHub release created
 ```
 
 **Deployment Model Detection**:
+
 - **staging-prod**: Git remote + staging branch + `.github/workflows/deploy-staging.yml`
 - **direct-prod**: Git remote + no staging branch/workflow
 - **local-only**: No git remote configured
 
 **Tagged Promotion** (staging-prod model):
+
 - Version extracted from CHANGELOG.md
 - User selects patch/minor/major bump
 - Git tag created: `v{version}`
@@ -122,6 +125,7 @@ deployment:
 - GitHub Release created with changelog excerpt
 
 **Finalization Phases**:
+
 1. **Essential** (automatic via `/ship`):
    - Update roadmap issue to 'shipped'
    - Clean up feature branch (local + remote)
@@ -210,7 +214,7 @@ epics:
 
 wip_limits:
   max_per_agent: 1
-  current_utilization: "2/2"  # 2 agents, both occupied
+  current_utilization: "2/2" # 2 agents, both occupied
 
 completed_phases:
   - clarify
@@ -252,15 +256,18 @@ wip_limits.max_per_agent: <positive integer>
 ### Conditional Fields
 
 **When epic state = Implementing**:
+
 - `agent` (required)
 - `started` (required)
 - `feature_flag` (required)
 
 **When epic state = Parked**:
+
 - `parked_at` (required)
 - `parked_reason` (required)
 
 **When epic state = ContractsLocked**:
+
 - `contracts_locked_at` (required)
 
 ### Manual Gates (Optional)
@@ -274,7 +281,7 @@ Manual gates pause workflow progression until user approval is granted.
 ```yaml
 manual_gates:
   mockup_approval:
-    status: "pending"  # pending | approved | rejected | not_applicable
+    status: "pending" # pending | approved | rejected | not_applicable
     mockup_path: "specs/NNN-slug/mockups/screen-name.html"
     tokens_css_linked: true
     approved_at: null
@@ -282,7 +289,7 @@ manual_gates:
     requested_changes: null
     style_guide_updates: null
   staging_validation:
-    status: "pending"  # pending | approved | failed | not_applicable
+    status: "pending" # pending | approved | failed | not_applicable
     staging_url: null
     validated_at: null
     validated_by: null
@@ -292,6 +299,7 @@ manual_gates:
 **Gate Definitions**:
 
 **mockup_approval** (UI-first features only):
+
 - **Trigger**: After `/tasks --ui-first` creates HTML mockups
 - **Blocks**: `/implement` execution until status = "approved"
 - **Required Fields**: `mockup_path`, `tokens_css_linked`
@@ -299,17 +307,18 @@ manual_gates:
 - **Approval Flow**:
   1. User opens HTML mockup in browser
   2. User reviews against mockup-approval-checklist.md
-  3. User updates `status: "approved"` in workflow-state.yaml
+  3. User updates `status: "approved"` in state.yaml
   4. User runs `/feature continue` to proceed
 
 **staging_validation** (staging-prod model only):
+
 - **Trigger**: After `/ship-staging` deploys to staging
 - **Blocks**: `/ship-prod` execution until status = "approved"
 - **Purpose**: Manual testing in staging environment
 - **Approval Flow**:
   1. User tests feature in staging
   2. Rollback test executed automatically
-  3. User updates `status: "approved"` in workflow-state.yaml
+  3. User updates `status: "approved"` in state.yaml
   4. User runs `/ship continue` to proceed
 
 **Example (UI-first feature)**:
@@ -406,24 +415,25 @@ stateDiagram-v2
 
 ```bash
 # Before (v1.0.0)
-yq eval '.phase = "implement"' -i workflow-state.yaml
+yq eval '.phase = "implement"' -i state.yaml
 
 # After (v2.0.0)
-yq eval '.epic_mode = true' -i workflow-state.yaml
-yq eval '.epics = []' -i workflow-state.yaml
-yq eval '.wip_limits.max_per_agent = 1' -i workflow-state.yaml
+yq eval '.epic_mode = true' -i state.yaml
+yq eval '.epics = []' -i state.yaml
+yq eval '.wip_limits.max_per_agent = 1' -i state.yaml
 
 # Add first epic
 yq eval '.epics += [{
   "name": "epic-auth-api",
   "state": "ContractsLocked",
   "contracts_locked_at": "2025-11-10T14:00:00Z"
-}]' -i workflow-state.yaml
+}]' -i state.yaml
 ```
 
 ### Backward Compatibility
 
 **v2.0.0 is backward compatible with v1.0.0**:
+
 - Non-epic features continue to work (ignore `epics`, `wip_limits`)
 - Epic mode is opt-in via `epic_mode: true`
 
@@ -432,10 +442,12 @@ yq eval '.epics += [{
 ### `/scheduler.assign`
 
 **Reads**:
+
 - `epics[].state` - Check if epic in `ContractsLocked`
 - `epics[].name` - Find target epic
 
 **Writes**:
+
 - `epics[].state` - Update to `Implementing`
 - `epics[].agent` - Assign agent name
 - `epics[].started` - Record start timestamp
@@ -444,10 +456,12 @@ yq eval '.epics += [{
 ### `/scheduler.park`
 
 **Reads**:
+
 - `epics[].state` - Check if epic in `Implementing`
 - `epics[].agent` - Find agent to release
 
 **Writes**:
+
 - `epics[].state` - Update to `Parked`
 - `epics[].parked_at` - Record parking timestamp
 - `epics[].parked_reason` - Store reason
@@ -457,6 +471,7 @@ yq eval '.epics += [{
 ### `/scheduler.list`
 
 **Reads**:
+
 - `epics[]` - All epic objects
 - `epics[].state` - Group by state
 - `epics[].tasks_complete` / `tasks_total` - Calculate progress
@@ -465,10 +480,12 @@ yq eval '.epics += [{
 ### `/implement --parallel`
 
 **Reads**:
+
 - `epic_mode` - Check if parallel mode enabled
 - `epics[]` - Get all epics to implement
 
 **Writes**:
+
 - `epics[].state` - Update as implementation progresses
 - `epics[].tasks_complete` - Increment on task completion
 
@@ -478,24 +495,26 @@ yq eval '.epics += [{
 
 ```bash
 # Check for stale epics (Implementing >24h)
-yq eval '.epics[] | select(.state == "Implementing") | select(.started < "2025-11-09T00:00:00Z")' workflow-state.yaml
+yq eval '.epics[] | select(.state == "Implementing") | select(.started < "2025-11-09T00:00:00Z")' state.yaml
 
 # Check for long-parked epics (>48h)
-yq eval '.epics[] | select(.state == "Parked") | select(.parked_at < "2025-11-08T00:00:00Z")' workflow-state.yaml
+yq eval '.epics[] | select(.state == "Parked") | select(.parked_at < "2025-11-08T00:00:00Z")' state.yaml
 
 # Check WIP slot utilization
-yq eval '.wip_limits.current_utilization' workflow-state.yaml
+yq eval '.wip_limits.current_utilization' state.yaml
 ```
 
 ### Metrics
 
 **Epic-level metrics** (for DORA tracking):
+
 - Lead time per epic: `started` → `Released`
 - Cycle time per epic: `Implementing` → `Integrated`
 - Parking time: Total time in `Parked` state
 - Review time: Time in `Review` state
 
 **Feature-level metrics**:
+
 - Total feature lead time: `started` → `finalize`
 - Epic coordination overhead: Sum of parking/queuing times
 
@@ -504,11 +523,13 @@ yq eval '.wip_limits.current_utilization' workflow-state.yaml
 **Version Format**: `MAJOR.MINOR.PATCH`
 
 **Version Rules**:
+
 - **MAJOR**: Breaking changes (require migration)
 - **MINOR**: Additive changes (backward compatible)
 - **PATCH**: Bug fixes, clarifications
 
 **Current Version**: 2.1.0
+
 - **2.1.0** (2025-11-20): Explicit workflow type and base directory tracking
 - **2.0.0** (2025-11-10): Epic mode extensions
 - **1.0.0** (2024-01-01): Initial schema

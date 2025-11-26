@@ -1,31 +1,37 @@
 # Scenario 1: Greenfield Project
 
 ## Purpose
+
 Test workflow initialization on a fresh project with no existing code.
 
 ## Tests
 
 ### 1. Directory Structure Validation
+
 - Verifies scenario directory exists
 - **Expected**: Directory present
 
 ### 2. /init-project Command Structure
+
 - Validates init-project.md command file
 - Checks for docs/project/ references
 - **Expected**: Command file exists with proper structure
 
 ### 3. /feature Command Structure
+
 - Validates feature.md command file
-- Checks for workflow-state.yaml references
+- Checks for state.yaml references
 - **Expected**: Command file exists with workflow state management
 
 ### 4. Deployment Model Detection
+
 - Verifies local-only deployment model (no git remote)
 - **Expected**: No git remote configured
 
 ## Expected Artifacts
 
 After running `/init-project`:
+
 ```
 01-greenfield/
 ├── docs/
@@ -40,10 +46,11 @@ After running `/init-project`:
 │       └── development-workflow.md
 └── .spec-flow/
     └── memory/
-        └── workflow-state.yaml
+        └── state.yaml
 ```
 
 After running `/init-project --with-design`:
+
 ```
 (plus)
 ├── docs/

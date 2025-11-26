@@ -27,17 +27,19 @@ fi
 ```
 
 **Epic indicators**:
+
 - epics/NNN-slug/ directory exists
 - epic-spec.xml present
 - sprint-plan.xml with multiple sprints
-- Parallel sprint execution in workflow-state.yaml
+- Parallel sprint execution in state.yaml
 
 **Feature indicators**:
+
 - specs/NNN-slug/ directory exists
 - spec.md present (not epic-spec.xml)
 - tasks.md with sequential task list
 - No sprint subdirectories
-</detection>
+  </detection>
 
 <artifacts_collection>
 **Required epic artifacts**:
@@ -51,7 +53,7 @@ EPIC_SPEC="epic-spec.xml"
 RESEARCH="research.xml"
 PLAN="plan.xml"
 SPRINT_PLAN="sprint-plan.xml"
-WORKFLOW_STATE="workflow-state.yaml"
+WORKFLOW_STATE="state.yaml"
 AUDIT_REPORT="audit-report.xml"
 PREVIEW_REPORT="preview-report.xml"
 
@@ -63,34 +65,37 @@ done
 # Load sprint results
 for sprint_dir in sprints/*/; do
   sprint_id=$(basename "$sprint_dir")
-  test -f "${sprint_dir}workflow-state.yaml" && echo "✅ Sprint ${sprint_id} state" || echo "❌ Sprint ${sprint_id} MISSING"
+  test -f "${sprint_dir}state.yaml" && echo "✅ Sprint ${sprint_id} state" || echo "❌ Sprint ${sprint_id} MISSING"
   test -f "${sprint_dir}tasks.md" && echo "✅ Sprint ${sprint_id} tasks" || echo "❌ Sprint ${sprint_id} tasks MISSING"
 done
 ```
 
 **Artifact purposes**:
+
 - epic-spec.xml: Epic goal, success metrics, business value
 - research.xml: Research phase findings (if meta-prompting used)
 - plan.xml: Implementation plan with architecture decisions
 - sprint-plan.xml: Sprint breakdown with dependency graph, execution strategy
-- workflow-state.yaml: State tracking across all phases
+- state.yaml: State tracking across all phases
 - audit-report.xml: Workflow effectiveness analysis with recommendations
 - preview-report.xml: Manual testing decision (auto-skip vs required)
 - Sprint states: Individual sprint completion, duration, tests passed
-</artifacts_collection>
+  </artifacts_collection>
 
 <metrics_calculation>
 **Velocity metrics**:
 
 ```javascript
 // Extract from sprint-plan.xml
-const expectedMultiplier = sprint_plan.critical_path.parallelization_opportunity; // e.g., "3.5x"
+const expectedMultiplier =
+  sprint_plan.critical_path.parallelization_opportunity; // e.g., "3.5x"
 
 // Extract from audit-report.xml
 const actualMultiplier = audit_report.velocity_analysis.actual_multiplier; // e.g., "3.2x"
 
 // Calculate time saved
-const sequentialDuration = audit_report.velocity_analysis.sequential_duration_hours; // e.g., 120
+const sequentialDuration =
+  audit_report.velocity_analysis.sequential_duration_hours; // e.g., 120
 const parallelDuration = audit_report.velocity_analysis.parallel_duration_hours; // e.g., 38
 const timeSaved = sequentialDuration - parallelDuration; // 82 hours
 ```
@@ -108,8 +113,8 @@ const parallelizationScore = audit_report.sprint_analysis.parallelization_score;
 
 ```javascript
 // Load all sprint results
-const sprints = sprint_plan.sprints.sprint.map(sprint => {
-  const state = readYAML(`sprints/${sprint.id}/workflow-state.yaml`);
+const sprints = sprint_plan.sprints.sprint.map((sprint) => {
+  const state = readYAML(`sprints/${sprint.id}/state.yaml`);
   const tasks = readMarkdown(`sprints/${sprint.id}/tasks.md`);
 
   return {
@@ -120,16 +125,17 @@ const sprints = sprint_plan.sprints.sprint.map(sprint => {
     total_tasks: tasks.length,
     duration_hours: state.duration_hours,
     contracts_locked: state.contracts_locked || [],
-    tests_passed: state.tests_passed
+    tests_passed: state.tests_passed,
   };
 });
 
 // Calculate totals
 const totalSprints = sprints.length;
-const completedSprints = sprints.filter(s => s.status === 'completed').length;
+const completedSprints = sprints.filter((s) => s.status === "completed").length;
 const totalTasks = sprints.reduce((sum, s) => sum + s.total_tasks, 0);
 const completedTasks = sprints.reduce((sum, s) => sum + s.tasks_completed, 0);
 ```
+
 </metrics_calculation>
 
 <walkthrough_template>
@@ -174,10 +180,11 @@ const completedTasks = sprints.reduce((sum, s) => sum + s.tasks_completed, 0);
 ```
 
 **Markdown conversion**:
+
 - Convert XML to human-readable Markdown format
 - Write to walkthrough.md alongside walkthrough.xml
 - Include tables for sprint results and metrics
-</walkthrough_template>
+  </walkthrough_template>
 
 <pattern_detection>
 **When to run**: After 2+ epics completed
@@ -186,7 +193,7 @@ const completedTasks = sprints.reduce((sum, s) => sum + s.tasks_completed, 0);
 
 ```bash
 # Count completed epics
-COMPLETED_EPICS=$(find epics/ -name "workflow-state.yaml" -type f -exec grep -l "status: completed" {} \; | wc -l)
+COMPLETED_EPICS=$(find epics/ -name "state.yaml" -type f -exec grep -l "status: completed" {} \; | wc -l)
 
 if [ "$COMPLETED_EPICS" -ge 2 ]; then
   echo "Pattern detection available (${COMPLETED_EPICS} epics completed)"
@@ -197,11 +204,13 @@ fi
 **Pattern types detected**:
 
 1. **Code generation patterns**:
+
    - Service boilerplate repeated 3+ times → Suggest custom skill
    - Component structure consistent → Suggest generator
    - Example: "All services use DI + Repository pattern → Create /create-service skill"
 
 2. **Architectural patterns**:
+
    - Always use same authentication approach → Pre-configure
    - Consistent database migration strategy → Automate
    - Example: "All features use OAuth 2.1 → Add to project defaults"
@@ -214,6 +223,7 @@ fi
 **Confidence threshold**: ≥80% to suggest automation
 
 **Output**:
+
 ```
 📊 Pattern Detection: ${patterns_count} patterns detected
 
@@ -230,6 +240,7 @@ Strong patterns (confidence ≥80%):
 
 💡 Run /create-custom-tooling to generate automation
 ```
+
 </pattern_detection>
 
 <workflow_healing>
@@ -282,6 +293,7 @@ Deferred improvements:
 
 These can be applied after 2-3 more epics for pattern-based optimization.
 ```
+
 </workflow_healing>
 
 <commit_format>
@@ -321,6 +333,7 @@ Next: Standard finalization (CHANGELOG, README, GitHub Release)
 🤖 Generated with Claude Code
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
+
 </commit_format>
 
 </epic_walkthrough_generation>
@@ -330,6 +343,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 When moving feature to "Shipped" section in `.spec-flow/memory/roadmap.md`, include:
 
 **Mandatory fields**:
+
 - Feature name (human-readable, from spec.md)
 - Version number (from CHANGELOG.md or ship-summary.md)
 - Completion date (production deployment date, YYYY-MM-DD)
@@ -338,10 +352,11 @@ When moving feature to "Shipped" section in `.spec-flow/memory/roadmap.md`, incl
 - Release notes link (CHANGELOG.md anchor: `#vX.Y.Z`)
 
 **Optional fields**:
+
 - Business impact summary (1 sentence, metrics if available)
 - Lessons learned link (if retrospective conducted)
 - Related features (links to other shipped features in same epic)
-</required_information>
+  </required_information>
 
 <roadmap_format>
 **Template**:
@@ -350,6 +365,7 @@ When moving feature to "Shipped" section in `.spec-flow/memory/roadmap.md`, incl
 ## Shipped
 
 ### [Feature Name] (vX.Y.Z) - Shipped YYYY-MM-DD
+
 - **Production URL**: https://app.example.com/feature-path
 - **Ship Report**: specs/NNN-feature-slug/ship-summary.md
 - **Release Notes**: CHANGELOG.md#vX.Y.Z
@@ -362,6 +378,7 @@ When moving feature to "Shipped" section in `.spec-flow/memory/roadmap.md`, incl
 ## Shipped
 
 ### Student Progress Dashboard (v1.3.0) - Shipped 2025-10-21
+
 - **Production URL**: https://app.example.com/students/progress
 - **Ship Report**: specs/042-student-progress-dashboard/ship-summary.md
 - **Release Notes**: CHANGELOG.md#v1.3.0
@@ -396,27 +413,30 @@ When moving feature to "Shipped" section in `.spec-flow/memory/roadmap.md`, incl
 12. Commit change with finalization commit (see commit_best_practices)
 
 **Validation**:
+
 - Feature no longer in "In Progress"
 - Feature appears in "Shipped" with all required fields
 - Links are valid (files exist)
 - Date is deployment date (not finalization date)
-</moving_feature>
-</roadmap_updates>
+  </moving_feature>
+  </roadmap_updates>
 
 <artifact_archival>
 <complete_checklist>
 **Required artifacts** (all features):
 
 Core phase artifacts:
+
 - [ ] `spec.md` - Feature specification
 - [ ] `plan.md` - Implementation plan
 - [ ] `tasks.md` - Task breakdown with completion tracking
 - [ ] `optimization-report.md` - Quality gates results
 - [ ] `ship-summary.md` - Deployment report
 - [ ] `release-notes.md` - User-facing release notes
-- [ ] `workflow-state.yaml` - Workflow state tracking
+- [ ] `state.yaml` - Workflow state tracking
 
 **Optional artifacts** (conditional):
+
 - [ ] `clarifications.md` - If `/clarify` phase ran
 - [ ] `research.md` - If `/plan` ran with research phase
 - [ ] `analysis-report.md` - If `/validate` phase ran
@@ -426,14 +446,16 @@ Core phase artifacts:
 - [ ] `mockups/*.html` - If UI-first workflow used
 
 **UI-first artifacts** (if `--ui-first` flag used):
+
 - [ ] `mockups/*.html` - HTML mockups for each screen
 - [ ] `mockup-approval-checklist.md` - Mockup review checklist
 
 **Epic artifacts** (if feature is part of epic):
+
 - [ ] `epic-spec.xml` - Epic specification
 - [ ] `sprint-plan.xml` - Sprint breakdown
 - [ ] `walkthrough.md` - Epic summary
-</complete_checklist>
+      </complete_checklist>
 
 <validation_procedure>
 **How to verify artifact archival**:
@@ -452,7 +474,7 @@ test -f tasks.md && echo "✅ tasks.md" || echo "❌ tasks.md MISSING"
 test -f optimization-report.md && echo "✅ optimization-report.md" || echo "❌ optimization-report.md MISSING"
 test -f ship-summary.md && echo "✅ ship-summary.md" || echo "❌ ship-summary.md MISSING"
 test -f release-notes.md && echo "✅ release-notes.md" || echo "❌ release-notes.md MISSING"
-test -f workflow-state.yaml && echo "✅ workflow-state.yaml" || echo "❌ workflow-state.yaml MISSING"
+test -f state.yaml && echo "✅ state.yaml" || echo "❌ state.yaml MISSING"
 
 # 4. Check for temporary files (should not exist)
 ls *.tmp *.bak *~ 2>/dev/null && echo "❌ Temporary files found" || echo "✅ No temporary files"
@@ -463,6 +485,7 @@ find . -maxdepth 1 -name "*-report.md" -o -name "spec.md" -o -name "plan.md" | g
 ```
 
 **Expected output**:
+
 ```
 ✅ spec.md
 ✅ plan.md
@@ -470,45 +493,52 @@ find . -maxdepth 1 -name "*-report.md" -o -name "spec.md" -o -name "plan.md" | g
 ✅ optimization-report.md
 ✅ ship-summary.md
 ✅ release-notes.md
-✅ workflow-state.yaml
+✅ state.yaml
 ✅ No temporary files
 ✅ All artifacts in specs/
 ```
+
 </validation_procedure>
 
 <missing_artifacts>
 **What to do if artifacts missing**:
 
 **Scenario 1**: Artifact exists but in wrong location (e.g., root directory)
+
 ```bash
 # Move to correct location
 mv spec.md specs/NNN-slug/spec.md
 ```
 
 **Scenario 2**: Artifact never generated (phase skipped or failed)
-- Check workflow-state.yaml for skipped phases
+
+- Check state.yaml for skipped phases
 - If phase critical: Regenerate artifact (re-run phase if possible)
 - If phase optional: Document missing artifact in finalization commit message
 - Example: "chore: finalize feature (v1.2.0) - missing clarifications.md (phase not run)"
 
 **Scenario 3**: Artifact deleted accidentally
+
 - Check git history: `git log --all --full-history -- "specs/NNN-slug/missing-file.md"`
 - If found: Restore from git: `git checkout <commit-hash> -- specs/NNN-slug/missing-file.md`
 - If not in git: Document loss in commit message, mark as unrecoverable
 
-**Scenario 4**: Temporary files present (.tmp, .bak, *~)
+**Scenario 4**: Temporary files present (.tmp, .bak, \*~)
+
 - Remove all temporary files: `find specs/NNN-slug/ -name "*.tmp" -o -name "*.bak" -o -name "*~" -delete`
 - Do not commit temporary files
-</missing_artifacts>
-</artifact_archival>
+  </missing_artifacts>
+  </artifact_archival>
 
 <documentation_updates>
 <readme_standards>
 **When to update README.md**:
+
 - User-facing features (new screens, API endpoints, functionality)
 - Developer-facing features (new tools, workflows, integrations)
 
 **When to skip README.md**:
+
 - Internal refactorings (no visible behavior change)
 - Bug fixes (unless fixing documented behavior)
 
@@ -552,21 +582,27 @@ mv spec.md specs/NNN-slug/spec.md
 ## [X.Y.Z] - YYYY-MM-DD
 
 ### Added
+
 - New functionality visible to users
 
 ### Changed
+
 - Modifications to existing functionality
 
 ### Fixed
+
 - Bug fixes
 
 ### Removed
+
 - Removed functionality (breaking change)
 
 ### Deprecated
+
 - Soon-to-be-removed features (warning)
 
 ### Security
+
 - Security fixes (CVEs, vulnerabilities)
 ```
 
@@ -576,29 +612,35 @@ mv spec.md specs/NNN-slug/spec.md
 ## [1.3.0] - 2025-10-21
 
 ### Added
+
 - Student progress dashboard with completion tracking
 - CSV export for progress reports
 - Filtering by class, subject, and time period
 
 ### Changed
+
 - Improved dashboard load time from 3s to 1.2s (pagination added)
 
 ### Fixed
+
 - Fixed timeout issue with large datasets (added pagination, limit 10 records per page)
 ```
 
 **Version numbering** (Semantic Versioning):
+
 - **Major (X.0.0)**: Breaking changes (API changes, removed features)
 - **Minor (0.Y.0)**: New features (backward-compatible additions)
 - **Patch (0.0.Z)**: Bug fixes only (no new features)
 
 **Unreleased section**:
+
 - Keep `## [Unreleased]` section at top for WIP changes
 - Move to versioned section on release
-</changelog_standards>
+  </changelog_standards>
 
 <user_guides>
 **When to create user guide**:
+
 - Complex features (>3 screens, >5 interactions)
 - Features requiring configuration (API keys, settings)
 - Features with non-obvious workflows (multi-step processes)
@@ -611,37 +653,47 @@ mv spec.md specs/NNN-slug/spec.md
 # [Feature Name]
 
 ## Overview
+
 [1-2 sentence summary of feature purpose]
 
 ## Prerequisites
+
 - [Required configuration]
 - [Required permissions]
 
 ## Getting Started
+
 [Step-by-step guide with screenshots]
 
 ## Common Workflows
+
 ### [Workflow 1 Name]
+
 1. [Step 1]
 2. [Step 2]
 
 ### [Workflow 2 Name]
+
 1. [Step 1]
 2. [Step 2]
 
 ## Troubleshooting
+
 **Issue**: [Common problem]
 **Solution**: [How to fix]
 
 ## FAQ
+
 **Q**: [Question]
 **A**: [Answer]
 ```
 
 **Link from README.md**:
+
 ```markdown
 - **[Feature Name]** - [Description] ([User Guide](docs/features/feature-name.md))
 ```
+
 </user_guides>
 </documentation_updates>
 
@@ -650,6 +702,7 @@ mv spec.md specs/NNN-slug/spec.md
 **Steps to delete feature branch safely**:
 
 1. **Verify branch merged to main**:
+
 ```bash
 git branch --merged main | grep feature/NNN-slug
 ```
@@ -657,6 +710,7 @@ git branch --merged main | grep feature/NNN-slug
 **Expected output**: Branch name appears (merged)
 
 2. **Delete local branch**:
+
 ```bash
 git branch -d feature/NNN-slug
 ```
@@ -664,6 +718,7 @@ git branch -d feature/NNN-slug
 **Expected output**: `Deleted branch feature/NNN-slug (was abc123).`
 
 3. **Delete remote branch** (if pushed):
+
 ```bash
 git push origin --delete feature/NNN-slug
 ```
@@ -671,6 +726,7 @@ git push origin --delete feature/NNN-slug
 **Expected output**: `To github.com:user/repo.git - [deleted] feature/NNN-slug`
 
 4. **Verify deletion**:
+
 ```bash
 # Local branches
 git branch | grep feature/NNN-slug
@@ -680,31 +736,36 @@ git branch | grep feature/NNN-slug
 git branch -r | grep feature/NNN-slug
 # Should return nothing
 ```
+
 </safe_deletion_procedure>
 
 <branch_not_merged>
 **What to do if branch not merged**:
 
 **Scenario 1**: Feature deployed but branch not merged (direct-prod or build-local model)
+
 - Verify feature deployed successfully (check production URL or build artifacts)
 - If deployed: Force delete branch with `-D`: `git branch -D feature/NNN-slug`
 - Document in finalization commit: "Branch not merged (direct-prod deployment model)"
 
 **Scenario 2**: Feature merged via squash commit
+
 - Check if commits appear in main: `git log --oneline main | grep "feat: [feature-name]"`
 - If found: Safe to delete, branch commits squashed into main
 - Delete with `-D`: `git branch -D feature/NNN-slug`
 
 **Scenario 3**: Feature deployed via staging-prod with tagged promotion
+
 - Check if tag exists: `git tag -l "v*" | grep [version]`
 - If tag exists: Safe to delete, deployment tagged
 - Delete with `-D`: `git branch -D feature/NNN-slug`
 
 **Never force delete if**:
+
 - Feature NOT deployed
 - No evidence of merge (squash or tag)
 - Unsure of deployment status (verify first)
-</branch_not_merged>
+  </branch_not_merged>
 
 <branch_cleanup_verification>
 **Verification checklist**:
@@ -713,19 +774,21 @@ git branch -r | grep feature/NNN-slug
 - [ ] Remote branch deleted: `git branch -r | grep feature/NNN-slug` returns nothing
 - [ ] Feature merged or deployed: Evidence in git log, tags, or production
 - [ ] No uncommitted work on branch: `git status` clean before deletion
-</branch_cleanup_verification>
-</branch_cleanup>
+      </branch_cleanup_verification>
+      </branch_cleanup>
 
 <commit_best_practices>
 <finalization_commit_format>
 **Type**: `chore` (finalization is housekeeping, not a feature)
 
 **Subject format**:
+
 ```
 chore: finalize [feature-slug] (vX.Y.Z)
 ```
 
 **Body format**:
+
 ```
 Updated roadmap, README, and CHANGELOG
 Archived artifacts in specs/NNN-feature-slug/
@@ -733,6 +796,7 @@ Cleaned up feature/NNN-feature-slug branch
 ```
 
 **Full example**:
+
 ```bash
 git add .spec-flow/memory/roadmap.md README.md CHANGELOG.md
 git commit -m "chore: finalize student-progress-dashboard (v1.3.0)
@@ -743,10 +807,12 @@ Updated CHANGELOG (added v1.3.0 release notes)
 Archived artifacts in specs/042-student-progress-dashboard/
 Deleted feature/042-student-progress-dashboard branch"
 ```
+
 </finalization_commit_format>
 
 <commit_message_rules>
 **Rules**:
+
 1. **Type** must be `chore` (not feat, fix, docs)
 2. **Subject** must include feature name and version
 3. **Subject** must be <75 characters
@@ -754,14 +820,15 @@ Deleted feature/042-student-progress-dashboard branch"
 5. **Body** must be imperative mood ("Updated" not "Update" or "Updates")
 
 **Common mistakes**:
+
 - ❌ `feat: finalize feature` (wrong type - finalization is not a feature)
 - ❌ `chore: update docs` (too vague - what docs? what feature?)
 - ❌ `chore: finalize` (missing feature name and version)
 - ✅ `chore: finalize auth-api (v2.1.0)` (correct)
-</commit_message_rules>
+  </commit_message_rules>
 
 <workflow_state_update>
-**Update workflow-state.yaml before commit**:
+**Update state.yaml before commit**:
 
 ```yaml
 finalization:
@@ -771,45 +838,51 @@ finalization:
   artifacts_archived: true
   documentation_updated: true
   branches_cleaned: true
-  finalization_commit: abc123  # Commit hash (add after commit)
+  finalization_commit: abc123 # Commit hash (add after commit)
 ```
 
 **Steps**:
-1. Update workflow-state.yaml with finalization details
-2. Add workflow-state.yaml to commit
+
+1. Update state.yaml with finalization details
+2. Add state.yaml to commit
 3. Create finalization commit
 4. Get commit hash: `git rev-parse HEAD`
-5. Update workflow-state.yaml with commit hash
+5. Update state.yaml with commit hash
 6. Amend commit: `git commit --amend --no-edit`
 
 **Alternative** (simpler):
-1. Update workflow-state.yaml (omit commit hash)
+
+1. Update state.yaml (omit commit hash)
 2. Add to finalization commit
 3. Manually add hash later if needed
-</workflow_state_update>
-</commit_best_practices>
+   </workflow_state_update>
+   </commit_best_practices>
 
 <troubleshooting>
 <issue name="feature_not_in_roadmap">
 **Issue**: Can't find feature in "In Progress" section of roadmap
 
 **Possible causes**:
+
 - Feature in "Backlog" or "Planned" section instead
 - Feature never added to roadmap
 - Feature name differs from spec.md
 
 **Solutions**:
+
 1. Search entire roadmap file: `grep -i "feature-name" .spec-flow/memory/roadmap.md`
 2. Check other sections (Backlog, Planned, Parking Lot)
 3. If not found: Add to Shipped section directly (document in commit message)
 4. If found with different name: Use roadmap name, not spec.md name
-</issue>
+   </issue>
 
 <issue name="unclear_version">
 **Issue**: Don't know what version number to use
 
 **Solutions**:
+
 1. **Check CHANGELOG.md**: Look for `## [Unreleased]` section, determine version based on changes:
+
    - Breaking changes → Major version (v2.0.0)
    - New features → Minor version (v1.3.0)
    - Bug fixes only → Patch version (v1.2.1)
@@ -819,12 +892,13 @@ finalization:
 3. **Check git tags**: `git tag -l "v*" | tail -1` → Increment from last tag
 
 4. **Default**: If completely unclear, use deployment date as version: `v2025.10.21`
-</issue>
+   </issue>
 
 <issue name="missing_changelog_content">
 **Issue**: Don't know what to put in CHANGELOG for this feature
 
 **Solutions**:
+
 1. **Read ship-summary.md**: User-facing changes documented in deployment report
 2. **Read release-notes.md**: User-facing changes prepared for release
 3. **Read spec.md success criteria**: What user can now do (Added section)
@@ -832,16 +906,21 @@ finalization:
 5. **Focus on user value**: "Users can now X" not "Implemented Y service"
 
 **Template**:
+
 ```markdown
 ### Added
+
 - [What users can now do that they couldn't before]
 
 ### Changed
+
 - [What existing functionality was improved]
 
 ### Fixed
+
 - [What bugs were fixed]
 ```
+
 </issue>
 
 <issue name="branch_wont_delete">
@@ -850,6 +929,7 @@ finalization:
 **Cause**: Branch has commits not in main (direct-prod or squash merge)
 
 **Solutions**:
+
 1. **Verify feature deployed**: Check production URL or build artifacts
 2. **If deployed**: Force delete with `-D`: `git branch -D feature/NNN-slug`
 3. **Document in commit**: "Branch not merged (squash commit / direct-prod deployment)"

@@ -22,13 +22,13 @@
 
 Living documentation is a paradigm shift from traditional static docs:
 
-| **Traditional Documentation** | **Living Documentation** |
-|-------------------------------|--------------------------|
-| Static markdown files | Auto-updated with code changes |
-| Becomes stale after weeks | Always fresh (timestamps) |
-| Manual sync required | Atomic updates during workflow |
+| **Traditional Documentation**  | **Living Documentation**          |
+| ------------------------------ | --------------------------------- |
+| Static markdown files          | Auto-updated with code changes    |
+| Becomes stale after weeks      | Always fresh (timestamps)         |
+| Manual sync required           | Atomic updates during workflow    |
 | 12,000 tokens to read all docs | 500 tokens for context navigation |
-| No velocity tracking | Real-time progress metrics |
+| No velocity tracking           | Real-time progress metrics        |
 
 **Key Benefit**: Documentation never lags behind code because updates happen atomically during implementation, not as a separate task.
 
@@ -57,6 +57,7 @@ Root CLAUDE.md (451 lines - workflow overview)
 **Token Cost**: ~3,000 tokens
 
 **Content**:
+
 - Core commands (`/feature`, `/spec`, `/plan`, `/tasks`, `/implement`, `/ship`)
 - Workflow state machine
 - Project design workflow (`/init-project`)
@@ -79,7 +80,8 @@ Root CLAUDE.md (451 lines - workflow overview)
 **Token Cost**: ~2,000 tokens (vs 12,000 for reading all project docs)
 
 **Content**:
-- Active features (from `specs/*/workflow-state.yaml`)
+
+- Active features (from `specs/*/state.yaml`)
 - Tech stack summary (condensed from `docs/project/tech-stack.md`)
 - Common patterns (from all `plan.md` REUSE sections)
 - Quick links to detailed project docs
@@ -87,6 +89,7 @@ Root CLAUDE.md (451 lines - workflow overview)
 **When to Read**: Start of each feature to understand project context
 
 **Auto-Generated**:
+
 - On `/init-project` (initial creation)
 - After `/ship-staging` (feature in staging)
 - After `/ship-prod` or `/deploy-prod` (feature shipped)
@@ -107,16 +110,19 @@ Root CLAUDE.md (451 lines - workflow overview)
 ## Tech Stack Summary
 
 ### Frontend
-  - **Framework**: Next.js 14 (App Router, TypeScript, Tailwind CSS)
-  - **State**: Zustand (global state)
+
+- **Framework**: Next.js 14 (App Router, TypeScript, Tailwind CSS)
+- **State**: Zustand (global state)
 
 ### Backend
-  - **Framework**: FastAPI 0.104+ (Python 3.11+)
-  - **Database**: PostgreSQL 15+ (with Alembic migrations)
+
+- **Framework**: FastAPI 0.104+ (Python 3.11+)
+- **Database**: PostgreSQL 15+ (with Alembic migrations)
 
 ### Deployment
-  - **Platform**: Vercel (frontend) + Railway (backend)
-  - **Model**: staging-prod
+
+- **Platform**: Vercel (frontend) + Railway (backend)
+- **Model**: staging-prod
 
 ## Common Patterns
 
@@ -126,12 +132,14 @@ Root CLAUDE.md (451 lines - workflow overview)
 ## Quick Links
 
 **Project Documentation**:
+
 - [Overview](docs/project/overview.md) - Vision, users, scope
 - [Tech Stack](docs/project/tech-stack.md) - Technology choices (full details)
 - [Data Architecture](docs/project/data-architecture.md) - ERD, schemas
 - [API Strategy](docs/project/api-strategy.md) - REST/GraphQL patterns
 
 **Features**:
+
 - [001-auth-flow](specs/001-auth-flow/CLAUDE.md)
 - [002-dashboard](specs/002-dashboard/CLAUDE.md)
 ```
@@ -147,6 +155,7 @@ Root CLAUDE.md (451 lines - workflow overview)
 **Status**: ⏳ Phase 4 (planned)
 
 **Content** (planned):
+
 - Domain-specific reusable code
 - Common patterns for this domain
 - Domain conventions and best practices
@@ -163,7 +172,8 @@ Root CLAUDE.md (451 lines - workflow overview)
 **Token Cost**: ~500 tokens (vs 8,000 for reading all feature artifacts)
 
 **Content**:
-- Current phase and progress (from `workflow-state.yaml`)
+
+- Current phase and progress (from `state.yaml`)
 - Recent progress (last 3 completed tasks from `NOTES.md`)
 - Relevant specialists (phase-specific agent briefs)
 - Quick commands for this feature
@@ -172,13 +182,14 @@ Root CLAUDE.md (451 lines - workflow overview)
 **When to Read**: During feature implementation to get fresh context
 
 **Auto-Generated**:
+
 - On `/feature` creation (initial generation)
 - On `/feature continue` (refresh with latest progress)
 - After `/implement` task completion (via task-tracker)
 
 **Example**:
 
-```markdown
+````markdown
 # Feature: User Authentication Flow
 
 > **Purpose**: Quick context for AI when working on this feature
@@ -202,16 +213,19 @@ Root CLAUDE.md (451 lines - workflow overview)
 ## Relevant Specialists
 
 ### Backend Development
+
 - **Brief**: `.claude/agents/implementation/backend.md`
 - **Capabilities**: API design, authentication, database integration
 - **When to use**: Tasks involving backend logic, endpoints, or database
 
 ### Frontend Development
+
 - **Brief**: `.claude/agents/implementation/frontend.md`
 - **Capabilities**: React components, state management, API integration
 - **When to use**: Tasks involving UI components or client-side logic
 
 ### QA Testing
+
 - **Brief**: `.claude/agents/quality/qa-tester.md`
 - **Capabilities**: E2E tests, integration tests, test plans
 - **When to use**: After core implementation for validation
@@ -228,17 +242,21 @@ Root CLAUDE.md (451 lines - workflow overview)
 # Health check
 .spec-flow/scripts/bash/health-check-docs.sh --max-age 7
 ```
+````
 
 ## Navigation
 
 **Artifacts**:
+
 - [Spec](spec.md) - Requirements and acceptance criteria
 - [Plan](plan.md) - Design decisions and architecture
 - [Tasks](tasks.md) - Implementation checklist with velocity
 - [NOTES](NOTES.md) - Implementation journal with timestamps
 
 **State**:
-- [workflow-state.yaml](workflow-state.yaml) - Machine-readable state
+
+- [state.yaml](state.yaml) - Machine-readable state
+
 ```
 
 ---
@@ -250,18 +268,20 @@ Root CLAUDE.md (451 lines - workflow overview)
 **Typical context loading**:
 
 ```
-Read docs/project/overview.md           → 1,500 tokens
-Read docs/project/tech-stack.md         → 2,000 tokens
-Read docs/project/data-architecture.md  → 1,800 tokens
-Read docs/project/api-strategy.md       → 1,200 tokens
-Read docs/project/capacity-planning.md  → 1,000 tokens
-Read specs/001-auth/spec.md             → 1,500 tokens
-Read specs/001-auth/plan.md             → 2,500 tokens
-Read specs/001-auth/tasks.md            → 1,200 tokens
-Read specs/001-auth/NOTES.md            →   800 tokens
-Read specs/001-auth/workflow-state.yaml →   200 tokens
+
+Read docs/project/overview.md → 1,500 tokens
+Read docs/project/tech-stack.md → 2,000 tokens
+Read docs/project/data-architecture.md → 1,800 tokens
+Read docs/project/api-strategy.md → 1,200 tokens
+Read docs/project/capacity-planning.md → 1,000 tokens
+Read specs/001-auth/spec.md → 1,500 tokens
+Read specs/001-auth/plan.md → 2,500 tokens
+Read specs/001-auth/tasks.md → 1,200 tokens
+Read specs/001-auth/NOTES.md → 800 tokens
+Read specs/001-auth/state.yaml → 200 tokens
 
 Total: ~13,700 tokens
+
 ```
 
 ### After Living Documentation
@@ -269,16 +289,18 @@ Total: ~13,700 tokens
 **Efficient context loading**:
 
 ```
-Read CLAUDE.md (root)                   → 3,000 tokens (once per session)
-Read CLAUDE.md (project)                → 2,000 tokens (start of feature)
-Read specs/001-auth/CLAUDE.md           →   500 tokens (during work)
+
+Read CLAUDE.md (root) → 3,000 tokens (once per session)
+Read CLAUDE.md (project) → 2,000 tokens (start of feature)
+Read specs/001-auth/CLAUDE.md → 500 tokens (during work)
 
 Total: ~5,500 tokens (60% reduction)
 
 If deeper context needed:
 Read specs/001-auth/plan.md (first 100 lines) → +800 tokens
 Total: ~6,300 tokens (54% reduction)
-```
+
+````
 
 **Benefits**:
 - **60% fewer tokens** for typical context loading
@@ -318,7 +340,7 @@ Living documentation updates atomically with code changes during the workflow:
 - `/ship-prod` or `/deploy-prod` - After feature deployed to production
 
 **Content Updated**:
-- Active features list (from workflow-state.yaml files)
+- Active features list (from state.yaml files)
 - Common patterns (from all plan.md REUSE sections)
 - Tech stack summary (if docs/project/tech-stack.md changed)
 
@@ -351,19 +373,22 @@ Living sections within feature artifacts update during implementation:
 .spec-flow/scripts/bash/update-spec-status.sh --type deviation \
   --data '{"id":"FR-004","name":"Email verification","original":"Postmark","actual":"SendGrid","reason":"Cost","impact":"Minor"}' \
   specs/001-auth
-```
+````
 
 #### plan.md - Discovered Patterns
 
 **Triggers**:
+
 - Task agents during `/implement` when discovering reusable code not found in Phase 0 research
 
 **Content Updated**:
+
 - Reuse additions (new reusable code found during implementation)
 - Architecture adjustments (schema changes, new dependencies)
 - Integration discoveries (third-party APIs, internal services)
 
 **Script**:
+
 ```bash
 # Add discovered pattern
 .spec-flow/scripts/bash/update-plan-patterns.sh --type reuse \
@@ -374,9 +399,11 @@ Living sections within feature artifacts update during implementation:
 #### tasks.md - Progress Summary
 
 **Triggers**:
+
 - Task-tracker after each task completion
 
 **Content Updated**:
+
 - Overall progress (completed/total, percentage)
 - Velocity metrics (avg time/task, completion rate, ETA)
 - Recent completions (last 3 tasks)
@@ -384,6 +411,7 @@ Living sections within feature artifacts update during implementation:
 - Current sprint status
 
 **Script** (called automatically by task-tracker):
+
 ```powershell
 # Regenerate Progress Summary
 .spec-flow/scripts/powershell/update-tasks-summary.ps1 -FeatureDir "specs/001-auth"
@@ -436,6 +464,7 @@ Fresh files: 2
 ```
 
 **When to Run**:
+
 - Weekly as part of maintenance
 - Before starting work on a stale feature
 - In CI/CD as a quality gate (optional)
@@ -516,6 +545,7 @@ pwsh -File .spec-flow/scripts/powershell/generate-feature-claude-md.ps1 -Feature
 **Symptoms**: CLAUDE.md shows outdated progress, missing recent tasks
 
 **Causes**:
+
 1. Task-tracker not used (manual task completion)
 2. Script execution failed silently
 3. NOTES.md format incorrect
@@ -541,6 +571,7 @@ cat specs/001-auth/NOTES.md | grep "✅"
 **Symptoms**: Common patterns section empty or outdated
 
 **Causes**:
+
 1. plan.md Discovered Patterns section not populated
 2. Pattern format incorrect
 3. Script didn't scan all features
@@ -568,6 +599,7 @@ cat specs/*/plan.md | grep -A 2 "Discovered Patterns"
 **Symptoms**: health-check-docs.sh flags all CLAUDE.md files as stale
 
 **Causes**:
+
 1. "Last Updated" timestamp missing in files
 2. File modification time not updated by scripts
 3. Threshold too aggressive
@@ -595,6 +627,7 @@ done
 **Symptoms**: Reading CLAUDE.md uses more tokens than advertised
 
 **Causes**:
+
 1. CLAUDE.md file grew larger (more features)
 2. Reading multiple CLAUDE.md files
 3. Also reading linked detailed docs
@@ -639,4 +672,4 @@ cat docs/project/tech-stack.md  # +2,000 tokens (only when necessary)
 
 ---
 
-*This guide is part of the Spec-Flow Workflow Kit v4.0.0. Last updated: 2025-11-08*
+_This guide is part of the Spec-Flow Workflow Kit v4.0.0. Last updated: 2025-11-08_

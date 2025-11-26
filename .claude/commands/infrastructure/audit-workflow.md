@@ -11,6 +11,7 @@ updated: 2025-11-19
 **Command**: `/audit-workflow [epic-slug | auto]`
 
 **When to use**:
+
 - Auto-triggered after `/implement` completes
 - Auto-triggered during `/optimize` phase
 - Auto-triggered after `/finalize` for post-mortem
@@ -25,17 +26,20 @@ updated: 2025-11-19
 ### Step 1: Locate Epic Workspace
 
 **If epic-slug provided:**
+
 ```bash
 EPIC_DIR="epics/$ARGUMENTS"
 ```
 
 **If "auto" or no argument:**
+
 ```bash
 # Find most recent epic
 EPIC_DIR=$(ls -td epics/*/ | head -1)
 ```
 
 **Validate workspace exists:**
+
 ```bash
 test -d "$EPIC_DIR" && echo "found" || echo "not found"
 ```
@@ -45,10 +49,11 @@ If not found, error: "No epic workspace found. Run /epic first."
 ### Step 2: Read Epic Artifacts
 
 **Load all epic data for analysis:**
+
 ```bash
 # Core artifacts
 - epic-spec.md (requirements)
-- workflow-state.yaml (phase tracking)
+- state.yaml (phase tracking)
 - sprint-plan.md (dependencies, execution plan)
 - tasks.md (task breakdown)
 - research.md (research findings)
@@ -61,6 +66,7 @@ If not found, error: "No epic workspace found. Run /epic first."
 ```
 
 **Extract key metrics:**
+
 - Total phases completed
 - Time spent per phase
 - Tasks completed vs total
@@ -71,6 +77,7 @@ If not found, error: "No epic workspace found. Run /epic first."
 ### Step 3: Analyze Workflow Effectiveness
 
 **Use workflow-auditor agent:**
+
 ```bash
 # Invoke specialized auditor agent
 Task(
@@ -95,8 +102,9 @@ Task(
 ### Step 4: Bottleneck Detection
 
 **Analyze phase timing:**
+
 ```yaml
-# From workflow-state.yaml
+# From state.yaml
 phases:
   specification:
     duration: 2h
@@ -111,7 +119,7 @@ phases:
     duration: 0.5h
     value_score: medium
   implementation:
-    duration: 24h  # BOTTLENECK: 70% of total time
+    duration: 24h # BOTTLENECK: 70% of total time
     value_score: high
   optimization:
     duration: 2h
@@ -119,6 +127,7 @@ phases:
 ```
 
 **Calculate bottleneck score:**
+
 ```
 Bottleneck = (phase_duration / total_duration) * (1 / value_score)
 
@@ -127,6 +136,7 @@ If bottleneck_score > 0.3: Flag as moderate bottleneck
 ```
 
 **Example findings:**
+
 - "Implementation phase is 70% of total time but high value - acceptable"
 - "Clarification phase is 10% of time but low value - consider better upfront spec"
 - "Optimization phase caught 0 critical issues - gate may be redundant"
@@ -134,6 +144,7 @@ If bottleneck_score > 0.3: Flag as moderate bottleneck
 ### Step 5: Sprint Parallelization Analysis
 
 **Compare actual vs potential:**
+
 ```xml
 <sprint_analysis>
   <potential_speedup>
@@ -166,6 +177,7 @@ If bottleneck_score > 0.3: Flag as moderate bottleneck
 ### Step 6: Quality Gate Effectiveness
 
 **Analyze which gates caught issues:**
+
 ```xml
 <quality_gate_analysis>
   <gate name="tests" phase="implementation">
@@ -198,6 +210,7 @@ If bottleneck_score > 0.3: Flag as moderate bottleneck
 ### Step 7: Documentation Quality Assessment
 
 **Check XML artifact completeness:**
+
 ```javascript
 const artifacts = [
   'epic-spec.md',
@@ -217,6 +230,7 @@ for (const artifact of artifacts) {
 ```
 
 **Score documentation:**
+
 - Complete (all tags present): 10 pts
 - Missing optional tags: -1 pt each
 - Missing required tags: -5 pts each
@@ -226,31 +240,33 @@ for (const artifact of artifacts) {
 ### Step 8: Pattern Detection
 
 **Identify recurring patterns across epics:**
+
 ```javascript
 // If this is 2nd or 3rd epic, analyze patterns
 if (completed_epics >= 2) {
   detectPatterns({
     code_patterns: [
-      'Service class structure',
-      'Repository pattern usage',
-      'Error handling approach',
-      'Validation logic'
+      "Service class structure",
+      "Repository pattern usage",
+      "Error handling approach",
+      "Validation logic",
     ],
     workflow_patterns: [
-      'Always clarify authentication approaches',
-      'Always research database options',
-      'Backend sprints consistently underestimated'
+      "Always clarify authentication approaches",
+      "Always research database options",
+      "Backend sprints consistently underestimated",
     ],
     tooling_opportunities: [
-      'Generate service boilerplate (detected 3x)',
-      'Auto-create CRUD endpoints (detected 5x)',
-      'Standard error middleware (copied 4x)'
-    ]
+      "Generate service boilerplate (detected 3x)",
+      "Auto-create CRUD endpoints (detected 5x)",
+      "Standard error middleware (copied 4x)",
+    ],
   });
 }
 ```
 
 **Suggest custom skills:**
+
 ```xml
 <pattern_detection>
   <pattern id="service-boilerplate" frequency="3" confidence="high">
@@ -278,6 +294,7 @@ if (completed_epics >= 2) {
 ### Step 9: Generate Audit Report
 
 **Create audit-report.xml:**
+
 ```xml
 <audit_report>
   <metadata>
@@ -342,6 +359,7 @@ if (completed_epics >= 2) {
 ### Step 10: Present Findings
 
 **Display summary:**
+
 ```
 Epic Workflow Audit Complete
 ────────────────────────────────────────
@@ -374,6 +392,7 @@ Full report: epics/001-auth-epic/audit-report.xml
 ```
 
 **Offer next actions:**
+
 ```
 What would you like to do?
 
@@ -405,7 +424,7 @@ What would you like to do?
 
 ## Anti-Hallucination Rules
 
-1. **Always read workflow-state.yaml for actual phase durations**
+1. **Always read state.yaml for actual phase durations**
    Never estimate or guess timing - use recorded timestamps.
 
 2. **Calculate metrics from data, don't invent scores**
@@ -425,11 +444,13 @@ What would you like to do?
 ## Integration Points
 
 **Auto-triggered by:**
+
 - `/implement` (after all sprints complete)
 - `/optimize` (during quality gate phase)
 - `/finalize` (post-mortem analysis)
 
 **Outputs used by:**
+
 - `/heal-workflow` (applies approved improvements)
 - `/workflow-health` (aggregates metrics across epics)
 - Pattern analyzer (detects custom tooling opportunities)

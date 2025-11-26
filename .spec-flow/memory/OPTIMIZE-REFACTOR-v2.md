@@ -26,6 +26,7 @@ Refactored `/optimize` from a 1947-line "Swiss Army chainsaw" into a 705-line sc
 ## 10 Key Changes
 
 ### 1. Strict Bash Mode + Error Trap
+
 **Before**: Casual error handling
 **After**: `set -Eeuo pipefail` with cleanup trap
 
@@ -46,6 +47,7 @@ trap on_error ERR
 ---
 
 ### 2. Removed Fake Metrics
+
 **Before**: Invented performance numbers, guessed thresholds
 **After**: Read targets from `plan.md` or report "No target set"
 
@@ -64,10 +66,12 @@ fi
 ---
 
 ### 3. Consolidated Parallel Checks
+
 **Before**: Sprawling sections with repeated logic
 **After**: Five clean checks (Perf, Security, A11y, Code Review, Migrations)
 
 **Each check**:
+
 - Runs independently in parallel
 - Writes results to `optimization-*.md`
 - Outputs `Status: PASSED|FAILED|SKIPPED`
@@ -77,10 +81,12 @@ fi
 ---
 
 ### 4. Binary Pass/Fail (No Vibes)
+
 **Before**: Subjective thresholds, "feels good" metrics
 **After**: Crisp blockers with citations
 
 **Hard blockers**:
+
 - Security: Critical/High findings in static analysis or deps
 - A11y: Lighthouse < 95 (if measured)
 - Code Quality: Lints/types errors present
@@ -91,10 +97,12 @@ fi
 ---
 
 ### 5. Citations to Authoritative Standards
+
 **Before**: Vibes-based recommendations
 **After**: Direct links to standards
 
 **Standards referenced**:
+
 - **WCAG 2.2 AA**: https://www.w3.org/TR/WCAG22/
 - **OWASP ASVS L2**: https://owasp.org/www-project-application-security-verification-standard/
 - **Twelve-Factor App**: https://12factor.net/build-release-run
@@ -107,6 +115,7 @@ fi
 ---
 
 ### 6. Removed Tool Cargo-Culting
+
 **Before**: Assumed all tools exist, failed deep in execution
 **After**: Check if tools exist before use
 
@@ -123,10 +132,12 @@ fi
 ---
 
 ### 7. Cut Elaborate CLI Ceremony
+
 **Before**: Feature flags, analytics, UI route scanning in optimizer
 **After**: These belong in specs, not global optimizer
 
 **Removed**:
+
 - Feature flag complexity (belongs in `plan.md`)
 - Analytics tracking (not optimization concern)
 - Repetitive UI route scanning (centralized in one place)
@@ -136,6 +147,7 @@ fi
 ---
 
 ### 8. Deterministic Repo Root
+
 **Before**: Assumed current directory correct
 **After**: Always start at repo root
 
@@ -148,6 +160,7 @@ cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ---
 
 ### 9. Single Aggregation Point
+
 **Before**: Multiple scattered decision points
 **After**: One loop aggregates all check results
 
@@ -169,6 +182,7 @@ fi
 ---
 
 ### 10. Actionable Error Messages
+
 **Before**: Vague failures
 **After**: Concrete recovery steps
 
@@ -193,6 +207,7 @@ echo "Re-run: /optimize"
 ## What Was Cut (and Why)
 
 ### 1. Feature Flag Scanning
+
 **Before**: Optimizer scanned for feature flags
 **Why cut**: Belongs in `plan.md` feature spec, not optimizer
 **Impact**: 200+ lines removed
@@ -200,6 +215,7 @@ echo "Re-run: /optimize"
 ---
 
 ### 2. Analytics Tracking
+
 **Before**: Optimizer tracked analytics events
 **Why cut**: Not an optimization concern
 **Impact**: 150+ lines removed
@@ -207,6 +223,7 @@ echo "Re-run: /optimize"
 ---
 
 ### 3. Repetitive UI Route Scanning
+
 **Before**: Multiple sections scanned routes differently
 **Why cut**: Centralized in one place (Check 1: Performance)
 **Impact**: 100+ lines removed
@@ -214,6 +231,7 @@ echo "Re-run: /optimize"
 ---
 
 ### 4. Elaborate Progress Bars
+
 **Before**: Complex progress tracking with emoji art
 **Why cut**: Simple todo list sufficient
 **Impact**: 80+ lines removed
@@ -221,6 +239,7 @@ echo "Re-run: /optimize"
 ---
 
 ### 5. Fake Thresholds
+
 **Before**: Invented performance targets when missing
 **Why cut**: Hallucination bad, explicit targets good
 **Impact**: Forces product to state numbers
@@ -228,6 +247,7 @@ echo "Re-run: /optimize"
 ---
 
 ### 6. Sprawling "Guides"
+
 **Before**: Long text explaining each check
 **Why cut**: Replaced with citations to standards
 **Impact**: 300+ lines removed, more authoritative
@@ -235,6 +255,7 @@ echo "Re-run: /optimize"
 ---
 
 ### 7. Nested Subcommands
+
 **Before**: Complex CLI with `--mode lite|strict|full`
 **Why cut**: Variants section sufficient (use `--lite` or `--strict` if needed)
 **Impact**: 150+ lines removed
@@ -242,6 +263,7 @@ echo "Re-run: /optimize"
 ---
 
 ### 8. Tool Installation Instructions
+
 **Before**: Detailed install guides for every tool
 **Why cut**: Assume tools installed, or gracefully skip
 **Impact**: 100+ lines removed
@@ -251,6 +273,7 @@ echo "Re-run: /optimize"
 ## Quality Gate Criteria (Binary)
 
 ### Performance
+
 - **Backend**: p95/p99 vs `plan.md` targets
 - **Frontend**: Bundle size, Lighthouse perf ≥ 90
 - **If no targets**: Warn, don't fail
@@ -260,6 +283,7 @@ echo "Re-run: /optimize"
 ---
 
 ### Security
+
 - **No Critical/High** findings
 - **API security tests** pass
 - **Tools**: Bandit, Safety, pnpm audit
@@ -269,6 +293,7 @@ echo "Re-run: /optimize"
 ---
 
 ### Accessibility
+
 - **WCAG level** from `plan.md` (default: 2.2 AA)
 - **Lighthouse A11y** ≥ 95
 - **Contrast**: Text 4.5:1, UI 3:1
@@ -279,6 +304,7 @@ echo "Re-run: /optimize"
 ---
 
 ### Code Quality
+
 - **Linters**: ESLint, Ruff pass
 - **Types**: TypeScript, mypy --strict pass
 - **Tests**: Jest, pytest pass
@@ -289,6 +315,7 @@ echo "Re-run: /optimize"
 ---
 
 ### Migrations
+
 - **Reversible**: All have `downgrade()`
 - **Drift-free**: `alembic check` passes
 
@@ -297,6 +324,7 @@ echo "Re-run: /optimize"
 ---
 
 ### Deploy Hygiene
+
 - **Artifact Strategy**: Build-once, promote-many
 - **Advice, not blocker**: Warns if missing
 
@@ -310,6 +338,7 @@ echo "Re-run: /optimize"
 **After**: Parallel via Task tool
 
 **Five parallel tasks**:
+
 1. Performance (backend benchmarks + Lighthouse + bundle)
 2. Security (Bandit + Safety + pnpm audit + sec tests)
 3. Accessibility (jest-axe + Lighthouse A11y)
@@ -346,14 +375,14 @@ fi
 
 All quality gates cite authoritative sources:
 
-| Gate | Standard | Link |
-|------|----------|------|
-| **Performance** | Lighthouse Scoring | https://developer.chrome.com/docs/lighthouse/ |
-| **Security** | OWASP ASVS L2 | https://owasp.org/www-project-application-security-verification-standard/ |
-| **Accessibility** | WCAG 2.2 AA | https://www.w3.org/TR/WCAG22/ |
-| **Code Quality** | Ruff, pnpm | https://docs.astral.sh/ruff/, https://pnpm.io/ |
-| **Migrations** | Alembic | https://alembic.sqlalchemy.org/ |
-| **Deploy Hygiene** | Twelve-Factor | https://12factor.net/build-release-run |
+| Gate               | Standard           | Link                                                                      |
+| ------------------ | ------------------ | ------------------------------------------------------------------------- |
+| **Performance**    | Lighthouse Scoring | https://developer.chrome.com/docs/lighthouse/                             |
+| **Security**       | OWASP ASVS L2      | https://owasp.org/www-project-application-security-verification-standard/ |
+| **Accessibility**  | WCAG 2.2 AA        | https://www.w3.org/TR/WCAG22/                                             |
+| **Code Quality**   | Ruff, pnpm         | https://docs.astral.sh/ruff/, https://pnpm.io/                            |
+| **Migrations**     | Alembic            | https://alembic.sqlalchemy.org/                                           |
+| **Deploy Hygiene** | Twelve-Factor      | https://12factor.net/build-release-run                                    |
 
 **No vibes**: Quote JSON, cite docs, link to standards
 
@@ -362,6 +391,7 @@ All quality gates cite authoritative sources:
 ## Variants
 
 ### Lite Mode (CI-Fast)
+
 **Use case**: PR checks, cut CI time
 
 **Run only**: Security + Code review + Migrations
@@ -375,6 +405,7 @@ All quality gates cite authoritative sources:
 ---
 
 ### Strict Mode (Release Branch)
+
 **Use case**: Force explicit targets
 
 **Fail if**: `plan.md` missing performance targets
@@ -386,11 +417,13 @@ All quality gates cite authoritative sources:
 ---
 
 ### Frontend-Only Lane
+
 **Use case**: Skip backend if not touched
 
 **Detection**: `git diff --name-only origin/main...HEAD`
 
 **Skip**:
+
 - Bandit/Safety if no `api/` changes
 - Lighthouse if no `apps/app/` changes
 
@@ -401,19 +434,22 @@ All quality gates cite authoritative sources:
 ### From v1.x to v2.0
 
 **Breaking Changes**:
+
 - **Removed feature flag scanning**: Add to `plan.md` instead
 - **Removed analytics tracking**: Not optimizer concern
 - **Removed fake thresholds**: Must be explicit in `plan.md`
 
 **New Requirements**:
+
 - `plan.md` must have `[PERFORMANCE TARGETS]` section (optional, warns if missing)
 - `plan.md` should have `[SECURITY]` with WCAG level (defaults to 2.2 AA)
 - `plan.md` should have `[ARTIFACT STRATEGY]` (optional, warns if missing)
 
 **No changes required for**:
+
 - Tool usage (still Bandit, Safety, ESLint, etc.)
 - File outputs (`optimization-*.md` still created)
-- State management (still updates `workflow-state.yaml`)
+- State management (still updates `state.yaml`)
 
 ---
 
@@ -493,6 +529,7 @@ jobs:
 ## Testing Strategy
 
 ### Unit Tests
+
 - **Performance check**: Mock pytest, Lighthouse, pnpm build
 - **Security check**: Mock Bandit, Safety, pnpm audit
 - **A11y check**: Mock jest-axe, Lighthouse
@@ -500,29 +537,31 @@ jobs:
 - **Migrations**: Mock Alembic check
 
 ### Integration Tests
+
 - **Full run**: Real tools on test feature
 - **Failure scenarios**: Inject failures, verify blockers detected
 - **Parallel execution**: Verify all checks run concurrently
 
 ### End-to-End Tests
+
 - **Real feature**: Run on actual codebase
 - **Verify artifacts**: Check all `optimization-*.md` files created
-- **Verify state**: Check `workflow-state.yaml` updated
+- **Verify state**: Check `state.yaml` updated
 
 ---
 
 ## Error Scenarios Covered
 
-| Scenario | Detection | Behavior | Recovery |
-|----------|-----------|----------|----------|
-| **Security Critical** | `grep -Ei 'critical\|high'` | FAIL | Update deps, re-run |
-| **A11y < 95** | Lighthouse JSON score | FAIL | Fix issues, re-run |
-| **Lints/Types errors** | `grep -qi "error"` | FAIL | Fix code, re-run |
-| **Migration not reversible** | Missing `downgrade()` | FAIL | Add downgrade, re-run |
-| **No performance targets** | Missing in `plan.md` | WARN | Add targets (optional) |
-| **Tool missing** | `command -v` check | SKIP | Install tool or continue |
-| **Feature dir missing** | `[[ ! -d "$FEATURE_DIR" ]]` | FAIL | Run from correct dir |
-| **Implementation incomplete** | `grep` NOTES.md | FAIL | Run `/implement` first |
+| Scenario                      | Detection                   | Behavior | Recovery                 |
+| ----------------------------- | --------------------------- | -------- | ------------------------ |
+| **Security Critical**         | `grep -Ei 'critical\|high'` | FAIL     | Update deps, re-run      |
+| **A11y < 95**                 | Lighthouse JSON score       | FAIL     | Fix issues, re-run       |
+| **Lints/Types errors**        | `grep -qi "error"`          | FAIL     | Fix code, re-run         |
+| **Migration not reversible**  | Missing `downgrade()`       | FAIL     | Add downgrade, re-run    |
+| **No performance targets**    | Missing in `plan.md`        | WARN     | Add targets (optional)   |
+| **Tool missing**              | `command -v` check          | SKIP     | Install tool or continue |
+| **Feature dir missing**       | `[[ ! -d "$FEATURE_DIR" ]]` | FAIL     | Run from correct dir     |
+| **Implementation incomplete** | `grep` NOTES.md             | FAIL     | Run `/implement` first   |
 
 **All checks idempotent**: Safe to re-run after fixes
 
@@ -530,26 +569,27 @@ jobs:
 
 ## Comparison: v1.x vs v2.0
 
-| Feature | v1.x | v2.0 | Improvement |
-|---------|------|------|-------------|
-| **File size** | 1947 lines | 705 lines | 64% smaller |
-| **Bash strictness** | Casual | `set -Eeuo pipefail` | Fail-fast |
-| **Error trap** | None | `trap on_error ERR` | Cleanup guaranteed |
-| **Parallel checks** | Sequential | 5 parallel tasks | Faster |
-| **Metrics** | Fake/invented | Read from `plan.md` or warn | No hallucination |
-| **Thresholds** | Vibes-based | Cited standards | Evidence-backed |
-| **Tool assumptions** | Assumed installed | Check existence | Graceful degradation |
-| **Blockers** | Scattered | Single aggregator | Crystal clear |
-| **Feature flags** | Scanned in optimizer | Belongs in `plan.md` | Focused |
-| **Analytics** | Tracked | Not optimizer concern | Lean |
-| **UI routes** | Repeated scanning | One place | No duplication |
-| **Progress tracking** | Complex | Simple todos | Sufficient |
+| Feature               | v1.x                 | v2.0                        | Improvement          |
+| --------------------- | -------------------- | --------------------------- | -------------------- |
+| **File size**         | 1947 lines           | 705 lines                   | 64% smaller          |
+| **Bash strictness**   | Casual               | `set -Eeuo pipefail`        | Fail-fast            |
+| **Error trap**        | None                 | `trap on_error ERR`         | Cleanup guaranteed   |
+| **Parallel checks**   | Sequential           | 5 parallel tasks            | Faster               |
+| **Metrics**           | Fake/invented        | Read from `plan.md` or warn | No hallucination     |
+| **Thresholds**        | Vibes-based          | Cited standards             | Evidence-backed      |
+| **Tool assumptions**  | Assumed installed    | Check existence             | Graceful degradation |
+| **Blockers**          | Scattered            | Single aggregator           | Crystal clear        |
+| **Feature flags**     | Scanned in optimizer | Belongs in `plan.md`        | Focused              |
+| **Analytics**         | Tracked              | Not optimizer concern       | Lean                 |
+| **UI routes**         | Repeated scanning    | One place                   | No duplication       |
+| **Progress tracking** | Complex              | Simple todos                | Sufficient           |
 
 ---
 
 ## Documentation Quality
 
 ### Before (v1.x):
+
 ```markdown
 ## Performance
 
@@ -558,24 +598,29 @@ Lighthouse scores should be high. Bundle size should be small.
 ```
 
 **Problems**:
+
 - ❌ Vague ("good", "high", "small")
 - ❌ No thresholds
 - ❌ No citations
 
 ### After (v2.0):
+
 ```markdown
 ## Quality Gate Criteria (Binary, No Vibes)
 
 ### Performance
+
 - **Backend**: Compare actuals vs `plan.md` targets (p95, p99)
 - **Frontend**: Bundle size within limits, Lighthouse performance ≥ 90 (if measured)
 - **If no targets**: Warn, don't fail
 
 **References**:
+
 - [Lighthouse Scoring](https://developer.chrome.com/docs/lighthouse/performance/performance-scoring/)
 ```
 
 **Improvements**:
+
 - ✅ Specific thresholds (≥ 90)
 - ✅ Binary decision (warn vs fail)
 - ✅ Cited authority (Chrome docs)
@@ -585,18 +630,21 @@ Lighthouse scores should be high. Bundle size should be small.
 ## Benefits
 
 ### For Developers:
+
 - **Fast**: Parallel checks, no ceremony
 - **Clear**: Binary pass/fail, no vibes
 - **Actionable**: Recovery steps for each failure
 - **Honest**: No fake metrics, explicit targets required
 
 ### For AI Agents:
+
 - **Deterministic**: Same inputs → same outputs
 - **Structured**: All results in `optimization-*.md` files
 - **Parallel-friendly**: Independent checks
 - **Evidence-backed**: Can cite standards in explanations
 
 ### For QA:
+
 - **Testable**: Binary outcomes, no subjectivity
 - **Reproducible**: No human judgment
 - **Comprehensive**: 5 quality gates covered
@@ -620,8 +668,10 @@ Lighthouse scores should be high. Bundle size should be small.
 ## Next Steps
 
 1. **Add targets to existing plan.md files**:
+
    ```markdown
    ## [PERFORMANCE TARGETS]
+
    - API p95: < 200ms
    - Bundle (gzip): < 150kB
    - Lighthouse perf: ≥ 90
@@ -629,11 +679,13 @@ Lighthouse scores should be high. Bundle size should be small.
    ```
 
 2. **Run on real feature**:
+
    ```bash
    /optimize
    ```
 
 3. **Add to CI pipeline**:
+
    ```yaml
    # See CI Integration Example above
    ```

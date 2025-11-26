@@ -35,10 +35,11 @@ See references/examples.md for grep commands.
 Read plan.md components, verify each broken into tasks in tasks.md.
 
 Validate:
+
 - Each plan component has ≥1 task
 - Task acceptance criteria match spec success criteria
 - No orphaned tasks (tasks without plan component)
-</step>
+  </step>
 
 <step number="3">
 **Detect breaking changes**
@@ -57,6 +58,7 @@ Flag with impact level (Low/Medium/High) using reference rubric.
 **Validate dependencies**
 
 Cross-reference:
+
 - Imports and integrations mentioned in plan
 - External dependencies in tasks
 - Integration points in spec
@@ -73,20 +75,24 @@ Create specs/NNN-slug/analysis-report.md:
 # Analysis Report
 
 ## Consistency Check
+
 - Spec-Plan: [✓/✗] Description
 - Plan-Tasks: [✓/✗] Description
 
 ## Breaking Changes
+
 - [High/Medium/Low] Description and impact
 
 ## Dependency Validation
+
 - [✓/✗] Dependencies documented
 
 ## Recommendations
+
 - Action items to fix inconsistencies
 ```
 
-Update workflow-state.yaml: `analysis.status = completed`
+Update state.yaml: `analysis.status = completed`
 </step>
 </workflow>
 
@@ -98,7 +104,7 @@ After analysis, verify:
 - Breaking changes flagged with impact level (Low/Medium/High)
 - Analysis report generated with actionable findings
 - No orphaned artifacts (tasks without plan, plan without spec)
-</validation>
+  </validation>
 
 <anti_patterns>
 <pitfall name="missing_breaking_changes">
@@ -131,13 +137,14 @@ After analysis, verify:
 </anti_patterns>
 
 <success_criteria>
+
 - [ ] All spec requirements mapped to plan components (no gaps)
 - [ ] All plan components broken into tasks (no orphans)
 - [ ] Breaking changes documented with impact level (High/Medium/Low)
 - [ ] Dependencies validated and documented
 - [ ] analysis-report.md generated with actionable findings
-- [ ] workflow-state.yaml updated (analysis.status = completed)
-</success_criteria>
+- [ ] state.yaml updated (analysis.status = completed)
+      </success_criteria>
 
 <references>
 See references/ for:

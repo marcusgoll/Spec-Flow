@@ -14,6 +14,7 @@
 ### How to Review Mockups
 
 **For multi-screen features** (≥3 screens):
+
 1. Open navigation hub: `open specs/{NNN-slug}/mockups/index.html`
 2. Use keyboard shortcuts:
    - **1-9 keys**: Navigate to screen by number
@@ -22,6 +23,7 @@
    - **Esc**: Close modals/dialogs
 
 **For single-screen features**:
+
 1. Open mockup: `open specs/{NNN-slug}/mockups/{screen-name}.html`
 2. Press **S key** to cycle through states
 
@@ -42,6 +44,7 @@
 - [ ] Screen count matches spec.md user stories
 
 **Notes**:
+
 ```
 [Add notes about hub page issues or improvements needed]
 ```
@@ -56,6 +59,7 @@
 - [ ] Forward navigation matches flow diagram
 
 **Notes**:
+
 ```
 [Add notes about navigation issues]
 ```
@@ -121,21 +125,25 @@
 ### Current Manual Checks
 
 **Color Contrast** (use browser DevTools or online checker):
+
 - [ ] All text has ≥4.5:1 contrast ratio (normal text)
 - [ ] Large text (≥18pt or ≥14pt bold) has ≥3:1 contrast ratio
 - [ ] Focus indicators have ≥4.5:1 contrast ratio
 
 **Touch Target Sizes** (measure with browser DevTools):
+
 - [ ] All interactive elements ≥24x24px (preferred: 44x44px)
 - [ ] Buttons, links, form inputs meet minimum size
 - [ ] Icon-only buttons are large enough
 
 **Design Token Usage** (inspect HTML source):
+
 - [ ] No hardcoded colors (search for `#`, `rgb(`, `hsl(`)
 - [ ] No hardcoded spacing (search for `px` in style attributes)
 - [ ] All values use CSS variables from tokens.css
 
 **Component Reuse** (check against ui-inventory.md):
+
 - [ ] Existing components used where applicable
 - [ ] New components justified in plan.md Design System Constraints
 - [ ] No duplicate implementations of existing components
@@ -147,6 +155,7 @@
 - [ ] ℹ️ [N] info messages (non-blocking)
 
 **Critical Issues** (must fix before approval):
+
 ```
 [List any critical issues found during manual review]
 Example:
@@ -155,6 +164,7 @@ Example:
 ```
 
 **Warnings** (review and justify):
+
 ```
 [List warnings found during manual review]
 Example:
@@ -178,15 +188,19 @@ Example:
 <!-- If requesting changes, provide specific, actionable feedback: -->
 
 **Visual Issues**:
+
 <!-- e.g., "Increase spacing between cards from var(--space-3) to var(--space-6)" -->
 
 **Interaction Issues**:
+
 <!-- e.g., "Add loading spinner when mock data is 'fetching'" -->
 
 **Accessibility Issues**:
+
 <!-- e.g., "Primary button has 3.8:1 contrast - needs 4.5:1 minimum" -->
 
 **Token Compliance Issues**:
+
 <!-- e.g., "Hardcoded #3B82F6 on line 45 - use var(--brand-primary) instead" -->
 
 ---
@@ -196,9 +210,11 @@ Example:
 <!-- If user requests changes that require new tokens (e.g., "make primary color more vibrant"), agent will propose tokens.css updates here: -->
 
 **Proposed Token Changes**:
+
 <!-- Agent will populate this section with proposed updates to design/systems/tokens.css -->
 
 **Action Required**:
+
 - [ ] Approve token update (agent will update tokens.css and regenerate mockup)
 - [ ] Reject and keep current token
 
@@ -216,23 +232,24 @@ Example:
 
 ### Workflow State Update
 
-**After approval, update workflow-state.yaml**:
+**After approval, update state.yaml**:
 
 ```yaml
-# In specs/{NNN-slug}/workflow-state.yaml
+# In specs/{NNN-slug}/state.yaml
 manual_gates:
   mockup_approval:
-    status: approved  # or needs_changes
+    status: approved # or needs_changes
     approved_at: "2025-11-17T14:30:00Z"
     approved_by: "user@example.com"
-    screens_reviewed: {N}
+    screens_reviewed: { N }
     critical_issues: 0
-    warnings: {N}
+    warnings: { N }
     component_reuse_rate: "{X}%"
     token_compliance: "{X}%"
 ```
 
 **Then continue feature workflow**:
+
 ```bash
 /feature continue
 # or
@@ -245,7 +262,7 @@ manual_gates:
 
 1. Agent will convert approved HTML mockup to Next.js format
 2. Agent will map CSS variables to Tailwind utilities (or keep as CSS modules)
-3. Agent will wire mock JSON data to API endpoints (from contracts/*.yaml)
+3. Agent will wire mock JSON data to API endpoints (from contracts/\*.yaml)
 4. Agent will extract shared components to components/ui/ or components/shared/
 5. Implementation will preserve all accessibility features from mockup
 
@@ -258,6 +275,7 @@ manual_gates:
 ### Keyboard Shortcuts
 
 **Multi-Screen Navigation** (provided by navigation.js):
+
 - **1-9 keys**: Navigate to screen by number
 - **H key**: Return to hub (index.html)
 - **Esc**: Close modals/dialogs
@@ -265,6 +283,7 @@ manual_gates:
 - **Enter/Space**: Activate focused element
 
 **State Switching** (provided by state-switcher.js):
+
 - **S key**: Cycle state (Success → Loading → Error → Empty)
 - State persists in sessionStorage during review
 
@@ -273,6 +292,7 @@ manual_gates:
 See `design/systems/tokens.css` for complete token list.
 
 **Colors**:
+
 - Brand: `--color-brand-primary`, `--color-brand-secondary`
 - Semantic: `--color-semantic-error`, `--color-semantic-success`, `--color-semantic-warning`, `--color-semantic-info`
 - Text: `--color-text-primary`, `--color-text-secondary`, `--color-text-tertiary`
@@ -280,20 +300,25 @@ See `design/systems/tokens.css` for complete token list.
 - Border: `--color-border-default`, `--color-border-subtle`
 
 **Spacing** (8pt grid):
+
 - `--space-1` = 4px, `--space-2` = 8px, `--space-3` = 12px, `--space-4` = 16px
 - `--space-6` = 24px, `--space-8` = 32px, `--space-12` = 48px, `--space-16` = 64px
 
 **Typography**:
+
 - `--text-xs` = 12px, `--text-sm` = 14px, `--text-base` = 16px, `--text-lg` = 18px
 - `--text-xl` = 20px, `--text-2xl` = 24px, `--text-3xl` = 30px, `--text-4xl` = 36px
 
 **Shadows**:
+
 - `--shadow-sm`, `--shadow-md`, `--shadow-lg`
 
 **Border Radius**:
+
 - `--radius-sm` = 4px, `--radius-md` = 8px, `--radius-lg` = 12px, `--radius-full` = 9999px
 
 **Motion Timing**:
+
 - `--duration-fast` = 150ms, `--duration-normal` = 200ms, `--duration-slow` = 300ms
 
 ### WCAG 2.1 AA Checklist

@@ -20,11 +20,11 @@ This document provides comprehensive reference material for the `/deploy-status`
 
 ## Status Display Logic
 
-The deploy-status command reads `workflow-state.yaml` and displays a comprehensive view of the deployment workflow.
+The deploy-status command reads `state.yaml` and displays a comprehensive view of the deployment workflow.
 
 ### Data Structures
 
-The status display reads these sections from workflow-state.yaml:
+The status display reads these sections from state.yaml:
 
 ```yaml
 feature:
@@ -33,11 +33,11 @@ feature:
   created: "2025-10-16T12:00:00Z"
   last_updated: "2025-10-16T14:30:00Z"
 
-deployment_model: "staging-prod"  # or "direct-prod", "local-only"
+deployment_model: "staging-prod" # or "direct-prod", "local-only"
 
 workflow:
   phase: "ship:optimize"
-  status: "in_progress"  # or "completed", "failed", "pending"
+  status: "in_progress" # or "completed", "failed", "pending"
   completed_phases:
     - spec-flow
     - clarify
@@ -45,10 +45,10 @@ workflow:
     - tasks
     - analyze
     - implement
-  failed_phases: []  # List of failed phases
+  failed_phases: [] # List of failed phases
   manual_gates:
     preview:
-      status: "pending"  # or "approved", "rejected"
+      status: "pending" # or "approved", "rejected"
       timestamp: "2025-10-16T15:00:00Z"
     validate-staging:
       status: "pending"
@@ -80,32 +80,40 @@ deployment:
 The status display consists of 8 main sections:
 
 1. **Feature Information**
+
    - Title
    - Slug
    - Created timestamp
    - Last updated timestamp
 
 2. **Deployment Model**
+
    - Model type (staging-prod, direct-prod, local-only)
    - Deployment path description
 
 3. **Current Status**
+
    - Current phase
    - Workflow status with emoji indicator
 
 4. **Completed Phases**
+
    - List of all completed phases with checkmarks
 
 5. **Failed Phases** (if any)
+
    - List of failed phases with X marks
 
 6. **Manual Gates** (if defined)
+
    - Gate name and status (pending, approved, rejected)
 
 7. **Quality Gates** (if defined)
+
    - Gate name and pass/fail status
 
 8. **Deployment Information**
+
    - Staging deployment details (URL, timestamp, commit, IDs)
    - Production deployment details (URL, timestamp, commit, version, IDs)
 
@@ -129,6 +137,7 @@ LAST_UPDATED=$(yq eval '.feature.last_updated' "$STATE_FILE")
 ```
 
 Display:
+
 ```
 📦 Feature Information
 ─────────────────────────────────────────────
@@ -159,6 +168,7 @@ esac
 ```
 
 Display:
+
 ```
 🎯 Deployment Model
 ─────────────────────────────────────────────
@@ -191,6 +201,7 @@ esac
 ```
 
 Display:
+
 ```
 📍 Current Status
 ─────────────────────────────────────────────
@@ -215,6 +226,7 @@ fi
 ```
 
 Display:
+
 ```
 ✅ Completed Phases
 ─────────────────────────────────────────────
@@ -267,6 +279,7 @@ fi
 ```
 
 Display:
+
 ```
 🚪 Manual Gates
 ─────────────────────────────────────────────
@@ -293,6 +306,7 @@ fi
 ```
 
 Display:
+
 ```
 🔒 Quality Gates
 ─────────────────────────────────────────────
@@ -338,6 +352,7 @@ fi
 ```
 
 Display:
+
 ```
 🌐 Deployment Information
 ─────────────────────────────────────────────
@@ -423,7 +438,7 @@ Wait for current phase to complete, then:
 /preview          - Start local preview for testing
 
 📁 Feature directory: specs/001-user-auth/
-📄 State file: specs/001-user-auth/workflow-state.yaml
+📄 State file: specs/001-user-auth/state.yaml
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -654,6 +669,7 @@ fi
 ```
 
 This allows users to check status using either:
+
 - `/deploy-status`
 - `/deploy status`
 - `/ship status`
@@ -752,7 +768,7 @@ Create a new feature with: /spec-flow "Feature Name"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-### No workflow-state.yaml
+### No state.yaml
 
 If state file doesn't exist in feature directory:
 
@@ -771,7 +787,7 @@ Create a new feature with: /spec-flow "Feature Name"
 
 ### Auto-migration from JSON
 
-If workflow-state.json exists but workflow-state.yaml doesn't:
+If workflow-state.json exists but state.yaml doesn't:
 
 ```bash
 # Auto-migrate from JSON to YAML
@@ -786,13 +802,15 @@ fi
 ## References
 
 ### Related Commands
+
 - `/ship` - Deployment orchestration
 - `/ship continue` - Resume workflow
 - `/validate-staging` - Staging environment validation
 - `/preview` - Local preview for testing
 
 ### Related Files
-- `workflow-state.yaml` - Deployment workflow state
+
+- `state.yaml` - Deployment workflow state
 - `.spec-flow/scripts/bash/workflow-state.sh` - State management functions
 
 ---
@@ -800,6 +818,7 @@ fi
 ## Notes
 
 **Characteristics:**
+
 - **Real-time**: Status reflects current workflow state
 - **Comprehensive**: Shows all phases, gates, and deployments
 - **Actionable**: Provides clear next steps
@@ -808,6 +827,7 @@ fi
 - **Safe**: No state modifications (read-only)
 
 **Display Features:**
+
 - Unicode box characters for visual hierarchy
 - Emoji indicators for status (🔄, ✅, ❌, ⏸️)
 - Section separators for readability
@@ -816,16 +836,19 @@ fi
 - Feature directory and state file paths
 
 **Deployment Models:**
+
 - **staging-prod**: Staging → Validation → Production
 - **direct-prod**: Direct to Production
 - **local-only**: Local Build Only
 
 **Status Values:**
+
 - **in_progress**: Phase currently executing
 - **completed**: Phase finished successfully
 - **failed**: Phase encountered errors
 - **pending**: Waiting for manual approval or next trigger
 
 **Gate Types:**
+
 - **Manual Gates**: Require user approval (preview, validate-staging)
 - **Quality Gates**: Automated checks (pre_flight, code_review, rollback_capability)

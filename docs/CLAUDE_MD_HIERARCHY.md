@@ -73,47 +73,60 @@ Level 3: Feature CLAUDE.md (user repos)
 # CLAUDE.md
 
 ## Overview
+
 - Workflow description
 - Core commands list
 
 ## Core Commands
+
 - Command reference with usage
 
 ## Workflow State Machine
+
 - Phase progression diagram
 - State transitions
 
 ## Project Design Workflow
+
 - /init-project details
 - Generated documentation list
 
 ## Recent Changes
+
 - Version summary
 - Link to CHANGELOG.md
 
 ## Architecture
+
 - Directory structure
 - Context management
 
 ## Key Artifacts
+
 - Command outputs table
 
 ## Deployment Models
+
 - staging-prod, direct-prod, local-only
 
 ## Quality Gates
+
 - Pre-flight, code review, rollback
 
 ## Coding Standards
+
 - Markdown, PowerShell, Shell conventions
 
 ## Agent Briefs
+
 - Specialist categories
 
 ## Philosophy
+
 - Core principles
 
 ## References
+
 - Related documentation
 ```
 
@@ -137,43 +150,58 @@ Level 3: Feature CLAUDE.md (user repos)
 > **Last Updated**: {ISO 8601 timestamp}
 
 ## Active Features
+
 - **{slug}**: Phase {phase} ({status})
-[From: specs/*/workflow-state.yaml]
+  [From: specs/*/state.yaml]
 
 ## Tech Stack Summary
+
 ### Frontend
-  - {key technologies from docs/project/tech-stack.md}
+
+- {key technologies from docs/project/tech-stack.md}
+
 ### Backend
-  - {key technologies from docs/project/tech-stack.md}
+
+- {key technologies from docs/project/tech-stack.md}
+
 ### Database
-  - {key technologies from docs/project/tech-stack.md}
+
+- {key technologies from docs/project/tech-stack.md}
+
 ### Deployment
-  - {key technologies from docs/project/tech-stack.md}
+
+- {key technologies from docs/project/tech-stack.md}
 
 ## Common Patterns
+
 - **{pattern-name}** - `{file-path}`
-[From: specs/*/plan.md REUSE sections]
+  [From: specs/*/plan.md REUSE sections]
 
 ## Quick Links
+
 **Project Documentation**:
+
 - [Overview](docs/project/overview.md)
 - [Tech Stack](docs/project/tech-stack.md)
 - [Data Architecture](docs/project/data-architecture.md)
 - {... all project docs}
 
 **Features**:
+
 - [{slug}](specs/{slug}/CLAUDE.md)
-[For each feature with CLAUDE.md]
+  [For each feature with CLAUDE.md]
 ```
 
 **Generation**:
+
 - Script: `.spec-flow/scripts/bash/generate-project-claude-md.sh`
 - PowerShell: `.spec-flow/scripts/powershell/generate-project-claude-md.ps1`
 
 **Target Length**: 80-120 lines
 
 **Data Sources**:
-1. `specs/*/workflow-state.yaml` → Active features
+
+1. `specs/*/state.yaml` → Active features
 2. `docs/project/tech-stack.md` → Tech stack (condensed)
 3. `specs/*/plan.md` → Common patterns (REUSE sections)
 
@@ -185,7 +213,7 @@ Level 3: Feature CLAUDE.md (user repos)
 
 **Content Structure**:
 
-```markdown
+````markdown
 # Feature: {Feature Name}
 
 > **Purpose**: Quick context for AI
@@ -193,25 +221,30 @@ Level 3: Feature CLAUDE.md (user repos)
 > **Last Updated**: {ISO 8601 timestamp}
 
 ## Current Phase
+
 **Phase**: {phase}
 **Status**: {status}
 **Progress**: {completed}/{total} tasks ({percentage}%)
-[From: workflow-state.yaml]
+[From: state.yaml]
 
 ## Recent Progress
+
 - ✅ {taskId}: {description} - {duration}min ({timestamp})
-[From: NOTES.md, last 3 completions]
+  [From: NOTES.md, last 3 completions]
 
 **Velocity**: {avg}min/task | {rate}tasks/day | ETA: {eta}
 
 ## Relevant Specialists
+
 ### {Specialist Category}
+
 - **Brief**: `.claude/agents/{category}/{agent}.md`
 - **Capabilities**: {brief description}
 - **When to use**: {usage guidance}
-[Phase-specific agents based on current phase]
+  [Phase-specific agents based on current phase]
 
 ## Quick Commands
+
 ```bash
 # Continue implementation
 /feature continue
@@ -222,16 +255,21 @@ Level 3: Feature CLAUDE.md (user repos)
 # Health check
 .spec-flow/scripts/bash/health-check-docs.sh
 ```
+````
 
 ## Navigation
+
 **Artifacts**:
+
 - [Spec](spec.md) - Requirements
 - [Plan](plan.md) - Design
 - [Tasks](tasks.md) - Checklist
 - [NOTES](NOTES.md) - Journal
 
 **State**:
-- [workflow-state.yaml](workflow-state.yaml)
+
+- [state.yaml](state.yaml)
+
 ```
 
 **Generation**:
@@ -241,7 +279,7 @@ Level 3: Feature CLAUDE.md (user repos)
 **Target Length**: 70-100 lines
 
 **Data Sources**:
-1. `workflow-state.yaml` → Current phase, status, progress
+1. `state.yaml` → Current phase, status, progress
 2. `NOTES.md` → Recent completions with timestamps
 3. `tasks.md` → Total tasks, completion count
 4. Phase mapping → Relevant specialist agents
@@ -259,18 +297,22 @@ Level 3: Feature CLAUDE.md (user repos)
 **Algorithm**:
 
 ```
+
 1. Find Active Features:
-   - Scan specs/*/workflow-state.yaml
+
+   - Scan specs/\*/state.yaml
    - Extract phase and status
    - Filter: status != "completed" && status != "failed"
 
 2. Extract Tech Stack:
+
    - Read docs/project/tech-stack.md
    - Extract sections: Frontend, Backend, Database, Deployment
    - Take first 5 bullet points per section
 
 3. Extract Common Patterns:
-   - Scan specs/*/plan.md files
+
+   - Scan specs/\*/plan.md files
    - Find "### Reuse Additions" sections
    - Extract pattern names and paths
    - Deduplicate by name
@@ -279,7 +321,8 @@ Level 3: Feature CLAUDE.md (user repos)
    - Combine all sections
    - Add timestamp
    - Write to CLAUDE.md (project root)
-```
+
+````
 
 **Usage**:
 
@@ -292,9 +335,10 @@ Level 3: Feature CLAUDE.md (user repos)
 
 # JSON output for automation
 .spec-flow/scripts/bash/generate-project-claude-md.sh --json
-```
+````
 
 **Exit Codes**:
+
 - 0: Success
 - 1: Missing prerequisites (yq not found)
 
@@ -310,7 +354,7 @@ Level 3: Feature CLAUDE.md (user repos)
 
 ```
 1. Extract Current State:
-   - Read workflow-state.yaml
+   - Read state.yaml
    - Get: phase, status, completed_phases
 
 2. Calculate Progress:
@@ -354,6 +398,7 @@ Level 3: Feature CLAUDE.md (user repos)
 ```
 
 **Exit Codes**:
+
 - 0: Success
 - 1: Missing prerequisites (yq not found)
 - 2: Feature directory not found
@@ -431,6 +476,7 @@ Level 3: Feature CLAUDE.md (user repos)
 ```
 
 **Exit Codes**:
+
 - 0: All files fresh
 - 1: Stale files detected
 
@@ -440,15 +486,15 @@ Level 3: Feature CLAUDE.md (user repos)
 
 ### Automatic Triggers
 
-| Trigger | Level | Script | When |
-|---------|-------|--------|------|
-| `/feature "desc"` | Feature | generate-feature-claude-md | Feature creation |
-| `/feature continue` | Feature | generate-feature-claude-md | Resume feature |
-| Task completion | Feature | generate-feature-claude-md | After task-tracker |
-| `/init-project` | Project | generate-project-claude-md | Project initialization |
-| `/ship-staging` | Project | generate-project-claude-md | Staging deployment |
-| `/ship-prod` | Project | generate-project-claude-md | Production deployment |
-| `/deploy-prod` | Project | generate-project-claude-md | Direct prod deployment |
+| Trigger             | Level   | Script                     | When                   |
+| ------------------- | ------- | -------------------------- | ---------------------- |
+| `/feature "desc"`   | Feature | generate-feature-claude-md | Feature creation       |
+| `/feature continue` | Feature | generate-feature-claude-md | Resume feature         |
+| Task completion     | Feature | generate-feature-claude-md | After task-tracker     |
+| `/init-project`     | Project | generate-project-claude-md | Project initialization |
+| `/ship-staging`     | Project | generate-project-claude-md | Staging deployment     |
+| `/ship-prod`        | Project | generate-project-claude-md | Production deployment  |
+| `/deploy-prod`      | Project | generate-project-claude-md | Direct prod deployment |
 
 ### Manual Triggers
 
@@ -487,7 +533,7 @@ Step 2: Understand feature
   Read specs/001-auth/NOTES.md            →   800 tokens
 
 Step 3: Check state
-  Read specs/001-auth/workflow-state.yaml →   200 tokens
+  Read specs/001-auth/state.yaml →   200 tokens
 
 Total: 12,700 tokens
 ```
@@ -511,12 +557,12 @@ Total: 3,300 tokens (74% reduction)
 
 ### Token Savings by Scenario
 
-| Scenario | Traditional | Hierarchical | Savings |
-|----------|-------------|--------------|---------|
-| Start new feature | 12,700 | 2,500 | 80% |
-| Resume existing feature | 8,000 | 500 | 94% |
-| Switch between features | 8,000 × N | 500 × N | 94% |
-| Review project context | 6,500 | 2,000 | 69% |
+| Scenario                | Traditional | Hierarchical | Savings |
+| ----------------------- | ----------- | ------------ | ------- |
+| Start new feature       | 12,700      | 2,500        | 80%     |
+| Resume existing feature | 8,000       | 500          | 94%     |
+| Switch between features | 8,000 × N   | 500 × N      | 94%     |
+| Review project context  | 6,500       | 2,000        | 69%     |
 
 ---
 
@@ -526,7 +572,7 @@ Total: 3,300 tokens (74% reduction)
 
 ```
 Input Sources:
-  ├─ workflow-state.yaml
+  ├─ state.yaml
   │   └─ Extract: phase, status, completed_phases
   │
   ├─ tasks.md
@@ -558,7 +604,7 @@ Output:
 
 ```
 Input Sources:
-  ├─ specs/*/workflow-state.yaml (all features)
+  ├─ specs/*/state.yaml (all features)
   │   └─ Extract: feature slug, phase, status
   │
   ├─ docs/project/tech-stack.md
@@ -664,9 +710,9 @@ if (Test-Path $generateScript) {
 
 ## Version History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 4.0.0 | 2025-11-08 | Initial release of hierarchical CLAUDE.md system |
+| Version | Date       | Changes                                          |
+| ------- | ---------- | ------------------------------------------------ |
+| 4.0.0   | 2025-11-08 | Initial release of hierarchical CLAUDE.md system |
 
 ---
 
@@ -678,4 +724,4 @@ if (Test-Path $generateScript) {
 
 ---
 
-*This reference is part of the Spec-Flow Workflow Kit v4.0.0. Last updated: 2025-11-08*
+_This reference is part of the Spec-Flow Workflow Kit v4.0.0. Last updated: 2025-11-08_

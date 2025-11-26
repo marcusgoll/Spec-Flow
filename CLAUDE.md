@@ -11,11 +11,13 @@ Spec-Flow Workflow Kit: Slash commands transform product ideas into production r
 ```
 
 Ship workflows (model auto-detected):
+
 - **staging-prod**: /optimize → /ship-staging → /validate-staging → /ship-prod → /finalize
 - **direct-prod**: /optimize → /deploy-prod → /finalize
 - **local-only**: /optimize → /build-local → /finalize
 
 Deployment detection:
+
 - staging-prod: git remote + staging branch + `.github/workflows/deploy-staging.yml`
 - direct-prod: git remote + no staging
 - local-only: no git remote
@@ -27,6 +29,7 @@ Deployment detection:
 ```
 
 Differences from /feature:
+
 - Auto-triggers /init-project if missing
 - /clarify auto-invoked if ambiguity >30
 - /plan uses meta-prompting (research → plan via sub-agents)
@@ -42,10 +45,11 @@ Differences from /feature:
 ```
 
 Mockup approval gate:
+
 - Trigger: After /tasks --ui-first
-- Location: specs/NNN-slug/mockups/*.html
+- Location: specs/NNN-slug/mockups/\*.html
 - Checklist: mockup-approval-checklist.md
-- Blocks /implement until: workflow-state.yaml manual_gates.mockup_approval.status = approved
+- Blocks /implement until: state.yaml manual_gates.mockup_approval.status = approved
 - Continue: /feature continue
 
 ### Epic Frontend Blueprint Workflow (v9.4+)
@@ -58,10 +62,12 @@ Mockup approval gate:
 ```
 
 **Blueprint generation phases**:
+
 1. **/plan phase**: Generates `epic-overview.html` (navigation hub showing all sprints/screens)
 2. **/tasks phase**: Generates individual `sprint-N/screen-*.html` files from sprint-plan.md
 
 **Blueprint characteristics**:
+
 - Pure HTML + Tailwind CSS classes
 - Design token integration (tokens.css)
 - State switching (success, loading, error, empty)
@@ -69,28 +75,33 @@ Mockup approval gate:
 - WCAG 2.1 AA accessibility baseline
 
 **Approval gate** (during /implement-epic):
+
 - **Auto-mode** (`--auto`): Notify and continue automatically
 - **Interactive mode**: Optional pause for iteration
 - Default: "Continue" (no pause unless requested)
 - User can edit HTML files, refresh browser to preview
 
 **TSX conversion workflow**:
+
 1. Blueprint patterns extracted to `blueprint-patterns.md`
 2. Edge case checklist generated (`conversion-edge-cases.md`)
 3. Developers mirror Tailwind classes in TSX components
 4. Optional validation via `validate-tsx-conversion.sh` (skippable with `--skip-validation`)
 
 **Cleanup strategy** (before production):
+
 - Mockups deleted during /optimize phase
 - `**/mockups/` gitignored (never committed)
 - `blueprint-patterns.md` preserved for reference
 - Only TSX components deploy to production
 
 **Blueprint location**: `epics/NNN-slug/mockups/`
+
 - `epic-overview.html` - Navigation hub
 - `sprint-N/screen-NN-*.html` - Individual screens
 
 **Skip options**:
+
 - `--skip-validation`: Skip pattern extraction and validation
 - `--no-guidance`: Skip edge case checklist
 - `--auto`: Skip all approval gates
@@ -102,12 +113,14 @@ Discovered implementation gaps during preview/validation can be addressed withou
 **When to use**: During staging validation, you discover a missing endpoint or feature that was in the original scope but not implemented.
 
 **Workflow**:
+
 ```
 /ship-staging → discover gap → /validate-staging --capture-gaps → scope validation →
 supplemental tasks generated → /epic continue (iteration 2) → /optimize → /ship
 ```
 
 **Process**:
+
 1. **Gap Discovery**: During `/validate-staging`, identify missing implementations
 2. **Capture Gaps**: Run `/validate-staging --capture-gaps` to launch interactive wizard
 3. **Scope Validation**: System auto-validates against epic-spec.md/spec.md
@@ -120,6 +133,7 @@ supplemental tasks generated → /epic continue (iteration 2) → /optimize → 
 7. **Converge**: Max 3 iterations to prevent infinite loops
 
 **Example**:
+
 ```bash
 # Iteration 1 complete, deployed to staging
 /ship-staging
@@ -141,27 +155,31 @@ supplemental tasks generated → /epic continue (iteration 2) → /optimize → 
 ```
 
 **Artifacts**:
+
 - `gaps.md` — Documented gaps with scope validation results
 - `scope-validation-report.md` — Evidence for IN/OUT of scope decisions
 - `tasks.md` — Appended supplemental tasks (marked with iteration number)
-- `workflow-state.yaml` — Iteration tracking and gap statistics
+- `state.yaml` — Iteration tracking and gap statistics
 
 **Scope Validation Algorithm**:
+
 1. Check if gap mentioned in Objective/Requirements
 2. Check if gap excluded in "Out of Scope" section
 3. Check if gap aligns with involved subsystems
 4. Check if gap relates to acceptance criteria
 
 **Iteration Limits**:
+
 - Max iterations: 3 (prevents infinite loops and scope creep)
 - After 3 iterations, remaining gaps → new epic
-- Iteration tracking in workflow-state.yaml
+- Iteration tracking in state.yaml
 
 ## Project Initialization
 
 ### /init-project
 
 Generates 8 docs in docs/project/:
+
 1. overview.md — Vision, users, scope, metrics
 2. system-architecture.md — C4 diagrams, components, data flows
 3. tech-stack.md — Technology choices, rationale
@@ -177,12 +195,14 @@ Brownfield: Auto-scans package.json, migrations, docker-compose.yml
 ### /init-project --with-design
 
 Adds 4 design docs in docs/design/:
+
 1. brand-guidelines.md
 2. visual-language.md
 3. accessibility-standards.md
 4. component-governance.md
 
 Generates design/systems/:
+
 - tokens.css — WCAG AA compliant, OKLCH color space
 - tokens.json
 
@@ -195,6 +215,7 @@ Foundation blocks all other features
 ## Commands
 
 ### Phase Commands
+
 - /feature "name" — Create feature spec
 - /epic "goal" [--auto | --interactive | --no-input] — Multi-sprint complex work
 - /clarify — Reduce ambiguity via AskUserQuestion
@@ -213,11 +234,13 @@ Foundation blocks all other features
 - /finalize — Documentation, housekeeping
 
 ### Workflow Health (v5.0)
+
 - /audit-workflow — Analyze effectiveness (auto-runs after /implement, /implement-epic, /optimize, /finalize)
 - /heal-workflow — Apply improvements with approval
 - /workflow-health — Aggregate metrics dashboard (--detailed, --trends, --compare)
 
 ### Context Management
+
 - /create-prompt — Generate Claude-to-Claude prompts
 - /run-prompt <N> [--auto-detect | --parallel | --sequential | --no-input] — Execute prompts in sub-agents
 - /whats-next — Handoff document for fresh context
@@ -228,12 +251,14 @@ Foundation blocks all other features
 - /heal-skill — Apply skill corrections
 
 ### Project & Roadmap
+
 - /init-project [--interactive | --ci | --no-input] [--with-design] — Initialize design docs
 - /init-preferences [--reset] — Configure command defaults (one-time setup)
 - /roadmap — Manage features via GitHub Issues (brainstorm, prioritize, track)
 - /help — Context-aware workflow guidance (--verbose for state details)
 
 ### Infrastructure (Deprecated/Removed)
+
 Contract, flag, metrics, scheduler commands removed in v6.0+
 
 ## Preference System (v7.0+)
@@ -247,11 +272,13 @@ Commands use a 3-tier preference system to eliminate flag memorization:
 ### Setup
 
 Run once to configure defaults:
+
 ```
 /init-preferences
 ```
 
 12-question wizard configures:
+
 - Command default modes (/epic, /tasks, /init-project, /run-prompt)
 - UI preferences (show usage stats, recommend last-used)
 - Automation behavior (CI/CD mode)
@@ -261,30 +288,35 @@ Run once to configure defaults:
 ### How It Works
 
 **Without preferences:**
+
 ```
 /epic "add auth"
 → Prompts: "Run in auto or interactive mode?"
 ```
 
 **With preferences (default: interactive):**
+
 ```
 /epic "add auth"
 → Runs in interactive mode (no prompt)
 ```
 
 **After learning (used auto 8/10 times):**
+
 ```
 /epic "add auth"
 → Suggests: "Auto (last used, 8/10 times) ⭐"
 ```
 
 **Override with flags:**
+
 ```
 /epic "add auth" --auto
 → Uses auto mode (ignores preferences)
 ```
 
 **CI/CD automation:**
+
 ```
 /epic "add auth" --no-input
 → Non-interactive mode for automation
@@ -300,6 +332,7 @@ Run once to configure defaults:
 ### Universal Flags
 
 All commands support:
+
 - `--no-input` - Disable all prompts for CI/CD
 - Mode-specific flags override preferences
 
@@ -312,6 +345,7 @@ Continuously improves workflow efficiency through pattern detection and self-lea
 The learning system passively observes workflow execution, detects patterns, and auto-applies safe optimizations while requiring approval for high-risk changes.
 
 **Key capabilities**:
+
 - Performance pattern detection (tool selection, context-aware recommendations)
 - Anti-pattern detection (failure prevention, warning system)
 - Custom abbreviation learning (project-specific terminology)
@@ -320,12 +354,14 @@ The learning system passively observes workflow execution, detects patterns, and
 ### Learning Categories
 
 **1. Performance Patterns** (`.spec-flow/learnings/performance-patterns.yaml`)
+
 - Auto-applied optimizations
 - Tool selection recommendations based on context
 - Time-saving strategies
 - Confidence threshold: ≥0.90 for auto-apply
 
 Example pattern:
+
 ```yaml
 id: "grep-before-read-001"
 name: "Use Grep before Read for large files"
@@ -336,12 +372,14 @@ auto_applied: true
 ```
 
 **2. Anti-Patterns** (`.spec-flow/learnings/anti-patterns.yaml`)
+
 - Failure pattern detection
 - Automatic warnings before risky operations
 - Prevention strategies
 - Triggers on operations with ≥2 historical failures
 
 Example anti-pattern:
+
 ```yaml
 id: "schema-without-migration-001"
 name: "Editing schema without migration"
@@ -353,12 +391,14 @@ auto_warn: true
 ```
 
 **3. Custom Abbreviations** (`.spec-flow/learnings/custom-abbreviations.yaml`)
+
 - Project-specific terminology expansion
 - Consistent naming patterns
 - Auto-expansion in specs and tasks
 - Confidence threshold: ≥0.80
 
 Example abbreviation:
+
 ```yaml
 abbr: "auth"
 expansion: "JWT-based authentication with refresh tokens"
@@ -368,12 +408,14 @@ auto_expand: true
 ```
 
 **4. CLAUDE.md Tweaks** (`.spec-flow/learnings/claude-md-tweaks.yaml`)
+
 - System prompt optimizations (requires approval)
 - Agent preference patterns
 - Workflow-specific guidance
 - Always marked as high-risk
 
 Example tweak:
+
 ```yaml
 id: "prefer-backend-dev-agent-001"
 category: "agent_preference"
@@ -391,17 +433,20 @@ approval_required: true
 Learnings are classified into three risk levels:
 
 **Low Risk** (auto-apply):
+
 - Confidence ≥0.90
 - Impact: "low" or "none"
 - Examples: performance patterns, abbreviations
 - Applied automatically without user approval
 
 **Medium Risk** (suggest):
+
 - Confidence 0.70-0.89
 - Impact: "medium"
 - Presented to user for approval
 
 **High Risk** (require approval):
+
 - CLAUDE.md modifications (always high-risk)
 - Confidence <0.70
 - Impact: "high"
@@ -410,24 +455,28 @@ Learnings are classified into three risk levels:
 ### Learning Workflow
 
 **Phase 1: Passive Observation**
+
 ```bash
 # Non-blocking data collection during workflow phases
 .spec-flow/scripts/bash/learning-collector.sh collect-after-phase /implement
 ```
 
 Collects:
+
 - Task execution metrics (duration, success, tools used, retries)
 - Tool performance (operation type, file sizes, duration)
 - Quality gate results (failures, issues found)
 - Agent effectiveness (success rates, patterns)
 
 **Phase 2: Pattern Detection**
+
 ```bash
 # Statistical analysis (runs during /audit-workflow)
 .spec-flow/scripts/bash/analyze-learnings.sh --apply-auto
 ```
 
 Analyzes:
+
 - Groups observations by context
 - Calculates confidence scores (statistical significance ≥0.95)
 - Detects patterns with ≥3 occurrences (configurable)
@@ -436,11 +485,13 @@ Analyzes:
 **Phase 3: Auto-Apply or Approval**
 
 Low-risk patterns:
+
 - Automatically applied to learning files
 - Used immediately in next workflow execution
 - Logged in `.spec-flow/learnings/learning-metadata.yaml`
 
 High-risk patterns:
+
 - Added to pending approval queue
 - Reviewed via `/workflow-health --detailed`
 - Applied via `/heal-workflow` after user approval
@@ -468,18 +519,21 @@ High-risk patterns:
 Learnings persist across npm package updates via migration system:
 
 **Before npm update**:
+
 ```bash
 # Archive current learnings
 .spec-flow/scripts/bash/migrate-learnings.sh --from 9.4.0 --to 10.0.0 --dry-run
 ```
 
 **After npm update**:
+
 ```bash
 # Auto-detect and migrate
 .spec-flow/scripts/bash/migrate-learnings.sh --auto
 ```
 
 **Migration workflow**:
+
 1. Archives current learnings to `.spec-flow/learnings/archive/v{version}/`
 2. Applies schema migrations (add fields, rename keys)
 3. Merges archived learnings with new schema
@@ -514,63 +568,72 @@ learning:
 ### Scripts and Utilities
 
 **Collection**:
+
 - `.spec-flow/scripts/bash/learning-collector.sh` - Passive observation
 - `.spec-flow/scripts/powershell/learning-collector.ps1` - Windows version
 
 **Analysis**:
+
 - `.spec-flow/scripts/python/pattern-detector.py` - Statistical analysis
 - `.spec-flow/scripts/bash/analyze-learnings.sh` - Orchestration
 
 **Application**:
+
 - `.spec-flow/scripts/bash/auto-apply-learnings.sh` - Apply low-risk patterns
 - `.spec-flow/scripts/bash/optimize-claude-md.sh` - Append to CLAUDE.md (with approval)
 
 **Migration**:
+
 - `.spec-flow/scripts/bash/migrate-learnings.sh` - Preserve across updates
 
 ### Usage Examples
 
 **Check pending learnings**:
+
 ```bash
 bash .spec-flow/scripts/bash/optimize-claude-md.sh --list-pending
 ```
 
 **Apply approved CLAUDE.md tweak**:
+
 ```bash
 bash .spec-flow/scripts/bash/optimize-claude-md.sh --apply tweak-001 --approve
 ```
 
 **View learning statistics**:
+
 ```bash
 /workflow-health --detailed
 ```
 
 **Manual pattern analysis**:
+
 ```bash
 bash .spec-flow/scripts/bash/analyze-learnings.sh --apply-auto
 ```
 
 ## Artifacts by Command
 
-| Command | Outputs |
-|---------|---------|
-| /feature | spec.md, NOTES.md, visuals/README.md, workflow-state.yaml |
-| /plan | plan.md, research.md |
-| /tasks | tasks.md, mockup-approval-checklist.md (UI-first), e2e-tests.md (epic) |
-| /validate | analysis-report.md |
-| /implement | Task completions (feature workflow) |
-| /implement-epic | Sprint results, contracts/*.yaml, audit-report.xml (epic workflow) |
-| /optimize | optimization-report.md, code-review-report.md, e2e-test-results.log (epic), contract-validation-report.md (epic), load-test-results.log (epic, optional), migration-integrity-report.md (epic) |
-| /ship-staging | staging-ship-report.md, deployment-metadata.json |
-| /ship-prod | production-ship-report.md, GitHub release |
-| /deploy-prod | production-ship-report.md |
-| /build-local | local-build-report.md |
-| /epic | epic-spec.md, plan.md, sprint-plan.md, walkthrough.md |
-| /finalize | Archives all artifacts to {workspace}/completed/ (automatic) |
+| Command         | Outputs                                                                                                                                                                                        |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| /feature        | spec.md, NOTES.md, visuals/README.md, state.yaml                                                                                                                                               |
+| /plan           | plan.md, research.md                                                                                                                                                                           |
+| /tasks          | tasks.md, mockup-approval-checklist.md (UI-first), e2e-tests.md (epic)                                                                                                                         |
+| /validate       | analysis-report.md                                                                                                                                                                             |
+| /implement      | Task completions (feature workflow)                                                                                                                                                            |
+| /implement-epic | Sprint results, contracts/\*.yaml, audit-report.xml (epic workflow)                                                                                                                            |
+| /optimize       | optimization-report.md, code-review-report.md, e2e-test-results.log (epic), contract-validation-report.md (epic), load-test-results.log (epic, optional), migration-integrity-report.md (epic) |
+| /ship-staging   | staging-ship-report.md, deployment-metadata.json                                                                                                                                               |
+| /ship-prod      | production-ship-report.md, GitHub release                                                                                                                                                      |
+| /deploy-prod    | production-ship-report.md                                                                                                                                                                      |
+| /build-local    | local-build-report.md                                                                                                                                                                          |
+| /epic           | epic-spec.md, plan.md, sprint-plan.md, walkthrough.md                                                                                                                                          |
+| /finalize       | Archives all artifacts to {workspace}/completed/ (automatic)                                                                                                                                   |
 
 ## State Management
 
-workflow-state.yaml tracks:
+state.yaml tracks:
+
 - Current phase, status
 - Completed/failed phases
 - Quality gates (pre-flight, code-review, rollback)
@@ -595,7 +658,7 @@ epics/001-auth-system/
 │   ├── NOTES.md
 │   ├── research.md
 │   └── walkthrough.md
-└── workflow-state.yaml     # Stays in root for metrics
+└── state.yaml     # Stays in root for metrics
 ```
 
 ### Feature Workflows
@@ -607,7 +670,7 @@ specs/001-user-login/
 │   ├── plan.md
 │   ├── tasks.md
 │   └── NOTES.md
-└── workflow-state.yaml     # Stays in root
+└── state.yaml     # Stays in root
 ```
 
 ### Archival Pattern
@@ -615,18 +678,21 @@ specs/001-user-login/
 **Trigger**: Automatic during `/finalize` command (Step 12)
 
 **What gets archived**:
+
 - All planning and implementation artifacts
 - Documentation and notes
 - Sprint plans (epics only)
 
 **What stays**:
-- workflow-state.yaml (for metrics and history)
+
+- state.yaml (for metrics and history)
 - contracts/ directory (if exists)
 - Any build/deployment artifacts
 
 **Provenance**: Completed artifacts stay with the epic/spec for historical context
 
 **Recovery**: Restore by moving files back from completed/ subfolder:
+
 ```bash
 mv epics/001-auth-system/completed/* epics/001-auth-system/
 ```
@@ -640,15 +706,18 @@ All phase commands auto-detect whether they're working with epic or feature work
 Three-tier detection system (Files → Branch → State):
 
 1. **Workspace files** (highest priority):
+
    - Checks for `epics/*/epic-spec.md` → Epic workflow
    - Checks for `specs/*/spec.md` → Feature workflow
 
 2. **Git branch pattern** (fallback):
+
    - Branch matches `epic/*` → Epic workflow
    - Branch matches `feature/*` → Feature workflow
 
 3. **Workflow state** (lowest priority):
-   - Reads `workflow_type` field from workflow-state.yaml
+
+   - Reads `workflow_type` field from state.yaml
 
 4. **User prompt** (detection failed):
    - Uses AskUserQuestion if all detection methods fail
@@ -658,16 +727,19 @@ Three-tier detection system (Files → Branch → State):
 Cross-platform utilities return structured JSON:
 
 **Bash** (Linux/Mac/Git Bash):
+
 ```bash
 bash .spec-flow/scripts/utils/detect-workflow-paths.sh
 ```
 
 **PowerShell** (Windows):
+
 ```powershell
 pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1
 ```
 
 **Output format**:
+
 ```json
 {
   "type": "epic",
@@ -683,6 +755,7 @@ pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1
 All phase commands include Step 0: Workflow Type Detection:
 
 **Commands using detection**:
+
 - /clarify — Locates correct spec file (epic-spec.md or spec.md)
 - /plan — Reads from correct workspace directory
 - /tasks — Generates tasks in correct location
@@ -691,6 +764,7 @@ All phase commands include Step 0: Workflow Type Detection:
 - /optimize — Determines gate count (6 for features, 10 for epics)
 
 **Dynamic path variables**:
+
 ```bash
 $WORKFLOW_TYPE  # "epic" or "feature"
 $BASE_DIR       # "epics" or "specs"
@@ -707,18 +781,21 @@ $CLAUDE_MD      # "${BASE_DIR}/${SLUG}/CLAUDE.md"
 Both `/epic continue` and `/feature continue` include branch detection:
 
 **Epic continue**:
+
 - Detects epic workspace via utility
 - Verifies workflow type is "epic" (exits if feature)
 - Checks if on `epic/*` branch
 - Offers to switch branches if mismatch
 
 **Feature continue**:
+
 - Detects feature workspace via utility
 - Verifies workflow type is "feature" (exits if epic)
 - Checks if on `feature/*` branch
 - Warns if not on correct branch
 
 **Error handling**:
+
 ```bash
 # If on wrong workflow type
 ❌ Error: This is a feature workflow, not an epic
@@ -738,6 +815,7 @@ Enables parallel development of multiple epics and features by running separate 
 Git worktrees allow multiple working directories for the same repository, enabling simultaneous work on different branches without conflicts. Each epic/feature gets its own worktree with shared memory linking for observability and learning data.
 
 **Key benefits**:
+
 - Run multiple Claude Code instances simultaneously
 - Work on multiple epics/features in parallel
 - Isolated workspaces prevent branch conflicts
@@ -747,6 +825,7 @@ Git worktrees allow multiple working directories for the same repository, enabli
 ### How It Works
 
 **Traditional workflow** (single branch):
+
 ```bash
 # Must switch branches and stash changes
 git checkout main
@@ -757,6 +836,7 @@ git checkout -b feature/dashboard  # Can't work on both simultaneously
 ```
 
 **Worktree workflow** (parallel development):
+
 ```bash
 # Epic 1 in main directory
 /epic "auth system"
@@ -773,6 +853,7 @@ cd worktrees/epic/002-user-dashboard/
 When enabled via `/init-preferences`, worktrees are automatically created during `/epic` and `/feature` commands:
 
 **Epic workflow**:
+
 ```bash
 /epic "auth system"
 # → Step 1: Branch and worktree creation
@@ -783,6 +864,7 @@ When enabled via `/init-preferences`, worktrees are automatically created during
 ```
 
 **Feature workflow**:
+
 ```bash
 /feature "user login"
 # → Creates branch: feature/001-user-login
@@ -795,12 +877,14 @@ When enabled via `/init-preferences`, worktrees are automatically created during
 Each worktree maintains isolated workspace:
 
 **Isolated** (per-worktree):
+
 - Working directory files
 - Branch-specific code
 - Epic/feature artifacts (specs/, epics/)
 - Git staging area
 
 **Shared** (via symlinks):
+
 - `.spec-flow/memory/` — Workflow mechanics and observation data
 - Learning observations collected in main repo
 - Command history and execution logs
@@ -832,17 +916,20 @@ my-project/                        # Main repository
 ### Memory Linking Strategy
 
 **Symlink creation** (Linux/Mac/Git Bash):
+
 ```bash
 ln -s ../../../.spec-flow/memory worktrees/epic/001-auth-system/.spec-flow/memory
 ```
 
 **Junction creation** (Windows PowerShell):
+
 ```powershell
 New-Item -ItemType Junction -Path "worktrees\epic\001-auth-system\.spec-flow\memory" `
          -Target ".spec-flow\memory"
 ```
 
 **Benefits**:
+
 - Observations from all worktrees collected centrally
 - Learning system sees patterns across all parallel work
 - Workflow health metrics aggregate across epics
@@ -851,17 +938,20 @@ New-Item -ItemType Junction -Path "worktrees\epic\001-auth-system\.spec-flow\mem
 ### Worktree Lifecycle
 
 **1. Creation** (automatic):
+
 ```bash
 # Via /epic or /feature with worktrees.auto_create: true
 bash .spec-flow/scripts/bash/worktree-manager.sh create epic 001-auth-system epic/001-auth-system
 ```
 
 **2. Active Development**:
+
 - Work proceeds normally in worktree directory
 - All workflow commands function identically
 - Observations collected to shared memory
 
 **3. Cleanup** (automatic on /finalize):
+
 ```bash
 # After /ship-prod or /deploy-prod completes
 # Triggered during /finalize if worktrees.cleanup_on_finalize: true
@@ -869,6 +959,7 @@ bash .spec-flow/scripts/bash/worktree-manager.sh remove 001-auth-system
 ```
 
 **Manual cleanup**:
+
 ```bash
 # List all worktrees
 bash .spec-flow/scripts/bash/worktree-manager.sh list
@@ -902,6 +993,7 @@ worktrees:
 Worktree detection is integrated into `detect-workflow-paths.sh/ps1`:
 
 **Output includes worktree info**:
+
 ```json
 {
   "type": "epic",
@@ -919,10 +1011,12 @@ Worktree detection is integrated into `detect-workflow-paths.sh/ps1`:
 ### Scripts and Utilities
 
 **Worktree Management**:
+
 - `.spec-flow/scripts/bash/worktree-manager.sh` - CRUD operations
 - `.spec-flow/scripts/powershell/worktree-manager.ps1` - Windows version
 
 **Commands**:
+
 ```bash
 # Create worktree
 worktree-manager.sh create <type> <slug> <branch>
@@ -941,21 +1035,25 @@ worktree-manager.sh is-worktree [path]
 ```
 
 **Detection**:
+
 - `.spec-flow/scripts/utils/detect-workflow-paths.sh` - Enhanced with worktree detection
 - `.spec-flow/scripts/utils/detect-workflow-paths.ps1` - Windows version
 
 ### Integration with Commands
 
 **Epic command** (`.claude/commands/epic/epic.md`):
+
 - Step 1: Checks `worktrees.auto_create` preference
 - Creates worktree instead of regular branch if enabled
 - Switches to worktree directory automatically
 
 **Feature command** (`.spec-flow/scripts/bash/create-new-feature.sh`):
+
 - Integrated worktree creation with fallback to branches
 - Updates feature directory path to worktree location
 
 **Finalize command** (`.spec-flow/scripts/bash/finalize-workflow.sh`):
+
 - Step 11: Checks `worktrees.cleanup_on_finalize` preference
 - Removes worktree after successful deployment
 - Preserves main repository state
@@ -963,6 +1061,7 @@ worktree-manager.sh is-worktree [path]
 ### Use Cases
 
 **1. Parallel Epic Development**:
+
 ```bash
 # Terminal 1 - Backend epic
 cd ~/projects/myapp
@@ -974,6 +1073,7 @@ cd ~/projects/myapp/worktrees/epic/002-dashboard-redesign
 ```
 
 **2. Epic + Urgent Hotfix**:
+
 ```bash
 # Working on epic in main directory
 /epic continue  # Long-running implementation
@@ -987,6 +1087,7 @@ cd ~/projects/myapp/worktrees/feature/urgent-fix
 ```
 
 **3. Multiple Team Members**:
+
 ```bash
 # Developer A - Epic 1
 /epic "payment integration"
@@ -1000,10 +1101,12 @@ cd ~/projects/myapp/worktrees/feature/urgent-fix
 ### Troubleshooting
 
 **Symlink creation fails**:
+
 - Windows: Run as Administrator or enable Developer Mode
 - Linux/Mac: Check permissions on .spec-flow/memory/
 
 **Worktree not detected**:
+
 ```bash
 # Verify git worktree list
 git worktree list
@@ -1013,6 +1116,7 @@ bash .spec-flow/scripts/utils/detect-workflow-paths.sh
 ```
 
 **Cleanup fails**:
+
 ```bash
 # Force remove worktree
 bash .spec-flow/scripts/bash/worktree-manager.sh remove 001-auth-system --force
@@ -1024,11 +1128,13 @@ git worktree remove worktrees/epic/001-auth-system --force
 ## Quality Gates
 
 ### Blocking
+
 - Pre-flight: env vars, build, docker, CI config
 - Code review: No critical issues, performance, WCAG 2.1 AA, security
 - Rollback (staging-prod only): Test actual rollback before production
 
 ### Manual (pause for approval)
+
 - Mockup approval (UI-first only)
 - Staging validation (staging-prod only)
 
@@ -1037,6 +1143,7 @@ Resume: /ship continue or /feature continue
 ## Living Documentation (v4.0)
 
 Hierarchical CLAUDE.md:
+
 ```
 Root CLAUDE.md (workflow overview)
   ↓ Project CLAUDE.md (active features, tech stack)
@@ -1044,15 +1151,18 @@ Root CLAUDE.md (workflow overview)
 ```
 
 Token cost:
+
 - Traditional: 12,700 tokens
 - Hierarchical: 2,500 tokens (80% reduction)
 - Resume work: 500 tokens (94% reduction)
 
 Auto-updates:
+
 - Feature CLAUDE.md: /feature, task completion, /feature continue
 - Project CLAUDE.md: /init-project, /ship-staging, /ship-prod, /deploy-prod
 
 Living sections:
+
 - spec.md → Implementation Status
 - plan.md → Discovered Patterns
 - tasks.md → Progress Summary (velocity, ETA, bottlenecks)
@@ -1113,6 +1223,7 @@ Commits: Conventional Commits (feat/fix/docs/chore/refactor/test), <75 chars, im
 Token budgets: Planning (75k), Implementation (100k), Optimization (125k)
 Auto-compact at 80% threshold
 Scripts:
+
 - .spec-flow/scripts/bash/calculate-tokens.sh
 - .spec-flow/scripts/bash/compact-context.sh
 - .spec-flow/scripts/powershell/calculate-tokens.ps1
@@ -1121,6 +1232,7 @@ Scripts:
 ## Question Banks (v5.0)
 
 Use AskUserQuestion extensively:
+
 - .claude/skills/clarify/references/question-bank.md (40+ feature questions)
 - .claude/skills/epic/references/question-bank.md (8-9 epic scoping questions)
 

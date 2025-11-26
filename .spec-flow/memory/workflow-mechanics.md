@@ -17,6 +17,7 @@
 **Backend**: GitHub Issues with label-based state management
 
 **Sections** (via labels):
+
 1. **Backlog** (`status:backlog`) - Ideas and future features (not prioritized)
 2. **Later** (`status:later`) - Planned but low priority
 3. **Next** (`status:next`) - Prioritized for upcoming work
@@ -24,6 +25,7 @@
 5. **Shipped** (`status:shipped`) - Deployed to production
 
 **Automatic Transitions**:
+
 - `/feature` → Marks feature as `status:in-progress` in GitHub Issues
 - `/ship` (Phase S.5) → Marks feature as `status:shipped` with version and date
 
@@ -32,11 +34,13 @@
 During implementation, the workflow may discover potential features not yet in the roadmap:
 
 **Detection Patterns**:
+
 - Comments containing: "future work", "TODO", "later", "phase 2", "out of scope"
 - Spec sections marked as out-of-scope with future potential
 
 **User Prompt**:
 When discovered features are found, the workflow prompts:
+
 ```
 💡 Discovered Potential Feature
 Context: [where it was found]
@@ -46,6 +50,7 @@ Add to roadmap? (yes/no/later):
 ```
 
 **Actions**:
+
 - **yes**: Immediately add to roadmap (runs `/roadmap add`)
 - **later**: Save to `.spec-flow/memory/discovered-features.md` for batch review
 - **no**: Skip (not tracked)
@@ -53,12 +58,14 @@ Add to roadmap? (yes/no/later):
 ### GitHub Issue Format
 
 Each feature in roadmap must have:
+
 - **Title**: Human-readable feature name
 - **Labels**: `type:feature`, `area:*`, `role:*`, `status:*`, `priority:*`, `size:*`
 - **Body**: Problem, solution, requirements (markdown)
 - **Frontmatter**: ICE scoring in YAML
 
 **Shipped Features** (additional metadata via comment):
+
 ```markdown
 ---
 Shipped: 2025-10-16
@@ -90,6 +97,7 @@ Production URL: https://app.example.com
 - **PATCH**: Bug fixes (backward-compatible corrections)
 
 **Detection Logic**:
+
 - Spec or ship report contains "breaking change" → MAJOR bump
 - Spec contains "fix", "bug", "patch", or "hotfix" → PATCH bump
 - Default → MINOR bump (new feature)
@@ -99,6 +107,7 @@ Production URL: https://app.example.com
 **When**: During `/ship` Phase S.5 (after deployment succeeds)
 
 **Process**:
+
 1. Read current version from `package.json`
 2. Analyze spec and ship report for bump type
 3. Calculate new version (e.g., 1.2.0 → 1.3.0)
@@ -112,6 +121,7 @@ Production URL: https://app.example.com
 ### Release Notes
 
 **Auto-Generated from Ship Report**:
+
 ```markdown
 # Release v1.3.0
 
@@ -143,6 +153,7 @@ Production URL: https://app.example.com
 **Message**: `Release v1.3.0 - Auto-bumped (minor)`
 
 **Pushing Tags**:
+
 - Tags created locally during `/ship`
 - Push to remote: `git push origin v1.3.0`
 - Tags enable rollback and release tracking
@@ -165,6 +176,7 @@ Production URL: https://app.example.com
 **When**: Before any deployment (staging or production)
 
 **Checks**:
+
 - ✅ Environment variables configured in GitHub secrets
 - ✅ Production build succeeds locally
 - ✅ Docker images build successfully
@@ -180,6 +192,7 @@ Production URL: https://app.example.com
 **When**: During `/optimize` phase
 
 **Checks**:
+
 - ✅ No critical code quality issues
 - ✅ Performance benchmarks met
 - ✅ Accessibility standards (WCAG 2.1 AA)
@@ -192,6 +205,7 @@ Production URL: https://app.example.com
 **When**: After staging deployment, before production (staging-prod model only)
 
 **Checks**:
+
 - ✅ Deployment IDs extracted from staging logs
 - ✅ Rollback test executed (actual Vercel alias change)
 - ✅ Previous deployment verified live
@@ -214,6 +228,7 @@ Production URL: https://app.example.com
 **Purpose**: Manual UI/UX validation on local development server
 
 **Process**:
+
 1. Run `/preview` to start local dev server
 2. Test feature functionality thoroughly
 3. Verify UI/UX across different screen sizes
@@ -234,6 +249,7 @@ Production URL: https://app.example.com
 **Purpose**: Validate feature in real staging environment
 
 **Process**:
+
 1. Staging deployed via `/ship-staging`
 2. Run `/validate-staging` for automated health checks
 3. Manually test feature on staging URL
@@ -257,8 +273,9 @@ Production URL: https://app.example.com
 **What**: Unique identifiers for each deployment (Vercel URLs, Docker images, Railway IDs)
 
 **Storage**:
+
 - `specs/NNN-slug/deployment-metadata.json` - Human-readable
-- `specs/NNN-slug/workflow-state.yaml` - Machine-readable state
+- `specs/NNN-slug/state.yaml` - Machine-readable state
 
 **Extraction**: Automatic from GitHub Actions workflow logs
 
@@ -267,6 +284,7 @@ Production URL: https://app.example.com
 **When**: During `/validate-staging` phase
 
 **Process**:
+
 1. Load previous deployment ID from state
 2. Execute: `vercel alias set <previous-id> <staging-url>`
 3. Wait for DNS propagation (15 seconds)
@@ -279,12 +297,14 @@ Production URL: https://app.example.com
 ### Production Rollback
 
 **When to rollback**:
+
 - Critical bugs discovered post-deployment
 - Performance degradation
 - Security vulnerability
 - High error rates
 
 **How to rollback**:
+
 ```bash
 # For Vercel deployments
 vercel alias set <previous-deployment-id> <production-url> --token=$VERCEL_TOKEN
@@ -308,6 +328,7 @@ git push
 Comprehensive project-level design documentation providing the foundation for all features:
 
 **Core Documents** (10 files):
+
 1. **overview.md** - Vision, users, scope, success metrics, timeline
 2. **system-architecture.md** - Components, integrations, Mermaid diagrams
 3. **tech-stack.md** - Technology choices with rationale
@@ -322,6 +343,7 @@ Comprehensive project-level design documentation providing the foundation for al
 **Initialization**: Run `/init-project` once per project (one-time setup)
 
 **Maintenance**: Update docs when:
+
 - Adding new service/component → update `system-architecture.md`
 - Changing tech stack → update `tech-stack.md`
 - Scaling to next tier → update `capacity-planning.md`
@@ -332,6 +354,7 @@ Comprehensive project-level design documentation providing the foundation for al
 
 **Workflow Integration**:
 All features MUST align with project architecture:
+
 - `/roadmap` - Checks `overview.md` for vision alignment, `tech-stack.md` for technical feasibility, `capacity-planning.md` for effort estimates
 - `/spec` - References project docs during Phase 0 research
 - `/plan` - Heavily integrates with all 10 docs for architecture decisions
@@ -340,6 +363,7 @@ All features MUST align with project architecture:
 - `/optimize` - Enforces `engineering-principles.md` quality standards
 
 **Benefits**:
+
 - Single Source of Truth for "what we're building"
 - Faster onboarding (new dev/AI reads 10 docs, understands project)
 - Consistent features (all align with project architecture)

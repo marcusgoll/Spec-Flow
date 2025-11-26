@@ -513,7 +513,7 @@ const artifacts = {
   plan: readXML('plan.xml'),
   sprint_plan: readXML('sprint-plan.xml'),
   tasks: readXML('tasks.xml'),
-  workflow_state: readYAML('workflow-state.yaml'),
+  workflow_state: readYAML('state.yaml'),
   audit_report: readXML('audit-report.xml'),
   optimization_report: readXML('optimization-report.xml')
 };

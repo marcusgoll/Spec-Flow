@@ -187,7 +187,7 @@ collect_phase_metrics() {
     local feature_dir="$2"
 
     # Read workflow state
-    local state_file="$feature_dir/workflow-state.yaml"
+    local state_file="$feature_dir/state.yaml"
     if [ ! -f "$state_file" ]; then
         log_warn "Workflow state not found: $state_file"
         return 1
@@ -280,7 +280,7 @@ collect_deployment_metrics() {
     local feature_dir="$1"
     local duration="$2"
 
-    local state_file="$feature_dir/workflow-state.yaml"
+    local state_file="$feature_dir/state.yaml"
 
     # Extract deployment info
     local deployment_status

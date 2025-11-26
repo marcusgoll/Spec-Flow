@@ -2,7 +2,22 @@
 name: implement
 description: Execute all implementation tasks from tasks.md with test-driven development, parallel batching, and atomic commits
 argument-hint: [feature-slug]
-allowed-tools: [Read, Write, Edit, Grep, Glob, Bash(python .spec-flow/scripts/spec-cli.py:*), Bash(git add:*), Bash(git commit:*), Bash(git diff:*), Bash(git status:*), Bash(npm test:*), Bash(pnpm test:*), Bash(pytest:*)]
+allowed-tools:
+  [
+    Read,
+    Write,
+    Edit,
+    Grep,
+    Glob,
+    Bash(python .spec-flow/scripts/spec-cli.py:*),
+    Bash(git add:*),
+    Bash(git commit:*),
+    Bash(git diff:*),
+    Bash(git status:*),
+    Bash(npm test:*),
+    Bash(pnpm test:*),
+    Bash(pytest:*),
+  ]
 ---
 
 # /implement — Task Execution with TDD
@@ -10,31 +25,33 @@ allowed-tools: [Read, Write, Edit, Grep, Glob, Bash(python .spec-flow/scripts/sp
 <context>
 **User Input**: $ARGUMENTS
 
-**Workflow Detection**: Auto-detected via workspace files, branch pattern, or workflow-state.yaml
+**Workflow Detection**: Auto-detected via workspace files, branch pattern, or state.yaml
 
 **Current Branch**: !`git branch --show-current 2>$null || echo "none"`
 
 **Feature Directory**: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>$null | jq -r '.FEATURE_DIR'`
 
-**Pending Tasks**: Auto-detected from ${BASE_DIR}/*/tasks.md
+**Pending Tasks**: Auto-detected from ${BASE_DIR}/\*/tasks.md
 
-**Completed Tasks**: Auto-detected from ${BASE_DIR}/*/tasks.md
+**Completed Tasks**: Auto-detected from ${BASE_DIR}/\*/tasks.md
 
 **Git Status**: !`git status --short 2>$null || echo "clean"`
 
-**Mockup Approval Status** (if UI-first): Auto-detected from ${BASE_DIR}/*/workflow-state.yaml
+**Mockup Approval Status** (if UI-first): Auto-detected from ${BASE_DIR}/\*/state.yaml
 
 **Implementation Artifacts** (after script execution):
-- @${BASE_DIR}/*/tasks.md (updated with completed tasks)
-- @${BASE_DIR}/*/CLAUDE.md (living documentation)
+
+- @${BASE_DIR}/\*/tasks.md (updated with completed tasks)
+- @${BASE_DIR}/\*/CLAUDE.md (living documentation)
 - @design/systems/ui-inventory.md (if UI components created)
 - @design/systems/approved-patterns.md (if patterns extracted)
-</context>
+  </context>
 
 <objective>
 Execute all tasks from ${BASE_DIR}/$ARGUMENTS/tasks.md with parallel batching, strict TDD phases, auto-rollback on failure, and atomic commits.
 
 Implementation workflow:
+
 1. Run centralized spec-cli.py implement script with arguments
 2. Review implementation progress (completed tasks, generated code)
 3. Update living documentation (UI inventory, approved patterns)
@@ -42,6 +59,7 @@ Implementation workflow:
 5. Present results with next action recommendation
 
 **Key principles**:
+
 - **Test-Driven Development**: Red (failing test) → Green (passing) → Refactor (improve)
 - **Parallel execution**: Group independent tasks by domain, speedup bounded by dependencies
 - **Anti-duplication**: Search existing code before creating new implementations
@@ -56,18 +74,22 @@ Implementation workflow:
 **CRITICAL**: Follow these rules to prevent implementation errors.
 
 1. **Never speculate about code you have not read**
+
    - Always Read files before referencing them
    - Verify file existence with Glob before importing
 
 2. **Cite your sources with file paths**
+
    - Include exact location: `file_path:line_number`
    - Quote code snippets when analyzing
 
 3. **Admit uncertainty explicitly**
+
    - Say "I'm uncertain about [X]. Let me investigate by reading [file]" instead of guessing
    - Use Grep to find existing import patterns before assuming
 
 4. **Quote before analyzing long documents**
+
    - For specs >5000 tokens, extract relevant quotes first
    - Don't paraphrase - show verbatim text with line numbers
 
@@ -113,13 +135,37 @@ Use TodoWrite to track batch **group** execution progress (parallel execution mo
 
 TodoWrite({
   todos: [
-    {content:"Validate preflight checks",status:"completed",activeForm:"Preflight"},
-    {content:"Parse tasks and detect batches",status:"completed",activeForm:"Parsing tasks"},
-    {content:"Execute batch group 1 (tasks 1-3)",status:"in_progress",activeForm:"Executing batch group 1"},
-    {content:"Execute batch group 2 (tasks 4-6)",status:"pending",activeForm:"Executing batch group 2"},
-    {content:"Execute batch group 3 (tasks 7-9)",status:"pending",activeForm:"Executing batch group 3"},
-    {content:"Run full test suite and commit",status:"pending",activeForm:"Wrapping up"}
-  ]
+    {
+      content: "Validate preflight checks",
+      status: "completed",
+      activeForm: "Preflight",
+    },
+    {
+      content: "Parse tasks and detect batches",
+      status: "completed",
+      activeForm: "Parsing tasks",
+    },
+    {
+      content: "Execute batch group 1 (tasks 1-3)",
+      status: "in_progress",
+      activeForm: "Executing batch group 1",
+    },
+    {
+      content: "Execute batch group 2 (tasks 4-6)",
+      status: "pending",
+      activeForm: "Executing batch group 2",
+    },
+    {
+      content: "Execute batch group 3 (tasks 7-9)",
+      status: "pending",
+      activeForm: "Executing batch group 3",
+    },
+    {
+      content: "Run full test suite and commit",
+      status: "pending",
+      activeForm: "Wrapping up",
+    },
+  ],
 });
 ```
 
@@ -155,7 +201,7 @@ if [ $DETECTION_EXIT -eq 0 ]; then
     # Set file paths
     TASKS_FILE="${BASE_DIR}/${SLUG}/tasks.md"
     CLAUDE_MD="${BASE_DIR}/${SLUG}/CLAUDE.md"
-    WORKFLOW_STATE="${BASE_DIR}/${SLUG}/workflow-state.yaml"
+    WORKFLOW_STATE="${BASE_DIR}/${SLUG}/state.yaml"
 else
     echo "⚠ Could not auto-detect workflow type - using fallback"
 fi
@@ -207,6 +253,7 @@ fi
 **Task filtering logic:**
 
 When `ITERATION_MODE=true`, the implementation script should:
+
 1. Parse tasks.md for the current iteration section (e.g., "## Iteration 2: Gap Closure")
 2. Execute only tasks marked with `**Iteration**: $ITERATION_NUMBER`
 3. Skip all tasks from previous iterations
@@ -221,6 +268,7 @@ When `ITERATION_MODE=true`, the implementation script should:
 # tasks.md structure
 
 ### T001: Original task from iteration 1
+
 **Iteration**: 1
 **Status**: ✅ Completed
 
@@ -229,17 +277,20 @@ When `ITERATION_MODE=true`, the implementation script should:
 ## Iteration 2: Gap Closure
 
 ### T031: Implement /v1/auth/me endpoint
+
 **Iteration**: 2
 **Status**: Pending
 ← This task WILL execute
 
 ### T032: Add tests for /v1/auth/me
+
 **Iteration**: 2
 **Status**: Pending
 ← This task WILL execute
 ```
 
 **Performance benefit:**
+
 - Iteration 2 with 3 tasks: ~10-30 minutes (vs full re-implementation: 2-4 hours)
 - Targeted execution reduces context switching and test suite runtime
 - Atomic iteration commits preserve ability to rollback to iteration 1
@@ -255,6 +306,7 @@ python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
 ```
 
 **Script operations** (automated):
+
 1. **Preflight checks** — Validates git, jq, test runner installed
 2. **Load tasks** — Parses tasks.md for all pending tasks
 3. **Detect batches** — Groups independent tasks for parallel execution
@@ -268,6 +320,7 @@ python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
 11. **Git commit** — Final commit with implementation summary
 
 **TDD workflow per task:**
+
 1. **Red**: Write failing test (verify it fails)
 2. **Green**: Implement minimal code to pass test
 3. **Refactor**: Improve code quality without changing behavior
@@ -276,11 +329,13 @@ python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
 ### Step 2: Review Implementation Progress
 
 **Check task completion:**
+
 - Read updated tasks.md to see completed tasks
 - Verify all tasks marked as completed (✅)
 - Check for any blocked or failed tasks
 
 **Review generated code:**
+
 - Scan created/modified files
 - Verify pattern consistency with plan.md
 - Check for code duplication
@@ -294,12 +349,14 @@ python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
 **For each new reusable component created in `components/ui/`:**
 
 1. **Scan for new component files:**
+
    ```bash
    git diff HEAD~1 --name-only | grep "components/ui/"
    ```
 
 2. **Document each component** in `design/systems/ui-inventory.md`:
-   ```markdown
+
+   ````markdown
    ### {ComponentName}
 
    **Source**: {file_path}
@@ -308,19 +365,26 @@ python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
    **States**: {default, hover, focus, disabled, loading, error}
    **Accessibility**: {ARIA labels, keyboard navigation features}
    **Usage**:
+
    ```tsx
    import { {ComponentName} } from '@/components/ui/{component-name}'
 
    <{ComponentName} {prop}="{value}" />
    ```
+   ````
 
    **Examples**:
+
    - {Usage in current feature}: {file_path}:{line}
 
    **Related Components**: {List related components}
+
+   ```
+
    ```
 
 3. **Commit documentation update:**
+
    ```bash
    git add design/systems/ui-inventory.md
    git commit -m "docs: add {ComponentName} to ui-inventory
@@ -331,6 +395,7 @@ python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
    ```
 
 **Skip if:**
+
 - Component is feature-specific (in app/ not components/ui/)
 - Component is a one-off layout wrapper
 - Component already documented in inventory
@@ -340,13 +405,15 @@ python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
 **If mockups were approved and converted to production code:**
 
 1. **Identify reusable layout patterns** (used in 2+ screens):
+
    - Form layouts
    - Navigation structures
    - Data display patterns (tables, cards, lists)
    - Modal/dialog patterns
 
 2. **Document pattern** in `design/systems/approved-patterns.md`:
-   ```markdown
+
+   ````markdown
    ## Pattern: {Pattern Name}
 
    **Used in**: {feature-001, feature-003} ({N} features)
@@ -357,6 +424,7 @@ python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
    ```html
    {Simplified HTML structure showing pattern}
    ```
+   ````
 
    ### Design Tokens
 
@@ -378,9 +446,13 @@ python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
    - {Key accessibility features}
    - {Keyboard navigation support}
    - {ARIA attributes used}
+
+   ```
+
    ```
 
 3. **Commit pattern documentation:**
+
    ```bash
    git add design/systems/approved-patterns.md
    git commit -m "docs: extract {PatternName} approved pattern
@@ -391,6 +463,7 @@ python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
    ```
 
 **Extract patterns proactively:**
+
 - Don't wait for duplication to occur
 - Document patterns immediately after approval
 - Include real code examples from the feature
@@ -429,6 +502,7 @@ git commit -m "docs: update feature CLAUDE.md with implementation progress"
 ```
 
 **Target metrics after implementation:**
+
 - ui-inventory.md: <24 hours lag
 - approved-patterns.md: Documented if pattern reused
 - Feature CLAUDE.md: Updated with last 3 tasks
@@ -437,6 +511,7 @@ git commit -m "docs: update feature CLAUDE.md with implementation progress"
 ### Step 4: Run Full Test Suite
 
 **Execute test suite:**
+
 ```bash
 # Backend tests
 cd api && pytest
@@ -449,6 +524,7 @@ pnpm test:e2e
 ```
 
 **Verify:**
+
 - All tests passing
 - No regressions introduced
 - Code coverage maintained/improved
@@ -479,6 +555,7 @@ Next: /optimize (recommended)
 ### Step 6: Suggest Next Action
 
 **If all tests pass:**
+
 ```
 ✅ Implementation complete! All tests passing.
 
@@ -488,6 +565,7 @@ Recommended next steps:
 ```
 
 **If tests fail:**
+
 ```
 ❌ Test suite failing
 
@@ -498,6 +576,7 @@ Next: /debug to investigate and fix failures
 ```
 
 **If tasks blocked:**
+
 ```
 ⚠️  {count} tasks blocked
 
@@ -515,59 +594,71 @@ Resolution:
 **Implementation successfully completed when:**
 
 1. **All tasks completed**:
+
    - tasks.md shows all tasks marked with ✅
    - No blocked or failed tasks remaining
    - Each task has atomic git commit
 
 2. **Full test suite passing**:
+
    - Backend tests: 100% passing
    - Frontend tests: 100% passing
    - Integration tests: 100% passing
    - Code coverage maintained or improved
 
 3. **Living documentation updated**:
+
    - ui-inventory.md: New UI components documented (if applicable)
    - approved-patterns.md: Reusable patterns extracted (if applicable)
    - Feature CLAUDE.md: Implementation progress recorded
 
 4. **Code quality verified**:
+
    - No code duplication (anti-duplication checks passed)
    - Patterns from plan.md applied consistently
    - All files follow project conventions
 
 5. **Git commits clean**:
+
    - Atomic commits per task with descriptive messages
    - Final implementation summary commit
    - No uncommitted changes or conflicts
 
 6. **Workflow state updated**:
-   - workflow-state.yaml marks implementation phase complete
+   - state.yaml marks implementation phase complete
    - Next phase identified (/optimize recommended)
-</success_criteria>
+     </success_criteria>
 
 <verification>
 **Before marking implementation complete, verify:**
 
 1. **Read tasks.md**:
+
    ```bash
    grep -E "^\- \[(x| )\]" specs/*/tasks.md
    ```
+
    All tasks should show ✅ (completed)
 
 2. **Check test suite status**:
+
    ```bash
    # Run full test suite
    pnpm test && pytest
    ```
+
    Should show 100% passing
 
 3. **Verify git commits**:
+
    ```bash
    git log --oneline -10
    ```
+
    Should show atomic commits per task + final summary
 
 4. **Validate living documentation**:
+
    ```bash
    # Check UI inventory updated
    git diff HEAD~5 design/systems/ui-inventory.md
@@ -577,9 +668,11 @@ Resolution:
    ```
 
 5. **Check for uncommitted changes**:
+
    ```bash
    git status
    ```
+
    Should show clean working tree
 
 6. **Verify no code duplication**:
@@ -595,29 +688,34 @@ Resolution:
 **Files created/modified by this command:**
 
 **Implementation code** (varies by feature):
+
 - Source files (components, hooks, utils, services)
 - Test files (unit, integration, e2e)
 - Type definitions (if TypeScript)
 - API routes/endpoints (if backend)
 
 **Task tracking** (specs/NNN-slug/):
+
 - tasks.md — All tasks marked as completed
 - CLAUDE.md — Updated with implementation progress
 
 **Living documentation** (design/systems/):
+
 - ui-inventory.md — New UI components documented (if created)
 - approved-patterns.md — Reusable patterns extracted (if applicable)
 
 **Git commits**:
+
 - Multiple atomic commits (one per task)
 - Final implementation summary commit
 - Documentation update commits
 
 **Console output**:
+
 - Implementation progress summary
 - Test suite results
 - Next action recommendation (/optimize or /debug)
-</output>
+  </output>
 
 ---
 
@@ -626,22 +724,26 @@ Resolution:
 ### Parallel Execution
 
 **Batch groups:**
+
 - Group 1: Independent frontend tasks
 - Group 2: Independent backend tasks
 - Group 3: Integration tasks (depends on Group 1 + 2)
 
 **Within each group:**
+
 - Tasks execute in parallel (up to 3 concurrent tasks)
 - TDD phases remain sequential per task
 - Failures in one task don't block others (rollback only that task)
 
 **Performance:**
+
 - Expected speedup: 2-3x for features with high parallelism
 - Bottleneck: Integration tasks (require both frontend + backend)
 
 ### Error Handling
 
 **Auto-rollback on failure:**
+
 ```
 Task T005 failed at Green phase (test still failing)
 → Rollback T005 changes (git restore)
@@ -651,11 +753,13 @@ Task T005 failed at Green phase (test still failing)
 ```
 
 **Manual intervention required:**
+
 - Repository-wide test suite failure (affects all tasks)
 - Git conflicts (merge required)
 - Missing external dependencies (API keys, services)
 
 **Resume after fixing:**
+
 ```bash
 python .spec-flow/scripts/spec-cli.py implement "$SLUG" --continue
 ```
@@ -663,11 +767,13 @@ python .spec-flow/scripts/spec-cli.py implement "$SLUG" --continue
 ### Anti-Duplication
 
 **Before creating new code:**
+
 1. Search for existing implementations (Grep, Glob)
 2. Check plan.md REUSABLE_COMPONENTS section
 3. Prefer importing existing code over duplication
 
 **Example:**
+
 ```
 Task T007: Create email validation function
 
@@ -681,6 +787,7 @@ Before implementing:
 ### Commit Strategy
 
 **Atomic commits per task:**
+
 ```
 feat(T005): implement user profile edit form
 
@@ -696,6 +803,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **Final implementation commit:**
+
 ```
 feat(001-user-profile): complete implementation
 

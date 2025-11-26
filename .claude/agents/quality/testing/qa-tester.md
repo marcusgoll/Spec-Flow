@@ -368,7 +368,7 @@ If coverage measurement tools not installed:
 
 - Share latest QA summary with /preview phase for manual testing guidance
 - Provide evidence to /ship-staging and /ship-prod for deployment confidence
-- Update workflow-state.yaml if QA gates fail (block deployment)
+- Update state.yaml if QA gates fail (block deployment)
 
 **Handoff to other quality agents**:
 
