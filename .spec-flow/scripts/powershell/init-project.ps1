@@ -84,7 +84,8 @@ $ErrorActionPreference = "Stop"
 
 # Script paths
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ProjectRoot = (Get-Item $ScriptDir).Parent.Parent.FullName
+# ScriptDir is .spec-flow/scripts/powershell, so we need .Parent.Parent.Parent to reach project root
+$ProjectRoot = (Get-Item $ScriptDir).Parent.Parent.Parent.FullName
 
 # Determine mode
 $Mode = "default"
