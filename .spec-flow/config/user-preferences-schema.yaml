@@ -95,6 +95,16 @@ properties:
         default: true
         description: "Automatically remove worktrees after /finalize completes"
 
+  prototype:
+    type: object
+    description: "Prototype workflow configuration"
+    properties:
+      git_persistence:
+        type: string
+        enum: [commit, gitignore, ask]
+        default: ask
+        description: "How to handle prototype in git (commit=version control, gitignore=exclude, ask=prompt each time)"
+
   learning:
     type: object
     description: "Perpetual learning system configuration"
@@ -140,7 +150,7 @@ properties:
 # Validation rules
 validation:
   required_fields: []
-  optional_fields: [commands, automation, ui, worktrees, learning]
+  optional_fields: [commands, automation, ui, worktrees, prototype, learning]
 
 # Migration notes
 migrations:

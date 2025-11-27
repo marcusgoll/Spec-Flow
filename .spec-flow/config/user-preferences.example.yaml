@@ -62,6 +62,14 @@ worktrees:
   # Automatically cleanup worktrees after /finalize completes
   cleanup_on_finalize: true
 
+# Prototype workflow preferences
+prototype:
+  # Options: commit | gitignore | ask
+  # - commit: Version control prototype (recommended for design assets)
+  # - gitignore: Exclude prototype from git (rapid iteration)
+  # - ask: Prompt each time when creating prototype
+  git_persistence: ask
+
 # Perpetual learning system
 learning:
   # Master switch for learning system

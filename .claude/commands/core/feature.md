@@ -87,6 +87,56 @@ python .spec-flow/scripts/spec-cli.py feature "$ARGUMENTS"
 <workflow>
 ## Phase Sequence
 
+### Step 0.5: Prototype Detection (Non-Blocking)
+
+**Check for project prototype before starting specification:**
+
+```bash
+# Check if prototype exists
+PROTOTYPE_EXISTS=$(test -f design/prototype/state.yaml && echo "true" || echo "false")
+```
+
+**If prototype exists:**
+
+1. Analyze feature description for UI keywords:
+   ```javascript
+   const uiKeywords = [
+     'screen', 'page', 'view', 'dashboard', 'modal', 'dialog',
+     'form', 'list', 'table', 'settings', 'profile', 'wizard'
+   ];
+   const description = "$ARGUMENTS".toLowerCase();
+   const hasUIIntent = uiKeywords.some(kw => description.includes(kw));
+   ```
+
+2. If UI intent detected, compare against prototype screen registry:
+   ```bash
+   # Read existing screens from prototype
+   cat design/prototype/state.yaml
+   ```
+
+3. If new screen might be needed, soft prompt user via AskUserQuestion:
+   ```json
+   {
+     "question": "This feature may introduce new UI screens. Update prototype first?",
+     "header": "Prototype",
+     "multiSelect": false,
+     "options": [
+       {"label": "Yes, update prototype", "description": "Add placeholder screens to prototype now (recommended for cohesive design)"},
+       {"label": "Later", "description": "Skip for now, update prototype manually later"},
+       {"label": "Not needed", "description": "This feature doesn't require new screens"}
+     ]
+   }
+   ```
+
+4. **If "Yes"**: Pause and suggest running `/prototype update`
+5. **If "Later" or "Not needed"**: Continue to specification phase
+
+**If no prototype exists**: Skip silently (backward compatible)
+
+**Note**: This is a soft prompt, not a blocking gate. Features can proceed without prototype.
+
+---
+
 ### Phase 0: Specification (Manual Gate #1)
 
 ```bash

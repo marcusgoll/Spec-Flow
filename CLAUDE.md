@@ -52,6 +52,58 @@ Mockup approval gate:
 - Blocks /implement until: state.yaml manual_gates.mockup_approval.status = approved
 - Continue: /feature continue
 
+### Prototype Workflow (v10.3+)
+
+Optional project-wide clickable prototype for holistic design iteration before feature/epic implementation.
+
+```
+/init-project → /prototype [--commit|--gitignore] → /feature or /epic → ...
+```
+
+**Purpose**: Unlike per-feature mockups (`specs/NNN/mockups/`), the prototype provides:
+
+- Complete app navigation hub showing all screens
+- Consistent themes and design patterns across features
+- Early stakeholder design review before any implementation
+- Foundation for per-feature mockups during `/tasks --ui-first`
+
+**Location**: `design/prototype/`
+
+**Command**: `/prototype [create|update|status] [--commit|--gitignore]`
+
+**Directory structure**:
+
+```
+design/prototype/
+├── index.html               # Navigation hub (all screens)
+├── screens/                 # Individual screen blueprints by category
+│   ├── auth/
+│   ├── dashboard/
+│   └── settings/
+├── _shared/                 # JS helpers (navigation, state switching)
+├── state.yaml               # Prototype version and screen registry
+└── prototype-patterns.md    # Extracted design patterns
+```
+
+**Git persistence** (user choice via preference or flag):
+
+- `--commit`: Version control prototype (recommended for design assets)
+- `--gitignore`: Exclude from git (rapid iteration)
+
+**Workflow integration**:
+
+- `/feature` and `/epic` detect prototype existence at start
+- Soft prompt when new screens detected: "Update prototype first?"
+- Per-feature mockups still generated during `/tasks --ui-first`
+- Both coexist: prototype for design cohesion, mockups for detailed states
+
+**Relationship to mockups**:
+
+| Artifact | Purpose | Scope | States |
+|----------|---------|-------|--------|
+| Prototype | Design cohesion, themes | All screens | Default only |
+| Per-feature mockups | Implementation spec | Single feature | All 4 states |
+
 ### Epic Frontend Blueprint Workflow (v9.4+)
 
 **For epics with Frontend subsystem**, HTML blueprints are automatically generated for design iteration before TSX implementation.
@@ -254,6 +306,7 @@ Foundation blocks all other features
 
 - /init-project [--interactive | --ci | --no-input] [--with-design] — Initialize design docs
 - /init-preferences [--reset] — Configure command defaults (one-time setup)
+- /prototype [create|update|status] [--commit|--gitignore] — Project-wide clickable prototype for design iteration
 - /roadmap — Manage features via GitHub Issues (brainstorm, prioritize, track)
 - /help — Context-aware workflow guidance (--verbose for state details)
 

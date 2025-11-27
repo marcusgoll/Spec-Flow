@@ -332,6 +332,33 @@ Let's get started! 🚀
 }
 ```
 
+### Step 8.5: Prototype Workflow Preferences
+
+**Use AskUserQuestion with 1 question:**
+
+**Question 13: Prototype Git Persistence**
+```json
+{
+  "question": "How should the project prototype be handled in git?",
+  "header": "Prototype",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "Commit (recommended for design-focused projects)",
+      "description": "Version control the prototype. Design changes are tracked in git history."
+    },
+    {
+      "label": "Gitignore (for rapid iteration)",
+      "description": "Exclude prototype from git. Regenerate as needed during design exploration."
+    },
+    {
+      "label": "Ask each time",
+      "description": "Prompt when creating prototype. Decide on a case-by-case basis."
+    }
+  ]
+}
+```
+
 ### Step 9: Build Configuration Object
 
 **Map answers to preference structure:**
@@ -367,6 +394,11 @@ const preferences = {
   worktrees: {
     auto_create: answer9.includes('Yes') ? true : false,
     cleanup_on_finalize: answer10.includes('Yes') ? true : false
+  },
+  prototype: {
+    git_persistence: answer13.includes('Commit') ? 'commit'
+                   : answer13.includes('Gitignore') ? 'gitignore'
+                   : 'ask'
   },
   learning: {
     enabled: answer11.includes('Yes') ? true : false,
@@ -489,13 +521,13 @@ Happy building! 🚀
 Before completing, verify:
 - user-preferences.yaml was created/updated successfully
 - File contains valid YAML syntax
-- All 8 questions were answered
+- All 13 questions were answered
 - Configuration summary matches user selections
 - File permissions allow reading/writing
 </verification>
 
 <success_criteria>
-- ✅ User completed all 8 preference questions
+- ✅ User completed all 13 preference questions
 - ✅ Configuration file created at .spec-flow/config/user-preferences.yaml
 - ✅ Valid YAML format with all required fields
 - ✅ Summary displayed showing configured preferences
@@ -664,7 +696,7 @@ Run /init-preferences again to customize.
 </error_handling>
 
 <meta_instructions>
-- Use AskUserQuestion for all 8 questions (3 rounds: 2+2+1+2+1)
+- Use AskUserQuestion for all 13 questions (rounds: 2+2+1+2+1+2+2+1)
 - Write valid YAML with proper indentation (2 spaces)
 - Include timestamp comment at top of generated file
 - Use clear, user-friendly language in all prompts

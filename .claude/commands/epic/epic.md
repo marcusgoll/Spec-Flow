@@ -253,6 +253,57 @@ test -d docs/project && echo "initialized" || echo "missing"
 
 **Once project initialized, proceed to epic creation.**
 
+### Step 0.3: Prototype Detection (Non-Blocking)
+
+**Check for project prototype before starting specification:**
+
+```bash
+# Check if prototype exists
+PROTOTYPE_EXISTS=$(test -f design/prototype/state.yaml && echo "true" || echo "false")
+```
+
+**If prototype exists:**
+
+1. Analyze epic description for UI keywords:
+   ```javascript
+   const uiKeywords = [
+     'screen', 'page', 'view', 'dashboard', 'modal', 'dialog',
+     'form', 'list', 'table', 'settings', 'profile', 'wizard',
+     'UI', 'frontend', 'interface'
+   ];
+   const description = "$ARGUMENTS".toLowerCase();
+   const hasUIIntent = uiKeywords.some(kw => description.includes(kw));
+   ```
+
+2. If UI intent detected, compare against prototype screen registry:
+   ```bash
+   # Read existing screens from prototype
+   cat design/prototype/state.yaml
+   ```
+
+3. If new screens might be needed for this epic, soft prompt user via AskUserQuestion:
+   ```json
+   {
+     "question": "This epic may require new UI screens. Update prototype first?",
+     "header": "Prototype",
+     "multiSelect": false,
+     "options": [
+       {"label": "Yes, update prototype", "description": "Add screens for this epic to prototype now (recommended for cohesive design)"},
+       {"label": "Later", "description": "Skip for now, can update prototype during sprint planning"},
+       {"label": "Not needed", "description": "This epic doesn't require new screens"}
+     ]
+   }
+   ```
+
+4. **If "Yes"**: Pause and suggest running `/prototype update`
+5. **If "Later" or "Not needed"**: Continue to specification phase
+
+**If no prototype exists**: Skip silently (backward compatible)
+
+**Note**: This is a soft prompt, not a blocking gate. Epics can proceed without prototype.
+
+---
+
 ### Step 1: Create Epic Specification
 
 **Parse user input and detect complexity:**
