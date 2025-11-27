@@ -2,6 +2,16 @@
 
 ---
 
+## [10.3.1] - 2025-11-27
+
+### 🔧 Fixed
+
+- **Scripts**: Fixed ProjectRoot path resolution in `init-project.ps1`
+  - Changed from 2 parent levels to 3 parent levels (`.Parent.Parent.Parent`)
+  - Fixes duplicated `.spec-flow\.spec-flow` path issue when running from installed package
+
+---
+
 ## [10.3.0] - 2025-11-27
 
 ### ✨ Added
