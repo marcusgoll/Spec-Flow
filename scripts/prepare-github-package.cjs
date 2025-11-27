@@ -12,7 +12,9 @@ const pkgPath = path.join(root, 'package.json');
 const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 
 const scopedName = `@${owner}/${pkg.name}`;
-const distDir = path.join(root, 'dist', 'github-package');
+// Use .github-package at root level to avoid recursive copy issues
+// (pkg.files includes 'dist/' which would cause self-copy if we put this inside dist/)
+const distDir = path.join(root, '.github-package');
 fs.rmSync(distDir, { recursive: true, force: true });
 fs.mkdirSync(distDir, { recursive: true });
 

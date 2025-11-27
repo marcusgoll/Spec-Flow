@@ -36,6 +36,7 @@ package-lock.json
 # Build outputs
 dist/
 build/
+.github-package/
 
 PUBLISHING.md.spec-flow/scripts/__pycache__/
 .spec-flow/scripts/__pycache__/

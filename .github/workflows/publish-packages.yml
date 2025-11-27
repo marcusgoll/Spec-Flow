@@ -62,7 +62,7 @@ jobs:
           always-auth: true
 
       - name: Publish to GitHub Packages
-        working-directory: dist/github-package
+        working-directory: .github-package
         env:
           NODE_AUTH_TOKEN: ${{ github.token }}
           PKG_VERSION: ${{ steps.pkg.outputs.version }}
