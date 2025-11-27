@@ -2,6 +2,48 @@
 
 ---
 
+## [10.3.0] - 2025-11-27
+
+### ✨ Added
+
+**Prototype-First Workflow (v10.3)**
+
+Create comprehensive clickable HTML prototypes for holistic design iteration before feature implementation.
+
+- **New `/prototype` command**: Create, update, and manage project-wide prototypes
+  - `create` mode: Interactive questionnaire for screen categories (Auth, Dashboard, Settings, Admin)
+  - `update` mode: Add new screens to existing prototype
+  - `status` mode: View current prototype state
+  - Git persistence options: `--commit`, `--gitignore`, or user choice
+
+- **Prototype templates**: HTML scaffold with design token integration
+  - `index.html` - Navigation hub showing all screens by category
+  - `screen.html` - Individual screen template with state switching
+  - Keyboard navigation: 1-9 for jump, H for hub, S for state cycling
+  - Integration with `design/systems/tokens.css`
+
+- **Workflow integration**: Soft prompts in `/feature` and `/epic`
+  - Auto-detects prototype existence via `design/prototype/state.yaml`
+  - Non-blocking prompt when new UI screens detected
+  - Options: Update prototype now, skip for later, or not needed
+
+- **User preferences**: New `prototype.git_persistence` setting
+  - Options: `commit` (version control), `gitignore` (exclude), `ask` (prompt each time)
+  - Question 13 added to `/init-preferences` wizard
+
+**Documentation**
+
+- Added Prototype Workflow section to CLAUDE.md
+- Updated command reference in CLAUDE.md
+
+### 🔧 Fixed
+
+- **CI/CD**: Fixed recursive copy error in GitHub Packages publish workflow
+  - Moved `.github-package` directory from `dist/` to root level
+  - Prevents EINVAL error when `pkg.files` includes `dist/`
+
+---
+
 ## [10.2.0] - 2025-11-27
 
 ### ✨ Added
