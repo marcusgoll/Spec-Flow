@@ -545,6 +545,141 @@ specs/NNN-slug/mockups/
 
 ---
 
+## MAKER-Style Task Complexity Scoring
+
+**Based on**: "Solving a Million-Step LLM Task with Zero Errors" (arXiv:2511.09030)
+
+**Core insight**: Smaller tasks = more reliable execution. Tasks scoring >5 should be decomposed further.
+
+### Complexity Score (1-10)
+
+Rate each task on these dimensions:
+
+| Score | Level | Description | Agent Reliability |
+|-------|-------|-------------|-------------------|
+| 1-3 | Atomic | Single operation, clear input/output | ~95% success rate |
+| 4-6 | Compound | 2-4 dependent operations | ~85% success rate |
+| 7-10 | Complex | Multiple dependencies, unclear scope | ~70% success rate |
+
+### Scoring Criteria
+
+**Add 1 point for each:**
+
+1. **Multiple files modified** (+1 per file after first)
+2. **Cross-subsystem work** (backend + frontend in same task)
+3. **External dependency** (API call, database, third-party service)
+4. **Conditional logic** (if/else branches in implementation)
+5. **State management** (context, session, cache updates)
+6. **Error handling** (multiple error paths)
+7. **Integration point** (connecting components)
+8. **Unclear acceptance criteria** (vague requirements)
+9. **No existing pattern** (novel implementation)
+10. **High-stakes operation** (data migration, security, payments)
+
+### Example Scoring
+
+```markdown
+### T008: Write unit tests for StudentProgressService
+
+Complexity Score: 3/10 (Atomic)
+- Single file modification: tests/test_student_progress.py
+- Clear input/output: mock data → test assertions
+- Existing pattern: follows test template
+- No external dependencies: all mocked
+
+Recommendation: ✅ Good size, proceed as-is
+
+---
+
+### T015: Implement authentication flow with OAuth2 + session management
+
+Complexity Score: 8/10 (Complex - DECOMPOSE)
+- Multiple files: +3 (auth controller, service, middleware)
+- External dependency: +1 (OAuth2 provider)
+- State management: +2 (session + token refresh)
+- Error handling: +1 (multiple OAuth error codes)
+- High-stakes: +1 (security-critical)
+
+Recommendation: ⚠️ Split into 4-5 atomic tasks
+
+Decomposition:
+→ T015a: Create OAuth2 callback endpoint (score: 3)
+→ T015b: Implement token validation service (score: 2)
+→ T015c: Create session management middleware (score: 3)
+→ T015d: Add token refresh logic (score: 2)
+→ T015e: Write integration tests for auth flow (score: 3)
+```
+
+### Automatic Complexity Warnings
+
+**In tasks.md header, include complexity summary:**
+
+```markdown
+## Complexity Analysis
+
+| Score Range | Count | Recommendation |
+|-------------|-------|----------------|
+| 1-3 (Atomic) | 18 | ✅ Proceed |
+| 4-6 (Compound) | 8 | ⚠️ Monitor closely |
+| 7-10 (Complex) | 2 | ❌ DECOMPOSE BEFORE /implement |
+
+**High Complexity Tasks Requiring Decomposition:**
+- T015: Implement authentication flow (score: 8) → Split into T015a-T015e
+- T022: Database migration with data transformation (score: 7) → Split into T022a-T022c
+
+**Total after decomposition:** 28 tasks → 35 tasks (7 new atomic tasks)
+```
+
+### Integration with Red-Flagging
+
+**During /implement phase:**
+
+1. Before executing task, check complexity score
+2. If score > 5, warn agent about potential difficulties
+3. Track success rate vs complexity (learning system)
+4. If task fails 2x, suggest further decomposition
+
+**Configuration** (`.spec-flow/config/red-flags.yaml`):
+
+```yaml
+task_complexity:
+  warn_threshold: 5
+  block_threshold: 7  # Require manual approval for score >7
+  auto_decompose: false  # Set true to auto-split high-complexity tasks
+```
+
+### Benefits of MAKER-Style Decomposition
+
+1. **Higher success rate**: Atomic tasks have ~95% vs ~70% for complex
+2. **Better error localization**: When task fails, know exactly what broke
+3. **Parallel execution**: More atomic tasks = more parallelization opportunities
+4. **Cost efficiency**: Can use smaller/cheaper models (haiku) for atomic tasks
+5. **Progress visibility**: More tasks completed = clearer progress tracking
+
+### Learning Integration
+
+**Track complexity vs outcome:**
+
+```yaml
+# .spec-flow/learnings/observations/task-complexity-observations.yaml
+observations:
+  - task_id: T015
+    complexity_score: 8
+    outcome: failed
+    retries: 3
+    decomposed_into: [T015a, T015b, T015c, T015d, T015e]
+    post_decomposition_success: true
+
+  - task_id: T008
+    complexity_score: 3
+    outcome: success
+    retries: 0
+```
+
+**Adaptive thresholds**: If tasks scoring 5-6 fail frequently, lower warn_threshold to 4.
+
+---
+
 ## Task Structure
 
 **Each task includes:**

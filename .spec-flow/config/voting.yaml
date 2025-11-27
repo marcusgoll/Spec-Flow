@@ -1,0 +1,255 @@
+# Multi-Agent Voting Configuration for MAKER-Style Error Correction
+# Based on: "Solving a Million-Step LLM Task with Zero Errors" (arXiv:2511.09030)
+#
+# Core Principle: First-to-ahead-by-k voting enables arbitrary accuracy
+# Key Formula: p_correct = p^k / (p^k + (1-p)^k)
+# With k=2 and p=0.7: p_correct ≈ 0.84
+# With k=3 and p=0.7: p_correct ≈ 0.91
+
+version: "1.0.0"
+
+# Global voting settings
+global:
+  # Enable voting system
+  enabled: true
+
+  # Default voting strategy
+  default_strategy: "first_to_ahead_by_k"
+
+  # Default k value (candidate must be k votes ahead to win)
+  default_k: 2
+
+  # Default number of agents to sample
+  default_agents: 3
+
+  # Cost tracking
+  track_cost: true
+
+  # Log votes for learning
+  track_in_learnings: true
+
+# Voting strategies
+strategies:
+  # MAKER's first-to-ahead-by-k
+  # More robust than simple majority - handles ties and uncertain cases
+  first_to_ahead_by_k:
+    description: "Candidate must be k votes ahead of any other to win"
+    parameters:
+      k: 2  # Votes ahead required
+      max_rounds: 10  # Maximum voting rounds before escalation
+      timeout_per_agent: 120  # Seconds
+
+  # Simple majority (fallback)
+  majority:
+    description: "Simple majority wins (N/2 + 1)"
+    parameters:
+      min_agreement: 0.5
+
+  # Unanimous (for critical decisions)
+  unanimous:
+    description: "All agents must agree"
+    parameters:
+      allow_abstain: false
+
+  # Weighted (for mixed model voting)
+  weighted:
+    description: "Votes weighted by model capability"
+    weights:
+      opus: 2.0
+      sonnet: 1.5
+      haiku: 1.0
+
+# Error decorrelation techniques
+decorrelation:
+  # Temperature variation between agents
+  temperature_variation:
+    enabled: true
+    base_temperature: 0.7
+    variation_range: 0.2  # ±0.2 around base
+    # Agent 1: 0.5, Agent 2: 0.7, Agent 3: 0.9
+
+  # Prompt paraphrasing
+  prompt_variation:
+    enabled: false  # Enable for stronger decorrelation
+    techniques:
+      - "rephrase_question"
+      - "reorder_context"
+      - "vary_examples"
+
+  # Model mixing (most expensive but most decorrelated)
+  model_mixing:
+    enabled: false  # Enable for maximum accuracy
+    models:
+      - "haiku"
+      - "sonnet"
+      - "opus"
+
+# Operations with voting enabled
+operations:
+  # Code review - critical for quality
+  code_review:
+    enabled: true
+    strategy: "first_to_ahead_by_k"
+    k: 2
+    agents: 3
+    model: "sonnet"  # Use same model unless model_mixing enabled
+    decorrelation:
+      temperature_variation: true
+    output_format:
+      type: "structured"
+      fields:
+        - name: "severity"
+          values: ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE"]
+        - name: "pass_fail"
+          values: ["PASS", "FAIL"]
+        - name: "issues_count"
+          type: "integer"
+    consensus_on: "pass_fail"  # Vote on pass/fail, aggregate issues
+
+  # Breaking change detection - high stakes
+  breaking_change_detection:
+    enabled: true
+    strategy: "first_to_ahead_by_k"
+    k: 2
+    agents: 3
+    model: "sonnet"
+    decorrelation:
+      temperature_variation: true
+    output_format:
+      type: "binary"
+      values: ["BREAKING", "NON_BREAKING"]
+    consensus_on: "value"
+    # Bias towards conservative (flag breaking)
+    tie_breaker: "BREAKING"
+
+  # Spec completeness validation
+  spec_validation:
+    enabled: true
+    strategy: "first_to_ahead_by_k"
+    k: 2
+    agents: 3
+    model: "haiku"  # Simpler task, cheaper model
+    decorrelation:
+      temperature_variation: true
+    output_format:
+      type: "structured"
+      fields:
+        - name: "completeness"
+          values: ["COMPLETE", "INCOMPLETE"]
+        - name: "missing_sections"
+          type: "list"
+    consensus_on: "completeness"
+
+  # Task decomposition quality
+  task_decomposition:
+    enabled: true
+    strategy: "majority"
+    agents: 3
+    model: "haiku"
+    output_format:
+      type: "structured"
+      fields:
+        - name: "complexity_score"
+          type: "integer"
+          range: [1, 10]
+        - name: "needs_splitting"
+          values: ["YES", "NO"]
+    consensus_on: "needs_splitting"
+    # Average the complexity scores
+    aggregate: "complexity_score:mean"
+
+  # Security scan review
+  security_review:
+    enabled: true
+    strategy: "unanimous"  # All must agree it's safe
+    agents: 3
+    model: "sonnet"
+    output_format:
+      type: "binary"
+      values: ["SAFE", "UNSAFE"]
+    # If any says UNSAFE, it's UNSAFE
+    tie_breaker: "UNSAFE"
+
+  # Architecture decisions
+  architecture_decision:
+    enabled: false  # Opt-in for high-cost operations
+    strategy: "first_to_ahead_by_k"
+    k: 3  # Higher k for important decisions
+    agents: 5
+    model: "opus"  # Use best model
+    decorrelation:
+      temperature_variation: true
+      prompt_variation: true  # Maximum decorrelation
+
+# Cost management
+cost:
+  # Maximum cost multiplier per operation
+  max_multiplier: 5  # Never spend more than 5x single-agent cost
+
+  # Cost estimates (relative to haiku baseline)
+  model_costs:
+    haiku: 1.0
+    sonnet: 3.0
+    opus: 15.0
+
+  # Voting cost formula: agents * model_cost * (1 + retry_probability * retry_cost)
+  # Example: 3 agents * 3.0 (sonnet) * 1.2 = 10.8x haiku baseline
+
+  # Budget alerts
+  alerts:
+    warning_threshold: 3.0  # Warn if cost > 3x baseline
+    block_threshold: 10.0  # Block if cost > 10x baseline
+
+# Fallback behavior
+fallback:
+  # What to do if voting fails to reach consensus
+  on_no_consensus:
+    max_rounds: 10
+    action: "escalate_to_user"
+
+  # What to do if all agents red-flagged
+  on_all_red_flagged:
+    action: "escalate_to_user"
+    provide_context: true
+
+  # Timeout handling
+  on_timeout:
+    action: "use_partial_votes"
+    min_votes_required: 2
+
+# Learning integration
+learning:
+  # Track voting outcomes
+  track_file: ".spec-flow/learnings/observations/voting-observations.yaml"
+
+  # Patterns to learn from
+  patterns_to_track:
+    - operation_type
+    - strategy_used
+    - rounds_to_consensus
+    - final_outcome
+    - cost_incurred
+    - agent_agreement_rate
+
+  # Use historical accuracy to adjust k
+  adaptive_k:
+    enabled: true
+    # If historical accuracy < 0.9, increase k
+    accuracy_threshold: 0.9
+    k_adjustment: 1
+
+# Output aggregation rules
+aggregation:
+  # How to combine non-voting fields from multiple agents
+  rules:
+    # Lists are unioned
+    lists: "union"
+
+    # Strings take majority
+    strings: "majority"
+
+    # Numbers can be averaged or take median
+    numbers: "median"
+
+    # Severity takes maximum (most conservative)
+    severity: "max"

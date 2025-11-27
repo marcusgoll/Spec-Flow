@@ -1,0 +1,308 @@
+# Error Rate Tracking for MAKER-Style Analysis
+# Based on: "Solving a Million-Step LLM Task with Zero Errors" (arXiv:2511.09030)
+#
+# Purpose: Track success rates per task type to estimate workflow completion probability
+# and inform model selection decisions (c/p optimization - cost per success)
+
+version: "1.0.0"
+
+# Global statistics
+global:
+  total_tasks_executed: 0
+  total_successes: 0
+  total_failures: 0
+  total_retries: 0
+  overall_success_rate: 0.0
+  last_updated: null
+
+# Success rates by task type
+# MAKER insight: Use historical rates to predict workflow completion probability
+task_types:
+  # Database operations
+  database_migration:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "sonnet"  # Higher stakes, use capable model
+    voting_recommended: false
+    complexity_avg: 0.0
+
+  database_query:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "haiku"  # Simpler operation
+    voting_recommended: false
+    complexity_avg: 0.0
+
+  # API operations
+  api_endpoint:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "sonnet"
+    voting_recommended: false
+    complexity_avg: 0.0
+
+  api_integration:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "sonnet"
+    voting_recommended: true  # Complex, benefits from consensus
+    complexity_avg: 0.0
+
+  # Frontend operations
+  ui_component:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "haiku"  # Often straightforward
+    voting_recommended: false
+    complexity_avg: 0.0
+
+  ui_state_management:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "sonnet"  # Complex state logic
+    voting_recommended: false
+    complexity_avg: 0.0
+
+  # Testing operations
+  unit_test:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "haiku"  # Well-defined scope
+    voting_recommended: false
+    complexity_avg: 0.0
+
+  integration_test:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "sonnet"  # Multiple components
+    voting_recommended: false
+    complexity_avg: 0.0
+
+  e2e_test:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "sonnet"  # Complex flows
+    voting_recommended: false
+    complexity_avg: 0.0
+
+  # Business logic
+  service_implementation:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "sonnet"
+    voting_recommended: false
+    complexity_avg: 0.0
+
+  algorithm_implementation:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "opus"  # Requires reasoning
+    voting_recommended: true  # Benefits from consensus
+    complexity_avg: 0.0
+
+  # Configuration/Infrastructure
+  configuration_change:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "haiku"  # Simple changes
+    voting_recommended: false
+    complexity_avg: 0.0
+
+  infrastructure_setup:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "sonnet"
+    voting_recommended: false
+    complexity_avg: 0.0
+
+  # Refactoring
+  refactoring:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "sonnet"
+    voting_recommended: false
+    complexity_avg: 0.0
+
+  # Security-sensitive
+  security_implementation:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "opus"  # High stakes
+    voting_recommended: true  # Critical decisions
+    complexity_avg: 0.0
+
+  authentication:
+    samples: 0
+    successes: 0
+    failures: 0
+    retries: 0
+    success_rate: 0.0
+    avg_retries: 0.0
+    recommended_model: "opus"  # Security critical
+    voting_recommended: true
+    complexity_avg: 0.0
+
+# Success rates by complexity score (MAKER-style)
+complexity_tiers:
+  atomic:  # Score 1-3
+    range: [1, 3]
+    samples: 0
+    success_rate: 0.0
+    expected_rate: 0.95  # MAKER target
+    recommended_model: "haiku"
+
+  compound:  # Score 4-6
+    range: [4, 6]
+    samples: 0
+    success_rate: 0.0
+    expected_rate: 0.85
+    recommended_model: "sonnet"
+
+  complex:  # Score 7-10
+    range: [7, 10]
+    samples: 0
+    success_rate: 0.0
+    expected_rate: 0.70
+    recommended_model: "opus"
+    warning: "Consider decomposition"
+
+# Model performance tracking
+# MAKER insight: Minimize c/p (cost per success), not just cost
+model_performance:
+  haiku:
+    cost_multiplier: 1.0
+    samples: 0
+    success_rate: 0.0
+    avg_retry_count: 0.0
+    cost_per_success: 0.0  # cost_multiplier / success_rate
+
+  sonnet:
+    cost_multiplier: 3.0
+    samples: 0
+    success_rate: 0.0
+    avg_retry_count: 0.0
+    cost_per_success: 0.0
+
+  opus:
+    cost_multiplier: 15.0
+    samples: 0
+    success_rate: 0.0
+    avg_retry_count: 0.0
+    cost_per_success: 0.0
+
+# Workflow completion probability estimation
+# MAKER formula: P(all succeed) = product(p_i) for independent tasks
+# With voting: P(task correct) = p^k / (p^k + (1-p)^k)
+workflow_estimation:
+  # Probability that a workflow with N tasks completes successfully
+  # Assumes tasks are independent (conservative estimate)
+  example_calculations:
+    - tasks: 10
+      avg_success_rate: 0.90
+      naive_probability: 0.349  # 0.9^10
+      with_voting_k2: 0.765  # Using voting on critical tasks
+
+    - tasks: 25
+      avg_success_rate: 0.90
+      naive_probability: 0.072  # 0.9^25
+      with_voting_k2: 0.445
+
+    - tasks: 50
+      avg_success_rate: 0.90
+      naive_probability: 0.005  # 0.9^50
+      with_voting_k2: 0.198
+
+  # Recommendation: Use voting for workflows with >20 tasks
+  # or when estimated completion probability < 50%
+
+# Thresholds for adaptive behavior
+thresholds:
+  # If success rate drops below this, increase model tier
+  upgrade_model_threshold: 0.80
+
+  # If success rate is above this, can downgrade model (cost savings)
+  downgrade_model_threshold: 0.95
+
+  # Minimum samples before making recommendations
+  min_samples_for_recommendation: 10
+
+  # Enable voting if success rate below this
+  enable_voting_threshold: 0.85
+
+  # Suggest decomposition if success rate below this for score >5
+  suggest_decomposition_threshold: 0.75
+
+# Learning triggers
+# When to update recommendations based on new data
+learning:
+  # Re-evaluate after this many new samples
+  evaluation_interval: 10
+
+  # Weight for exponential moving average (recent data more important)
+  ema_weight: 0.3
+
+  # Auto-adjust thresholds if patterns detected
+  adaptive_thresholds: true
+
+  # Track time-of-day patterns (some failures correlate with context length)
+  track_temporal_patterns: true

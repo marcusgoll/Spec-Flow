@@ -1,0 +1,214 @@
+# Red-Flagging Configuration for MAKER-Style Error Detection
+# Based on: "Solving a Million-Step LLM Task with Zero Errors" (arXiv:2511.09030)
+#
+# Core Principle: Discard suspicious outputs rather than repair them.
+# "Bad behaviors are correlated in LLMs" - if one thing is wrong, others likely are too.
+
+version: "1.0.0"
+
+# Global settings
+global:
+  # Enable red-flagging system
+  enabled: true
+
+  # Maximum retries before escalating to user
+  max_retries: 5
+
+  # Strategy: "discard" (MAKER) or "repair" (legacy)
+  # MAKER recommends "discard" - fresh sample is better than patched sample
+  on_red_flag: "discard"
+
+  # Log red flag occurrences for learning system
+  track_in_learnings: true
+
+# Red flag definitions
+red_flags:
+  # 1. Response Length Exceeded
+  # MAKER insight: Overly long responses indicate confusion and self-destructive analysis loops
+  response_length_exceeded:
+    enabled: true
+    description: "Response exceeds expected length, indicating potential confusion"
+    severity: "high"
+    thresholds:
+      # Token limits by operation type
+      task_implementation: 4000
+      code_review: 3000
+      spec_validation: 2000
+      architecture_decision: 5000
+      test_generation: 3000
+      default: 3000
+    action: "discard_and_retry"
+
+  # 2. Format Validation Failed
+  # MAKER insight: Format errors correlate strongly with reasoning errors
+  format_validation_failed:
+    enabled: true
+    description: "Output doesn't match expected format, correlates with reasoning errors"
+    severity: "high"
+    strict_mode: true  # Don't attempt to repair, just retry
+    expected_formats:
+      task_output:
+        - "Must include ## Implementation section"
+        - "Must include code blocks with language specifier"
+        - "Must not contain TODO placeholders in final code"
+      code_review:
+        - "Must use severity levels: CRITICAL, HIGH, MEDIUM, LOW"
+        - "Must include file:line references"
+        - "Must provide actionable recommendations"
+      spec_validation:
+        - "Must include PASS/FAIL verdict"
+        - "Must list specific findings"
+    action: "discard_and_retry"
+
+  # 3. Uncertainty Markers
+  # Responses containing hedging language often indicate low confidence
+  contains_uncertainty_markers:
+    enabled: true
+    description: "Response contains hedging language indicating low confidence"
+    severity: "medium"
+    markers:
+      - "I'm not sure"
+      - "I think maybe"
+      - "possibly"
+      - "I believe"
+      - "it might be"
+      - "I'm uncertain"
+      - "could potentially"
+      - "this may or may not"
+    # Threshold: number of markers before flagging
+    threshold: 2
+    action: "warn_and_continue"  # Less severe, just log
+
+  # 4. Circular Reasoning Detected
+  # Agent repeating itself or going in loops
+  circular_reasoning_detected:
+    enabled: true
+    description: "Agent appears to be reasoning in circles"
+    severity: "high"
+    detection:
+      # Similarity threshold between consecutive outputs
+      similarity_threshold: 0.85
+      # Window of outputs to compare
+      window_size: 3
+    action: "discard_and_retry"
+
+  # 5. Incomplete Output
+  # Response appears to be cut off or incomplete
+  incomplete_output:
+    enabled: true
+    description: "Response appears truncated or incomplete"
+    severity: "high"
+    indicators:
+      - "ends mid-sentence"
+      - "missing closing brackets/braces"
+      - "trailing ellipsis..."
+      - "unclosed code blocks"
+    action: "discard_and_retry"
+
+  # 6. Hallucination Indicators
+  # References to non-existent files, APIs, or concepts
+  hallucination_indicators:
+    enabled: true
+    description: "Response references non-existent resources"
+    severity: "critical"
+    checks:
+      - "file_paths_exist"
+      - "api_endpoints_documented"
+      - "dependencies_in_package_json"
+    action: "discard_and_retry"
+
+  # 7. Self-Contradiction
+  # Agent contradicts itself within the same response
+  self_contradiction:
+    enabled: true
+    description: "Response contains contradictory statements"
+    severity: "high"
+    detection_mode: "semantic"  # or "exact" for literal contradictions
+    action: "discard_and_retry"
+
+# Operation-specific configurations
+operations:
+  # Task implementation (highest reliability needed)
+  task_implementation:
+    red_flags_enabled:
+      - response_length_exceeded
+      - format_validation_failed
+      - incomplete_output
+      - hallucination_indicators
+    max_retries: 5
+    escalation_threshold: 3  # After 3 red flags, pause for review
+
+  # Code review (critical for quality)
+  code_review:
+    red_flags_enabled:
+      - response_length_exceeded
+      - format_validation_failed
+      - uncertainty_markers
+      - self_contradiction
+    max_retries: 3
+    # Enable voting for code review (see voting.yaml)
+    voting_enabled: true
+
+  # Spec validation
+  spec_validation:
+    red_flags_enabled:
+      - format_validation_failed
+      - uncertainty_markers
+      - incomplete_output
+    max_retries: 3
+    voting_enabled: true
+
+  # Architecture decisions (high stakes)
+  architecture_decision:
+    red_flags_enabled:
+      - response_length_exceeded
+      - circular_reasoning_detected
+      - uncertainty_markers
+      - hallucination_indicators
+    max_retries: 5
+    voting_enabled: true
+
+  # Breaking change detection
+  breaking_change_detection:
+    red_flags_enabled:
+      - format_validation_failed
+      - incomplete_output
+      - hallucination_indicators
+    max_retries: 3
+    voting_enabled: true
+
+# Retry strategies (MAKER-style)
+retry_strategies:
+  # Default: fresh context, no memory of failed attempt
+  discard_and_retry:
+    clear_context: true
+    temperature_bump: 0.1  # Slightly increase temperature for diversity
+    max_temperature: 1.0
+    prompt_variation: false  # Set to true for decorrelation
+
+  # Warn but continue (for low-severity flags)
+  warn_and_continue:
+    log_warning: true
+    continue_execution: true
+
+  # Escalate to user (for repeated failures)
+  escalate:
+    pause_execution: true
+    notify_user: true
+    provide_context: true
+
+# Learning integration
+learning:
+  # Track red flag occurrences
+  track_file: ".spec-flow/learnings/observations/red-flag-observations.yaml"
+
+  # Patterns to learn from
+  patterns_to_track:
+    - operation_type
+    - red_flag_type
+    - retry_count
+    - final_outcome
+    - time_of_day  # Some patterns may be time-related
+
+  # After N occurrences, generate anti-pattern
+  anti_pattern_threshold: 3
