@@ -45,6 +45,19 @@
 
 ## 🆕 Recent Updates
 
+### v10.2.0 (November 2025)
+
+**MAKER Error Correction Framework** - Integrates concepts from "Solving a Million-Step LLM Task with Zero Errors" (arXiv:2511.09030) for improved reliability.
+
+- **Red-Flagging System**: Discard suspicious agent outputs instead of repairing them
+- **Multi-Agent Voting**: First-to-ahead-by-k error correction for critical decisions
+- **Task Complexity Scoring**: 1-10 scale with decomposition guidance (score >5 = decompose)
+- **Error Rate Tracking**: Historical success rates for adaptive model selection (c/p optimization)
+
+New files: `.spec-flow/config/red-flags.yaml`, `.spec-flow/config/voting.yaml`, `.spec-flow/learnings/error-rates.yaml`, `docs/maker-integration.md`
+
+---
+
 ### v10.1.0 (November 2025)
 
 **Codex CLI Support** - Full compatibility layer for OpenAI Codex CLI, enabling Spec-Flow workflows with both Claude Code and Codex. Includes new epic skills (scoping, meta-prompting, sprints, walkthrough), security fixes, and infrastructure improvements.

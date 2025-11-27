@@ -2,6 +2,48 @@
 
 ---
 
+## [10.2.0] - 2025-11-27
+
+### ✨ Added
+
+**MAKER Error Correction Framework**
+
+Integrates concepts from "Solving a Million-Step LLM Task with Zero Errors" (arXiv:2511.09030) to improve workflow reliability and scalability.
+
+- **Red-Flagging System**: Discard suspicious agent outputs instead of repairing them
+  - Response length limits by operation type
+  - Format validation (strict mode - fail fast, don't repair)
+  - Uncertainty marker detection
+  - Circular reasoning detection
+  - Configuration: `.spec-flow/config/red-flags.yaml`
+
+- **Multi-Agent Voting**: First-to-ahead-by-k error correction for critical decisions
+  - Mathematical foundation: `p_correct = p^k / (p^k + (1-p)^k)`
+  - Temperature-based error decorrelation
+  - Voting-enabled operations: code review, breaking changes, security review
+  - New skill: `.claude/skills/multi-agent-voting/SKILL.md`
+  - Configuration: `.spec-flow/config/voting.yaml`
+
+- **Task Complexity Scoring**: 1-10 scale for task decomposition guidance
+  - Score 1-3 (Atomic): ~95% success rate
+  - Score 4-6 (Compound): ~85% success rate
+  - Score 7-10 (Complex): ~70% success rate → DECOMPOSE
+  - Automatic warnings for tasks scoring >5
+  - Updated: `.claude/skills/task-breakdown-phase/reference.md`
+
+- **Error Rate Tracking**: Historical success rates for adaptive model selection
+  - Per-task-type success rate tracking
+  - Cost per success (c/p) optimization guidance
+  - Model recommendations based on task complexity
+  - Configuration: `.spec-flow/learnings/error-rates.yaml`
+
+**Documentation**
+
+- `docs/maker-integration.md` - Comprehensive MAKER concepts guide
+- Updated `CLAUDE.md` with MAKER Error Correction section (v10.1+)
+
+---
+
 ## [10.1.0] - 2025-11-26
 
 ### ✨ Added
