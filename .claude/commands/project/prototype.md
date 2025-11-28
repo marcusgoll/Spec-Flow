@@ -2,23 +2,19 @@
 name: prototype
 description: Create and manage project-wide clickable HTML prototype for holistic design iteration before feature implementation
 argument-hint: [create|update|status] [--commit|--gitignore] [--screens screen1,screen2]
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash(git:*), AskUserQuestion, TodoWrite]
-version: 1.0
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash(git:*), Bash(test:*), AskUserQuestion, TodoWrite]
+version: 1.1
 created: 2025-11-27
 ---
 
 # /prototype - Project-Wide Clickable Prototype
 
 <context>
-**Git Root**: !`git rev-parse --show-toplevel 2>$null || echo "."`
-
-**Prototype Status**: !`test -f design/prototype/state.yaml && echo "exists" || echo "missing"`
-
-**Design Tokens**: !`test -f design/systems/tokens.css && echo "available" || echo "missing"`
-
-**Project Docs**: !`test -f docs/project/overview.md && echo "initialized" || echo "missing"`
-
-**User Preference (git)**: !`yq eval '.prototype.git_persistence // "ask"' .spec-flow/config/user-preferences.yaml 2>/dev/null || echo "ask"`
+**Check these files before proceeding:**
+- Prototype state: `design/prototype/state.yaml`
+- Design tokens: `design/systems/tokens.css`
+- Project docs: `docs/project/overview.md`
+- User preferences: `.spec-flow/config/user-preferences.yaml` (check `prototype.git_persistence`)
 </context>
 
 <objective>
