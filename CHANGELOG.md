@@ -2,6 +2,17 @@
 
 ---
 
+## [10.3.2] - 2025-11-28
+
+### 🔧 Fixed
+
+- **Commands**: Fixed shell expansion syntax error in `/prototype` command
+  - Removed dynamic context with `!` backticks that required manual approval
+  - Changed to static context with file paths to check during execution
+  - Added `Bash(test:*)` to allowed-tools
+
+---
+
 ## [10.3.1] - 2025-11-27
 
 ### 🔧 Fixed
