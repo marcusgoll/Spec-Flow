@@ -45,6 +45,19 @@
 
 ## 🆕 Recent Updates
 
+### v10.4.0 (November 2025)
+
+**E2E Visual Testing + Epic Worktrees** - Gate 7 adds automated E2E and visual regression testing to `/optimize` phase.
+
+- **New Gate 7**: Playwright E2E tests with `toHaveScreenshot()` visual comparison
+- **Auto Dev Server**: Automatically starts/stops dev server during tests
+- **Baseline Management**: Per-feature/epic storage with auto-commit on first run
+- **Epic Worktrees**: Full git worktree support for parallel epic development
+
+New files: `.spec-flow/scripts/bash/e2e-visual-gate.sh`, `.spec-flow/templates/playwright.config.template.ts`, `.spec-flow/templates/e2e-visual.spec.template.ts`
+
+---
+
 ### v10.2.0 (November 2025)
 
 **MAKER Error Correction Framework** - Integrates concepts from "Solving a Million-Step LLM Task with Zero Errors" (arXiv:2511.09030) for improved reliability.

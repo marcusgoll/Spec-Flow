@@ -2,6 +2,54 @@
 
 ---
 
+## [10.4.0] - 2025-11-29
+
+### ✨ Added
+
+**E2E Visual Testing (Gate 7)**
+
+Automated E2E and visual regression testing integrated into the `/optimize` phase for both features and epics.
+
+- **New Gate 7**: E2E + Visual Regression tests
+  - Runs Playwright E2E tests with `toHaveScreenshot()` visual comparison
+  - Auto-detects and starts dev server if not running
+  - Configurable pixel difference threshold (default: 10%)
+  - Multi-viewport testing (desktop: 1280x720, mobile: 375x667)
+
+- **Baseline Management**: Per-feature/epic storage
+  - First run auto-generates baseline screenshots
+  - Auto-commits baselines with descriptive message
+  - Baselines stored in `e2e/baselines/{feature-slug}/`
+
+- **Templates**: Ready-to-use Playwright configurations
+  - `playwright.config.template.ts` - Deterministic screenshot settings
+  - `e2e-visual.spec.template.ts` - Visual test examples with animation disabling
+
+- **User Preferences**: New `e2e_visual` configuration section
+  - `enabled` - Enable/disable Gate 7
+  - `failure_mode` - blocking (recommended) or warning
+  - `threshold` - Pixel difference tolerance (0.0-1.0)
+  - `auto_commit_baselines` - Auto-commit on first run
+  - `viewports` - Configurable viewport presets
+
+**Epic Worktree Support**
+
+Full git worktree integration for epic workflows, enabling parallel epic development.
+
+- **New `create-new-epic.sh` script**: Mirrors feature worktree creation
+  - Creates `epic/NNN-slug` branch with worktree
+  - Sets up epic directory structure (epic-spec.md, state.yaml, NOTES.md)
+  - Handles git worktree creation with memory linking
+  - Supports `--json` output for workflow integration
+
+### 🔧 Fixed
+
+- **Scripts**: Fixed `sanitize_slug` and `log_success` missing from common.sh
+- **Scripts**: Fixed `--json` flag position in worktree-manager.sh calls
+- **Scripts**: Fixed JSON parsing for worktree output (handles spaces in key-value pairs)
+
+---
+
 ## [10.3.2] - 2025-11-28
 
 ### 🔧 Fixed
