@@ -378,113 +378,43 @@ AskUserQuestion({
 **Generate epic specification (Markdown format):**
 
 ```bash
-# Step 1: Branch and Worktree Creation
-# This step MUST execute before proceeding with specification phase
-# Ensures epic work happens on dedicated branch (either regular or worktree)
+# Step 1: Branch, Worktree, and Epic Workspace Creation
+# Uses create-new-epic.sh script which handles:
+# - Worktree creation (if worktrees.auto_create is true in user-preferences.yaml)
+# - Git branch creation (fallback if worktrees disabled)
+# - Epic directory structure (epics/NNN-slug/)
+# - Initial files: epic-spec.md, state.yaml, NOTES.md
+# - Subdirectories: visuals/, artifacts/, mockups/
 
-EPIC_BRANCH="epic/${NNN}-${SLUG}"
+# Execute the script with JSON output for parsing
+EPIC_RESULT=$(bash .spec-flow/scripts/bash/create-new-epic.sh --json "$EPIC_DESCRIPTION")
 
-# Check user preferences for worktree auto-creation (with error handling)
-WORKTREE_ENABLED=$(bash .spec-flow/scripts/utils/load-preferences.sh --key worktrees.auto_create --default false 2>/dev/null)
+# Parse results
+EPIC_DIR=$(echo "$EPIC_RESULT" | grep -o '"EPIC_DIR": *"[^"]*"' | sed 's/"EPIC_DIR": *"//' | sed 's/"$//')
+BRANCH_NAME=$(echo "$EPIC_RESULT" | grep -o '"BRANCH_NAME": *"[^"]*"' | sed 's/"BRANCH_NAME": *"//' | sed 's/"$//')
+WORKTREE_ENABLED=$(echo "$EPIC_RESULT" | grep -o '"WORKTREE_ENABLED": *[^,}]*' | sed 's/"WORKTREE_ENABLED": *//')
+WORKTREE_PATH=$(echo "$EPIC_RESULT" | grep -o '"WORKTREE_PATH": *"[^"]*"' | sed 's/"WORKTREE_PATH": *"//' | sed 's/"$//')
+SLUG=$(echo "$EPIC_RESULT" | grep -o '"SLUG": *"[^"]*"' | sed 's/"SLUG": *"//' | sed 's/"$//')
 
-# If preference loading failed, default to false (regular branch)
-if [[ -z "$WORKTREE_ENABLED" ]] || [[ "$WORKTREE_ENABLED" != "true" && "$WORKTREE_ENABLED" != "false" ]]; then
-    echo "⚠️  Could not load worktree preference, defaulting to regular branch creation"
-    WORKTREE_ENABLED="false"
-fi
-
-if [[ "$WORKTREE_ENABLED" == "true" ]]; then
-    # Worktree creation path
-    echo "🌳 Creating worktree for epic: ${NNN}-${SLUG}"
-
-    WORKTREE_RESULT=$(bash .spec-flow/scripts/bash/worktree-manager.sh create epic "${NNN}-${SLUG}" "$EPIC_BRANCH" --json 2>&1)
-    WORKTREE_EXIT_CODE=$?
-
-    if [[ $WORKTREE_EXIT_CODE -eq 0 ]]; then
-        WORKTREE_PATH=$(echo "$WORKTREE_RESULT" | grep -o '"worktree_path":"[^"]*"' | cut -d'"' -f4)
-        WORKTREE_STATUS=$(echo "$WORKTREE_RESULT" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
-
-        if [[ "$WORKTREE_STATUS" == "created" ]]; then
-            echo "✅ Worktree created: $WORKTREE_PATH"
-            echo "✅ Branch: $EPIC_BRANCH"
-
-            # Switch to worktree directory
-            cd "$WORKTREE_PATH" || {
-                echo "❌ Failed to switch to worktree directory, falling back to regular branch"
-                WORKTREE_ENABLED="false"
-            }
-
-            # Create epic workspace in worktree
-            if [[ "$WORKTREE_ENABLED" == "true" ]]; then
-                mkdir -p epics/${NNN}-${SLUG}
-            fi
-        elif [[ "$WORKTREE_STATUS" == "exists" ]]; then
-            echo "✅ Using existing worktree: $WORKTREE_PATH"
-            cd "$WORKTREE_PATH" || {
-                echo "❌ Failed to switch to worktree directory, falling back to regular branch"
-                WORKTREE_ENABLED="false"
-            }
-        else
-            echo "❌ Unexpected worktree status: $WORKTREE_STATUS, falling back to regular branch"
-            WORKTREE_ENABLED="false"
-        fi
-    else
-        echo "❌ Failed to create worktree (exit code: $WORKTREE_EXIT_CODE), falling back to regular branch"
-        echo "   Error output: $WORKTREE_RESULT"
-        WORKTREE_ENABLED="false"
-    fi
-fi
-
-if [[ "$WORKTREE_ENABLED" != "true" ]]; then
-    # Regular branch creation (legacy behavior)
-    echo "📦 Creating regular branch for epic: ${NNN}-${SLUG}"
-
-    mkdir -p epics/${NNN}-${SLUG}
-
-    CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
-
-    if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
-        git checkout -b "$EPIC_BRANCH" 2>&1
-        if [[ $? -eq 0 ]]; then
-            echo "✅ Created branch: $EPIC_BRANCH"
-        else
-            echo "❌ Failed to create branch: $EPIC_BRANCH"
-            echo "   Continuing on current branch: $CURRENT_BRANCH"
-        fi
-    elif [[ "$CURRENT_BRANCH" == "$EPIC_BRANCH" ]]; then
-        echo "✅ Already on epic branch: $EPIC_BRANCH"
-    else
-        echo "⚠️  Warning: Not on main/master. Current branch: $CURRENT_BRANCH"
-
-        # Offer to create epic branch anyway
-        git checkout -b "$EPIC_BRANCH" 2>&1
-        if [[ $? -eq 0 ]]; then
-            echo "✅ Created epic branch from current branch: $EPIC_BRANCH"
-        else
-            echo "   Epic work will happen on current branch: $CURRENT_BRANCH"
-            echo "   (Branch may already exist or git error occurred)"
-        fi
-    fi
-fi
-
-# Verify we're in the correct state before continuing
-FINAL_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
 echo ""
-echo "📍 Epic workspace ready:"
-echo "   Directory: epics/${NNN}-${SLUG}/"
-echo "   Branch: $FINAL_BRANCH"
+echo "Epic workspace created:"
+echo "   Directory: $EPIC_DIR"
+echo "   Branch: $BRANCH_NAME"
 echo "   Worktree: $([[ "$WORKTREE_ENABLED" == "true" ]] && echo "Yes ($WORKTREE_PATH)" || echo "No")"
 echo ""
 
-# Update state.yaml with branch and worktree information
-# epics/${NNN}-${SLUG}/state.yaml
-# Add:
-#   git.branch: $EPIC_BRANCH
-#   git.worktree_enabled: $WORKTREE_ENABLED
-#   git.worktree_path: $WORKTREE_PATH (if worktree enabled)
+# If worktree was created, switch to that directory for subsequent work
+if [[ "$WORKTREE_ENABLED" == "true" && -n "$WORKTREE_PATH" ]]; then
+    cd "$WORKTREE_PATH"
+fi
 
-# Generate epic-spec.md using template
-# Template location: .spec-flow/templates/epic-spec.md
+# Script already created:
+# - epic-spec.md (template with placeholders)
+# - state.yaml (workflow state tracking)
+# - NOTES.md (session notes)
+# - visuals/, artifacts/, mockups/ directories
+
+# Now proceed to populate epic-spec.md with structured scoping questions (Step 1.5)
 ```
 
 **Epic specification structure:**

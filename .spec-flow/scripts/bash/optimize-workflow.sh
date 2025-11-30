@@ -316,6 +316,31 @@ check_docker() {
     fi
 }
 
+# Run E2E and visual regression tests (Gate 7)
+check_e2e_visual() {
+    log_info "Running E2E and visual regression tests..."
+
+    # Get slug from feature directory
+    local slug
+    slug=$(basename "$FEATURE_DIR")
+
+    # Call the dedicated gate script
+    local gate_script=".spec-flow/scripts/bash/e2e-visual-gate.sh"
+
+    if [ -f "$gate_script" ]; then
+        if bash "$gate_script" "$FEATURE_DIR" "$slug"; then
+            log_success "E2E and visual tests completed"
+        else
+            log_error "E2E and visual tests failed"
+        fi
+    else
+        log_warning "E2E gate script not found: $gate_script"
+        local result_file="$FEATURE_DIR/optimization-e2e.md"
+        echo "Status: SKIPPED" >> "$result_file"
+        echo "Reason: Gate script not found" >> "$result_file"
+    fi
+}
+
 # Aggregate results
 aggregate_results() {
     log_info "Aggregating results..."
@@ -323,8 +348,8 @@ aggregate_results() {
 
     local blockers=()
 
-    # Check each result file
-    for check_file in optimization-performance.md optimization-security.md optimization-accessibility.md code-review.md optimization-migrations.md optimization-docker.md; do
+    # Check each result file (Gates 1-7)
+    for check_file in optimization-performance.md optimization-security.md optimization-accessibility.md code-review.md optimization-migrations.md optimization-docker.md optimization-e2e.md; do
         if [ -f "$FEATURE_DIR/$check_file" ]; then
             local status
             status=$(grep -o "Status: .*" "$FEATURE_DIR/$check_file" 2>/dev/null | tail -1 | cut -d' ' -f2)
@@ -400,12 +425,15 @@ main() {
     echo ""
 
     # Run all checks (in reality these could be parallelized)
+    # Gates 1-6: Core quality checks
     check_performance
     check_security
     check_accessibility
     check_code_review
     check_migrations
     check_docker
+    # Gate 7: E2E and Visual Regression (runs for both features and epics)
+    check_e2e_visual
 
     echo ""
 

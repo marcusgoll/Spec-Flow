@@ -30,7 +30,7 @@ Run fast, parallel production-readiness checks with auto-retry logic for transie
 
 This command validates features meet production quality standards across 10 parallel checks:
 
-**Core Quality Gates** (Checks 1-6 - All workflows):
+**Core Quality Gates** (Checks 1-7 - All workflows):
 
 1. **Performance** - Backend benchmarks, frontend Lighthouse, bundle size
 2. **Security** - Static analysis (Bandit/Ruff), dependency audit (Safety/pnpm), security tests
@@ -38,8 +38,12 @@ This command validates features meet production quality standards across 10 para
 4. **Code Review** - Lints, type checks, test coverage
 5. **Migrations** - Reversibility and drift-free validation
 6. **Docker Build** - Validates Dockerfile builds successfully (skipped if no Dockerfile)
+7. **E2E + Visual Testing** - Playwright E2E tests with visual regression (toHaveScreenshot), auto-starts dev server, skipped if no playwright.config found
 
-**Enhanced Validation Gates** (Checks 7-10 - Epic workflows): 7. **E2E Testing** - Complete user workflow validation from start to finish, external integration testing 8. **Contract Validation** - API contract compliance (OpenAPI schemas), contract tests (Pact CDC) 9. **Load Testing** - Performance under production-like load (100 VUs, 30s duration) 10. **Migration Integrity** - Data integrity validation during up/down migrations, no data corruption
+**Enhanced Validation Gates** (Checks 8-10 - Epic workflows only):
+8. **Contract Validation** - API contract compliance (OpenAPI schemas), contract tests (Pact CDC)
+9. **Load Testing** - Performance under production-like load (100 VUs, 30s duration)
+10. **Migration Integrity** - Data integrity validation during up/down migrations, no data corruption
 
 **Auto-Retry Logic**:
 

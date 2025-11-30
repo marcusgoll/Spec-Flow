@@ -88,3 +88,23 @@ create_temp_dir() {
     }
     printf "%s\n" "$tmpdir"
 }
+
+# Sanitize a string into a URL/filesystem-safe slug
+# Usage: sanitize_slug "My Feature Name!"
+# Returns: my-feature-name
+sanitize_slug() {
+    local input="$1"
+    # Convert to lowercase, replace spaces/underscores with hyphens,
+    # remove non-alphanumeric (except hyphens), collapse multiple hyphens
+    echo "$input" \
+        | tr '[:upper:]' '[:lower:]' \
+        | tr ' _' '-' \
+        | sed 's/[^a-z0-9-]//g' \
+        | sed 's/-\+/-/g' \
+        | sed 's/^-//' \
+        | sed 's/-$//'
+}
+
+log_success() {
+    printf '[spec-flow][ok] %s\n' "$1" >&2
+}

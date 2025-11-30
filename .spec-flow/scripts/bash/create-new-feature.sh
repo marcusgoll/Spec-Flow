@@ -129,11 +129,13 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         fi
 
         # Use worktree manager
-        worktree_result=$("$SCRIPT_DIR/worktree-manager.sh" create "$feature_type" "$dir_name" "$branch_name" --json 2>/dev/null)
+        worktree_result=$("$SCRIPT_DIR/worktree-manager.sh" --json create "$feature_type" "$dir_name" "$branch_name" 2>/dev/null)
 
         if [ $? -eq 0 ]; then
-            worktree_path=$(echo "$worktree_result" | grep -o '"worktree_path":"[^"]*"' | cut -d'"' -f4)
-            status=$(echo "$worktree_result" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+            # Extract JSON line (last line containing status)
+            json_line=$(echo "$worktree_result" | grep '"status"')
+            worktree_path=$(echo "$json_line" | grep -o '"worktree_path": *"[^"]*"' | sed 's/"worktree_path": *"//' | sed 's/"$//')
+            status=$(echo "$json_line" | grep -o '"status": *"[^"]*"' | sed 's/"status": *"//' | sed 's/"$//')
 
             if [ "$status" = "created" ]; then
                 log_success "Worktree created: $worktree_path"

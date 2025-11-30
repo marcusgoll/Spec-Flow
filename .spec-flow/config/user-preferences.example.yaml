@@ -70,6 +70,36 @@ prototype:
   # - ask: Prompt each time when creating prototype
   git_persistence: ask
 
+# E2E and Visual Regression Testing (Gate 7)
+e2e_visual:
+  # Enable/disable E2E and visual testing gate
+  enabled: true
+
+  # Behavior when E2E/visual tests fail
+  # Options: blocking | warning
+  # - blocking: Fail the /optimize phase (recommended)
+  # - warning: Log warning but continue
+  failure_mode: blocking
+
+  # Pixel difference threshold (0.0-1.0)
+  # 0.1 = 10% pixel difference allowed
+  # Lower values are stricter, higher values are more lenient
+  threshold: 0.1
+
+  # Automatically commit generated baselines on first run
+  # When true, baselines are committed without user review
+  auto_commit_baselines: true
+
+  # Viewport presets for visual testing
+  # Tests run against each viewport
+  viewports:
+    - name: desktop
+      width: 1280
+      height: 720
+    - name: mobile
+      width: 375
+      height: 667
+
 # Perpetual learning system
 learning:
   # Master switch for learning system

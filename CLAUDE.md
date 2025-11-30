@@ -276,7 +276,7 @@ Foundation blocks all other features
 - /validate — Cross-artifact consistency
 - /implement — Execute tasks with TDD (feature workflow)
 - /implement-epic — Execute sprints in parallel layers (epic workflow)
-- /optimize — 10 parallel quality gates (performance, security, accessibility, code, migrations, Docker, E2E, contracts, load testing, migration integrity) with auto-retry
+- /optimize — 10 parallel quality gates (performance, security, accessibility, code, migrations, Docker, E2E + visual regression, contracts, load testing, migration integrity) with auto-retry
 - /ship — Unified deployment orchestrator
 - /ship-staging — Deploy to staging
 - /validate-staging — Manual staging testing
@@ -675,7 +675,7 @@ bash .spec-flow/scripts/bash/analyze-learnings.sh --apply-auto
 | /validate       | analysis-report.md                                                                                                                                                                             |
 | /implement      | Task completions (feature workflow)                                                                                                                                                            |
 | /implement-epic | Sprint results, contracts/\*.yaml, audit-report.xml (epic workflow)                                                                                                                            |
-| /optimize       | optimization-report.md, code-review-report.md, e2e-test-results.log (epic), contract-validation-report.md (epic), load-test-results.log (epic, optional), migration-integrity-report.md (epic) |
+| /optimize       | optimization-report.md, code-review-report.md, optimization-e2e.md, e2e-test-results.log, contract-validation-report.md (epic), load-test-results.log (epic, optional), migration-integrity-report.md (epic) |
 | /ship-staging   | staging-ship-report.md, deployment-metadata.json                                                                                                                                               |
 | /ship-prod      | production-ship-report.md, GitHub release                                                                                                                                                      |
 | /deploy-prod    | production-ship-report.md                                                                                                                                                                      |
@@ -1184,6 +1184,7 @@ git worktree remove worktrees/epic/001-auth-system --force
 
 - Pre-flight: env vars, build, docker, CI config
 - Code review: No critical issues, performance, WCAG 2.1 AA, security
+- E2E + Visual: Playwright tests pass, visual regression within threshold (Gate 7)
 - Rollback (staging-prod only): Test actual rollback before production
 
 ### Manual (pause for approval)
