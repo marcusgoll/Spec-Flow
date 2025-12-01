@@ -105,6 +105,53 @@ properties:
         default: ask
         description: "How to handle prototype in git (commit=version control, gitignore=exclude, ask=prompt each time)"
 
+  e2e_visual:
+    type: object
+    description: "E2E and visual regression testing configuration (v10.4)"
+    properties:
+      enabled:
+        type: boolean
+        default: true
+        description: "Enable E2E and visual regression testing gate during /optimize phase"
+
+      failure_mode:
+        type: string
+        enum: [blocking, warning]
+        default: blocking
+        description: "How to handle E2E/visual test failures (blocking=fail optimize, warning=continue with warning)"
+
+      threshold:
+        type: float
+        default: 0.1
+        minimum: 0.0
+        maximum: 1.0
+        description: "Pixel difference threshold for visual regression (0.1 = 10% allowed)"
+
+      auto_commit_baselines:
+        type: boolean
+        default: true
+        description: "Automatically commit generated baseline screenshots on first run"
+
+      viewports:
+        type: array
+        description: "Viewport configurations for visual testing"
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            width:
+              type: integer
+            height:
+              type: integer
+        default:
+          - name: desktop
+            width: 1280
+            height: 720
+          - name: mobile
+            width: 375
+            height: 667
+
   learning:
     type: object
     description: "Perpetual learning system configuration"
@@ -177,12 +224,13 @@ properties:
 # Validation rules
 validation:
   required_fields: []
-  optional_fields: [commands, automation, ui, worktrees, prototype, learning, migrations]
+  optional_fields: [commands, automation, ui, worktrees, prototype, e2e_visual, learning, migrations]
 
 # Migration notes
 version_history:
   "1.0": "Initial schema version"
-  "1.1": "Added migrations section for database migration safety (v10.5)"
+  "1.1": "Added e2e_visual section for E2E and visual regression testing (v10.4)"
+  "1.2": "Added migrations section for database migration safety (v10.5)"
 
 # Examples
 examples:

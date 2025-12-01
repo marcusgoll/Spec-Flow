@@ -14,6 +14,11 @@ Guide users through interactive preference configuration to customize Spec-Flow 
 - Command default modes (/epic, /tasks, /init-project, /run-prompt)
 - UI preferences (usage stats, last-used recommendations)
 - Automation behavior (CI/CD defaults)
+- Git worktree preferences (parallel development)
+- Prototype workflow preferences
+- E2E and visual regression testing (v10.4)
+- Database migration safety (v10.5)
+- Perpetual learning system
 
 **Output:**
 - Creates/updates `.spec-flow/config/user-preferences.yaml`
@@ -359,6 +364,106 @@ Let's get started! 🚀
 }
 ```
 
+### Step 8.6: E2E and Visual Regression Testing (v10.4)
+
+**Use AskUserQuestion with 2 questions:**
+
+**Question 14: Enable E2E Visual Testing**
+```json
+{
+  "question": "Enable E2E and visual regression testing during /optimize?",
+  "header": "E2E/Visual",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "Yes, blocking (recommended)",
+      "description": "Run Playwright E2E tests with visual screenshots. Failures block deployment. Best for UI-heavy projects."
+    },
+    {
+      "label": "Yes, warning only",
+      "description": "Run tests but only warn on failures. Deployment continues. Use when establishing baselines."
+    },
+    {
+      "label": "No (disable Gate 7)",
+      "description": "Skip E2E and visual testing entirely. Use for API-only or backend projects."
+    }
+  ]
+}
+```
+
+**Question 15: Visual Regression Threshold**
+```json
+{
+  "question": "What pixel difference threshold for visual regression?",
+  "header": "Threshold",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "Strict (5%)",
+      "description": "Catch subtle visual changes. May have false positives from anti-aliasing. Best for design-critical UIs."
+    },
+    {
+      "label": "Normal (10%, recommended)",
+      "description": "Balance between catching real issues and tolerating rendering differences. Works well for most projects."
+    },
+    {
+      "label": "Lenient (20%)",
+      "description": "Only catch significant visual changes. Fewer false positives but may miss subtle regressions."
+    }
+  ]
+}
+```
+
+### Step 8.7: Database Migration Safety (v10.5)
+
+**Use AskUserQuestion with 2 questions:**
+
+**Question 16: Migration Enforcement Strictness**
+```json
+{
+  "question": "How should pending migrations be handled during /implement?",
+  "header": "Migrations",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "Blocking (recommended)",
+      "description": "Stop implementation if pending migrations detected. Safest option to prevent schema mismatches."
+    },
+    {
+      "label": "Warning",
+      "description": "Log warning but continue execution. Use when you know what you're doing."
+    },
+    {
+      "label": "Auto-apply (CI/CD only)",
+      "description": "Automatically run migrations before implementation. Only use in fully automated pipelines."
+    }
+  ]
+}
+```
+
+**Question 17: Migration Detection Sensitivity**
+```json
+{
+  "question": "How sensitive should migration detection be?",
+  "header": "Sensitivity",
+  "multiSelect": false,
+  "options": [
+    {
+      "label": "High (2+ keywords)",
+      "description": "More sensitive - detect migrations earlier. May have more false positives. Use for critical data projects."
+    },
+    {
+      "label": "Normal (3+ keywords, recommended)",
+      "description": "Balanced detection. Triggers on 'store', 'persist', 'table', 'column', etc. Good for most projects."
+    },
+    {
+      "label": "Low (5+ keywords)",
+      "description": "Less sensitive - fewer false positives. May miss some migrations. Use for projects with few schema changes."
+    }
+  ]
+}
+```
+
 ### Step 9: Build Configuration Object
 
 **Map answers to preference structure:**
@@ -399,6 +504,28 @@ const preferences = {
     git_persistence: answer13.includes('Commit') ? 'commit'
                    : answer13.includes('Gitignore') ? 'gitignore'
                    : 'ask'
+  },
+  e2e_visual: {
+    enabled: !answer14.includes('No'),
+    failure_mode: answer14.includes('blocking') ? 'blocking' : 'warning',
+    threshold: answer15.includes('5%') ? 0.05
+             : answer15.includes('20%') ? 0.20
+             : 0.10,
+    auto_commit_baselines: true,
+    viewports: [
+      { name: 'desktop', width: 1280, height: 720 },
+      { name: 'mobile', width: 375, height: 667 }
+    ]
+  },
+  migrations: {
+    strictness: answer16.includes('Blocking') ? 'blocking'
+              : answer16.includes('Warning') ? 'warning'
+              : 'auto_apply',
+    detection_threshold: answer17.includes('2+') ? 2
+                       : answer17.includes('5+') ? 5
+                       : 3,
+    auto_generate_plan: true,
+    llm_analysis_for_low_confidence: true
   },
   learning: {
     enabled: answer11.includes('Yes') ? true : false,
@@ -480,6 +607,21 @@ Your preferences have been saved to:
 │ CI mode default:         [Yes|No]                              │
 └─────────────────────────────────────────────────────────────────┘
 
+┌─────────────────────────────────────────────────────────────────┐
+│ E2E & Visual Testing (Gate 7)                                   │
+├─────────────────────────────────────────────────────────────────┤
+│ Enabled:                 [Yes|No]                              │
+│ Failure mode:            [blocking|warning]                    │
+│ Pixel threshold:         [5%|10%|20%]                          │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ Database Migrations                                             │
+├─────────────────────────────────────────────────────────────────┤
+│ Strictness:              [blocking|warning|auto_apply]         │
+│ Detection threshold:     [2+|3+|5+] keywords                   │
+└─────────────────────────────────────────────────────────────────┘
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 How Your Commands Will Behave:
@@ -521,13 +663,13 @@ Happy building! 🚀
 Before completing, verify:
 - user-preferences.yaml was created/updated successfully
 - File contains valid YAML syntax
-- All 13 questions were answered
+- All 17 questions were answered
 - Configuration summary matches user selections
 - File permissions allow reading/writing
 </verification>
 
 <success_criteria>
-- ✅ User completed all 13 preference questions
+- ✅ User completed all 17 preference questions
 - ✅ Configuration file created at .spec-flow/config/user-preferences.yaml
 - ✅ Valid YAML format with all required fields
 - ✅ Summary displayed showing configured preferences
@@ -696,7 +838,7 @@ Run /init-preferences again to customize.
 </error_handling>
 
 <meta_instructions>
-- Use AskUserQuestion for all 13 questions (rounds: 2+2+1+2+1+2+2+1)
+- Use AskUserQuestion for all 17 questions (rounds: 2+2+1+2+1+2+2+1+2+2)
 - Write valid YAML with proper indentation (2 spaces)
 - Include timestamp comment at top of generated file
 - Use clear, user-friendly language in all prompts
