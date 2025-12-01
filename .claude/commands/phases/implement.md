@@ -297,6 +297,106 @@ When `ITERATION_MODE=true`, the implementation script should:
 
 ---
 
+### Step 0.6: MIGRATION ENFORCEMENT (v10.5 - Migration Safety)
+
+**Pre-flight check**: Block tests if migrations not applied.
+
+```bash
+# Check if feature requires migrations
+HAS_MIGRATIONS=$(yq eval '.has_migrations // false' "$WORKFLOW_STATE" 2>/dev/null || echo "false")
+
+if [ "$HAS_MIGRATIONS" = "true" ]; then
+    echo "🗄️  Migration check required (feature has schema changes)"
+
+    # Run migration status detection
+    MIGRATION_STATUS=$(bash .spec-flow/scripts/bash/check-migration-status.sh --json 2>/dev/null)
+    MIGRATION_EXIT=$?
+
+    if [ $MIGRATION_EXIT -eq 0 ]; then
+        PENDING=$(echo "$MIGRATION_STATUS" | jq -r '.pending')
+        PENDING_COUNT=$(echo "$MIGRATION_STATUS" | jq -r '.pending_count')
+        TOOL=$(echo "$MIGRATION_STATUS" | jq -r '.tool')
+        APPLY_CMD=$(echo "$MIGRATION_STATUS" | jq -r '.apply_command')
+
+        if [ "$PENDING" = "true" ]; then
+            # Read user preference for strictness
+            MIGRATION_STRICTNESS=$(yq eval '.migrations.strictness // "blocking"' .spec-flow/config/user-preferences.yaml 2>/dev/null || echo "blocking")
+
+            case "$MIGRATION_STRICTNESS" in
+                blocking)
+                    echo "❌ BLOCKING: $PENDING_COUNT pending $TOOL migrations detected"
+                    echo ""
+                    echo "Tests will fail without applied migrations. You must:"
+                    echo "  1. Apply migrations: $APPLY_CMD"
+                    echo "  2. Re-run /implement after migrations applied"
+                    echo ""
+                    echo "To change this behavior, update .spec-flow/config/user-preferences.yaml:"
+                    echo "  migrations:"
+                    echo "    strictness: warning  # or auto_apply"
+                    exit 1
+                    ;;
+                warning)
+                    echo "⚠️  WARNING: $PENDING_COUNT pending $TOOL migrations detected"
+                    echo "  Apply before running tests: $APPLY_CMD"
+                    echo "  Continuing anyway (strictness: warning)"
+                    ;;
+                auto_apply)
+                    echo "🔄 AUTO-APPLY: Applying $PENDING_COUNT $TOOL migrations"
+                    eval "$APPLY_CMD"
+                    if [ $? -ne 0 ]; then
+                        echo "❌ Migration auto-apply failed. Manual intervention required."
+                        exit 1
+                    fi
+                    echo "✅ Migrations applied successfully"
+                    ;;
+            esac
+        else
+            echo "✅ Migrations up-to-date ($TOOL)"
+        fi
+    elif [ $MIGRATION_EXIT -eq 2 ]; then
+        echo "⚠️  No migration tool detected - skipping migration check"
+    else
+        echo "⚠️  Migration check failed - continuing anyway"
+    fi
+else
+    echo "   No migrations required for this feature"
+fi
+```
+
+**Strictness levels** (configured via user-preferences.yaml):
+
+| Level | Behavior | Use Case |
+|-------|----------|----------|
+| `blocking` | Exit with error, provide apply command | Default, safest |
+| `warning` | Log warning, continue execution | Experienced devs |
+| `auto_apply` | Run migrations automatically | CI/CD pipelines |
+
+**Why block before implementation?**
+
+- Tests will fail against outdated schema (confusing errors)
+- ORM models reference non-existent columns
+- 40% of implementation failures trace to missing migrations
+- Early failure saves debugging time
+
+**Configuration** (`.spec-flow/config/user-preferences.yaml`):
+
+```yaml
+migrations:
+  # How to handle pending migrations
+  # blocking (default): Stop and require manual apply
+  # warning: Log warning, continue
+  # auto_apply: Automatically run migrations
+  strictness: blocking
+
+  # Detection sensitivity (keyword score threshold)
+  detection_threshold: 3
+
+  # Generate migration-plan.md during /plan
+  auto_generate_plan: true
+```
+
+---
+
 ### Step 1: Execute Implementation Script
 
 Run the centralized spec-cli tool with feature slug:

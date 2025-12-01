@@ -126,6 +126,29 @@ learning:
     # Higher values require more confidence before auto-applying
     statistical_significance: 0.95
 
+# Database migration safety (v10.5)
+migrations:
+  # How to handle pending migrations during /implement
+  # Options: blocking | warning | auto_apply
+  # - blocking: Stop and require manual apply (default, safest)
+  # - warning: Log warning but continue execution
+  # - auto_apply: Automatically run migrations (for CI/CD)
+  strictness: blocking
+
+  # Detection sensitivity - minimum keyword score to trigger migration detection
+  # Score based on keywords found in spec.md (store, persist, table, column, etc.)
+  # Lower values = more sensitive, Higher values = fewer false positives
+  # Range: 1-10, Default: 3
+  detection_threshold: 3
+
+  # Automatically generate migration-plan.md during /plan phase
+  # When true, detected schema changes produce a detailed migration plan
+  auto_generate_plan: true
+
+  # LLM analysis for low-confidence detections
+  # When score is 1-2 (ambiguous), use LLM to confirm if migrations needed
+  llm_analysis_for_low_confidence: true
+
 # ============================================================================
 # Example Configurations
 # ============================================================================

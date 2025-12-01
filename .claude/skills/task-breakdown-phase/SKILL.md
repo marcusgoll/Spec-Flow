@@ -113,6 +113,92 @@ Blocks: Task 4 (model definitions)
 See reference.md for foundation task templates.
 </step>
 
+<step number="2.5">
+**Generate Migration Tasks (v10.5)** - If HAS_MIGRATIONS
+
+When migration-plan.md exists (generated during /plan phase), generate migration tasks with P0 BLOCKING priority.
+
+**Migration detection**:
+
+```bash
+# Check for migration plan from /plan phase
+MIGRATION_PLAN="${BASE_DIR}/${SLUG}/migration-plan.md"
+HAS_MIGRATIONS=$(yq e '.has_migrations // false' "${BASE_DIR}/${SLUG}/state.yaml" 2>/dev/null || echo "false")
+
+if [ -f "$MIGRATION_PLAN" ] || [ "$HAS_MIGRATIONS" = "true" ]; then
+    echo "🗄️  Migration tasks required (P0 BLOCKING)"
+fi
+```
+
+**Task ID convention** (reserved ranges):
+
+| ID Range | Phase | Type | Priority | Blocking |
+|----------|-------|------|----------|----------|
+| T001-T009 | 1.5 | Migration | P0 | Yes |
+| T010-T019 | 2 | ORM Models | P1 | No |
+| T020-T029 | 2.5 | Services | P1 | No |
+| T030+ | 3+ | API/UI | P1-P2 | No |
+
+**Migration task template** (P0 BLOCKING):
+
+```markdown
+### T001: [MIGRATION] Create {table_name} table
+**Priority**: P0 (BLOCKING)
+**Delegated To**: database-architect
+**Depends On**: None (foundation task)
+**Blocks**: T010+ (all ORM and service tasks)
+**Framework**: [Alembic | Prisma] (auto-detected)
+**Source**: migration-plan.md
+
+**Steps**:
+1. Generate migration file with schema from migration-plan.md
+2. Define columns, types, constraints per plan
+3. Add foreign key relationships
+4. Create indexes for query patterns
+5. Test migration up/down cycle
+
+**Acceptance Criteria**:
+- [ ] Migration file created with upgrade()/downgrade() (Alembic) or migrate() (Prisma)
+- [ ] Table schema matches migration-plan.md exactly
+- [ ] Foreign keys reference existing tables correctly
+- [ ] Indexes created per migration-plan.md
+- [ ] Migration up/down cycle tested successfully
+- [ ] Data validation queries pass (0 integrity violations)
+```
+
+**Layer-based execution model**:
+
+```
+Layer 0: Environment Setup (T000)
+    ↓
+Layer 1: MIGRATIONS (T001-T009) ← P0 BLOCKING - MUST complete first
+    ↓ (blocks all below)
+Layer 2: ORM Models (T010-T019) ← Depends on migrations
+    ↓
+Layer 3: Services (T020-T029) ← Depends on ORM models
+    ↓
+Layer 4: API/UI (T030+) ← Depends on services
+```
+
+**Agent assignment**:
+
+- Migration tasks: `database-architect` agent (specialized for schema changes)
+- ORM tasks: `backend-dev` agent
+- Service tasks: `backend-dev` agent
+- API tasks: `backend-dev` or `api-contracts` agent
+
+**Why P0 BLOCKING**:
+
+- Tests fail without applied migrations (schema mismatch)
+- ORM models can't be created without tables
+- Services can't query non-existent columns
+- 40% of implementation failures trace to forgotten migrations
+
+**Quality check**: All migration tasks have P0 priority, T001-T009 IDs, database-architect assignment.
+
+See `.claude/skills/planning-phase/resources/migration-detection.md` for detection patterns.
+</step>
+
 <step number="3">
 **Generate Business Logic Tasks (TDD-First)**
 

@@ -129,6 +129,57 @@ echo "📄 Using spec: $SPEC_FILE"
 
 ---
 
+### Step 0.5: MIGRATION DETECTION (v10.5)
+
+**Detect if this feature requires database schema changes:**
+
+```bash
+# Check for schema change indicators in spec
+SPEC_CONTENT=$(cat "$SPEC_FILE")
+
+# Pattern matching for database keywords
+SCHEMA_INDICATORS=$(echo "$SPEC_CONTENT" | grep -ciE 'store|persist|save|table|column|database|schema|migration|foreign key|relationship|has many|belongs to' || echo "0")
+
+if [ "$SCHEMA_INDICATORS" -ge 3 ]; then
+    echo "🗄️  Migration Detection: Schema changes likely detected"
+    echo "   Indicators found: $SCHEMA_INDICATORS"
+    HAS_MIGRATIONS=true
+else
+    echo "   No schema change indicators detected"
+    HAS_MIGRATIONS=false
+fi
+```
+
+**If migrations detected, generate migration-plan.md:**
+
+When `HAS_MIGRATIONS=true`:
+
+1. **Load existing schema** from `docs/project/data-architecture.md` (if exists)
+2. **Detect migration framework** from `package.json` / `requirements.txt` (Alembic vs Prisma)
+3. **Analyze spec** for entity names, relationships, data types
+4. **Generate `migration-plan.md`** using template:
+   ```bash
+   # Generate migration plan artifact
+   MIGRATION_PLAN="${BASE_DIR}/${SLUG}/migration-plan.md"
+   cp .spec-flow/templates/migration-plan-template.md "$MIGRATION_PLAN"
+   echo "📄 Generated: $MIGRATION_PLAN"
+   ```
+5. **Update state.yaml** with `has_migrations: true` flag
+6. **Log detection** for /tasks phase to consume
+
+**Migration-plan.md contains:**
+
+- Change classification (additive/breaking)
+- New tables with columns, relationships, indexes
+- Modified tables with change details
+- Breaking change analysis and zero-downtime strategy
+- Migration sequence with SQL
+- Generated tasks for Phase 1.5
+
+**Reference**: See `.claude/skills/planning-phase/resources/migration-detection.md` for detection patterns.
+
+---
+
 ### Step 1: Execute Planning Workflow
 
 1. **Execute planning workflow** via spec-cli.py:

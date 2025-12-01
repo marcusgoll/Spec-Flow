@@ -147,14 +147,42 @@ properties:
             maximum: 1.0
             description: "Statistical significance threshold (0.0-1.0) for pattern confidence"
 
+  migrations:
+    type: object
+    description: "Database migration safety configuration (v10.5)"
+    properties:
+      strictness:
+        type: string
+        enum: [blocking, warning, auto_apply]
+        default: blocking
+        description: "How to handle pending migrations during /implement (blocking=stop, warning=continue, auto_apply=run automatically)"
+
+      detection_threshold:
+        type: integer
+        default: 3
+        minimum: 1
+        maximum: 10
+        description: "Minimum keyword score to trigger migration detection (lower=more sensitive)"
+
+      auto_generate_plan:
+        type: boolean
+        default: true
+        description: "Automatically generate migration-plan.md during /plan phase when schema changes detected"
+
+      llm_analysis_for_low_confidence:
+        type: boolean
+        default: true
+        description: "Use LLM analysis for ambiguous detections (score 1-2) to confirm if migrations needed"
+
 # Validation rules
 validation:
   required_fields: []
-  optional_fields: [commands, automation, ui, worktrees, prototype, learning]
+  optional_fields: [commands, automation, ui, worktrees, prototype, learning, migrations]
 
 # Migration notes
-migrations:
+version_history:
   "1.0": "Initial schema version"
+  "1.1": "Added migrations section for database migration safety (v10.5)"
 
 # Examples
 examples:

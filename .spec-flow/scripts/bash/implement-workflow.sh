@@ -159,6 +159,102 @@ if [ -n "$MOCKUPS" ]; then
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# MIGRATION ENFORCEMENT (v10.5 - Migration Safety)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Check if feature requires migrations (from /plan phase)
+HAS_MIGRATIONS="false"
+if [ -f "$FEATURE_DIR/state.yaml" ]; then
+  HAS_MIGRATIONS=$(grep "has_migrations:" "$FEATURE_DIR/state.yaml" 2>/dev/null | awk '{print $2}' || echo "false")
+fi
+
+# Also check for migration-plan.md existence
+if [ -f "$FEATURE_DIR/migration-plan.md" ]; then
+  HAS_MIGRATIONS="true"
+fi
+
+if [ "$HAS_MIGRATIONS" = "true" ]; then
+  echo "🗄️  Migration check required (feature has schema changes)"
+  echo ""
+
+  # Run migration status detection
+  MIGRATION_CHECK_SCRIPT=".spec-flow/scripts/bash/check-migration-status.sh"
+  if [ -f "$MIGRATION_CHECK_SCRIPT" ]; then
+    MIGRATION_STATUS=$("$MIGRATION_CHECK_SCRIPT" --json 2>/dev/null) || MIGRATION_EXIT=$?
+    MIGRATION_EXIT=${MIGRATION_EXIT:-0}
+
+    if [ "$MIGRATION_EXIT" -eq 0 ]; then
+      PENDING=$(echo "$MIGRATION_STATUS" | jq -r '.pending // false')
+      PENDING_COUNT=$(echo "$MIGRATION_STATUS" | jq -r '.pending_count // 0')
+      TOOL=$(echo "$MIGRATION_STATUS" | jq -r '.tool // "unknown"')
+      APPLY_CMD=$(echo "$MIGRATION_STATUS" | jq -r '.apply_command // ""')
+
+      if [ "$PENDING" = "true" ]; then
+        # Read user preference for strictness
+        MIGRATION_STRICTNESS="blocking"
+        if [ -f ".spec-flow/config/user-preferences.yaml" ]; then
+          MIGRATION_STRICTNESS=$(grep -A 5 "migrations:" .spec-flow/config/user-preferences.yaml 2>/dev/null | grep "strictness:" | awk '{print $2}' || echo "blocking")
+        fi
+        MIGRATION_STRICTNESS=${MIGRATION_STRICTNESS:-blocking}
+
+        case "$MIGRATION_STRICTNESS" in
+          blocking)
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "❌ BLOCKED: $PENDING_COUNT pending $TOOL migrations detected"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "Tests will fail without applied migrations. You must:"
+            echo "  1. Apply migrations: $APPLY_CMD"
+            echo "  2. Re-run /implement after migrations applied"
+            echo ""
+            echo "To change this behavior, update .spec-flow/config/user-preferences.yaml:"
+            echo "  migrations:"
+            echo "    strictness: warning  # or auto_apply"
+            echo ""
+            exit 1
+            ;;
+          warning)
+            echo "⚠️  WARNING: $PENDING_COUNT pending $TOOL migrations detected"
+            echo "  Apply before running tests: $APPLY_CMD"
+            echo "  Continuing anyway (strictness: warning)"
+            echo ""
+            ;;
+          auto_apply)
+            echo "🔄 AUTO-APPLY: Applying $PENDING_COUNT $TOOL migrations"
+            if eval "$APPLY_CMD"; then
+              echo "✅ Migrations applied successfully"
+            else
+              echo "❌ Migration auto-apply failed. Manual intervention required."
+              echo ""
+              echo "Run: $APPLY_CMD"
+              exit 1
+            fi
+            echo ""
+            ;;
+        esac
+      else
+        echo "✅ Migrations up-to-date ($TOOL)"
+        echo ""
+      fi
+    elif [ "$MIGRATION_EXIT" -eq 2 ]; then
+      echo "⚠️  No migration tool detected - skipping migration check"
+      echo "   (If using custom migrations, ensure they are applied manually)"
+      echo ""
+    else
+      echo "⚠️  Migration check failed - continuing anyway"
+      echo ""
+    fi
+  else
+    echo "⚠️  Migration check script not found - skipping check"
+    echo "   ($MIGRATION_CHECK_SCRIPT)"
+    echo ""
+  fi
+else
+  echo "   No migrations required for this feature"
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # PARSE TASKS AND DETECT BATCHES
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

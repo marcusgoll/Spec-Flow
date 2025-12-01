@@ -190,6 +190,80 @@ echo "✅ Will generate: $TASKS_FILE"
    & .spec-flow/scripts/utils/track-command-usage.ps1 -Command "tasks" -Mode $selectedMode
    ```
 
+### Step 1.5: MIGRATION TASK DETECTION (v10.5)
+
+**Detect and generate migration tasks before standard task generation:**
+
+```bash
+# Check for migration-plan.md from /plan phase
+MIGRATION_PLAN="${BASE_DIR}/${SLUG}/migration-plan.md"
+
+if [ -f "$MIGRATION_PLAN" ]; then
+    echo "🗄️  Migration plan detected: $MIGRATION_PLAN"
+    HAS_MIGRATIONS=true
+
+    # Parse migration-plan.md for tables/changes
+    NEW_TABLES=$(grep -E '#### Table:' "$MIGRATION_PLAN" | wc -l | tr -d ' ')
+    MODIFIED_TABLES=$(grep -E '#### Table:.*Modified' "$MIGRATION_PLAN" | wc -l | tr -d ' ')
+
+    echo "   New tables: $NEW_TABLES"
+    echo "   Modified tables: $MODIFIED_TABLES"
+else
+    # Fallback: Check state.yaml for has_migrations flag
+    STATE_FILE="${BASE_DIR}/${SLUG}/state.yaml"
+    if [ -f "$STATE_FILE" ]; then
+        HAS_MIGRATIONS=$(yq eval '.has_migrations // false' "$STATE_FILE" 2>/dev/null || echo "false")
+    else
+        HAS_MIGRATIONS=false
+    fi
+fi
+```
+
+**If migrations detected, generate Phase 1.5 tasks:**
+
+When `HAS_MIGRATIONS=true`, generate migration tasks BEFORE standard tasks:
+
+```markdown
+## Phase 1.5: Database Migrations (BLOCKING)
+
+> Auto-generated from migration-plan.md
+> Priority: P0 - Must complete before ORM/API tasks
+
+### T001: [MIGRATION] Create {table_name} table
+**Depends On**: T000 (Setup)
+**Delegated To**: database-architect
+**Priority**: P0 (BLOCKING)
+**Framework**: {Alembic | Prisma}
+**Source**: migration-plan.md
+
+**Acceptance Criteria**:
+- [ ] Migration file created with upgrade()/downgrade()
+- [ ] Table schema matches migration-plan.md
+- [ ] Foreign keys reference existing tables
+- [ ] Indexes created per plan
+- [ ] Migration up/down cycle tested
+- [ ] Data validation: 0 integrity violations
+```
+
+**Task ID Convention:**
+
+| ID Range | Phase | Type | Blocking |
+|----------|-------|------|----------|
+| T001-T009 | 1.5 | Migration | Yes |
+| T010-T019 | 2 | ORM Models | No |
+| T020-T029 | 2.5 | Services | No |
+| T030+ | 3+ | API/UI | No |
+
+**Dependency enforcement:**
+
+ORM tasks (T010+) must declare dependency on migration tasks:
+```markdown
+### T010: Create User ORM model
+**Depends On**: T001, T002 (Migration tasks MUST complete first)
+```
+
+---
+
 1. **Execute task generation workflow** via spec-cli.py:
 
    ```bash
