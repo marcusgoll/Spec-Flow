@@ -45,6 +45,20 @@
 
 ## 🆕 Recent Updates
 
+### v10.5.0 (November 2025)
+
+**Database Migration Safety** - Defense-in-depth system to prevent forgotten migrations.
+
+- **Three-Phase Detection**: Early detection in `/plan`, task generation in `/tasks`, runtime enforcement in `/implement`
+- **Pattern-Based Detection**: Scans spec.md for schema-change keywords (store, persist, table, etc.)
+- **P0 BLOCKING Tasks**: Migration tasks (T001-T009) run before ORM, services, and API tasks
+- **Configurable Strictness**: `blocking` (default) | `warning` | `auto_apply` via user preferences
+- **Multi-Framework Support**: Alembic (Python), Prisma (TypeScript), and generic migrations
+
+New files: `check-migration-status.sh`, `migration-plan-template.md`, `migration-detection.md`
+
+---
+
 ### v10.4.0 (November 2025)
 
 **E2E Visual Testing + Epic Worktrees** - Gate 7 adds automated E2E and visual regression testing to `/optimize` phase.

@@ -2,6 +2,42 @@
 
 ---
 
+## [10.5.0] - 2025-11-30
+
+### ✨ Added
+
+**Database Migration Safety System**
+
+Defense-in-depth system to prevent forgotten database migrations from causing test failures.
+
+- **Phase 1: /plan (Step 0.5)** - Early detection via keyword pattern matching
+  - Scans spec.md for schema-change indicators (store, persist, table, column, etc.)
+  - Generates `migration-plan.md` artifact with change classification, schemas, and SQL
+  - Sets `has_migrations: true` flag in state.yaml
+
+- **Phase 2: /tasks (Step 1.5)** - Migration task generation
+  - T001-T009 reserved for migration tasks (P0 BLOCKING priority)
+  - Assigned to `database-architect` agent
+  - Layer-based execution ensures migrations complete first
+
+- **Phase 3: /implement (Step 0.6)** - Runtime enforcement
+  - Pre-flight check blocks execution if migrations pending
+  - Configurable strictness: `blocking` (default) | `warning` | `auto_apply`
+  - Supports Alembic, Prisma, and generic migration frameworks
+
+- **New scripts and templates**:
+  - `check-migration-status.sh` - Detects pending migrations across frameworks
+  - `migration-plan-template.md` - Artifact template for migration planning
+  - `migration-detection.md` - Reference documentation for detection patterns
+
+- **User preferences**: New `migrations` configuration section
+  - `strictness` - How to handle pending migrations (blocking/warning/auto_apply)
+  - `detection_threshold` - Keyword score sensitivity (default: 3)
+  - `auto_generate_plan` - Generate migration-plan.md during /plan (default: true)
+  - `llm_analysis_for_low_confidence` - Use LLM for ambiguous detections (default: true)
+
+---
+
 ## [10.4.0] - 2025-11-29
 
 ### ✨ Added
