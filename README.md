@@ -45,6 +45,17 @@
 
 ## 🆕 Recent Updates
 
+### v10.6.0 (November 2025)
+
+**/init-preferences Enhancements** - Extended wizard with E2E and migration preferences.
+
+- **E2E Visual Testing Preferences (Q14-Q15)**: Configure enable/disable, failure mode, pixel threshold
+- **Database Migration Preferences (Q16-Q17)**: Configure strictness and detection sensitivity
+- **Schema Updates**: Added `e2e_visual` section to preferences schema
+- **Question Count**: Increased from 13 to 17 for comprehensive configuration
+
+---
+
 ### v10.5.0 (November 2025)
 
 **Database Migration Safety** - Defense-in-depth system to prevent forgotten migrations.

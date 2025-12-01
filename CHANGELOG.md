@@ -2,6 +2,34 @@
 
 ---
 
+## [10.6.0] - 2025-11-30
+
+### ✨ Added
+
+**/init-preferences Enhancements**
+
+Extended user preference wizard with 4 new questions for recent features:
+
+- **E2E Visual Testing Preferences (Q14-Q15)**
+  - Enable/disable E2E and visual regression testing during `/optimize`
+  - Configure failure mode: `blocking` (recommended) | `warning`
+  - Set pixel difference threshold: 5% (strict) | 10% (normal) | 20% (lenient)
+
+- **Database Migration Safety Preferences (Q16-Q17)**
+  - Configure migration enforcement: `blocking` (default) | `warning` | `auto_apply`
+  - Set detection sensitivity: 2+ (high) | 3+ (normal) | 5+ (low) keywords
+
+- **Schema Updates**
+  - Added `e2e_visual` section to `user-preferences-schema.yaml`
+  - Updated optional fields validation to include `e2e_visual`
+  - Version history tracking for schema changes
+
+- **UI Improvements**
+  - Configuration summary now displays E2E & Visual Testing and Database Migrations sections
+  - Question count increased from 13 to 17
+
+---
+
 ## [10.5.0] - 2025-11-30
 
 ### ✨ Added
