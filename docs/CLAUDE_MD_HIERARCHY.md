@@ -4,7 +4,7 @@
 
 **Audience**: Contributors, advanced users, AI agents
 
-**Version**: 4.0.0
+**Version**: 10.7.0
 
 ---
 
@@ -27,9 +27,10 @@
 ```
 Level 0: Root CLAUDE.md (workflow system)
   └─ Location: D:\Coding\workflow\CLAUDE.md
-  └─ Scope: Workflow commands, architecture, quality gates
-  └─ Tokens: ~3,000
+  └─ Scope: Essential instructions (WHAT/WHY/HOW), not reference material
+  └─ Tokens: ~1,500 (87% reduction from v10.6.0)
   └─ Updates: Manually (workflow releases)
+  └─ Deep dives: docs/references/*.md (progressive disclosure)
 
 Level 1: Project CLAUDE.md (user repos)
   └─ Location: {project-root}/CLAUDE.md
@@ -55,9 +56,11 @@ Level 3: Feature CLAUDE.md (user repos)
 
 1. **Cascading Context**: Each level provides progressively more specific context
 2. **Token Efficiency**: Higher levels condense lower-level detail
-3. **Automatic Updates**: Generated from authoritative sources, not manually edited
-4. **Temporal Awareness**: Timestamps indicate freshness
-5. **Navigation First**: Links to detailed docs, not duplication
+3. **Context vs Instructions**: Auto-generated files aggregate STATUS/CONTEXT; human-written files contain BEHAVIORAL INSTRUCTIONS
+4. **WHAT/WHY/HOW Framework**: Root CLAUDE.md uses structured sections for clarity
+5. **Progressive Disclosure**: Deep dives live in docs/references/, not inline
+6. **Deterministic Validation**: Scripts validate quality; Claude handles creative work
+7. **Navigation First**: Links to detailed docs, not duplication
 
 ---
 
@@ -67,72 +70,61 @@ Level 3: Feature CLAUDE.md (user repos)
 
 **Template**: N/A (manually maintained)
 
-**Content Structure**:
+**Content Structure** (v10.7.0 WHAT/WHY/HOW framework):
 
 ```markdown
 # CLAUDE.md
 
-## Overview
+One-liner description of the project/workflow.
 
-- Workflow description
-- Core commands list
+## WHAT This Is
+Brief purpose and scope (2-3 paragraphs max).
 
-## Core Commands
+## WHY This Approach Works
+- Key principle 1
+- Key principle 2
+- Key principle 3
 
-- Command reference with usage
+## HOW To Use It
+### Quick Start
+Essential commands and workflows.
 
-## Workflow State Machine
+### Essential Commands
+Core command reference (brief).
 
-- Phase progression diagram
-- State transitions
+### Deployment Models
+staging-prod, direct-prod, local-only (brief).
 
-## Project Design Workflow
+### Quality Gates
+Blocking and manual gates (brief).
 
-- /init-project details
-- Generated documentation list
+### Directory Structure
+Key directories only.
 
-## Recent Changes
-
-- Version summary
-- Link to CHANGELOG.md
-
-## Architecture
-
-- Directory structure
-- Context management
-
-## Key Artifacts
-
-- Command outputs table
-
-## Deployment Models
-
-- staging-prod, direct-prod, local-only
-
-## Quality Gates
-
-- Pre-flight, code review, rollback
-
-## Coding Standards
-
-- Markdown, PowerShell, Shell conventions
+## Deep References
+Links to docs/references/*.md for detailed documentation:
+- Git Worktrees, Perpetual Learning, Workflow Detection, etc.
 
 ## Agent Briefs
+Specialist categories (brief).
 
-- Specialist categories
-
-## Philosophy
-
-- Core principles
-
-## References
-
-- Related documentation
+## Coding Standards
+Essential conventions only.
 ```
+
+**Key Distinction**: Root CLAUDE.md contains BEHAVIORAL INSTRUCTIONS (human-written).
+Project and Feature CLAUDE.md files contain CONTEXT AGGREGATION (auto-generated).
+
+**Progressive Disclosure**: Deep-dive content lives in `docs/references/`:
+- git-worktrees.md, perpetual-learning.md, workflow-detection.md
+- migration-safety.md, maker-error-correction.md, feedback-loops.md
+- epic-blueprints.md, artifact-archival.md
 
 **Generation**: Manual editing (workflow maintainers only)
 
-**Target Length**: 400-500 lines
+**Target Length**: 200-300 lines (was 400-500 in v10.6.0)
+
+**Quality Validation**: `.spec-flow/scripts/bash/audit-claude-md.sh`
 
 ---
 
@@ -708,10 +700,56 @@ if (Test-Path $generateScript) {
 
 ---
 
+## Quality Validation (v10.7.0)
+
+### audit-claude-md.sh
+
+Deterministic validation of CLAUDE.md quality, avoiding the "LLM as linter" anti-pattern.
+
+**Location**: `.spec-flow/scripts/bash/audit-claude-md.sh`
+
+**Purpose**: Score CLAUDE.md files on quality metrics (0-100 scale)
+
+**Scoring Weights**:
+| Component | Weight |
+|-----------|--------|
+| Line count | 30% |
+| Vague language | 25% |
+| Strong modals (MUST/SHOULD/NEVER) | 15% |
+| Required sections | 15% |
+| External references | 10% |
+| Freshness | 5% |
+
+**Grades**:
+- A (80-100): Excellent
+- B (60-79): Good
+- C (40-59): Needs Improvement
+- F (0-39): Critical
+
+**Usage**:
+```bash
+# Audit all CLAUDE.md files
+.spec-flow/scripts/bash/audit-claude-md.sh --verbose
+
+# Audit specific file
+.spec-flow/scripts/bash/audit-claude-md.sh path/to/CLAUDE.md
+```
+
+### Hook Validation
+
+**Location**: `.claude/hooks/claude-md-validator.sh`
+
+**Purpose**: Warn-only validation on CLAUDE.md edits (non-blocking)
+
+**Configuration**: `.spec-flow/config/claude-md-rules.yaml`
+
+---
+
 ## Version History
 
 | Version | Date       | Changes                                          |
 | ------- | ---------- | ------------------------------------------------ |
+| 10.7.0  | 2025-12-01 | WHAT/WHY/HOW framework, progressive disclosure, quality validation |
 | 4.0.0   | 2025-11-08 | Initial release of hierarchical CLAUDE.md system |
 
 ---
@@ -721,7 +759,8 @@ if (Test-Path $generateScript) {
 - [LIVING_DOCUMENTATION.md](LIVING_DOCUMENTATION.md) - User guide for living documentation
 - [CHANGELOG.md](../CHANGELOG.md) - Full version history
 - [README.md](../README.md) - Quick start guide
+- [docs/references/](../references/) - Deep-dive reference documentation
 
 ---
 
-_This reference is part of the Spec-Flow Workflow Kit v4.0.0. Last updated: 2025-11-08_
+_This reference is part of the Spec-Flow Workflow Kit v10.7.0. Last updated: 2025-12-01_

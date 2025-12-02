@@ -1,0 +1,82 @@
+# CLAUDE.md Quality Rules Configuration
+# Used by hooks and audit scripts for deterministic validation
+
+version: "1.0.0"
+
+# Line count thresholds
+thresholds:
+  feature:
+    max: 200
+    warn: 100
+    description: "Feature-level CLAUDE.md files"
+  project:
+    max: 300
+    warn: 150
+    description: "Project-level CLAUDE.md files"
+  root:
+    max: 400
+    warn: 300
+    description: "Root repository CLAUDE.md"
+
+# Prohibited vague language patterns
+# These indicate uncertain instructions that degrade LLM performance
+prohibited_patterns:
+  - pattern: "should probably"
+    reason: "Uncertain guidance - use MUST, SHOULD, or MAY"
+  - pattern: "might want to"
+    reason: "Vague suggestion - be specific or omit"
+  - pattern: "you could"
+    reason: "Non-directive - use imperative voice"
+  - pattern: "consider maybe"
+    reason: "Double hedging - decide and state clearly"
+  - pattern: "it's good to"
+    reason: "Weak instruction - use SHOULD or MUST"
+  - pattern: "try to"
+    reason: "Uncertain - state the requirement directly"
+  - pattern: "kind of"
+    reason: "Vague qualifier - be precise"
+  - pattern: "sort of"
+    reason: "Vague qualifier - be precise"
+
+# Required sections by CLAUDE.md type
+required_sections:
+  feature:
+    - "Current Phase"
+    - "Recent Progress"
+  project:
+    - "Active Features"
+    - "Tech Stack"
+  root:
+    - "WHAT"
+    - "WHY"
+    - "HOW"
+
+# Quality scoring weights (total = 100)
+quality_weights:
+  line_count: 30
+  vague_language: 25
+  strong_modals: 15
+  required_sections: 15
+  external_refs: 10
+  freshness: 5
+
+# Strong modal verbs that indicate clear instructions
+strong_modals:
+  - "MUST"
+  - "SHOULD"
+  - "SHALL"
+  - "NEVER"
+  - "ALWAYS"
+  - "DO NOT"
+  - "REQUIRED"
+
+# Hook behavior configuration
+hook:
+  # Whether to block edits or just warn
+  mode: "warn"  # "warn" or "block"
+
+  # Skip validation for these paths
+  skip_paths:
+    - "node_modules/"
+    - ".git/"
+    - "dist/"

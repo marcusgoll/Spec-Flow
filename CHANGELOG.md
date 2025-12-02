@@ -2,6 +2,66 @@
 
 ---
 
+## [10.7.0] - 2025-12-01
+
+### ✨ Added
+
+**CLAUDE.md Context Engineering Best Practices**
+
+Major restructure of root CLAUDE.md following context engineering best practices from Kyle Mistele's research. Implements WHAT/WHY/HOW framework with progressive disclosure for reduced token usage and improved instruction-following.
+
+- **Root CLAUDE.md Restructure**
+  - Reduced from 1,457 lines to 180 lines (87.6% reduction)
+  - Implemented WHAT/WHY/HOW framework for clear organization
+  - Moved deep-dive content to `docs/references/*.md` for progressive disclosure
+  - Maintained all essential instructions while reducing cognitive load
+
+- **Progressive Disclosure System**
+  - New `docs/references/` directory for deep-dive documentation
+  - 8 reference files extracted: git-worktrees.md, perpetual-learning.md, workflow-detection.md, migration-safety.md, maker-error-correction.md, feedback-loops.md, epic-blueprints.md, artifact-archival.md
+  - Links in root CLAUDE.md for just-in-time context loading
+
+- **Quality Validation Tooling**
+  - New `/audit-claude-md` command for quality auditing
+  - `.spec-flow/scripts/bash/audit-claude-md.sh` - Deterministic audit with 0-100 scoring
+  - `.claude/hooks/claude-md-validator.sh` - Warn-only hook for CLAUDE.md edits
+  - `.spec-flow/config/claude-md-rules.yaml` - Configurable quality rules
+  - `.claude/skills/audit-claude-md/SKILL.md` - Skill documentation
+
+- **Quality Metrics**
+  - Line count thresholds: Feature ≤200, Project ≤300, Root ≤400
+  - Vague language detection: "should probably", "might want to", etc.
+  - Strong modal enforcement: MUST, SHOULD, NEVER, MAY
+  - Required sections check for WHAT/WHY/HOW framework
+  - Grade system: A (80-100), B (60-79), C (40-59), F (0-39)
+
+- **Generation Script Updates**
+  - Added clarifying comments distinguishing context aggregation from behavioral instructions
+  - Quality gates in generation scripts (warn on threshold breach)
+  - Updated footers with purpose explanation
+
+- **Documentation Updates**
+  - Updated `docs/CLAUDE_MD_HIERARCHY.md` to v10.7.0
+  - Updated `docs/LIVING_DOCUMENTATION.md` with context vs instructions distinction
+  - Added Quality Validation section to both docs
+
+### 🔧 Changed
+
+- Auto-generated CLAUDE.md files now explicitly state they contain STATUS/CONTEXT aggregation, not behavioral instructions
+- Root CLAUDE.md focuses on essential instructions; deep dives live in docs/references/
+
+### 📚 Philosophy
+
+Based on context engineering research:
+- **LLMs are stateless** — CLAUDE.md onboards Claude consistently each conversation
+- **Less is more** — ~150-200 instruction limit before degradation
+- **Progressive disclosure** — Load context just-in-time, not upfront
+- **Don't use Claude as a linter** — Deterministic scripts for validation
+- **Don't auto-generate instructions** — Human-written guidance is more effective
+- **Universal applicability** — Instructions apply regardless of task
+
+---
+
 ## [10.6.0] - 2025-11-30
 
 ### ✨ Added

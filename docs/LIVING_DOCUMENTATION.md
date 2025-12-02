@@ -2,7 +2,7 @@
 
 **Purpose**: Learn how to use hierarchical CLAUDE.md files for efficient AI context navigation and automatic documentation updates.
 
-**Version**: 4.0.0
+**Version**: 10.7.0
 
 ---
 
@@ -32,6 +32,17 @@ Living documentation is a paradigm shift from traditional static docs:
 
 **Key Benefit**: Documentation never lags behind code because updates happen atomically during implementation, not as a separate task.
 
+### Context vs Instructions (v10.7.0)
+
+A critical distinction in living documentation:
+
+| **Type** | **Content** | **Generation** | **Examples** |
+|----------|-------------|----------------|--------------|
+| **Behavioral Instructions** | WHAT to do, WHY, HOW | Human-written | Root CLAUDE.md |
+| **Context Aggregation** | STATUS, PROGRESS, NAVIGATION | Auto-generated | Project/Feature CLAUDE.md |
+
+**Why this matters**: Auto-generating behavioral instructions degrades quality. LLMs follow human-written guidance more reliably than machine-generated instructions. Keep behavioral instructions human-curated; automate only status/context aggregation.
+
 ---
 
 ## Hierarchy
@@ -39,7 +50,9 @@ Living documentation is a paradigm shift from traditional static docs:
 The Spec-Flow workflow uses a 4-level hierarchy of CLAUDE.md files:
 
 ```
-Root CLAUDE.md (451 lines - workflow overview)
+Root CLAUDE.md (~180 lines - workflow instructions, WHAT/WHY/HOW)
+  │
+  ├─ docs/references/*.md (deep dives - progressive disclosure)
   │
   ├─ Project CLAUDE.md (~100 lines - active features, tech stack)
   │   │
@@ -52,18 +65,21 @@ Root CLAUDE.md (451 lines - workflow overview)
 
 **Location**: `CLAUDE.md`
 
-**Purpose**: Workflow system documentation (commands, architecture, quality gates)
+**Purpose**: Behavioral instructions using WHAT/WHY/HOW framework
 
-**Token Cost**: ~3,000 tokens
+**Token Cost**: ~1,500 tokens (87% reduction from v10.6.0)
 
-**Content**:
+**Content** (v10.7.0 structure):
 
-- Core commands (`/feature`, `/spec`, `/plan`, `/tasks`, `/implement`, `/ship`)
-- Workflow state machine
-- Project design workflow (`/init-project`)
-- Deployment models (staging-prod, direct-prod, local-only)
-- Quality gates and coding standards
-- Recent changes (links to CHANGELOG.md for details)
+- **WHAT This Is**: Purpose and scope
+- **WHY This Approach Works**: Key principles (LLMs are stateless, progressive disclosure, deterministic validation)
+- **HOW To Use It**: Essential commands, deployment models, quality gates
+- **Deep References**: Links to `docs/references/*.md` for detailed documentation
+
+**Progressive Disclosure**: Deep dives extracted to `docs/references/`:
+- git-worktrees.md, perpetual-learning.md, workflow-detection.md
+- migration-safety.md, maker-error-correction.md, feedback-loops.md
+- epic-blueprints.md, artifact-archival.md
 
 **When to Read**: Once per session to understand workflow mechanics
 
@@ -651,6 +667,40 @@ cat docs/project/tech-stack.md  # +2,000 tokens (only when necessary)
 
 ---
 
+## Quality Validation (v10.7.0)
+
+Deterministic quality gates ensure CLAUDE.md files stay effective:
+
+### Audit Command
+
+```bash
+# Audit all CLAUDE.md files
+/audit-claude-md
+
+# Audit specific file
+/audit-claude-md path/to/CLAUDE.md
+```
+
+### Quality Metrics
+
+| Component | Weight | What It Checks |
+|-----------|--------|----------------|
+| Line count | 30% | Feature ≤200, Project ≤300, Root ≤400 |
+| Vague language | 25% | "should probably", "might want to", etc. |
+| Strong modals | 15% | MUST, SHOULD, NEVER, MAY usage |
+| Required sections | 15% | WHAT/WHY/HOW for root files |
+| External references | 10% | Links to detailed docs |
+| Freshness | 5% | Last updated timestamp |
+
+### Grades
+
+- **A (80-100)**: Excellent - follows best practices
+- **B (60-79)**: Good - minor improvements needed
+- **C (40-59)**: Needs Improvement - significant issues
+- **F (0-39)**: Critical - major refactoring required
+
+---
+
 ## Best Practices
 
 1. **Read CLAUDE.md First**: Always start by reading the relevant CLAUDE.md file before diving into detailed docs
@@ -660,6 +710,9 @@ cat docs/project/tech-stack.md  # +2,000 tokens (only when necessary)
 5. **Use Task-Tracker**: Complete tasks via task-tracker to ensure automatic updates
 6. **Link, Don't Duplicate**: CLAUDE.md should link to detailed docs, not duplicate content
 7. **Keep It Concise**: CLAUDE.md files should be 50-100 lines, not 500+
+8. **Separate Context from Instructions**: Auto-generate status/progress; human-write behavioral guidance
+9. **Use Strong Modals**: MUST, SHOULD, NEVER instead of "should probably", "might want to"
+10. **Run Audits Regularly**: Use `/audit-claude-md` to catch quality degradation
 
 ---
 
@@ -672,4 +725,4 @@ cat docs/project/tech-stack.md  # +2,000 tokens (only when necessary)
 
 ---
 
-_This guide is part of the Spec-Flow Workflow Kit v4.0.0. Last updated: 2025-11-08_
+_This guide is part of the Spec-Flow Workflow Kit v10.7.0. Last updated: 2025-12-01_
