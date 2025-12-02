@@ -134,31 +134,72 @@ If CONTEXT is "no_feature":
 
 You're not currently in a feature workflow.
 
-📋 Available Commands:
+📋 CORE WORKFLOWS
+  /feature "desc"        Start feature (2-8h, full workflow)
+  /epic "desc"           Start epic (multi-sprint, >16h)
+  /quick "desc"          Quick fix (<30min, <100 LOC)
+  /feature continue      Resume last workflow
+  /feature next          Start highest priority roadmap item
 
-**Start a new feature:**
-  /feature "Feature description"      Full workflow (2-8 hours)
-  /feature next                       Start highest priority roadmap item
-  /quick "Bug fix description"        Quick fix (<30 min, <100 LOC)
+📋 PHASE COMMANDS
+  /spec                  Generate feature specification
+  /clarify               Reduce ambiguity via questions
+  /plan                  Generate implementation plan
+  /tasks                 Break down into TDD tasks
+  /validate              Cross-artifact consistency check
+  /implement             Execute tasks with TDD
+  /optimize              Run quality gates (10 parallel)
+  /debug                 Systematic error investigation
+  /finalize              Documentation & cleanup
 
-**Manage roadmap:**
-  /roadmap add "Feature description"  Add feature to backlog
-  /roadmap brainstorm                 Generate feature ideas
-  /roadmap prioritize                 Sort features by ICE score
+📋 DEPLOYMENT
+  /ship                  Unified deployment orchestrator
+  /ship-staging          Deploy to staging
+  /validate-staging      Manual staging validation
+  /ship-prod             Promote staging to production
+  /deploy-prod           Direct production deployment
+  /build-local           Local build validation
+  /deploy-status         View deployment status
+  /validate-deploy       Pre-deployment validation
 
-**Project setup:**
-  /init-project                       Create project design docs (one-time)
+📋 PROJECT SETUP
+  /init-project          Generate 8 project docs (one-time)
+  /init-preferences      Configure command defaults
+  /roadmap               Manage features via GitHub Issues
+  /prototype             Create clickable prototype
+  /init-brand-tokens     Generate design tokens
+  /constitution          Manage engineering principles
 
-**Continue existing feature:**
-  /feature continue                   Resume last feature workflow
+📋 QUALITY & INFRASTRUCTURE
+  /fix-ci                Fix CI/deployment blockers
+  /gate-ci               Run CI quality checks
+  /gate-sec              Security scanning
+  /workflow-health       Velocity & metrics dashboard
+  /audit-workflow        Analyze workflow effectiveness
+  /heal-workflow         Apply workflow improvements
 
-📚 Documentation:
-  - README.md             Quick start guide
-  - docs/architecture.md  Workflow structure
-  - docs/commands.md      Command reference
-  - CLAUDE.md             Full workflow guide
+📋 META (TOOLING)
+  /create-prompt         Generate Claude prompts
+  /create-slash-command  Create new slash command
+  /create-subagent       Create specialized agent
+  /audit-claude-md       Audit CLAUDE.md quality
+  /whats-next            Handoff for fresh context
+  /anti-duplication      Find existing patterns
+  /check-todos           Resume from backlog
+
+📋 WORKFLOW PATHS (auto-detected)
+  staging-prod:  /implement → /optimize → /ship-staging → /validate-staging → /ship-prod → /finalize
+  direct-prod:   /implement → /optimize → /deploy-prod → /finalize
+  local-only:    /implement → /optimize → /build-local → /finalize
+
+📚 DOCUMENTATION
+  README.md              Quick start guide
+  CLAUDE.md              Full workflow guide
+  docs/commands.md       Complete command reference
+  docs/architecture.md   Workflow structure
 
 💡 First time? Run /init-project to create comprehensive project documentation.
+💡 Run /help verbose for detailed workflow state and quality gates.
 ```
 
 ---
@@ -440,4 +481,6 @@ Directory: @ ! `echo "$FEATURE_DIR"`/
 
 ### Verbose Mode (if $ARGUMENTS contains "verbose")
 
-! `if [[ "${ARGUMENTS:-}" == *"verbose"* ]] && [ "$CONTEXT" = "active" ]; then echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; echo "📊 Detailed State Information"; echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; echo ""; echo "**Quality Gates:**"; PRE_FLIGHT=$(yq eval '.quality_gates.pre_flight.passed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"); CODE_REVIEW=$(yq eval '.quality_gates.code_review.passed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"); ROLLBACK=$(yq eval '.quality_gates.rollback_capability.passed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"); if [ "$PRE_FLIGHT" != "null" ]; then [ "$PRE_FLIGHT" = "true" ] && echo "✅ Pre-flight checks: passed" || echo "❌ Pre-flight checks: failed"; fi; if [ "$CODE_REVIEW" != "null" ]; then [ "$CODE_REVIEW" = "true" ] && echo "✅ Code review: passed" || echo "❌ Code review: failed"; fi; if [ "$ROLLBACK" != "null" ]; then [ "$ROLLBACK" = "true" ] && echo "✅ Rollback capability: tested" || echo "⬜ Rollback capability: not tested"; fi; echo ""; STAGING_URL=$(yq eval '.deployment.staging.url' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"); PRODUCTION_URL=$(yq eval '.deployment.production.url' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"); PRODUCTION_VERSION=$(yq eval '.deployment.production.version' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"); STAGING_DEPLOYED=$(yq eval '.deployment.staging.deployed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "false"); PRODUCTION_DEPLOYED=$(yq eval '.deployment.production.deployed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "false"); if [ "$STAGING_DEPLOYED" = "true" ] || [ "$PRODUCTION_DEPLOYED" = "true" ]; then echo "**Deployment Status:**"; [ "$STAGING_DEPLOYED" = "true" ] && echo "📦 Staging: $STAGING_URL"; [ "$PRODUCTION_DEPLOYED" = "true" ] && echo "🚀 Production: $PRODUCTION_URL ($PRODUCTION_VERSION)"; echo ""; fi; GITHUB_ISSUE=$(yq eval '.feature.github_issue' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"); if [ "$GITHUB_ISSUE" != "null" ] && [ "$GITHUB_ISSUE" != "0" ]; then echo "**GitHub Integration:**"; echo "🔗 Issue #$GITHUB_ISSUE"; echo ""; fi; echo "**Completed Phases:**"; if [ -n "$COMPLETED_PHASES" ]; then echo "$COMPLETED_PHASES" | while read -r phase; do [ -n "$phase" ] && echo "✅ $phase"; done; else echo "(none yet)"; fi; fi`
+! `if [[ "${ARGUMENTS:-}" == *"verbose"* ]]; then echo ""; echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; echo "📊 Complete Command Reference"; echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; echo ""; echo "📋 CORE (4 commands)"; echo "  /feature       Start feature workflow (2-8h)"; echo "  /epic          Start epic workflow (>16h, multi-sprint)"; echo "  /quick         Quick fix (<30min, <100 LOC)"; echo "  /route-agent   Route task to specialist agent"; echo ""; echo "📋 PHASES (9 commands)"; echo "  /spec          Generate feature specification"; echo "  /clarify       Resolve ambiguities via questions"; echo "  /plan          Generate implementation plan"; echo "  /tasks         Create TDD task breakdown"; echo "  /validate      Cross-artifact consistency check"; echo "  /implement     Execute tasks with TDD"; echo "  /optimize      Run 10 parallel quality gates"; echo "  /debug         Systematic error investigation"; echo "  /finalize      Documentation & cleanup"; echo ""; echo "📋 EPIC (2 commands)"; echo "  /epic          Start multi-sprint epic"; echo "  /implement-epic Execute sprints in parallel"; echo ""; echo "📋 DEPLOYMENT (8 commands)"; echo "  /ship          Unified deployment orchestrator"; echo "  /ship-staging  Deploy to staging environment"; echo "  /ship-prod     Promote staging to production"; echo "  /deploy-prod   Direct production deployment"; echo "  /validate-staging Manual staging validation"; echo "  /deploy-status View deployment status"; echo "  /deployment-budget Check deployment quotas"; echo "  /validate-deploy Pre-deployment validation"; echo ""; echo "📋 BUILD (2 commands)"; echo "  /build-local   Local build validation"; echo "  /branch-enforce Audit branch age violations"; echo ""; echo "📋 PROJECT (6 commands)"; echo "  /init-project  Generate 8 project docs"; echo "  /init-brand-tokens Generate design tokens"; echo "  /prototype     Create clickable prototype"; echo "  /roadmap       Manage features via GitHub Issues"; echo "  /constitution  Manage engineering principles"; echo "  /update-project-config Update project settings"; echo ""; echo "📋 QUALITY (3 commands)"; echo "  /fix-ci        Fix CI/deployment blockers"; echo "  /gate-ci       Run CI quality checks"; echo "  /gate-sec      Security scanning"; echo ""; echo "📋 INFRASTRUCTURE (3 commands)"; echo "  /audit-workflow Analyze workflow effectiveness"; echo "  /heal-workflow Apply workflow improvements"; echo "  /workflow-health Velocity & metrics dashboard"; echo ""; echo "📋 META (23 commands)"; echo "  /create-prompt Generate Claude prompts"; echo "  /create-slash-command Create new command"; echo "  /create-subagent Create specialized agent"; echo "  /create-hook   Create Claude Code hook"; echo "  /create-meta-prompt Create Claude-to-Claude prompts"; echo "  /create-agent-skill Create agent skill"; echo "  /audit-claude-md Audit CLAUDE.md quality"; echo "  /audit-skill   Audit skill effectiveness"; echo "  /audit-slash-command Audit command quality"; echo "  /audit-subagent Audit subagent config"; echo "  /whats-next    Handoff for fresh context"; echo "  /add-to-todos  Capture ideas for later"; echo "  /check-todos   Resume from backlog"; echo "  /anti-duplication Find existing patterns"; echo "  /breaking-change-detector Detect breaking changes"; echo "  /caching-strategy Apply caching optimizations"; echo "  /hallucination-detector Validate tech decisions"; echo "  /parallel-optimize Parallelize operations"; echo "  /resolve-dependencies Resolve package conflicts"; echo "  /run-prompt    Execute prompts in sub-agents"; echo "  /sync-task-status Sync task updates"; echo "  /heal-skill    Apply skill corrections"; echo "  /init-preferences Configure command defaults"; echo ""; fi`
+
+! `if [[ "${ARGUMENTS:-}" == *"verbose"* ]] && [ "$CONTEXT" = "active" ]; then echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; echo "📊 Current Workflow State Details"; echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; echo ""; echo "**Quality Gates:**"; PRE_FLIGHT=$(yq eval '.quality_gates.pre_flight.passed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"); CODE_REVIEW=$(yq eval '.quality_gates.code_review.passed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"); ROLLBACK=$(yq eval '.quality_gates.rollback_capability.passed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"); if [ "$PRE_FLIGHT" != "null" ]; then [ "$PRE_FLIGHT" = "true" ] && echo "✅ Pre-flight checks: passed" || echo "❌ Pre-flight checks: failed"; fi; if [ "$CODE_REVIEW" != "null" ]; then [ "$CODE_REVIEW" = "true" ] && echo "✅ Code review: passed" || echo "❌ Code review: failed"; fi; if [ "$ROLLBACK" != "null" ]; then [ "$ROLLBACK" = "true" ] && echo "✅ Rollback capability: tested" || echo "⬜ Rollback capability: not tested"; fi; echo ""; STAGING_URL=$(yq eval '.deployment.staging.url' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"); PRODUCTION_URL=$(yq eval '.deployment.production.url' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"); PRODUCTION_VERSION=$(yq eval '.deployment.production.version' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "unknown"); STAGING_DEPLOYED=$(yq eval '.deployment.staging.deployed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "false"); PRODUCTION_DEPLOYED=$(yq eval '.deployment.production.deployed' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "false"); if [ "$STAGING_DEPLOYED" = "true" ] || [ "$PRODUCTION_DEPLOYED" = "true" ]; then echo "**Deployment Status:**"; [ "$STAGING_DEPLOYED" = "true" ] && echo "📦 Staging: $STAGING_URL"; [ "$PRODUCTION_DEPLOYED" = "true" ] && echo "🚀 Production: $PRODUCTION_URL ($PRODUCTION_VERSION)"; echo ""; fi; GITHUB_ISSUE=$(yq eval '.feature.github_issue' "$FEATURE_DIR/state.yaml" 2>/dev/null || echo "null"); if [ "$GITHUB_ISSUE" != "null" ] && [ "$GITHUB_ISSUE" != "0" ]; then echo "**GitHub Integration:**"; echo "🔗 Issue #$GITHUB_ISSUE"; echo ""; fi; echo "**Completed Phases:**"; if [ -n "$COMPLETED_PHASES" ]; then echo "$COMPLETED_PHASES" | while read -r phase; do [ -n "$phase" ] && echo "✅ $phase"; done; else echo "(none yet)"; fi; fi`

@@ -107,6 +107,30 @@ Load briefs from `.claude/agents/` for context.
 - **Naming**: kebab-case files, CamelCase PowerShell only
 - **Shell**: POSIX-friendly, set -e, document tools
 
+### Design Token Compliance
+
+**CRITICAL**: Never hardcode colors, spacing, or typography values.
+
+**Universal Rules**:
+1. **Colors**: Use OKLCH tokens from `design/systems/tokens.json`
+   - Brand: `--brand-primary`, `--brand-secondary`
+   - Semantic: `--semantic-success`, `--semantic-error`, `--semantic-warning`
+   - Neutral: `--neutral-50` through `--neutral-950`
+   - NEVER: `#hex`, `rgb()`, `hsl()` hardcoded values
+
+2. **Spacing**: Use 8pt grid tokens only
+   - Valid: `var(--space-4)`, Tailwind `p-4`, `gap-6`
+   - NEVER: `padding: 17px`, `text-[15px]`, arbitrary `[Npx]` values
+
+3. **Context-Aware Mapping** (when replacing grayscale):
+   - Buttons/CTAs: gray -> `brand-primary`
+   - Headings/Body: gray -> `neutral-900` (NOT brand)
+   - Backgrounds: gray -> `neutral-50`
+   - Feedback states: red/green -> `semantic-error`/`semantic-success`
+
+**Validation**: Run `design-lint.js` before committing UI code.
+**Quick Reference**: `docs/project/style-guide.md`
+
 ### Preference System
 
 Run `/init-preferences` once to configure defaults. Commands use 3-tier system:

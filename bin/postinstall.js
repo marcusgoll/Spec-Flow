@@ -67,9 +67,39 @@ const fs = require('fs');
 
   // Install GitHub workflows (interactive, skip in CI)
   await installWorkflows(chalk);
+
+  // Prompt for design token enforcement hooks
+  await installDesignTokenHooks(chalk);
 })().catch(() => { /* never explode a postinstall message */ });
 
 /* ---------------- helpers ---------------- */
+
+async function installDesignTokenHooks(chalk) {
+  // Skip in CI or non-interactive mode
+  if (process.env.CI || process.env.TEST || process.env.SPEC_FLOW_SILENT) return;
+  if (!tty.isatty(1)) return;
+
+  try {
+    // Find the user's project root
+    const packageRoot = path.resolve(__dirname, '..');
+    const userProjectRoot = path.resolve(packageRoot, '..', '..');
+
+    // Check if we're being installed as a local dependency
+    const userPackageJson = path.join(userProjectRoot, 'package.json');
+    if (!fs.existsSync(userPackageJson)) {
+      return; // Global install - skip
+    }
+
+    // Load the hook installer
+    const { promptInstallHooks } = require('./install-hooks');
+
+    // Run the interactive prompt
+    await promptInstallHooks(userProjectRoot, chalk);
+
+  } catch (err) {
+    // Silent failure - don't break installation
+  }
+}
 
 async function installWorkflows(chalk) {
   // Skip workflow installation in CI, tests, or when not in a project directory

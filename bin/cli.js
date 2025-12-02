@@ -10,6 +10,7 @@ const { setupRoadmap } = require('./setup-roadmap');
 const { printHeader, printSuccess, printError, printWarning } = require('./utils');
 const { installCodexPrompts } = require('./install-codex-prompts');
 const { STRATEGIES } = require('./conflicts');
+const { installHooks, uninstallHooks, checkHooksInstalled } = require('./install-hooks');
 
 const VERSION = require('../package.json').version;
 
@@ -181,6 +182,79 @@ program
     }
   });
 
+// Install design token hooks command
+program
+  .command('install-hooks')
+  .description('Install design token enforcement hooks')
+  .option('-t, --target <path>', 'Target directory (defaults to current directory)')
+  .option('-f, --force', 'Overwrite existing hooks')
+  .action(async (options) => {
+    const targetDir = options.target ? path.resolve(options.target) : process.cwd();
+
+    printHeader('Installing Design Token Hooks');
+
+    if (checkHooksInstalled(targetDir) && !options.force) {
+      console.log(chalk.yellow('\nHooks already installed.'));
+      console.log(chalk.gray('Use --force to reinstall.\n'));
+      return;
+    }
+
+    console.log(chalk.gray('\nThese hooks prevent AI from hardcoding colors and spacing values.'));
+    console.log(chalk.gray('They block edits that use #hex, rgb(), or arbitrary Tailwind values.\n'));
+
+    try {
+      const result = await installHooks(targetDir, { force: options.force });
+
+      if (result.success) {
+        if (result.installed.length > 0) {
+          printSuccess('\nHooks installed successfully!');
+          console.log(chalk.gray(`  ${result.installed.length} hook(s) installed`));
+          if (result.skipped.length > 0) {
+            console.log(chalk.gray(`  ${result.skipped.length} hook(s) skipped (already exist)`));
+          }
+        }
+        console.log(chalk.green('\nAI will now be blocked from hardcoding design values.\n'));
+      } else {
+        printError(`Installation failed: ${result.error}`);
+        process.exit(1);
+      }
+    } catch (error) {
+      printError(`Installation failed: ${error.message}`);
+      process.exit(1);
+    }
+  });
+
+// Uninstall design token hooks command
+program
+  .command('uninstall-hooks')
+  .description('Remove design token enforcement hooks')
+  .option('-t, --target <path>', 'Target directory (defaults to current directory)')
+  .action(async (options) => {
+    const targetDir = options.target ? path.resolve(options.target) : process.cwd();
+
+    printHeader('Removing Design Token Hooks');
+
+    if (!checkHooksInstalled(targetDir)) {
+      console.log(chalk.yellow('\nHooks not installed.\n'));
+      return;
+    }
+
+    try {
+      const result = await uninstallHooks(targetDir);
+
+      if (result.success) {
+        printSuccess('\nHooks removed successfully!');
+        console.log(chalk.gray(`  ${result.removed.length} hook(s) removed\n`));
+      } else {
+        printError(`Removal failed: ${result.error}`);
+        process.exit(1);
+      }
+    } catch (error) {
+      printError(`Removal failed: ${error.message}`);
+      process.exit(1);
+    }
+  });
+
 // Help command
 program
   .command('help')
@@ -191,12 +265,14 @@ program
     console.log(chalk.gray('  npx spec-flow <command> [options]\n'));
 
     console.log(chalk.white('Commands:'));
-    console.log(chalk.green('  init') + chalk.gray('           Initialize Spec-Flow in current directory'));
-    console.log(chalk.green('  update') + chalk.gray('         Update existing Spec-Flow installation'));
-    console.log(chalk.green('  status') + chalk.gray('         Check installation health'));
-    console.log(chalk.green('  setup-roadmap') + chalk.gray('  Set up GitHub Issues for roadmap'));
+    console.log(chalk.green('  init') + chalk.gray('                   Initialize Spec-Flow in current directory'));
+    console.log(chalk.green('  update') + chalk.gray('                 Update existing Spec-Flow installation'));
+    console.log(chalk.green('  status') + chalk.gray('                 Check installation health'));
+    console.log(chalk.green('  setup-roadmap') + chalk.gray('          Set up GitHub Issues for roadmap'));
+    console.log(chalk.green('  install-hooks') + chalk.gray('          Install design token enforcement hooks'));
+    console.log(chalk.green('  uninstall-hooks') + chalk.gray('        Remove design token enforcement hooks'));
     console.log(chalk.green('  install-codex-prompts') + chalk.gray('  Copy Codex prompt templates to ~/.codex/prompts'));
-    console.log(chalk.green('  help') + chalk.gray('           Show this help message\n'));
+    console.log(chalk.green('  help') + chalk.gray('                   Show this help message\n'));
 
     console.log(chalk.white('Options:'));
     console.log(chalk.gray('  -t, --target <path>        Target directory (default: current directory)'));
