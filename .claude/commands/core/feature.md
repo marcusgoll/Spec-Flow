@@ -1,20 +1,23 @@
 ---
 description: Execute feature development workflow from specification through production deployment with automated quality gates and manual approval checkpoints
-argument-hint:
-  [
-    description|slug|continue|next|epic:<name>|epic:<name>:sprint:<num>|sprint:<num>,
-  ]
+argument-hint: [description|slug|continue|next|epic:<name>|epic:<name>:sprint:<num>|sprint:<num>] [--auto | --interactive | --no-input]
 allowed-tools: Bash(python .spec-flow/scripts/spec-cli.py:*), Bash(git:*), Read(specs/**), Read(state.yaml), Read(.github/**), SlashCommand(/spec), SlashCommand(/clarify), SlashCommand(/plan), SlashCommand(/tasks), SlashCommand(/design-*), SlashCommand(/analyze), SlashCommand(/implement), SlashCommand(/optimize), SlashCommand(/ship-staging), SlashCommand(/ship-prod), SlashCommand(/finalize), TodoWrite
-version: 2.1
-updated: 2025-11-20
+version: 3.0
+updated: 2025-12-02
 ---
 
 <objective>
 Orchestrate complete feature delivery through isolated phase agents with strict state tracking, explicit manual gates, and zero assumption drift.
 
-**Command**: `/feature [feature description | slug | continue | next | epic:<name> | epic:<name>:sprint:<num> | sprint:<num>]`
+**Command**: `/feature [feature description | slug | continue | next | epic:<name> | epic:<name>:sprint:<num> | sprint:<num>] [--auto | --interactive | --no-input]`
 
-**When to use**: From idea selection through production deployment. Pauses only at manual gates or blocking failures.
+**Flags**:
+
+- `--auto`: Run in auto mode - bypass all interactive prompts except critical blockers (CI failures, security issues, deployment errors)
+- `--interactive`: Force interactive mode - pause at spec review and plan review (overrides config/history)
+- `--no-input`: Non-interactive mode for CI/CD - same as --auto but explicitly signals automation context
+
+**When to use**: From idea selection through production deployment. Pauses only at manual gates (interactive mode) or blocking failures (auto mode).
 
 **Architecture**:
 
@@ -45,13 +48,138 @@ Deployment model detection:
 </context>
 
 <process>
+## Step 0.1: Load User Preferences (3-Tier System)
+
+**Determine execution mode using 3-tier preference system:**
+
+1. **Load configuration file** (Tier 1 - lowest priority):
+
+   ```powershell
+   # Load from .spec-flow/config/user-preferences.yaml
+   $preferences = & .spec-flow/scripts/utils/load-preferences.ps1 -Command "feature"
+   $configMode = $preferences.commands.feature.default_mode  # "interactive" or "auto"
+   ```
+
+2. **Load command history** (Tier 2 - medium priority, overrides config):
+
+   ```powershell
+   # Load from .spec-flow/memory/command-history.yaml
+   $history = & .spec-flow/scripts/utils/load-command-history.ps1 -Command "feature"
+
+   if ($history.last_used_mode -and $history.total_uses -gt 0) {
+       $preferredMode = $history.last_used_mode  # Use learned preference
+       $usageStats = $history.usage_count  # For display: "used 8/10 times"
+   } else {
+       $preferredMode = $configMode  # Fall back to config
+   }
+   ```
+
+3. **Check command-line flags** (Tier 3 - highest priority, overrides everything):
+
+   ```javascript
+   const args = "$ARGUMENTS".trim();
+   const hasAutoFlag = args.includes("--auto");
+   const hasInteractiveFlag = args.includes("--interactive");
+   const hasNoInput = args.includes("--no-input");
+   const featureDescription = args
+     .replace(/--auto|--interactive|--no-input/g, "")
+     .trim();
+
+   let selectedMode;
+
+   if (hasNoInput || hasAutoFlag) {
+     selectedMode = "auto"; // CI/automation override
+   } else if (hasInteractiveFlag) {
+     selectedMode = "interactive"; // Explicit interactive override
+   } else {
+     selectedMode = $preferredMode; // Use config/history preference
+   }
+   ```
+
+4. **If no explicit override, ask user with smart suggestions:**
+
+   Only prompt if no flag provided and not in CI mode. Use AskUserQuestion with learned preferences:
+
+   ```javascript
+   AskUserQuestion({
+     questions: [{
+       question: "How should this feature workflow run?",
+       header: "Mode",
+       multiSelect: false,
+       options: [
+         {
+           label: history.last_used_mode === "auto"
+             ? "Auto (last used) ⭐"
+             : "Auto",
+           description: "Skip spec/plan reviews, run until blocker"
+         },
+         {
+           label: history.last_used_mode === "interactive"
+             ? "Interactive (last used) ⭐"
+             : "Interactive",
+           description: "Pause at spec review and plan review"
+         }
+       ]
+     }]
+   });
+   ```
+
+   **Smart defaults behavior:**
+
+   - If `preferences.commands.feature.skip_mode_prompt === true` AND default_mode is set: Use configured default without asking
+   - If `preferences.ui.recommend_last_used === true`: Mark last-used option with ⭐
+   - If user has strong preference (>80% usage of one mode): Can auto-select without prompting
+   - Otherwise: Always prompt user to choose
+
+   **Skip prompt when preference is clear:**
+
+   ```javascript
+   const skipPrompt =
+     preferences.commands?.feature?.skip_mode_prompt === true ||
+     (history.total_uses >= 5 &&
+      (history.usage_count.auto / history.total_uses > 0.8 ||
+       history.usage_count.interactive / history.total_uses > 0.8));
+
+   if (skipPrompt) {
+     selectedMode = preferredMode;  // Use learned/configured preference
+     console.log(`Using ${selectedMode} mode (from preferences)`);
+   } else {
+     // Show AskUserQuestion prompt above
+   }
+   ```
+
+5. **Track usage for learning system:**
+
+   ```powershell
+   # Display selected mode
+   if ($selectedMode -eq 'auto') {
+       "🤖 Auto-mode enabled - will run automatically until blocker"
+   } else {
+       "📋 Interactive mode - will pause at reviews"
+   }
+
+   # Track this usage for learning system
+   & .spec-flow/scripts/utils/track-command-usage.ps1 -Command "feature" -Mode $selectedMode
+   ```
+
+**If auto-mode selected:**
+
+- Bypass all PAUSE points (spec review, plan review)
+- Only stop for critical blockers: CI failures, security issues, deployment errors, staging validation
+
+**If interactive mode selected:**
+
+- Follow standard workflow with manual PAUSE points at spec and plan review
+
+---
+
 ## User Input Handling
 
 ```text
 $ARGUMENTS
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
+You **MUST** consider the user input before proceeding (if not empty). Strip any mode flags (--auto, --interactive, --no-input) before processing.
 
 ## Execute Feature Workflow
 
@@ -143,11 +271,13 @@ PROTOTYPE_EXISTS=$(test -f design/prototype/state.yaml && echo "true" || echo "f
 /spec
 ```
 
-**Pause Point**: Review `spec.md` for completeness and accuracy.
+**Interactive Mode - Pause Point**: Review `spec.md` for completeness and accuracy.
 
 - Verify all requirements captured
 - Check for ambiguities or missing context
 - Run `/feature continue` when approved to proceed to planning
+
+**Auto Mode**: Skip pause, proceed directly to clarification check and planning.
 
 **If ambiguity detected**, conditional clarification phase:
 
@@ -161,14 +291,16 @@ PROTOTYPE_EXISTS=$(test -f design/prototype/state.yaml && echo "true" || echo "f
 /plan
 ```
 
-**Pause Point**: Review `plan.md` and `research.md` for technical approach.
+**Interactive Mode - Pause Point**: Review `plan.md` and `research.md` for technical approach.
 
 - Verify architecture decisions
 - Check for code reuse opportunities
 - Validate technical feasibility
 - Run `/feature continue` when approved
 
-**After plan approval, workflow proceeds automatically through phases 2-6**
+**Auto Mode**: Skip pause, proceed directly to task breakdown.
+
+**After plan approval (or auto-skip), workflow proceeds automatically through phases 2-6**
 
 ### Automatic Execution After Plan Approval
 
@@ -230,11 +362,15 @@ PROTOTYPE_EXISTS=$(test -f design/prototype/state.yaml && echo "true" || echo "f
 
 ## Manual Approval Gates
 
-**Three explicit pause points requiring human approval:**
+**Three explicit pause points requiring human approval (Interactive Mode only):**
+
+**In Auto Mode**: Gates #1 and #2 are auto-skipped. Gate #3 (Staging Validation) always requires validation but runs automated checks.
 
 ### Gate #1: Specification Review (after /spec)
 
 - Location: `specs/NNN-slug/spec.md`
+- **Interactive Mode**: Pause for human review
+- **Auto Mode**: Auto-skipped (status: `auto_skipped` in state.yaml)
 - Checklist:
   - [ ] All requirements captured
   - [ ] Acceptance criteria clear
@@ -244,6 +380,8 @@ PROTOTYPE_EXISTS=$(test -f design/prototype/state.yaml && echo "true" || echo "f
 ### Gate #2: Planning Review (after /plan)
 
 - Location: `specs/NNN-slug/plan.md`, `specs/NNN-slug/research.md`
+- **Interactive Mode**: Pause for human review
+- **Auto Mode**: Auto-skipped (status: `auto_skipped` in state.yaml)
 - Checklist:
   - [ ] Technical approach sound
   - [ ] Architecture decisions justified
@@ -255,6 +393,9 @@ PROTOTYPE_EXISTS=$(test -f design/prototype/state.yaml && echo "true" || echo "f
 ### Gate #3: Staging Validation (after /ship-staging)
 
 - Location: Staging environment URL (from deployment)
+- **Both Modes**: Runs automated validation (E2E tests, Lighthouse, health checks)
+- **Interactive Mode**: Pauses for additional manual testing
+- **Auto Mode**: Proceeds after automated checks pass (blocks only on failures)
 - Checklist:
   - [ ] UI/UX tested across browsers and devices
   - [ ] Accessibility verified (keyboard nav, screen readers)
@@ -492,10 +633,32 @@ TodoWrite({
 **Rules**:
 
 - Exactly one phase is `in_progress` at a time
-- Manual gates: Spec review (gate #1), Plan review (gate #2), Staging validation (gate #3)
-- Auto-progression: After plan approval, phases 2-6 execute automatically
+- **Interactive Mode**: Manual gates pause at spec review (gate #1), plan review (gate #2), staging validation (gate #3)
+- **Auto Mode**: Gates #1 and #2 auto-skipped; only blocks on critical failures or gate #3 automated checks
+- Auto-progression: After plan approval (or auto-skip), phases 2-6 execute automatically
 - Deployment phases adapt to model: `staging-prod`, `direct-prod`, or `local-only`
-- Any blocker (test failure, build error, quality gate) pauses workflow for user review
+- Any blocker (test failure, build error, quality gate, CI failure) pauses workflow for user review
+
+**State.yaml auto_mode tracking:**
+
+```yaml
+feature:
+  number: NNN
+  slug: feature-slug
+  auto_mode: true|false  # Tracks execution mode
+  started_at: ISO_TIMESTAMP
+
+manual_gates:
+  spec_review:
+    status: pending|approved|auto_skipped
+    blocking: true|false  # false if auto_mode
+  plan_review:
+    status: pending|approved|auto_skipped
+    blocking: true|false  # false if auto_mode
+  staging_validation:
+    status: pending|passed|failed
+    blocking: true  # Always blocking
+```
   </workflow_tracking>
 
 <success_criteria>
@@ -503,11 +666,13 @@ Feature workflow is complete when:
 
 - ✅ Feature initialized with unique slug and directory structure
 - ✅ All required phases executed in sequence
-- ✅ Manual gates approved by user (spec, plan, staging validation)
+- ✅ Manual gates approved by user OR auto-skipped (spec, plan)
+- ✅ Staging validation passed (automated checks in auto-mode, manual review in interactive)
 - ✅ All quality gates passed (tests, optimization, security)
 - ✅ Feature deployed to production successfully
 - ✅ Documentation finalized and merged
 - ✅ `state.yaml` shows all phases with status `completed`
+- ✅ `state.yaml` manual_gates show `approved` or `auto_skipped`
 - ✅ No blocking failures or errors in state file
 - ✅ GitHub issue updated to shipped status (if applicable)
   </success_criteria>
@@ -515,10 +680,28 @@ Feature workflow is complete when:
 <examples>
 ## Usage Examples
 
-**Start next priority feature:**
+**Start next priority feature (interactive):**
 
 ```bash
 /feature next
+```
+
+**Start feature in auto-mode (no manual pauses):**
+
+```bash
+/feature "Add dark mode toggle" --auto
+```
+
+**Force interactive mode (overrides config/history):**
+
+```bash
+/feature "User authentication" --interactive
+```
+
+**CI/CD non-interactive mode:**
+
+```bash
+/feature next --no-input
 ```
 
 **Start feature from epic:**
@@ -527,10 +710,10 @@ Feature workflow is complete when:
 /feature epic:aktr
 ```
 
-**Start specific sprint in epic:**
+**Start specific sprint in epic (auto-mode):**
 
 ```bash
-/feature epic:aktr:sprint:S02
+/feature epic:aktr:sprint:S02 --auto
 ```
 
 **Resume interrupted feature:**
@@ -560,6 +743,7 @@ Feature workflow is complete when:
 
 - Never guess; always read, quote, and update atomically
 - State file is single source of truth for workflow status
+- `auto_mode` field tracks execution mode for entire feature lifecycle
 
 **Phases are isolated**
 
@@ -567,21 +751,24 @@ Feature workflow is complete when:
 - Returns structured JSON with no hidden handoffs
 - Clear boundaries prevent state drift
 
-**Manual gates are explicit**
+**Manual gates are mode-dependent**
 
-- Three manual gates pause workflow for human review
-- Each gate has clear checklist and resume command
-- No automatic progression past manual gates
+- **Interactive Mode**: Three manual gates pause for human review (spec, plan, staging)
+- **Auto Mode**: Gates #1 and #2 auto-skipped; only critical blockers pause execution
+- 3-tier preference system: config → history → flags (highest priority)
+- User preference learned from usage history
 
-**Auto-progression after plan approval**
+**Auto-progression after plan approval (or auto-skip)**
 
-- After plan review, automatically execute: tasks → validate → implement → optimize → ship-staging
+- After plan review (or auto-skip), automatically execute: tasks → validate → implement → optimize → ship-staging
 - Reduces manual intervention for execution phases
+- Auto mode enables full automation for CI/CD pipelines
 
 **Test in staging, not locally**
 
 - All UI/UX, accessibility, performance, and integration testing in staging
 - No local preview gate required
+- Auto mode runs automated validation; interactive mode adds manual testing
 
 **Deployment model adapts**
 
@@ -592,5 +779,6 @@ Feature workflow is complete when:
 
 - Record failures in state immediately
 - Never pretend success
-- Any blocker pauses workflow and requires `/feature continue` after fix
+- Any blocker (CI failure, security issue, quality gate) pauses workflow
+- Resume with `/feature continue` after fix
   </philosophy>

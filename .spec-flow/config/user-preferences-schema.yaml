@@ -9,6 +9,20 @@ properties:
     type: object
     description: "Command-specific preference overrides"
     properties:
+      feature:
+        type: object
+        description: "Preferences for /feature command"
+        properties:
+          default_mode:
+            type: string
+            enum: [auto, interactive]
+            default: interactive
+            description: "Default execution mode (auto skips spec/plan reviews, interactive pauses at reviews)"
+          skip_mode_prompt:
+            type: boolean
+            default: false
+            description: "Skip mode selection prompt when preference is clear (uses default_mode without asking)"
+
       epic:
         type: object
         description: "Preferences for /epic command"
@@ -18,6 +32,10 @@ properties:
             enum: [auto, interactive]
             default: interactive
             description: "Default execution mode (auto skips prompts, interactive pauses at reviews)"
+          skip_mode_prompt:
+            type: boolean
+            default: false
+            description: "Skip mode selection prompt when preference is clear (uses default_mode without asking)"
 
       tasks:
         type: object
@@ -231,14 +249,19 @@ version_history:
   "1.0": "Initial schema version"
   "1.1": "Added e2e_visual section for E2E and visual regression testing (v10.4)"
   "1.2": "Added migrations section for database migration safety (v10.5)"
+  "1.3": "Added feature command preferences with auto/interactive mode and skip_mode_prompt (v10.9)"
 
 # Examples
 examples:
   - name: "Power user (always auto mode)"
     config:
       commands:
+        feature:
+          default_mode: auto
+          skip_mode_prompt: true
         epic:
           default_mode: auto
+          skip_mode_prompt: true
         tasks:
           default_mode: standard
         run-prompt:
@@ -252,6 +275,8 @@ examples:
   - name: "Design-focused user"
     config:
       commands:
+        feature:
+          default_mode: interactive
         epic:
           default_mode: interactive
         tasks:
@@ -264,8 +289,12 @@ examples:
   - name: "CI/CD automation"
     config:
       commands:
+        feature:
+          default_mode: auto
+          skip_mode_prompt: true
         epic:
           default_mode: auto
+          skip_mode_prompt: true
         tasks:
           default_mode: standard
         init-project:

@@ -3,12 +3,26 @@
 
 # Command-specific preferences
 commands:
+  # /feature command preferences
+  feature:
+    # Options: auto | interactive
+    # - auto: Skip spec/plan reviews, run until blocker
+    # - interactive: Pause at spec review and plan review
+    default_mode: interactive
+
+    # Skip the mode selection prompt when preference is clear
+    # When true and default_mode is set, uses default without asking
+    skip_mode_prompt: false
+
   # /epic command preferences
   epic:
     # Options: auto | interactive
     # - auto: Skip all prompts, run until blocker
     # - interactive: Pause at spec review and plan review
     default_mode: interactive
+
+    # Skip the mode selection prompt when preference is clear
+    skip_mode_prompt: false
 
   # /tasks command preferences
   tasks:
@@ -155,8 +169,12 @@ migrations:
 
 # For Power Users (prefer automation):
 # commands:
+#   feature:
+#     default_mode: auto
+#     skip_mode_prompt: true
 #   epic:
 #     default_mode: auto
+#     skip_mode_prompt: true
 #   tasks:
 #     default_mode: standard
 #   run-prompt:
@@ -164,6 +182,8 @@ migrations:
 
 # For UI/Design-Focused Developers:
 # commands:
+#   feature:
+#     default_mode: interactive
 #   tasks:
 #     default_mode: ui-first
 #   init-project:
@@ -171,8 +191,12 @@ migrations:
 
 # For CI/CD Automation:
 # commands:
+#   feature:
+#     default_mode: auto
+#     skip_mode_prompt: true
 #   epic:
 #     default_mode: auto
+#     skip_mode_prompt: true
 #   init-project:
 #     default_mode: ci
 # automation:

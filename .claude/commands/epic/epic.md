@@ -127,30 +127,53 @@ Transform high-level product goals into coordinated multi-sprint implementations
 
 4. **If no explicit override, ask user with smart suggestions:**
 
-   ```javascript
-   // Only prompt if no flag provided and not in CI mode
-   if (!hasAutoFlag && !hasInteractiveFlag && !hasNoInput) {
-     // Use AskUserQuestion with learned preferences
-     const options = [
-       {
-         label:
-           history.last_used_mode === "auto"
-             ? `Auto (last used, ${history.usage_count.auto}/${history.total_uses} times) ⭐`
-             : "Auto",
-         description: "Skip all prompts, run until blocker",
-       },
-       {
-         label:
-           history.last_used_mode === "interactive"
-             ? `Interactive (last used, ${history.usage_count.interactive}/${history.total_uses} times) ⭐`
-             : "Interactive",
-         description: "Pause at spec review and plan review",
-       },
-     ];
+   Only prompt if no flag provided and not in CI mode. Use AskUserQuestion with learned preferences:
 
-     // Show prompt with smart suggestions
-     // Mark last-used with ⭐ if preferences.ui.recommend_last_used === true
-     // Show usage stats if preferences.ui.show_usage_stats === true
+   ```javascript
+   AskUserQuestion({
+     questions: [{
+       question: "How should this epic workflow run?",
+       header: "Mode",
+       multiSelect: false,
+       options: [
+         {
+           label: history.last_used_mode === "auto"
+             ? "Auto (last used) ⭐"
+             : "Auto",
+           description: "Skip spec/plan reviews, run until blocker"
+         },
+         {
+           label: history.last_used_mode === "interactive"
+             ? "Interactive (last used) ⭐"
+             : "Interactive",
+           description: "Pause at spec review and plan review"
+         }
+       ]
+     }]
+   });
+   ```
+
+   **Smart defaults behavior:**
+
+   - If `preferences.commands.epic.skip_mode_prompt === true` AND default_mode is set: Use configured default without asking
+   - If `preferences.ui.recommend_last_used === true`: Mark last-used option with ⭐
+   - If user has strong preference (>80% usage of one mode): Can auto-select without prompting
+   - Otherwise: Always prompt user to choose
+
+   **Skip prompt when preference is clear:**
+
+   ```javascript
+   const skipPrompt =
+     preferences.commands?.epic?.skip_mode_prompt === true ||
+     (history.total_uses >= 5 &&
+      (history.usage_count.auto / history.total_uses > 0.8 ||
+       history.usage_count.interactive / history.total_uses > 0.8));
+
+   if (skipPrompt) {
+     selectedMode = preferredMode;  // Use learned/configured preference
+     console.log(`Using ${selectedMode} mode (from preferences)`);
+   } else {
+     // Show AskUserQuestion prompt above
    }
    ```
 
