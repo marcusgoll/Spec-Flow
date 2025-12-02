@@ -2,6 +2,46 @@
 
 ---
 
+## [10.9.0] - 2025-12-02
+
+### ✨ Added
+
+**Auto-Progression Mode for /feature Command**
+
+Adds `--auto`, `--interactive`, and `--no-input` flags to `/feature` command, matching `/epic` command capabilities. Enables full workflow automation for CI/CD pipelines.
+
+- **Mode Flags**
+  - `--auto`: Skip spec/plan reviews, run until blocker
+  - `--interactive`: Force interactive mode (pause at reviews)
+  - `--no-input`: CI/CD non-interactive mode (same as --auto)
+
+- **3-Tier Preference System**
+  - Tier 1: Config file (`.spec-flow/config/user-preferences.yaml`)
+  - Tier 2: Command history (learns from usage patterns)
+  - Tier 3: Command-line flags (highest priority, overrides all)
+
+- **Smart Defaults**
+  - `skip_mode_prompt` option to bypass mode selection prompt
+  - Auto-select mode when >80% usage history for one mode
+  - Learned preferences marked with ⭐ in prompts
+
+- **State Tracking**
+  - `auto_mode: true|false` in state.yaml
+  - Manual gates support `auto_skipped` status
+  - Gate #3 (staging validation) always runs automated checks
+
+### 🔧 Changed
+
+- Updated user-preferences schema to v1.3 with feature command support
+- Updated /epic command with matching smart defaults behavior
+- Feature command version bumped to 3.0
+
+### 📚 Philosophy
+
+Enables hands-off feature development for CI/CD pipelines while preserving manual review options for interactive development. Users can configure their preference once and have it remembered across sessions.
+
+---
+
 ## [10.8.0] - 2025-12-01
 
 ### ✨ Added

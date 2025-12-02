@@ -45,6 +45,19 @@
 
 ## 🆕 Recent Updates
 
+### v10.9.0 (December 2025)
+
+**Auto-Progression Mode for /feature** - Full workflow automation matching /epic command capabilities.
+
+- **Mode Flags**: `--auto`, `--interactive`, `--no-input` for CI/CD automation
+- **3-Tier Preference System**: Config file → command history → flags (highest priority)
+- **Smart Defaults**: `skip_mode_prompt` option, auto-select when >80% usage pattern
+- **State Tracking**: `auto_mode` in state.yaml, manual gates support `auto_skipped` status
+
+New: Feature command version 3.0, user-preferences schema v1.3
+
+---
+
 ### v10.8.0 (December 2025)
 
 **Design Token Enforcement System** - Real-time prevention of hardcoded colors and spacing values via Claude Code hooks.
