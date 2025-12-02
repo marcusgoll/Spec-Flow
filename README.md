@@ -45,6 +45,20 @@
 
 ## 🆕 Recent Updates
 
+### v10.8.0 (December 2025)
+
+**Design Token Enforcement System** - Real-time prevention of hardcoded colors and spacing values via Claude Code hooks.
+
+- **PreToolUse Hooks**: Block `#hex`, `rgb()`, arbitrary Tailwind values (`p-[15px]`) before write
+- **SessionStart Hooks**: Context injection reminders at session start
+- **CLI Commands**: `npx spec-flow install-hooks` and `uninstall-hooks`
+- **Interactive Install**: Prompts during `npx spec-flow init` or `update`
+- **Root CLAUDE.md**: Design Token Compliance section loaded every session
+
+New files: `.claude/hooks/design-token-validator.sh`, `design-system-context.sh`, `bin/install-hooks.js`
+
+---
+
 ### v10.7.0 (December 2025)
 
 **CLAUDE.md Context Engineering Best Practices** - Major restructure following context engineering research for improved instruction-following and 87% token reduction.

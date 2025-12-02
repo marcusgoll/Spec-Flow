@@ -2,6 +2,48 @@
 
 ---
 
+## [10.8.0] - 2025-12-01
+
+### ✨ Added
+
+**Design Token Enforcement System**
+
+Real-time prevention of hardcoded colors, spacing, and typography values with Claude Code hooks.
+
+- **PreToolUse Hooks (Block on Write/Edit)**
+  - `.claude/hooks/design-token-validator.sh` (bash)
+  - `.claude/hooks/design-token-validator.ps1` (PowerShell)
+  - Blocks: `#hex`, `rgb()`, `hsl()` hardcoded colors
+  - Blocks: Arbitrary Tailwind values (`bg-[#fff]`, `p-[15px]`, `text-[17px]`)
+  - Smart exclusions: test files, node_modules, dist, build directories
+
+- **SessionStart Hooks (Context Injection)**
+  - `.claude/hooks/design-system-context.sh` (bash)
+  - `.claude/hooks/design-system-context.ps1` (PowerShell)
+  - If tokens exist: reminds about blocked patterns
+  - If tokens missing: warns to run `/init-brand-tokens`
+
+- **Hook Installation CLI**
+  - `npx spec-flow install-hooks` - Install design token enforcement hooks
+  - `npx spec-flow uninstall-hooks` - Remove hooks
+  - Interactive prompt during `npx spec-flow init` or `update`
+  - `bin/install-hooks.js` - Hook installation logic
+
+- **Root CLAUDE.md Token Rules**
+  - Added "Design Token Compliance" section after Coding Standards
+  - Universal rules for colors, spacing, context-aware mapping
+  - Always loaded at session start - no more "forgetting" tokens
+
+### 🔧 Changed
+
+- Updated `/help` command to include all 62 slash commands
+
+### 📚 Philosophy
+
+Solves the problem of AI coders hardcoding design values session-to-session instead of using project design tokens. Real-time hook enforcement prevents violations before they're written, eliminating UI/UX maintainability nightmares.
+
+---
+
 ## [10.7.0] - 2025-12-01
 
 ### ✨ Added
