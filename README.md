@@ -45,6 +45,20 @@
 
 ## 🆕 Recent Updates
 
+### v10.7.0 (December 2025)
+
+**CLAUDE.md Context Engineering Best Practices** - Major restructure following context engineering research for improved instruction-following and 87% token reduction.
+
+- **WHAT/WHY/HOW Framework**: Root CLAUDE.md uses structured sections for clarity
+- **Progressive Disclosure**: Deep-dive content extracted to `docs/references/*.md` (8 files)
+- **Quality Validation Tooling**: New `/audit-claude-md` command with 0-100 scoring
+- **Deterministic Validation**: Hook and scripts instead of "LLM as linter" pattern
+- **Context vs Instructions**: Clear separation of auto-generated context from human-written instructions
+
+New files: `docs/references/*.md`, `.spec-flow/scripts/bash/audit-claude-md.sh`, `.claude/hooks/claude-md-validator.sh`, `.spec-flow/config/claude-md-rules.yaml`
+
+---
+
 ### v10.6.0 (November 2025)
 
 **/init-preferences Enhancements** - Extended wizard with E2E and migration preferences.
