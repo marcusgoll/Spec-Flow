@@ -2,6 +2,57 @@
 
 ---
 
+## [10.11.0] - 2025-12-03
+
+### ✨ Added
+
+**Epic-First Prototype Workflow**
+
+Seamless pipeline from prototype discovery to epic creation with one-shot epic generation.
+
+- **`/prototype extract --to-epic "Name"`**
+  - One-shot command: extract discoveries AND create epic workspace
+  - Auto-generates epic number and slug
+  - Creates GitHub Epic issue with appropriate labels
+  - Pre-populates epic-spec.md from discovered features
+  - Copies component inventory and gap analysis to epic workspace
+  - Initializes state.yaml with `source: prototype` tracking
+
+- **Prototype Source Detection in `/epic`**
+  - Step 0.4: Detects epics created from prototype extraction
+  - Loads pre-populated epic-spec.md automatically
+  - Skips redundant scoping questions when source is prototype
+  - Displays prototype source summary with feature/component counts
+
+- **Sprint Source Tracking**
+  - New `sprint-plan.md` fields: Source Features, Prototype Screens, Component Deliverables
+  - Prototype Source section in plan overview
+  - Traceability from prototype → epic → sprint → task
+
+- **New Template: `epic-from-prototype.md`**
+  - Pre-populated epic spec structure
+  - Discovered features with sprint assignments
+  - Component dependencies with build priorities
+  - Consolidated user stories by theme
+  - Feature dependency graph with critical path
+
+- **Enhanced `discovered-features-template.md`**
+  - "Suggested Epic Structure" section with sprint breakdown
+  - Feature dependencies table (Depends On, Blocks, Sprint)
+  - One-shot and manual workflow options in Next Steps
+
+### 🔧 Changed
+
+- `/prototype` command version bumped to 2.1
+- `/epic` command version bumped to 5.3
+- `sprint-plan.md` template version bumped to 7.2
+
+### 📚 Philosophy
+
+Epic-first workflow: prototype discoveries default to epics because multi-screen applications typically span multiple subsystems. The one-shot `--to-epic` flag eliminates manual copy-paste by creating a fully pre-populated epic workspace directly from extraction results.
+
+---
+
 ## [10.10.0] - 2025-12-02
 
 ### ✨ Added

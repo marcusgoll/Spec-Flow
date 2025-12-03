@@ -45,6 +45,19 @@
 
 ## 🆕 Recent Updates
 
+### v10.11.0 (December 2025)
+
+**Epic-First Prototype Workflow** - Seamless pipeline from prototype discovery to epic creation.
+
+- **One-Shot Epic Creation**: `/prototype extract --to-epic "Name"` creates epic workspace with pre-populated spec
+- **Prototype Source Detection**: `/epic` auto-detects prototype-sourced epics, skips redundant scoping
+- **Sprint Source Tracking**: Link sprints back to discovered features and prototype screens
+- **New Template**: `epic-from-prototype.md` for pre-populated epic specs
+
+New: Feature dependency graphs, component deliverable tracking, traceability from prototype → epic → sprint
+
+---
+
 ### v10.10.0 (December 2025)
 
 **Discovery-First Prototyping & Mockup Extraction** - Explore app ideas visually before committing to roadmap or features.
