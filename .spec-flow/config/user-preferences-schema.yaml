@@ -113,6 +113,22 @@ properties:
         default: true
         description: "Automatically remove worktrees after /finalize completes"
 
+  studio:
+    type: object
+    description: "Dev Studio configuration for parallel AI development (v10.12)"
+    properties:
+      auto_continue:
+        type: boolean
+        default: false
+        description: "Skip 'Pick up next issue?' prompt after /finalize (always continue to next feature)"
+
+      default_agents:
+        type: integer
+        default: 3
+        minimum: 1
+        maximum: 10
+        description: "Default number of agent worktrees for /studio init"
+
   prototype:
     type: object
     description: "Prototype workflow configuration"
@@ -242,7 +258,7 @@ properties:
 # Validation rules
 validation:
   required_fields: []
-  optional_fields: [commands, automation, ui, worktrees, prototype, e2e_visual, learning, migrations]
+  optional_fields: [commands, automation, ui, worktrees, studio, prototype, e2e_visual, learning, migrations]
 
 # Migration notes
 version_history:
@@ -250,6 +266,7 @@ version_history:
   "1.1": "Added e2e_visual section for E2E and visual regression testing (v10.4)"
   "1.2": "Added migrations section for database migration safety (v10.5)"
   "1.3": "Added feature command preferences with auto/interactive mode and skip_mode_prompt (v10.9)"
+  "1.4": "Added studio section for Dev Studio parallel AI development (v10.12)"
 
 # Examples
 examples:

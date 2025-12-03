@@ -33,6 +33,15 @@ worktrees:
   # Automatically cleanup worktrees after /finalize completes
   cleanup_on_finalize: true
 
+# Dev Studio preferences (parallel AI development)
+studio:
+  # Skip 'Pick up next issue?' prompt after /finalize
+  # When true, agents automatically continue to next feature
+  auto_continue: false
+
+  # Default number of agent worktrees for /studio init
+  default_agents: 3
+
 # Perpetual learning system
 learning:
   # Master switch for learning system

@@ -14,6 +14,8 @@ allowed-tools:
     Edit,
     Grep,
     Glob,
+    AskUserQuestion,
+    SlashCommand,
   ]
 internal: true
 ---
@@ -89,6 +91,59 @@ This command updates CHANGELOG.md, README.md, help docs, GitHub milestones/relea
    - Announce release (social media, blog, email)
    - Monitor user feedback and error logs
    - Plan next feature from roadmap
+
+5. **Offer next feature (Studio Mode)** - Auto-continue workflow loop:
+
+   After successful finalization, check if more work is available:
+
+   ```bash
+   # Count remaining roadmap items
+   NEXT_COUNT=$(gh issue list --label "status:next,type:feature" --json number --jq 'length' 2>/dev/null || echo "0")
+   BACKLOG_COUNT=$(gh issue list --label "status:backlog,type:feature" --json number --jq 'length' 2>/dev/null || echo "0")
+   TOTAL_REMAINING=$((NEXT_COUNT + BACKLOG_COUNT))
+   ```
+
+   **If roadmap is empty** (TOTAL_REMAINING = 0):
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Roadmap Complete!
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   No more issues with status:next or status:backlog.
+   All planned work has been completed!
+
+   To add more work: /roadmap add "feature description"
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+   Exit normally.
+
+   **If roadmap has work** (TOTAL_REMAINING > 0):
+
+   Display summary and prompt:
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Feature Finalized Successfully!
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   Remaining roadmap items:
+     Next:    {NEXT_COUNT} issues
+     Backlog: {BACKLOG_COUNT} issues
+   ```
+
+   Use AskUserQuestion:
+   - Question: "Pick up next issue from roadmap?"
+   - Header: "Continue"
+   - Options:
+     - "Yes" - Claim and start the next priority issue
+     - "No" - Stop here, return to idle
+
+   **If user selects "Yes"**:
+   - Invoke `/feature next` via SlashCommand tool
+   - This creates the continuous work loop for Dev Studio
+
+   **If user selects "No"**:
+   - Display: "Agent returning to idle. Run `/feature next` when ready."
+   - Exit normally
      </process>
 
 <verification>
@@ -105,6 +160,10 @@ Before completing, verify:
   * All planning artifacts moved to {workspace}/completed/
   * state.yaml remains in root directory
   * Completed directory contains expected files based on workflow type
+- **Auto-continue prompt** (v10.12+):
+  * Roadmap status checked for remaining work
+  * User prompted if work available
+  * Next feature started if user confirms (or roadmap exhausted)
 </verification>
 
 <success_criteria>
@@ -223,4 +282,6 @@ gh run view $(yq -r '.deployment.production.run_id' specs/*/state.yaml) --log
 **Workflow dispatch**: For automated releases via GitHub Actions, ensure target workflow declares `on: workflow_dispatch`. Use `gh workflow run` and `gh run watch` to dispatch and monitor.
 
 **Script location**: The bash implementation is at `.spec-flow/scripts/bash/finalize-workflow.sh`. It is invoked via spec-cli.py for cross-platform compatibility.
+
+**Auto-continue (v10.12+)**: After finalization, the command checks for remaining roadmap items and prompts "Pick up next issue?". This enables the Dev Studio workflow where agents continuously process features until the roadmap is empty. Use `/studio init N` to set up parallel agent worktrees.
 </notes>
