@@ -45,6 +45,20 @@
 
 ## 🆕 Recent Updates
 
+### v10.10.0 (December 2025)
+
+**Discovery-First Prototyping & Mockup Extraction** - Explore app ideas visually before committing to roadmap or features.
+
+- **`/prototype` v2.0**: New modes - `discover`, `explore`, `extract`, `lock-theme`, `sync-tokens`
+- **New Skills**: `mockup-extraction` (CSS→Tailwind, tailwind-variants support), `theme-consistency`
+- **Brownfield Integration**: Auto-detect component libraries (Radix, shadcn, Chakra, MUI, HeroUI)
+- **UI-First Enhancements**: Step 0.7 in `/implement` for automatic component extraction
+- **Prototype Templates**: `base.html`, `shared.css`, `theme.css`, `theme.yaml`
+
+New: Component gap analysis, design token source detection, discovery-capture.js for browser sync
+
+---
+
 ### v10.9.0 (December 2025)
 
 **Auto-Progression Mode for /feature** - Full workflow automation matching /epic command capabilities.

@@ -2,6 +2,61 @@
 
 ---
 
+## [10.10.0] - 2025-12-02
+
+### ✨ Added
+
+**Discovery-First Prototyping and Mockup Extraction**
+
+Explore app ideas visually before committing to roadmap or features. Zero-risk sandbox for design iteration.
+
+- **`/prototype` v2.0 Rewrite**
+  - `discover`: Full app exploration at project start, brainstorm screens with zero commitments
+  - `explore`: Loop back to explore new feature/epic ideas within existing prototype
+  - `extract`: Analyze prototype → generate discovered-features.md + component-inventory.md
+  - `lock-theme`: Lock design decisions for production use
+  - `unlock-theme`: Unlock for further iteration (requires confirmation)
+  - `sync-tokens`: Update prototype to use refined tokens from `/init-brand-tokens`
+
+- **New Skills**
+  - `mockup-extraction`: Extract reusable components from approved HTML mockups during implementation
+    - Identifies repeated UI patterns across screens
+    - Maps CSS to Tailwind utilities with `tailwind-variants` support
+    - Documents component variants and states
+    - Generates prototype-patterns.md for visual fidelity
+  - `theme-consistency`: Enforce consistent theming across prototype screens
+    - Validates CSS variable usage, prevents hardcoded values
+    - Manages theme locking for session-to-session consistency
+
+- **Brownfield Integration**
+  - Component library auto-detection in `/init-project` (Radix, shadcn/ui, Chakra, MUI, HeroUI)
+  - Design token source detection (Tailwind config, tokens.json, CSS variables)
+  - Gap analysis output: existing vs mockup component comparison
+  - Integration modes: Extend, Wrap, Create, Map
+
+- **UI-First Implementation Enhancements**
+  - Step 0.7 in `/implement`: Mockup Component Extraction (auto-triggered for UI-first features)
+  - Enhanced `/tasks` with component extraction task generation
+  - `tailwind-variants` (tv) output format for extracted components
+
+- **Prototype Templates**
+  - `base.html`: Standard HTML structure with theme loading
+  - `shared.css`: Reusable component classes (.btn, .card, .form-input)
+  - `theme.css`, `theme.yaml`: Token definitions and configuration
+  - `discovery-capture.js`: Browser-side idea capture for sync command
+
+### 🔧 Changed
+
+- `/prototype` command version bumped to 2.0
+- Updated `/plan` to detect prototype screens for UI-first features
+- Enhanced `/roadmap` integration with prototype discovery workflow
+
+### 📚 Philosophy
+
+Discovery-first prototyping separates exploration from commitment. Try ideas, scrap what doesn't work, and only commit to the roadmap when you're confident. The prototype informs your roadmap, not the other way around.
+
+---
+
 ## [10.9.0] - 2025-12-02
 
 ### ✨ Added
