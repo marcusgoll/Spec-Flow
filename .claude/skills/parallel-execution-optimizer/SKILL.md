@@ -1,6 +1,6 @@
 ---
 name: parallel-execution-optimizer
-description: Identify and execute independent operations in parallel for 3-5x speedup. Auto-analyzes task dependencies, groups into batches, launches parallel Task() calls. Applies to /optimize (5 checks), /ship pre-flight (5 checks), /design-variations (N screens), /implement (task batching). Auto-triggers when detecting multiple independent operations in a phase.
+description: Identify and execute independent operations in parallel for 3-5x speedup. Auto-analyzes task dependencies, groups into batches, launches parallel Task() calls. Applies to /optimize (5 checks), /ship pre-flight (5 checks), /implement (task batching), /prototype (N screens). Auto-triggers when detecting multiple independent operations in a phase.
 ---
 
 <objective>
@@ -11,7 +11,7 @@ Traditional sequential execution wastes time:
 - /optimize runs 5 quality checks sequentially (10-15 minutes)
 - /ship runs 5 pre-flight checks sequentially (8-12 minutes)
 - /implement processes tasks one-by-one despite no dependencies
-- Design variations generated sequentially when all could run in parallel
+- Prototype screens generated sequentially when all could run in parallel
 
 This skill analyzes operation dependencies, groups independent work into batches, and orchestrates parallel execution using multiple Task() agent calls in a single message. The result: 3-5x faster phase completion with zero compromise on quality or correctness.
 </objective>
@@ -242,27 +242,27 @@ Layer 3 (sequential):
 See [references/implement-phase-parallelization.md](references/implement-phase-parallelization.md).
 </implement_phase>
 
-<design_variations>
-**Operation**: Generate multiple design mockups in parallel
+<prototype_screens>
+**Operation**: Generate multiple prototype screens in parallel
 
-**Use case**: User wants to see 3 different homepage layouts
+**Use case**: User wants to create 3 different screens (login, dashboard, settings)
 
 **Sequential approach** (slow):
 
-1. Generate variation A
-2. Generate variation B
-3. Generate variation C
+1. Generate login screen
+2. Generate dashboard screen
+3. Generate settings screen
    Total: 15 minutes
 
 **Parallel approach** (fast):
 
-1. Launch 3 design agents in single message (A, B, C variants)
+1. Launch 3 screen agents in single message (login, dashboard, settings)
    Total: 5 minutes (all generate concurrently)
 
 **Speedup**: 3x
 
-See [references/design-variations-parallelization.md](references/design-variations-parallelization.md).
-</design_variations>
+Note: All screens share theme.yaml for consistency.
+</prototype_screens>
 </phase_specific_patterns>
 
 <dependency_analysis>
@@ -589,7 +589,6 @@ For deeper topics, see reference files:
 - [references/optimize-phase-parallelization.md](references/optimize-phase-parallelization.md)
 - [references/ship-preflight-parallelization.md](references/ship-preflight-parallelization.md)
 - [references/implement-phase-parallelization.md](references/implement-phase-parallelization.md)
-- [references/design-variations-parallelization.md](references/design-variations-parallelization.md)
 
 **Dependency analysis**: [references/dependency-analysis-guide.md](references/dependency-analysis-guide.md)
 

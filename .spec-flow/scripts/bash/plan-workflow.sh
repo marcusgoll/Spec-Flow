@@ -1422,21 +1422,21 @@ EOF
 if [ "$HAS_SCREENS" = true ]; then
   # UI-heavy feature path
   cat <<'MENU'
-🎨 UI-HEAVY FEATURE (Design-First Workflow)
+🎨 UI-HEAVY FEATURE (Mockup-First Workflow)
 
-1. Generate design variations (/design-variations) [RECOMMENDED]
-   Duration: ~5-10 min
-   Output: 3-5 grayscale mockup variants per screen
-   Next: Manual review → /design-functional → /tasks
+1. Generate tasks with mockups (/tasks --ui-first) [RECOMMENDED]
+   Duration: ~10-15 min
+   Output: HTML mockups + 20-30 implementation tasks
+   Next: Mockup approval → /implement
 
-2. Skip to task breakdown (/tasks)
+2. Skip mockups, generate tasks only (/tasks)
    Duration: ~3-5 min
    Output: 20-30 implementation tasks
    Note: Design decisions made during implementation
 
 3. Continue automated workflow (/feature continue)
-   Executes: /design-variations → /design-functional → /tasks → /implement
-   Duration: ~60-90 min (full feature delivery)
+   Executes: /tasks → /implement → /optimize → /ship
+   Duration: ~45-60 min (full feature delivery)
 
 4. Review plan.md first
    Location: View architecture decisions before proceeding
@@ -1476,13 +1476,13 @@ choice = input("Your choice: ")
 
 if HAS_SCREENS:
     if choice == "1":
-        SlashCommand(f"/design-variations {SLUG}")
+        SlashCommand(f"/tasks --ui-first {SLUG}")
     elif choice == "2":
         SlashCommand(f"/tasks {SLUG}")
     elif choice == "3":
         SlashCommand(f"/feature continue {SLUG}")
     elif choice == "4":
-        print(f"Review complete. Run /design-variations or /tasks when ready.")
+        print(f"Review complete. Run /tasks --ui-first or /tasks when ready.")
         exit(0)
 else:  # Backend feature
     if choice == "1":
@@ -1505,7 +1505,7 @@ echo ""
 echo "# AUTOMATION MODE:"
 echo "# When invoked by /feature continue, skip decision tree and auto-execute:"
 if [ "$HAS_SCREENS" = true ]; then
-  echo "#   → /design-variations (UI-first path)"
+  echo "#   → /tasks --ui-first (mockup-first path)"
 else
   echo "#   → /tasks (backend path)"
 fi

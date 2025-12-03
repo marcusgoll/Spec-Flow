@@ -331,9 +331,8 @@ Proceed with commit? (auto-proceed in 10s, Ctrl+C to cancel)
 Next steps:
 
 {IF UI feature}
-  1. /design-variations — Generate design mockups and variations
-  2. /tasks — Generate concrete TDD tasks
-  3. /feature continue — Auto-proceed through workflow
+  1. /tasks --ui-first — Generate tasks with mockup-first workflow
+  2. /feature continue — Auto-proceed through workflow
 {ELSE}
   1. /tasks — Generate concrete TDD tasks
   2. /feature continue — Auto-proceed through workflow
@@ -435,8 +434,8 @@ HAS_UI=$(grep -qi "ui\|frontend\|component\|screen\|page" "$SPEC_FILE" && echo t
 ```
 
 **Suggestions**:
-1. `/design-variations` — Generate design mockups (recommended)
-2. `/tasks` — Skip to task generation
+1. `/tasks --ui-first` — Generate tasks with mockup-first workflow (recommended)
+2. `/tasks` — Skip mockups, go directly to task generation
 3. `/feature continue` — Auto-proceed through workflow
 
 ### Backend Features

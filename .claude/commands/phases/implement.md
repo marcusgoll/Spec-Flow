@@ -397,6 +397,88 @@ migrations:
 
 ---
 
+### Step 0.7: MOCKUP COMPONENT EXTRACTION (UI-First Only)
+
+**Pre-condition**: Only execute if mockups exist and are approved (UI-first features).
+
+```bash
+# Check if this is a UI-first feature with approved mockups
+UI_FIRST_MODE=$(yq eval '.ui_first // false' "$WORKFLOW_STATE" 2>/dev/null || echo "false")
+MOCKUP_APPROVED=$(yq eval '.manual_gates.mockup_approval.status' "$WORKFLOW_STATE" 2>/dev/null || echo "pending")
+
+if [ "$UI_FIRST_MODE" = "true" ] && [ "$MOCKUP_APPROVED" = "approved" ]; then
+    echo "🎨 Mockup Component Extraction"
+    echo "  Mode: UI-first with approved mockups"
+
+    # Locate mockup files
+    MOCKUP_DIR="${BASE_DIR}/${SLUG}/mockups"
+    PROTOTYPE_DIR="design/prototype/screens"
+
+    if [ -d "$MOCKUP_DIR" ]; then
+        MOCKUP_SOURCE="$MOCKUP_DIR"
+    elif [ -d "$PROTOTYPE_DIR" ]; then
+        MOCKUP_SOURCE="$PROTOTYPE_DIR"
+    else
+        echo "⚠️  No mockup directory found - skipping extraction"
+        MOCKUP_SOURCE=""
+    fi
+
+    if [ -n "$MOCKUP_SOURCE" ]; then
+        echo "  Source: $MOCKUP_SOURCE"
+
+        # Invoke mockup-extraction skill
+        echo ""
+        echo "Extracting component patterns from mockups..."
+        echo "  ├── Identifying repeated components"
+        echo "  ├── Mapping CSS to Tailwind utilities"
+        echo "  ├── Documenting variants and states"
+        echo "  └── Populating prototype-patterns.md"
+
+        # Load mockup-extraction skill guidance
+        # Skill: .claude/skills/mockup-extraction/SKILL.md
+
+        # Generate prototype-patterns.md
+        PATTERNS_FILE="${BASE_DIR}/${SLUG}/prototype-patterns.md"
+
+        # Extraction output includes:
+        # 1. Component inventory with occurrence counts
+        # 2. CSS to Tailwind mapping table
+        # 3. Component details (structure, classes, props)
+        # 4. Visual fidelity checklist
+
+        echo ""
+        echo "✅ Component extraction complete"
+        echo "  Output: $PATTERNS_FILE"
+        echo "  Load patterns into context for implementation"
+    fi
+else
+    if [ "$UI_FIRST_MODE" = "true" ]; then
+        echo "⏸️  Mockup extraction skipped (mockups not yet approved)"
+    else
+        echo "   Not a UI-first feature - skipping mockup extraction"
+    fi
+fi
+```
+
+**Extraction workflow** (guided by mockup-extraction skill):
+
+1. **Inventory mockup files**: List all HTML files in mockup directory
+2. **Parse for components**: Identify buttons, cards, forms, alerts, navigation, etc.
+3. **Count occurrences**: Track how many times each component appears across screens
+4. **Score reusability**: 1 occurrence = inline OK, 2 = consider extraction, 3+ = must extract
+5. **Map CSS to Tailwind**: Convert theme CSS variables to Tailwind utilities
+6. **Document props**: Define TypeScript interfaces for each component
+7. **List states**: Document all interactive states (hover, focus, disabled, loading)
+8. **Generate prototype-patterns.md**: Output extraction results for implementation reference
+
+**Why extraction matters**:
+- Prevents 40-60% of visual fidelity issues
+- Provides consistent component props across screens
+- Maps mockup styling directly to production Tailwind classes
+- Creates component inventory for tasks.md extraction tasks
+
+---
+
 ### Step 1: Execute Implementation Script
 
 Run the centralized spec-cli tool with feature slug:

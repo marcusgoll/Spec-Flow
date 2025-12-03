@@ -1,0 +1,237 @@
+/**
+ * Prototype Theme CSS
+ * Auto-generated from theme.yaml - DO NOT EDIT DIRECTLY
+ * Changes should be made in theme.yaml, then regenerate this file
+ *
+ * Generated: [TIMESTAMP]
+ * Theme: [APP_NAME] Theme
+ */
+
+:root {
+  /* ===== COLOR PALETTE ===== */
+
+  /* Brand Colors */
+  --color-primary: oklch(55% 0.2 250);
+  --color-primary-hover: oklch(45% 0.2 250);
+  --color-secondary: oklch(65% 0.15 180);
+
+  /* Semantic Colors */
+  --color-success: oklch(55% 0.2 145);
+  --color-warning: oklch(70% 0.15 85);
+  --color-error: oklch(55% 0.2 25);
+  --color-info: oklch(60% 0.15 250);
+
+  /* Neutral Scale */
+  --color-neutral-50: oklch(98% 0.005 0);
+  --color-neutral-100: oklch(96% 0.005 0);
+  --color-neutral-200: oklch(92% 0.005 0);
+  --color-neutral-300: oklch(85% 0.01 0);
+  --color-neutral-400: oklch(70% 0.01 0);
+  --color-neutral-500: oklch(55% 0.01 0);
+  --color-neutral-600: oklch(45% 0.01 0);
+  --color-neutral-700: oklch(35% 0.01 0);
+  --color-neutral-800: oklch(25% 0.01 0);
+  --color-neutral-900: oklch(15% 0.01 0);
+  --color-neutral-950: oklch(10% 0.01 0);
+
+  /* Surface Colors */
+  --color-surface: oklch(100% 0 0);
+  --color-background: oklch(98% 0.005 0);
+
+  /* ===== TYPOGRAPHY ===== */
+
+  /* Font Families */
+  --font-heading: Inter, system-ui, sans-serif;
+  --font-body: Inter, system-ui, sans-serif;
+  --font-mono: JetBrains Mono, Consolas, monospace;
+
+  /* Font Sizes (Major Third Scale) */
+  --text-xs: 0.64rem;
+  --text-sm: 0.8rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.563rem;
+  --text-2xl: 1.953rem;
+  --text-3xl: 2.441rem;
+  --text-4xl: 3.052rem;
+
+  /* Line Heights */
+  --leading-tight: 1.25;
+  --leading-base: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* Font Weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* ===== SPACING (8pt Grid) ===== */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+  --space-8: 64px;
+  --space-10: 80px;
+  --space-12: 96px;
+  --space-16: 128px;
+
+  /* Layout */
+  --container-max: 1200px;
+  --gutter: 24px;
+
+  /* ===== COMPONENTS ===== */
+
+  /* Border Radius */
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.05);
+  --shadow-md: 0 4px 6px oklch(0% 0 0 / 0.07);
+  --shadow-lg: 0 10px 15px oklch(0% 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px oklch(0% 0 0 / 0.15);
+
+  /* Transitions */
+  --transition-fast: 100ms ease;
+  --transition-base: 150ms ease;
+  --transition-slow: 300ms ease;
+
+  /* Focus Ring */
+  --focus-ring: 0 0 0 3px oklch(55% 0.2 250 / 0.3);
+
+  /* ===== Z-INDEX SCALE ===== */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+}
+
+/* ===== BASE STYLES ===== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  color: var(--color-neutral-800);
+  background-color: var(--color-background);
+}
+
+/* ===== TYPOGRAPHY CLASSES ===== */
+
+.text-h1 {
+  font-family: var(--font-heading);
+  font-size: var(--text-4xl);
+  font-weight: var(--font-bold);
+  line-height: var(--leading-tight);
+  color: var(--color-neutral-900);
+}
+
+.text-h2 {
+  font-family: var(--font-heading);
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  line-height: var(--leading-tight);
+  color: var(--color-neutral-900);
+}
+
+.text-h3 {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-tight);
+  color: var(--color-neutral-900);
+}
+
+.text-h4 {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-tight);
+  color: var(--color-neutral-800);
+}
+
+.text-body {
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  color: var(--color-neutral-600);
+}
+
+.text-small {
+  font-size: var(--text-sm);
+  line-height: var(--leading-base);
+  color: var(--color-neutral-500);
+}
+
+.text-caption {
+  font-size: var(--text-xs);
+  line-height: var(--leading-base);
+  color: var(--color-neutral-400);
+}
+
+/* ===== DENSITY MODIFIERS ===== */
+
+.density-compact {
+  --space-1: 6px;
+  --space-2: 12px;
+  --space-3: 18px;
+  --space-4: 24px;
+  --text-base: 0.875rem;
+}
+
+.density-spacious {
+  --space-1: 12px;
+  --space-2: 24px;
+  --space-3: 36px;
+  --space-4: 48px;
+  --text-base: 1.125rem;
+}
+
+/* ===== UTILITY CLASSES ===== */
+
+/* Text Colors */
+.text-primary { color: var(--color-primary); }
+.text-secondary { color: var(--color-neutral-500); }
+.text-success { color: var(--color-success); }
+.text-warning { color: var(--color-warning); }
+.text-error { color: var(--color-error); }
+
+/* Background Colors */
+.bg-surface { background-color: var(--color-surface); }
+.bg-primary { background-color: var(--color-primary); }
+.bg-success { background-color: var(--color-success); }
+.bg-warning { background-color: var(--color-warning); }
+.bg-error { background-color: var(--color-error); }
+
+/* Focus States */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ===== SCREEN-SPECIFIC STYLES ===== */
+/* Screen-specific overrides should be added below */

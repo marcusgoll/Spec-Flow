@@ -622,11 +622,96 @@ ${BASE_DIR}/NNN-slug/mockups/
 
 - Multi-screen flow: All screens accessible via keyboard (1-9)
 - State completeness: All 4 states (Success, Loading, Error, Empty)
-- Design system compliance: Colors/spacing from tokens.css
+- Design system compliance: Colors/spacing from theme.css
 - Component reuse: Match ui-inventory.md patterns
 - Accessibility: Contrast ≥4.5:1, touch targets ≥24x24px
 
-See `.claude/skills/task-breakdown-phase/reference.md` for full multi-screen mockup workflow.
+### Component Extraction Tasks (Post-Approval)
+
+**When mockups are approved**, `/implement` triggers component extraction (Step 0.7) which generates extraction tasks. These tasks are appended to tasks.md:
+
+**Extraction task structure:**
+
+```markdown
+## Component Extraction (from prototype-patterns.md)
+
+### TEXP-001: Extract Button component
+**Source Screens**: login.html, signup.html, dashboard.html
+**Occurrences**: 12 (Must extract)
+**Priority**: P0
+
+**Variants**:
+- primary, secondary, outline, ghost, danger
+
+**States**:
+- [ ] default
+- [ ] hover (bg-primary-hover)
+- [ ] focus (ring-2 ring-primary/30)
+- [ ] active (scale-95)
+- [ ] disabled (opacity-50, cursor-not-allowed)
+- [ ] loading (animate-spin icon)
+
+**Props Interface**:
+```typescript
+interface ButtonProps {
+  variant: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  size: 'sm' | 'md' | 'lg';
+  icon?: React.ReactNode;
+  loading?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+}
+```
+
+**Tailwind Classes**:
+`inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md transition-all duration-100`
+
+### TEXP-002: Extract Card component
+**Source Screens**: dashboard.html, settings.html
+**Occurrences**: 8 (Must extract)
+**Priority**: P0
+
+**Variants**:
+- default, elevated, bordered
+
+**Props Interface**:
+```typescript
+interface CardProps {
+  padding?: 'sm' | 'md' | 'lg';
+  shadow?: 'none' | 'sm' | 'md' | 'lg';
+  header?: React.ReactNode;
+  footer?: React.ReactNode;
+  children: React.ReactNode;
+}
+```
+```
+
+**Task ID convention:**
+
+| ID Range | Type | Priority |
+|----------|------|----------|
+| TEXP-001 to TEXP-009 | Must extract (3+ occurrences) | P0 |
+| TEXP-010 to TEXP-019 | Consider extraction (2 occurrences) | P1 |
+| TEXP-020+ | Low priority (1 occurrence) | P2 |
+
+**Extraction scoring (from mockup-extraction skill):**
+
+| Occurrences | Score | Action |
+|-------------|-------|--------|
+| 1 | Low | Inline styles OK |
+| 2 | Medium | Consider extraction |
+| 3+ | High | **Must extract** |
+| 5+ | Critical | Extract with variants |
+
+**Dependency chain:**
+
+```
+Mockup Tasks (T00x) → Mockup Approval → Extraction Tasks (TEXP-xxx) → Implementation Tasks (T0xx)
+```
+
+Extraction tasks block implementation until components are extracted and documented in prototype-patterns.md.
+
+See `.claude/skills/mockup-extraction/SKILL.md` for full extraction workflow.
 </ui_first_mode>
 
 <task_structure>

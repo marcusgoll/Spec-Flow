@@ -310,14 +310,6 @@ PROTOTYPE_EXISTS=$(test -f design/prototype/state.yaml && echo "true" || echo "f
 /tasks
 ```
 
-**Phase 2a-2c: Design Workflow** (UI features only, automatic):
-
-```bash
-/design-variations
-/design-functional
-/design-polish
-```
-
 **Phase 3: Cross-Artifact Analysis** (automatic):
 
 ```bash

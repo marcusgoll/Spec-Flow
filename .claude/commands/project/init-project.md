@@ -311,6 +311,40 @@ See `.claude/skills/project-initialization-phase/reference.md` for complete ques
 - Deployment: Detected from config files (`vercel.json`, `railway.json`)
 - Architecture: Inferred from `docker-compose.yml` service count and directory structure
 
+**Component library detection (UI-first workflow):**
+
+| Dependency | Library Type | Detection Pattern |
+|------------|--------------|-------------------|
+| `@radix-ui/*` | Radix Primitives | Headless components |
+| `@shadcn/ui` or `components/ui/` | shadcn/ui | Copy-paste components |
+| `@chakra-ui/react` | Chakra UI | Styled system |
+| `@mui/material` | Material UI | Design system |
+| `@heroui/*` or `@nextui-org/*` | HeroUI/NextUI | Tailwind-based |
+| `tailwind-variants` | TV | Variant API available |
+| None detected | Custom | Generate new components |
+
+**Design token source detection:**
+
+| File/Pattern | Token Format | Integration |
+|--------------|--------------|-------------|
+| `tailwind.config.js` theme | Tailwind | Direct mapping |
+| `tokens.json` / `tokens.css` | Style Dictionary | Variable extraction |
+| `src/styles/variables.css` | CSS Custom Props | Parse and map |
+| `theme.ts` / `theme.js` | JS Object | Convert to CSS vars |
+
+**Output to tech-stack.md:**
+```yaml
+ui_components:
+  library: "shadcn/ui"          # Detected or "custom"
+  variant_api: "tailwind-variants"  # If installed
+  primitives: "radix"           # Underlying primitives
+
+design_tokens:
+  source: "tailwind.config.js"
+  format: "tailwind"
+  custom_properties: true       # CSS var support
+```
+
 **Result:** 20-30% fewer `[NEEDS CLARIFICATION]` tokens in generated docs
 
 See `.claude/skills/project-initialization-phase/reference.md` for full auto-detection rules.

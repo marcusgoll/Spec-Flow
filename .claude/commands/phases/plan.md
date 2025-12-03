@@ -226,7 +226,7 @@ When `HAS_MIGRATIONS=true`:
 
    - **Ambiguity gate** (blocking): If spec ambiguity > 30%, recommend /clarify
    - **Confirmation** (10s timeout): Show architecture summary before commit
-   - **Decision tree**: Present next-step options (UI: /design-variations or /tasks, Backend: /tasks)
+   - **Decision tree**: Present next-step options (UI: /tasks --ui-first, Backend: /tasks)
 
 3. **Review generated artifacts**:
 
@@ -504,7 +504,7 @@ See `.claude/skills/planning-phase/reference.md` for full meta-prompting workflo
 
 **Next steps after planning**:
 
-- UI features: `/design-variations` or `/tasks`
+- UI features: `/tasks --ui-first` (creates mockups before implementation)
 - Backend features: `/tasks`
 - Auto-proceed: `/feature continue`
   </notes>

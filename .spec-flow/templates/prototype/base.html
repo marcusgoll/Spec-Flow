@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{{SCREEN_DESCRIPTION}}">
+
+  <title>{{SCREEN_TITLE}} - {{APP_NAME}}</title>
+
+  <!-- Theme CSS (generated from theme.yaml) -->
+  <link rel="stylesheet" href="../../theme.css">
+
+  <!-- Shared Component Styles -->
+  <link rel="stylesheet" href="../../shared.css">
+
+  <!-- Google Fonts (if using custom fonts) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Screen-specific styles (minimal overrides only) -->
+  <style>
+    /* Screen-specific overrides
+     * IMPORTANT: Use theme CSS variables, not hardcoded values
+     * Example: padding: var(--space-4); NOT padding: 32px;
+     */
+
+    {{SCREEN_SPECIFIC_STYLES}}
+  </style>
+</head>
+<body class="theme-{{TONE_STYLE}} density-{{DENSITY}}">
+  <!--
+    Screen: {{SCREEN_ID}}
+    Category: {{CATEGORY}}
+    Purpose: {{SCREEN_PURPOSE}}
+    User Goal: {{USER_GOAL}}
+
+    Navigation Context:
+    - Previous: {{PREV_SCREENS}}
+    - Next: {{NEXT_SCREENS}}
+  -->
+
+  <!-- Skip Link for Accessibility -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  {{#if HAS_NAVIGATION}}
+  <!-- Shared Navigation Component -->
+  <nav class="nav nav--{{LAYOUT}}" role="navigation" aria-label="Main navigation">
+    {{NAVIGATION_CONTENT}}
+  </nav>
+  {{/if}}
+
+  <!-- Main Content Area -->
+  <main id="main-content" class="main main--{{LAYOUT}}">
+    {{SCREEN_CONTENT}}
+  </main>
+
+  {{#if HAS_FOOTER}}
+  <!-- Shared Footer Component -->
+  <footer class="footer" role="contentinfo">
+    {{FOOTER_CONTENT}}
+  </footer>
+  {{/if}}
+
+  <!-- Screen-specific scripts (if needed) -->
+  <script>
+    // Minimal JS for prototype interactions (state simulation, etc.)
+    {{SCREEN_SCRIPTS}}
+  </script>
+</body>
+</html>

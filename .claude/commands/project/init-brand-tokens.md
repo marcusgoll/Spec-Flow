@@ -1,7 +1,8 @@
 ---
 name: init-brand-tokens
-description: Generate OKLCH design tokens with WCAG validation and Tailwind v4 integration by scanning existing code or creating new palette
+description: Generate OKLCH design tokens with WCAG validation and Tailwind v4 integration by scanning existing code, prototype, or creating new palette
 allowed-tools: [Read, Write, Edit, Grep, Glob, Bash(node *), Bash(pnpm *), Bash(npm *), Bash(git rev-parse:*), AskUserQuestion]
+argument-hint: [--from-prototype] (optional - extract tokens from discovery prototype)
 ---
 
 # /init-brand-tokens — Design System Token Generation
@@ -26,10 +27,14 @@ Initialize design system tokens in `design/systems/tokens.json` and `tokens.css`
 **Modes**:
 - **Brownfield**: Scan existing code (UI, emails, PDFs, CLI, charts, docs) for color/type/spacing patterns, consolidate duplicates
 - **Greenfield**: Ask minimal questions, generate new OKLCH palette with semantic tokens
+- **From Prototype** (--from-prototype): Extract and formalize colors from discovery prototype's theme.yaml
 
-**When to use**: During `/init-project`, before first `/design`, or when migrating ad-hoc styles to systematic tokens.
+**When to use**:
+- During `/init-project`, before first `/design`
+- After `/prototype discover` to formalize quick-picked palette
+- When migrating ad-hoc styles to systematic tokens
 
-**Surfaces covered**: UI components, MJML/HTML emails, PDF styling, CLI colors, data viz, docs
+**Surfaces covered**: UI components, MJML/HTML emails, PDF styling, CLI colors, data viz, docs, discovery prototypes
 </objective>
 
 ## Anti-Hallucination Rules
@@ -66,14 +71,91 @@ Initialize design system tokens in `design/systems/tokens.json` and `tokens.css`
 
 ### Step 2: Detect Mode
 
-**Auto-detection**:
+**Check for --from-prototype flag first:**
+```bash
+# If --from-prototype flag provided
+if [[ "$ARGUMENTS" == *"--from-prototype"* ]]; then
+    MODE="prototype"
+    # Check prototype exists
+    test -f design/prototype/theme.yaml || echo "ERROR: No prototype theme. Run '/prototype discover' first."
+fi
+```
+
+**Auto-detection (if no flag):**
+- Prototype: `design/prototype/theme.yaml` exists and user confirms
 - Greenfield: No `app/`, `src/`, or `components/` directories
 - Brownfield: Directories exist + contains hex colors or arbitrary Tailwind values
 
 **If tokens.json exists**:
 - Ask user: Update tokens (scan for new patterns), Regenerate (start fresh), or Keep existing
 
+**If prototype theme.yaml exists (and no --from-prototype):**
+```json
+{
+  "question": "Found discovery prototype with palette. Use it as base for tokens?",
+  "header": "Source",
+  "multiSelect": false,
+  "options": [
+    {"label": "Yes, use prototype palette", "description": "Formalize quick-picked colors with WCAG validation"},
+    {"label": "No, start fresh", "description": "Ignore prototype, generate new palette"},
+    {"label": "Scan codebase", "description": "Brownfield scan of existing code"}
+  ]
+}
+```
+
 ### Step 3: Execute Token Generation
+
+**If MODE = "prototype" (--from-prototype):**
+
+1. **Read prototype theme.yaml:**
+   ```bash
+   cat design/prototype/theme.yaml
+   ```
+
+2. **Extract palette values:**
+   - Read `theme.palette.primary`, `secondary`, `accent`
+   - Read semantic colors (success, warning, error, info)
+   - Read neutral scale
+   - Note the "vibe" for metadata
+
+3. **Validate WCAG contrast:**
+   - Test each color pair for 4.5:1 contrast ratio
+   - Auto-adjust lightness if contrast fails
+   - Report adjustments made
+
+4. **Generate production tokens:**
+   - Write to `design/systems/tokens.json`
+   - Add metadata: `source: "prototype"`, `vibe: "[VIBE]"`
+   - Include sRGB fallbacks for each OKLCH color
+
+5. **Sync back to prototype:**
+   - Update `design/prototype/theme.yaml` to reference system tokens
+   - Set `extends: "../systems/tokens.css"`
+   - Preserve any prototype-specific overrides
+
+6. **Display summary:**
+   ```
+   ✅ Tokens extracted from prototype
+
+   Source: design/prototype/theme.yaml (Modern SaaS vibe)
+
+   Colors formalized:
+     Primary:   oklch(55% 0.2 270) → oklch(52% 0.2 270) [adjusted for contrast]
+     Secondary: oklch(60% 0.15 300) [no change]
+     Accent:    oklch(70% 0.18 180) [no change]
+
+   WCAG Validation:
+     ✓ All text pairs meet 4.5:1 contrast
+     ⚠ 2 colors adjusted for accessibility
+
+   Generated:
+     • design/systems/tokens.json
+     • design/systems/tokens.css
+
+   Prototype updated to use system tokens.
+   ```
+
+**If MODE = "brownfield" or "greenfield":**
 
 Run the orchestrator script:
 ```bash
