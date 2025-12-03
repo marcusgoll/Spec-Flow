@@ -1,11 +1,11 @@
 ---
 name: prototype
 description: Discovery-first prototyping - explore app ideas with zero-risk iteration before committing to roadmap/features
-argument-hint: [discover|explore|create|update|status|extract|outcome|lock-theme|unlock-theme|sync-tokens] [exploration-name] [--with-tokens|--skip-tokens] [--exploration name] [--adopt|--defer|--scrap]
+argument-hint: [discover|explore|create|update|status|extract|outcome|lock-theme|unlock-theme|sync-tokens] [exploration-name] [--with-tokens|--skip-tokens] [--to-epic "Epic Name"] [--exploration name] [--adopt|--defer|--scrap]
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash(git:*), Bash(test:*), Bash(node:*), AskUserQuestion, TodoWrite]
-version: 2.0
+version: 2.1
 created: 2025-11-27
-updated: 2025-12-02
+updated: 2025-12-03
 ---
 
 # /prototype - Discovery-First Prototyping
@@ -25,7 +25,9 @@ updated: 2025-12-02
 
 **Workflow Position**:
 ```
-/init-project → /prototype discover → /roadmap import-from-prototype → /epic or /feature
+/init-project → /prototype discover → /prototype extract --to-epic "Name" → /epic continue
+                                    ↓ OR
+                                    → /roadmap import-from-prototype → /epic or /feature
 ```
 
 **Modes**:
@@ -35,6 +37,7 @@ updated: 2025-12-02
 - `update`: Add screens to existing prototype
 - `status`: Show prototype overview and screen registry
 - `extract`: Analyze prototype → generate discovered-features.md + component-inventory.md
+  - `--to-epic "Name"`: One-shot epic creation (extract + create epic workspace)
 - `lock-theme`: Lock design decisions for production use
 - `unlock-theme`: Unlock for further iteration (requires confirmation)
 - `sync-tokens`: Update prototype to use refined tokens from /init-brand-tokens
@@ -808,6 +811,175 @@ Based on variants detected in prototype:
 
   NEXT STEP:
     /roadmap import-from-prototype
+
+═══════════════════════════════════════════════════════════════════════════════
+```
+
+### Step 7: Handle --to-epic Flag (Optional)
+
+**If `--to-epic "Epic Name"` was specified:**
+
+This creates an epic workspace with pre-populated spec from discoveries.
+
+#### 7.1 Determine Epic Slug and Number
+
+```bash
+# Get next epic number
+NEXT_NUM=$(ls -d epics/[0-9]* 2>/dev/null | wc -l)
+NEXT_NUM=$((NEXT_NUM + 1))
+EPIC_SLUG=$(echo "$EPIC_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g')
+EPIC_NUM=$(printf "%03d" $NEXT_NUM)
+EPIC_DIR="epics/${EPIC_NUM}-${EPIC_SLUG}"
+```
+
+#### 7.2 Create GitHub Epic Issue
+
+```bash
+# Create epic issue with prototype source
+gh issue create \
+  --title "[EPIC] $EPIC_NAME" \
+  --label "type:epic,source:prototype,status:planning" \
+  --body "$(cat <<EOF
+# $EPIC_NAME
+
+> Auto-generated from prototype discovery
+
+## Source
+- Prototype: design/prototype/
+- Extracted: $(date +%Y-%m-%d)
+
+## Discovered Features (Backlog)
+
+$(cat design/prototype/discovered-features.md | grep -A100 "## Feature Summary" | head -50)
+
+## Component Requirements
+
+$(cat design/prototype/component-inventory.md | grep -A20 "## Component Summary" | head -25)
+
+---
+Epic workspace: \`$EPIC_DIR\`
+Run \`/epic continue\` to start planning.
+EOF
+)"
+```
+
+#### 7.3 Create Epic Workspace
+
+```bash
+mkdir -p "$EPIC_DIR"
+```
+
+#### 7.4 Generate Pre-Populated epic-spec.md
+
+Write `$EPIC_DIR/epic-spec.md` using the epic-from-prototype template:
+
+```markdown
+# Epic Specification: $EPIC_NAME
+
+> Auto-populated from prototype discovery on [DATE]
+
+## Overview
+
+**Epic Number**: $EPIC_NUM
+**Source**: Prototype Discovery
+**Status**: Planning
+
+## Discovered Features
+
+<!-- Copied from design/prototype/discovered-features.md -->
+[FEATURES_FROM_DISCOVERED_FEATURES_MD]
+
+## Suggested Sprint Structure
+
+<!-- Copied from discovered-features.md "Suggested Epic Structure" section -->
+[SPRINT_STRUCTURE_FROM_TEMPLATE]
+
+## Component Dependencies
+
+<!-- Copied from design/prototype/component-inventory.md -->
+[COMPONENTS_FROM_INVENTORY]
+
+## User Stories
+
+<!-- Consolidated from all discovered features -->
+[USER_STORIES_FROM_FEATURES]
+
+## Open Questions
+
+<!-- Copied from discovered-features.md -->
+[QUESTIONS_FROM_DISCOVERY]
+
+## Prototype References
+
+- Screens: design/prototype/screens/
+- Theme: design/prototype/theme.yaml (locked: [LOCKED_STATUS])
+- Ideas: design/prototype/_discovery/ideas.md
+```
+
+#### 7.5 Copy Supporting Artifacts
+
+```bash
+# Copy component inventory to epic workspace
+cp design/prototype/component-inventory.md "$EPIC_DIR/"
+
+# Copy discovered features for reference
+cp design/prototype/discovered-features.md "$EPIC_DIR/"
+```
+
+#### 7.6 Initialize Epic state.yaml
+
+Write `$EPIC_DIR/state.yaml`:
+
+```yaml
+epic_number: $EPIC_NUM
+epic_slug: $EPIC_SLUG
+epic_name: "$EPIC_NAME"
+source: prototype
+prototype_path: design/prototype/
+phase: planning
+status: initialized
+created: $(date -Iseconds)
+
+artifacts:
+  epic_spec: epic-spec.md
+  discovered_features: discovered-features.md
+  component_inventory: component-inventory.md
+
+github:
+  issue_number: [ISSUE_NUMBER]
+
+quality_gates:
+  spec_review: pending
+  plan_review: pending
+
+manual_gates: {}
+```
+
+#### 7.7 Display Epic Creation Summary
+
+```
+═══════════════════════════════════════════════════════════════════════════════
+  Epic Created from Prototype!
+═══════════════════════════════════════════════════════════════════════════════
+
+  Epic: #$EPIC_NUM - $EPIC_NAME
+  Workspace: $EPIC_DIR/
+  GitHub Issue: #[ISSUE_NUMBER]
+
+  Pre-Populated:
+    ✓ epic-spec.md (from discovered features)
+    ✓ component-inventory.md (copied)
+    ✓ discovered-features.md (copied)
+    ✓ state.yaml (initialized)
+
+  Features in Backlog: [N]
+  Suggested Sprints: [M]
+  Components Required: [K]
+
+  NEXT STEP:
+    /epic continue
+
+    This will start the planning phase with your discoveries pre-loaded.
 
 ═══════════════════════════════════════════════════════════════════════════════
 ```

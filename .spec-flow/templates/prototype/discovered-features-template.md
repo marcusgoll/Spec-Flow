@@ -105,10 +105,60 @@ Based on discovery analysis, recommended import order:
 
 ---
 
+## Suggested Epic Structure
+
+> Based on feature dependencies and complexity, this prototype could become a single epic with the following sprint structure:
+
+### Epic: [EPIC_NAME_SUGGESTION]
+
+**Total Estimated Hours**: [TOTAL_HOURS]h
+**Suggested Sprints**: [SPRINT_COUNT]
+**Complexity**: [Small (2-3 sprints) | Medium (4-6 sprints) | Large (7+ sprints)]
+
+#### Sprint 1: Foundation (~[HOURS]h)
+- [ ] **[Feature A]** - Required by all others (Foundation)
+- [ ] **[Feature B]** - Core data layer (Foundation)
+
+#### Sprint 2: Core Value (~[HOURS]h)
+- [ ] **[Feature C]** - Main user flow (Core)
+- [ ] **[Feature D]** - Depends on A, B (Core)
+
+#### Sprint 3: Polish (~[HOURS]h)
+- [ ] **[Feature E]** - Enhancement
+- [ ] **[Feature F]** - Nice-to-have
+
+---
+
+## Feature Dependencies
+
+> Shows which features must be built before others
+
+| Feature | Depends On | Blocks | Sprint |
+|---------|------------|--------|--------|
+| [Feature A] | - | [Feature C, D] | S1 |
+| [Feature B] | - | [Feature C] | S1 |
+| [Feature C] | [A, B] | [Feature E] | S2 |
+| [Feature D] | [A, B] | - | S2 |
+| [Feature E] | [C] | - | S3 |
+| [Feature F] | - | - | S3 |
+
+**Critical Path**: [Feature A] → [Feature C] → [Feature E]
+
+---
+
 ## Next Steps
 
+**Option A: One-Shot Epic Creation (Recommended)**
+```
+/prototype extract --to-epic "Epic Name"
+```
+Creates epic workspace with pre-populated spec from discoveries.
+
+**Option B: Manual Import**
 1. Review this file and adjust feature priorities
 2. Resolve open questions (see above)
-3. Run `/roadmap import-from-prototype` to create roadmap items
-4. Run `/prototype lock-theme` when design decisions are final
-5. Start `/epic` or `/feature` for highest priority items
+3. Run `/roadmap import-from-prototype` to create individual roadmap items
+4. Start `/epic` or `/feature` for highest priority items
+
+**After either option:**
+- Run `/prototype lock-theme` when design decisions are final

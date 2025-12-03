@@ -2,8 +2,8 @@
 description: Execute multi-sprint epic workflow from interactive scoping through deployment with parallel sprint execution and self-improvement
 argument-hint: [epic description | slug | continue | next] [--auto | --interactive | --no-input]
 allowed-tools: [Read, Write, Edit, Grep, Glob, Bash, Task, AskUserQuestion, TodoWrite, SlashCommand, Skill]
-version: 5.2
-updated: 2025-11-20
+version: 5.3
+updated: 2025-12-03
 ---
 
 # /epic — Epic-Level Workflow Orchestration
@@ -324,6 +324,82 @@ PROTOTYPE_EXISTS=$(test -f design/prototype/state.yaml && echo "true" || echo "f
 **If no prototype exists**: Skip silently (backward compatible)
 
 **Note**: This is a soft prompt, not a blocking gate. Epics can proceed without prototype.
+
+---
+
+### Step 0.4: Prototype Source Detection (Auto-Population)
+
+**Check if epic was created from prototype extraction (`/prototype extract --to-epic`):**
+
+```bash
+# Check for prototype source indicator in state.yaml
+EPIC_SOURCE=$(yq eval '.source // "manual"' "$EPIC_DIR/state.yaml" 2>/dev/null)
+```
+
+**If `source: prototype` detected:**
+
+1. **Load pre-populated epic-spec.md:**
+   ```bash
+   # Epic spec already populated from prototype discovery
+   cat "$EPIC_DIR/epic-spec.md"
+   ```
+
+2. **Load discovered features as backlog:**
+   ```bash
+   # Features extracted from prototype
+   cat "$EPIC_DIR/discovered-features.md"
+   ```
+
+3. **Load component requirements:**
+   ```bash
+   # Components identified during extraction
+   cat "$EPIC_DIR/component-inventory.md"
+   ```
+
+4. **Display prototype source summary:**
+   ```
+   ═══════════════════════════════════════════════════════════════════════════════
+     Epic Pre-Populated from Prototype
+   ═══════════════════════════════════════════════════════════════════════════════
+
+     Source: design/prototype/
+     Features Discovered: [N]
+     Suggested Sprints: [M]
+     Components Required: [K]
+     Open Questions: [Q]
+
+     Artifacts Pre-Loaded:
+       ✓ epic-spec.md (from discovered features)
+       ✓ discovered-features.md
+       ✓ component-inventory.md
+
+   ═══════════════════════════════════════════════════════════════════════════════
+   ```
+
+5. **Skip redundant scoping questions:**
+   - Skip "What type of epic is this?" → Already inferred from prototype
+   - Skip "What subsystems are involved?" → Already identified from screens
+   - Skip "Estimated complexity?" → Already calculated from features
+
+   **Instead, ask only:**
+   ```json
+   {
+     "question": "Review the pre-populated epic spec. Ready to proceed to planning?",
+     "header": "Prototype Epic",
+     "multiSelect": false,
+     "options": [
+       {"label": "Yes, proceed to planning", "description": "Spec looks good, start /plan phase"},
+       {"label": "Modify spec first", "description": "Edit epic-spec.md before planning"},
+       {"label": "Add more features", "description": "Return to prototype to discover more"}
+     ]
+   }
+   ```
+
+6. **If "Yes"**: Skip to Step 2 (Planning Phase)
+7. **If "Modify spec"**: Open epic-spec.md for editing, then proceed
+8. **If "Add more features"**: Pause and suggest `/prototype explore`
+
+**If `source: manual` or not set**: Proceed with normal Step 1 scoping questions.
 
 ---
 
