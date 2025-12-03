@@ -2,6 +2,62 @@
 
 ---
 
+## [10.12.0] - 2025-12-03
+
+### ✨ Added
+
+**Dev Studio: Parallel AI Development**
+
+Run multiple Claude Code instances in parallel, each working on different features from your roadmap. Worktrees act as persistent AI developer workstations.
+
+- **`/studio init N`**
+  - Create N persistent git worktrees (1-10) in `worktrees/studio/agent-{i}/`
+  - Each worktree gets dedicated branch (`studio/agent-{i}`)
+  - Shared memory linking via worktree-manager.sh
+  - Creates `.spec-flow/studio/state.yaml` for tracking
+
+- **`/studio setup`**
+  - Configure GitHub branch protection for auto-merge
+  - Enables required status checks: test, build, lint, typecheck
+  - No required reviewers (CI gates are sufficient)
+  - Force pushes disabled for safety
+
+- **`/studio status`**
+  - Visual status table showing all agents
+  - Current feature and phase per agent
+  - Roadmap summary (next/backlog/in-progress counts)
+
+- **`/studio stop`**
+  - Graceful shutdown guidance
+  - Worktree cleanup instructions
+
+- **Auto-Continue Workflow Loop**
+  - `/finalize` now prompts "Pick up next issue from roadmap?"
+  - If "Yes": automatically invokes `/feature next`
+  - If "No": agent returns to idle
+  - Stops automatically when roadmap is empty
+
+- **Studio User Preferences**
+  - `studio.auto_continue`: Skip prompt, always continue (default: false)
+  - `studio.default_agents`: Default worktree count for init (default: 3)
+
+### 🔧 Changed
+
+- `/finalize` command gains AskUserQuestion and SlashCommand tools
+- User preferences schema version bumped to 1.4
+
+### 📚 Philosophy
+
+Dev Studio treats git worktrees as persistent AI developer workstations. Each agent:
+1. Claims work from GitHub roadmap (labels prevent duplicate claims)
+2. Works through features: plan → tasks → implement → optimize → ship
+3. Creates PRs with CI gates + auto-merge (no manual review needed)
+4. After finalization, either continues to next issue or returns to idle
+
+This enables hands-off parallel development where multiple features progress simultaneously, all funneling back to main via quality-gated PRs.
+
+---
+
 ## [10.11.0] - 2025-12-03
 
 ### ✨ Added

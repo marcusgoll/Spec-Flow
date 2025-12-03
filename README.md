@@ -45,6 +45,19 @@
 
 ## 🆕 Recent Updates
 
+### v10.12.0 (December 2025)
+
+**Dev Studio: Parallel AI Development** - Run multiple Claude Code instances in parallel as persistent AI developer workstations.
+
+- **`/studio init N`**: Create N git worktrees as agent workstations (1-10)
+- **`/studio setup`**: Configure GitHub branch protection + auto-merge
+- **`/studio status`**: Visual dashboard of all agents and roadmap
+- **Auto-Continue Loop**: `/finalize` prompts to pick up next roadmap issue
+
+New: CI gates replace manual PR review (tests, build, lint, typecheck), stops when roadmap empty
+
+---
+
 ### v10.11.0 (December 2025)
 
 **Epic-First Prototype Workflow** - Seamless pipeline from prototype discovery to epic creation.
