@@ -264,51 +264,213 @@ ORM tasks (T010+) must declare dependency on migration tasks:
 
 ---
 
-1. **Execute task generation workflow** via spec-cli.py:
+### Step 2: GENERATE TASKS.MD (MANDATORY)
 
-   ```bash
-   python .spec-flow/scripts/spec-cli.py tasks $passToScript
-   ```
+**You MUST generate the tasks.md file directly. Do not wait for scripts.**
 
-   The tasks-workflow.sh script performs:
+#### 2.1 Read Source Artifacts
 
-   a. **Detect workspace type**: Epic vs Feature
+Read these files to extract task requirements:
 
-   - Epic: If `epics/*/epic-spec.md` exists
-   - Feature: Otherwise
+```
+1. ${BASE_DIR}/${SLUG}/plan.md - Extract:
+   - Architecture decisions
+   - Components to CREATE (new infrastructure)
+   - Components to REUSE (existing infrastructure)
+   - Data model entities
+   - API endpoints
 
-   b. **Epic workflows only** (Sprint breakdown):
+2. ${BASE_DIR}/${SLUG}/spec.md - Extract:
+   - User stories with priorities [P1], [P2], [P3]
+   - Acceptance criteria for each story
+   - UI screens (if HAS_UI feature)
 
-   - Analyze plan complexity (subsystems, hours, endpoints, tables)
-   - Create sprint boundaries (Backend + DB = S01, Frontend = S02, Integration = S03)
-   - Build dependency graph with execution layers
-   - Lock API contracts (OpenAPI 3.0 specs in contracts/)
-   - Generate sprint-plan.md with critical path analysis
-   - Generate tasks.md for each sprint in sprints/{S01,S02,S03}/
-   - Commit sprint plan with summary
+3. ${BASE_DIR}/${SLUG}/research.md (if exists) - Extract:
+   - Codebase patterns to follow
+   - Existing services to import
+```
 
-   c. **Feature workflows** (Traditional task generation):
+#### 2.2 Generate Task Structure
 
-   - Load artifacts (spec.md, plan.md, research.md)
-   - Extract user stories from spec.md
-   - Generate 20-30 tasks with deterministic IDs (T001-T030)
-   - Map tasks to user story priority
-   - UI-first mode: Generate HTML mockup tasks if --ui-first
-   - TDD sequence: Order as spec → test → impl → refactor
-   - Parallel batching: Detect independent tasks (frontend vs backend)
-   - Git commit with task summary
+Create tasks.md with this structure:
 
-   d. **UI-first mode** (if --ui-first flag):
+```markdown
+# Tasks: {Feature Name}
 
-   - Detect multi-screen workflow (≥3 screens in spec.md)
-   - Generate mockup tasks: navigation hub (index.html) + individual screens
-   - Create mockup-approval-checklist.md for reference
-   - Auto-proceed to /implement after task generation
-   - Tasks include: hub, screens, navigation wiring, quality checklist
+## [CODEBASE REUSE ANALYSIS]
+Scanned: {directories scanned}
 
-2. **Generate E2E Test Suite** (Epic workflows only):
+[EXISTING - REUSE]
+- ✅ {ServiceName} ({file_path})
 
-   **For epic workflows only**, after task generation completes:
+[NEW - CREATE]
+- 🆕 {NewComponent} (no existing pattern)
+
+## [DEPENDENCY GRAPH]
+Story completion order:
+1. Phase 2: Foundational (blocks all stories)
+2. Phase 3: US1 [P1] - {story title}
+3. Phase 4: US2 [P2] - {story title}
+
+## [PARALLEL EXECUTION OPPORTUNITIES]
+- US1: T010, T011, T012 (different files, no dependencies)
+
+## [IMPLEMENTATION STRATEGY]
+**MVP Scope**: Phase 3 (US1) only
+**Testing approach**: TDD (red-green-refactor)
+
+---
+
+## Phase 1: Setup
+
+- [ ] T001 Create project structure per plan.md
+  - From: plan.md [PROJECT STRUCTURE]
+
+## Phase 2: Foundational
+
+- [ ] T005 {Blocking prerequisite task}
+  - REUSE: {existing_service} ({file_path})
+  - Pattern: {similar_file_path}
+
+## Phase 3: User Story 1 [P1] - {Story Title}
+
+**Story Goal**: {Goal from spec.md}
+
+### Tests
+- [ ] T010 [RED] Write failing test for {behavior}
+- [ ] T011 [GREEN] Implement {component} to pass test
+- [ ] T012 [REFACTOR] Clean up {component}
+
+### Implementation
+- [ ] T015 [US1] Create {Model/Service/Component}
+  - REUSE: {existing} ({path})
+  - From: plan.md:{line_numbers}
+
+## Phase N: Polish
+
+- [ ] T080 Add error handling
+- [ ] T085 Document rollback procedure
+```
+
+#### 2.3 Task Format Rules
+
+Each task MUST have:
+- **Checkbox**: `- [ ]` (GitHub-trackable)
+- **Task ID**: Sequential T001, T002, T003...
+- **[Phase] marker**: [RED], [GREEN], [REFACTOR], or [USn]
+- **Description**: Concrete action + exact file path
+- **REUSE**: What existing code to use (if applicable)
+- **From**: Source reference (plan.md:45-60)
+
+#### 2.4 Write tasks.md
+
+Use Write tool to create `${BASE_DIR}/${SLUG}/tasks.md` with generated content.
+
+#### 2.5 Verify Creation
+
+Use Read tool to verify tasks.md was created successfully.
+
+---
+
+### Step 2.5: EPIC SPRINT BREAKDOWN (Epic Workflows Only)
+
+**If WORKFLOW_TYPE == "epic"**, generate sprint breakdown:
+
+#### 2.5.1 Analyze Complexity
+
+Read plan.md and count:
+- Subsystems (frontend, backend, database, etc.)
+- Estimated hours (from plan.md estimates)
+- API endpoints to create
+- Database tables to create
+
+#### 2.5.2 Create Sprint Boundaries
+
+```markdown
+# Sprint Plan: {Epic Name}
+
+## Sprint Structure
+
+| Sprint | Subsystem | Dependencies | Duration |
+|--------|-----------|--------------|----------|
+| S01 | Backend + Database | None | {days} |
+| S02 | Frontend | S01 | {days} |
+| S03 | Integration + E2E | S01, S02 | {days} |
+
+## Dependency Graph
+
+```
+S01 (Backend) ──┐
+                ├──> S03 (Integration)
+S02 (Frontend) ─┘
+```
+
+## Critical Path
+
+S01 → S02 → S03 (total: {days})
+```
+
+#### 2.5.3 Write sprint-plan.md
+
+Use Write tool to create `${BASE_DIR}/${SLUG}/sprint-plan.md`.
+
+#### 2.5.4 Generate Per-Sprint Tasks
+
+Create separate tasks in tasks.md grouped by sprint:
+
+```markdown
+## Sprint S01: Backend + Database
+
+### T001-T020: Backend tasks...
+
+## Sprint S02: Frontend
+
+### T021-T040: Frontend tasks (Depends On: S01 complete)
+
+## Sprint S03: Integration
+
+### T041-T060: Integration tasks (Depends On: S01, S02 complete)
+```
+
+---
+
+### Step 3: UI-First Mode (if --ui-first flag)
+
+**If UI_FIRST == true**, generate mockup tasks BEFORE implementation:
+
+#### 3.1 Detect Multi-Screen Flow
+
+Count screens in spec.md user stories:
+- ≥3 screens → Generate navigation hub (index.html)
+- <3 screens → Generate individual screen mockups only
+
+#### 3.2 Generate Mockup Tasks
+
+Add Phase 1 tasks for mockups:
+
+```markdown
+## Phase 1: Design Mockups (APPROVAL REQUIRED)
+
+- [ ] T001 [DESIGN] Create navigation hub (index.html)
+  - Output: ${BASE_DIR}/${SLUG}/mockups/index.html
+  - Include: Links to all screens, keyboard shortcuts
+
+- [ ] T002 [DESIGN] Create {screen_name} mockup
+  - Output: ${BASE_DIR}/${SLUG}/mockups/{screen_name}.html
+  - States: success, loading, error, empty
+  - Tokens: Link to design/systems/tokens.css
+
+- [ ] T003 [APPROVAL-GATE] Review and approve mockups
+  - Preview: Open mockups/*.html in browser
+  - Checklist: mockup-approval-checklist.md
+  - BLOCKS: All implementation tasks
+```
+
+---
+
+### Step 4: Generate E2E Test Tasks (Epic Workflows Only)
+
+**For epic workflows only**, generate E2E test tasks:
 
    a. **Analyze user workflows** from spec.md:
 
@@ -390,16 +552,76 @@ ORM tasks (T010+) must declare dependency on migration tasks:
    - Feature workflows can have E2E tests, but generation is optional
    - Only auto-generate for epics (multi-subsystem, complex workflows)
 
-3. **Read generated artifacts**:
+---
 
-   - Epic: `sprint-plan.md`, `contracts/*.yaml`, `sprints/*/tasks.md`, `e2e-tests.md`
-   - Feature: `tasks.md`
-   - UI-first: `tasks.md` with mockup tasks, `mockup-approval-checklist.md`
+### Step 5: Verify and Commit
 
-4. **Present task summary** to user with task count, story breakdown, TDD coverage, E2E test count (epic only)
+#### 5.1 Verify Generated Artifacts
 
-5. **Suggest next action** based on workflow type
-   </process>
+Use Read tool to verify files were created:
+- Epic: `sprint-plan.md`, `tasks.md`, `e2e-tests.md`
+- Feature: `tasks.md`
+- UI-first: `tasks.md`, `mockups/` directory structure
+
+#### 5.2 Update NOTES.md
+
+Append Phase 2 checkpoint to `${BASE_DIR}/${SLUG}/NOTES.md`:
+
+```markdown
+## Phase 2: Tasks ({current_date})
+
+**Summary**:
+- Total tasks: {count}
+- User story tasks: {count}
+- Parallel opportunities: {count}
+- Task file: ${BASE_DIR}/${SLUG}/tasks.md
+
+**Checkpoint**:
+- ✅ Tasks generated
+- ✅ User story organization: Complete
+- ✅ Dependency graph: Created
+- 📋 Ready for: /implement
+```
+
+#### 5.3 Git Commit
+
+```bash
+git add ${BASE_DIR}/${SLUG}/tasks.md ${BASE_DIR}/${SLUG}/NOTES.md
+git commit -m "design:tasks: generate {count} concrete tasks organized by user story
+
+- {total} tasks (setup, foundational, user stories, polish)
+- {story_count} user story tasks
+- {parallel_count} parallel opportunities
+
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Step 6: Present Summary and Next Action
+
+Present to user:
+
+```
+✅ TASKS GENERATED
+
+File: ${BASE_DIR}/${SLUG}/tasks.md
+
+📊 Summary:
+- Total: {count} tasks
+- User story tasks: {count} (organized by priority)
+- Parallel opportunities: {count} tasks marked [P]
+
+📋 Task organization:
+- Phase 1 (Setup): Infrastructure and dependencies
+- Phase 2 (Foundational): Blocking prerequisites
+- Phase 3+ (User Stories): Story-specific implementation
+- Phase N (Polish): Cross-cutting concerns
+
+📋 NEXT: /implement (auto-continues)
+```
+</process>
 
 <verification>
 Before completing, verify:
@@ -763,15 +985,17 @@ See `.claude/skills/task-breakdown-phase/reference.md` for task structure guidel
   </standards>
 
 <notes>
-**Script location**: The bash implementation is at `.spec-flow/scripts/bash/tasks-workflow.sh`. It is invoked via spec-cli.py for cross-platform compatibility.
+**Self-sufficient execution**: This command generates tasks.md directly using the instructions in the `<process>` section. No external scripts are required.
+
+**Optional script**: The bash implementation at `.spec-flow/scripts/bash/tasks-workflow.sh` provides validation utilities but task generation happens via Claude following the process steps above.
 
 **Reference documentation**: Anti-hallucination rules, epic sprint breakdown (9 steps), multi-screen mockup workflow, TDD sequencing, and all detailed procedures are in `.claude/skills/task-breakdown-phase/reference.md`.
 
-**Version**: v2.0 (2025-11-17) - Added epic sprint breakdown, multi-screen mockup workflow, UI-first mode with manual approval gate.
+**Version**: v3.0 (2025-12-04) - Made self-sufficient without script dependency. Added explicit task generation, sprint breakdown, and migration detection instructions.
 
 **Next steps after tasks**:
 
-- Feature: `/validate` (recommended) or `/implement`
+- Feature: `/implement` (auto-continues)
 - Epic: `/implement-epic` (parallel sprint execution with E2E tests)
 - UI-first: `/implement` → mockups → approval → `/implement --continue`
-  </notes>
+</notes>

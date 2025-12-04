@@ -52,11 +52,12 @@ Execute all tasks from ${BASE_DIR}/$ARGUMENTS/tasks.md with parallel batching, s
 
 Implementation workflow:
 
-1. Run centralized spec-cli.py implement script with arguments
-2. Review implementation progress (completed tasks, generated code)
-3. Update living documentation (UI inventory, approved patterns)
-4. Run full test suite verification
-5. Present results with next action recommendation
+1. Parse and group tasks from tasks.md by domain and TDD phase
+2. Execute tasks directly using specialist agents (backend-dev, frontend-dev, etc.)
+3. Track completion via tasks.md checkbox and NOTES.md updates
+4. Update living documentation (UI inventory, approved patterns)
+5. Run full test suite verification
+6. Present results with next action recommendation
 
 **Key principles**:
 
@@ -519,34 +520,186 @@ fi
 
 ---
 
-### Step 1: Execute Implementation Script
+### Step 1: PARSE AND GROUP TASKS (MANDATORY)
 
-Run the centralized spec-cli tool with feature slug:
+**You MUST execute tasks directly. Do not wait for scripts.**
 
-```bash
-python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
+#### 1.1 Read Pending Tasks
+
+Read `${BASE_DIR}/${SLUG}/tasks.md` and extract all pending tasks:
+- Tasks with `- [ ]` checkbox are pending
+- Tasks with `- [x]` checkbox are complete
+
+#### 1.2 Group Tasks by Domain
+
+Categorize each task by domain for specialist routing:
+
+| Pattern in Task | Domain | Specialist Agent |
+|-----------------|--------|------------------|
+| `api/`, `backend`, `.py`, `endpoint`, `service` | backend | backend-dev |
+| `apps/`, `frontend`, `.tsx`, `.jsx`, `component`, `page` | frontend | frontend-dev |
+| `migration`, `schema`, `alembic`, `prisma`, `sql` | database | database-architect |
+| `test.`, `.test.`, `.spec.`, `tests/` | tests | qa-tester |
+| Other | general | general-purpose |
+
+#### 1.3 Group Tasks by TDD Phase
+
+Tasks with phase markers execute sequentially:
+- `[RED]` - Write failing test first
+- `[GREEN]` - Implement to pass test
+- `[REFACTOR]` - Clean up while keeping tests green
+
+Tasks without phase markers can execute in parallel (if different files).
+
+#### 1.4 Create Batch Groups
+
+Group tasks for parallel execution:
+- Max 3-4 tasks per batch (clarity over speed)
+- Same domain tasks in same batch
+- TDD phases run as single-task batches (sequential)
+
+---
+
+### Step 1.5: EXECUTE TASK BATCHES (MANDATORY)
+
+**For each batch group, execute tasks using specialist agents.**
+
+#### 1.5.1 TDD Task Execution
+
+For tasks marked `[RED]`, `[GREEN]`, or `[REFACTOR]`:
+
+**RED Phase:**
+1. Write the failing test
+2. Run test - MUST fail (for the right reason)
+3. If test passes → something is wrong, investigate
+4. Commit: `test(red): TXXX write failing test for {behavior}`
+
+**GREEN Phase:**
+1. Implement minimal code to pass the test
+2. Run test - MUST pass
+3. If test fails → fix implementation
+4. Commit: `feat(green): TXXX implement {component}`
+
+**REFACTOR Phase:**
+1. Clean up code (DRY, KISS principles)
+2. Run tests - MUST stay green
+3. If tests break → revert, try simpler refactor
+4. Commit: `refactor: TXXX clean up {component}`
+
+#### 1.5.2 General Task Execution
+
+For tasks without TDD markers:
+
+1. Read task requirements and REUSE markers
+2. Check referenced files exist (use Read tool)
+3. Implement the task
+4. Run relevant tests
+5. Commit: `feat(TXXX): {summary}`
+
+#### 1.5.3 Specialist Agent Invocation
+
+For complex tasks, use Task tool with appropriate specialist:
+
+```javascript
+Task({
+  subagent_type: "backend-dev",  // or frontend-dev, database-architect, qa-tester
+  description: "TXXX: {task title}",
+  prompt: `Execute task TXXX from ${BASE_DIR}/${SLUG}/tasks.md
+
+Task Requirements:
+{copy task content from tasks.md}
+
+Instructions:
+1. Read any REUSE files mentioned
+2. Implement the task
+3. Run tests to verify
+4. Return: files changed, test results, coverage`
+});
 ```
 
-**Script operations** (automated):
+---
 
-1. **Preflight checks** — Validates git, jq, test runner installed
-2. **Load tasks** — Parses tasks.md for all pending tasks
-3. **Detect batches** — Groups independent tasks for parallel execution
-4. **UI-first gate** — Checks mockup approval if --ui-first mode
-5. **Execute batches** — Runs tasks in parallel groups (TDD: red → green → refactor)
-6. **Anti-duplication** — Scans for existing implementations before creating new code
-7. **Pattern following** — Applies plan.md recommended patterns consistently
-8. **Auto-rollback** — Reverts changes on test failure
-9. **Atomic commits** — Commits each task individually with descriptive message
-10. **Full test suite** — Runs complete test suite after all tasks
-11. **Git commit** — Final commit with implementation summary
+### Step 1.6: TASK COMPLETION TRACKING (MANDATORY)
 
-**TDD workflow per task:**
+**After EACH task completes successfully:**
 
-1. **Red**: Write failing test (verify it fails)
-2. **Green**: Implement minimal code to pass test
-3. **Refactor**: Improve code quality without changing behavior
-4. **Commit**: Atomic commit for this task
+#### 1.6.1 Update tasks.md Checkbox
+
+Use Edit tool to change:
+```markdown
+- [ ] TXXX ...
+```
+to:
+```markdown
+- [x] TXXX ...
+```
+
+#### 1.6.2 Append to NOTES.md
+
+Use Edit tool to append:
+```markdown
+✅ TXXX: {task title} - {duration}min ({timestamp})
+   Evidence: {test results, e.g., "pytest: 25/25 passing"}
+   Coverage: {percentage, e.g., "92% line, 88% branch"}
+```
+
+#### 1.6.3 Commit the Task
+
+```bash
+git add .
+git commit -m "feat(TXXX): {summary}
+
+Tests: {pass_count}/{total_count} passing
+Coverage: {percentage}%
+
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+#### 1.6.4 On Task Failure
+
+If a task fails (tests don't pass, error occurs):
+
+1. **Log to error-log.md**:
+```markdown
+## ❌ TXXX - {timestamp}
+
+**Error:** {detailed error message}
+**Stack Trace:** {if applicable}
+**Status:** Needs retry or investigation
+```
+
+2. **Rollback changes**: `git restore .`
+3. **Do NOT update tasks.md checkbox**
+4. **Continue to next task**
+
+---
+
+### Step 1.7: TDD WORKFLOW REFERENCE
+
+**Strict TDD sequence per task:**
+
+```
+┌─────────────────────────────────────────────┐
+│  RED: Write Failing Test                     │
+│  ├── Create test file if needed              │
+│  ├── Write test for expected behavior        │
+│  ├── Run test → MUST FAIL                    │
+│  └── Commit: test(red): TXXX                 │
+├─────────────────────────────────────────────┤
+│  GREEN: Make Test Pass                       │
+│  ├── Write minimal implementation            │
+│  ├── Run test → MUST PASS                    │
+│  ├── Don't over-engineer                     │
+│  └── Commit: feat(green): TXXX               │
+├─────────────────────────────────────────────┤
+│  REFACTOR: Clean Up                          │
+│  ├── Remove duplication                      │
+│  ├── Improve naming                          │
+│  ├── Run tests → MUST STAY GREEN             │
+│  └── Commit: refactor: TXXX                  │
+└─────────────────────────────────────────────┘
+```
 
 ### Step 2: Review Implementation Progress
 
@@ -982,9 +1135,7 @@ Task T005 failed at Green phase (test still failing)
 
 **Resume after fixing:**
 
-```bash
-python .spec-flow/scripts/spec-cli.py implement "$SLUG" --continue
-```
+Run `/implement` again - it will automatically detect pending tasks from tasks.md (tasks with `- [ ]` checkbox) and continue from where it left off.
 
 ### Anti-Duplication
 
