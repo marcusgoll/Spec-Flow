@@ -2,6 +2,97 @@
 
 ---
 
+## [10.13.0] - 2025-12-04
+
+### ✨ Added
+
+**User Preference System**
+
+Complete user preferences configuration with interactive wizard and command learning.
+
+- **`/init-preferences`** (17-question wizard)
+  - Command defaults (epic, feature, tasks, init-project, run-prompt)
+  - Automation settings (auto-approve, CI mode)
+  - UI preferences (status bars, verbose output)
+  - Quality gates (E2E visual testing, migrations)
+  - Learning system (auto-apply, threshold)
+  - Git worktrees configuration
+
+- **Preference Loading in Commands**
+  - `/optimize` Step 0.1: Loads E2E, auto-approve, CI preferences
+  - `/implement` Step 0.55: Loads migration, automation, learning preferences
+  - Gate 7 (E2E + Visual) respects `e2e_visual.enabled` and `e2e_visual.failure_mode`
+
+- **Command Usage Learning**
+  - `track-command-usage.sh` gains `stats`, `last`, `count`, `init` actions
+  - JSON output for integration with preference system
+  - Tracks mode selections per command (auto/interactive, standard/ui-first, etc.)
+
+**Init-Project Completion**
+
+Full PowerShell parity and complete questionnaire implementation.
+
+- **Q6-Q15** questionnaire questions:
+  - Q6: System architecture (monolith, modular-monolith, microservices, serverless)
+  - Q7: Primary database (PostgreSQL, MySQL, MongoDB, SQLite, Supabase, PlanetScale)
+  - Q8: Deployment platform (Vercel, Railway, AWS, GCP, Azure, Self-hosted, Hybrid)
+  - Q9: API style (REST, GraphQL, tRPC, gRPC, Hybrid)
+  - Q10: Authentication provider (Clerk, NextAuth, Auth0, Supabase, Firebase, Custom)
+  - Q11: Budget for MVP ($0, $50, $200, $500, $500+)
+  - Q12: Privacy requirements (Basic, PII, GDPR, HIPAA, SOC2, Multiple)
+  - Q13: Git workflow (GitHub Flow, GitFlow, Trunk-based, Ship/Show/Ask)
+  - Q14: Deployment model (staging-prod, direct-prod, local-only)
+  - Q15: Frontend framework (Next.js, Remix, Vite+React, Vue, Svelte, Astro, None)
+
+- **Component Library Detection**
+  - Auto-detects: shadcn/ui, Chakra UI, MUI, HeroUI, Ant Design, Mantine, Radix UI, Headless UI, DaisyUI
+  - Pattern-based detection via package.json + directory structure
+
+- **`--with-design` Flag**
+  - Generates 4 design documents (brand-guidelines, style-guide, wireframe-library, motion-design)
+  - Creates OKLCH design tokens (tokens.css, tokens.json)
+  - Dark mode, reduced motion, browser fallbacks included
+
+- **Foundation Issue Creation**
+  - Creates GitHub roadmap issue for greenfield projects
+  - Pre-populates scaffolding tasks from questionnaire responses
+  - Labels: `foundation`, `status:next`, `area:infrastructure`, `priority:P0`
+
+**Design Token Templates**
+
+Production-ready OKLCH color system with full design token architecture.
+
+- **`tokens.css`** (500+ lines)
+  - Layer 1: Primitives (color scales, spacing, typography)
+  - Layer 2: Semantic tokens (text, background, border)
+  - Layer 3: Component tokens (button, input, card)
+  - Dark mode via `prefers-color-scheme`
+  - Reduced motion support
+  - Browser fallbacks for OKLCH
+
+- **`tokens.json`**
+  - Programmatic access for tooling
+  - Tailwind extend configuration
+  - Sass/Less variables export
+
+### 🔧 Changed
+
+- **Command Reorganization**
+  - 40+ specialized commands archived to `.claude/commands/_archived/`
+  - Consolidated into core commands: `/init`, `/create`, `/gate`, `/context`
+  - Archived commands still available for migration reference
+
+- `/roadmap` command gains vision alignment validation and brainstorming
+- `generate-project-claude-md.sh` default output path fixed
+- User preferences schema version bumped to 1.5
+
+### 🐛 Fixed
+
+- ShellCheck warnings in `check-pre-ci.sh` (SC2164, SC2235)
+- Migration strictness preference fallback in `/implement`
+
+---
+
 ## [10.12.0] - 2025-12-03
 
 ### ✨ Added
