@@ -30,7 +30,7 @@ BLOCKING_FAILURES=0
 WARNINGS=0
 
 # Navigate to repo root
-cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" || exit 1
 
 # Initialize report
 init_report() {
@@ -72,7 +72,7 @@ check_licenses() {
     local has_node=false
     local has_python=false
     [ -f "package.json" ] && has_node=true
-    ([ -f "requirements.txt" ] || [ -f "pyproject.toml" ]) && has_python=true
+    { [ -f "requirements.txt" ] || [ -f "pyproject.toml" ]; } && has_python=true
 
     if [ "$has_node" = false ] && [ "$has_python" = false ]; then
         log_skip "No package manifest found"
@@ -177,7 +177,7 @@ check_circular_deps() {
     local has_node=false
     local has_python=false
     [ -f "package.json" ] && has_node=true
-    ([ -f "requirements.txt" ] || [ -f "pyproject.toml" ]) && has_python=true
+    { [ -f "requirements.txt" ] || [ -f "pyproject.toml" ]; } && has_python=true
 
     # Determine source directory
     local src_dir=""
@@ -266,7 +266,7 @@ check_dead_code() {
     fi
 
     # Python dead code check
-    if ([ -f "requirements.txt" ] || [ -f "pyproject.toml" ]) && [ -d "src" ] || [ -d "app" ]; then
+    if { [ -f "requirements.txt" ] || [ -f "pyproject.toml" ]; } && { [ -d "src" ] || [ -d "app" ]; }; then
         local py_src="src"
         [ -d "app" ] && py_src="app"
 
