@@ -42,6 +42,28 @@ studio:
   # Default number of agent worktrees for /studio init
   default_agents: 3
 
+# E2E and visual regression testing
+e2e_visual:
+  # Enable E2E and visual testing gate during /optimize
+  enabled: true
+
+  # How to handle failures: blocking (fail) or warning (continue)
+  failure_mode: blocking
+
+  # Pixel difference threshold for visual regression (0.1 = 10%)
+  threshold: 0.1
+
+  # Auto-commit baseline screenshots on first run
+  auto_commit_baselines: true
+
+# Database migrations
+migrations:
+  # How to handle pending migrations during /implement
+  # blocking: Stop and require manual apply
+  # warning: Log warning, continue
+  # auto_apply: Automatically run migrations
+  strictness: blocking
+
 # Perpetual learning system
 learning:
   # Master switch for learning system

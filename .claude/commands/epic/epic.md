@@ -1,24 +1,20 @@
 ---
 description: Execute multi-sprint epic workflow from interactive scoping through deployment with parallel sprint execution and self-improvement
-argument-hint: [epic description | slug | continue | next] [--auto | --interactive | --no-input]
+argument-hint: [epic description | slug | continue | next]
 allowed-tools: [Read, Write, Edit, Grep, Glob, Bash, Task, AskUserQuestion, TodoWrite, SlashCommand, Skill]
-version: 5.3
-updated: 2025-12-03
+version: 6.0
+updated: 2025-12-04
 ---
 
 # /epic — Epic-Level Workflow Orchestration
 
 **Purpose**: Transform high-level product goals into coordinated multi-sprint implementations with parallel execution, self-adaptation, and comprehensive walkthrough documentation.
 
-**Command**: `/epic [epic description | slug | continue | next] [--auto | --interactive | --no-input]`
-
-**Flags**:
-
-- `--auto`: Run in auto mode - bypass all interactive prompts except critical blockers (CI failures, security issues, deployment errors)
-- `--interactive`: Force interactive mode - pause at spec review and plan review (overrides config/history)
-- `--no-input`: Non-interactive mode for CI/CD - same as --auto but explicitly signals automation context
+**Command**: `/epic [epic description | slug | continue | next]`
 
 **When to use**: For complex features requiring multiple sprints (>2 sprints), cross-cutting concerns, or when automatic sprint decomposition and parallel execution would accelerate delivery.
+
+**Autopilot**: Executes automatically until completion, only pausing on critical failures.
 
 ---
 
@@ -68,187 +64,56 @@ Transform high-level product goals into coordinated multi-sprint implementations
 - direct-prod: Git remote without staging infrastructure
 - local-only: No git remote configured
 
-**Auto-mode** (if --auto flag present):
-
-- Skip spec review PAUSE
-- Auto-execute research/planning prompts without "What's next?" prompt
-- Skip plan review PAUSE
-- Only stop for critical blockers: CI failures, security issues, deployment errors
-  </objective>
+**Autopilot behavior**: All phases execute automatically. Only stops for critical blockers: CI failures, security issues, deployment errors.
+</objective>
 
 <process>
-### Step 0.1: Load User Preferences (3-Tier System)
+### Step 0.1: Initialize Epic State
 
-**Determine execution mode using 3-tier preference system:**
+**Parse user input and initialize epic workspace:**
 
-1. **Load configuration file** (Tier 1 - lowest priority):
+```javascript
+const args = "$ARGUMENTS".trim();
+const epicDescription = args;
+```
 
-   ```powershell
-   # Load from .spec-flow/config/user-preferences.yaml
-   $preferences = & .spec-flow/scripts/utils/load-preferences.ps1 -Command "epic"
-   $configMode = $preferences.commands.epic.default_mode  # "interactive" or "auto"
-   ```
+**Display autopilot mode:**
 
-2. **Load command history** (Tier 2 - medium priority, overrides config):
+```
+🤖 Autopilot enabled - executing automatically until completion or error
+```
 
-   ```powershell
-   # Load from .spec-flow/memory/command-history.yaml
-   $history = & .spec-flow/scripts/utils/load-command-history.ps1 -Command "epic"
+**Create/update state.yaml:**
 
-   if ($history.last_used_mode -and $history.total_uses -gt 0) {
-       $preferredMode = $history.last_used_mode  # Use learned preference
-       $usageStats = $history.usage_count  # For display: "used 8/10 times"
-   } else {
-       $preferredMode = $configMode  # Fall back to config
-   }
-   ```
+```yaml
+# epics/{EPIC_SLUG}/state.yaml
+epic:
+  number: { EPIC_NUMBER }
+  slug: { EPIC_SLUG }
+  title: { EPIC_TITLE }
+  started_at: { ISO_TIMESTAMP }
+  current_phase: specification
 
-3. **Check command-line flags** (Tier 3 - highest priority, overrides everything):
+phases:
+  specification: pending
+  research: pending
+  planning: pending
+  implementation: pending
+  optimization: pending
+  deployment: pending
+  finalization: pending
 
-   ```javascript
-   const args = "$ARGUMENTS".trim();
-   const hasAutoFlag = args.includes("--auto");
-   const hasInteractiveFlag = args.includes("--interactive");
-   const hasNoInput = args.includes("--no-input");
-   const epicDescription = args
-     .replace(/--auto|--interactive|--no-input/g, "")
-     .trim();
+sprints:
+  total: 0 # Updated after planning
+  completed: 0
+  failed: 0
 
-   let selectedMode;
+layers:
+  total: 0 # Updated after planning
+  completed: 0
+```
 
-   if (hasNoInput || hasAutoFlag) {
-     selectedMode = "auto"; // CI/automation override
-   } else if (hasInteractiveFlag) {
-     selectedMode = "interactive"; // Explicit interactive override
-   } else {
-     selectedMode = $preferredMode; // Use config/history preference
-   }
-   ```
-
-4. **If no explicit override, ask user with smart suggestions:**
-
-   Only prompt if no flag provided and not in CI mode. Use AskUserQuestion with learned preferences:
-
-   ```javascript
-   AskUserQuestion({
-     questions: [{
-       question: "How should this epic workflow run?",
-       header: "Mode",
-       multiSelect: false,
-       options: [
-         {
-           label: history.last_used_mode === "auto"
-             ? "Auto (last used) ⭐"
-             : "Auto",
-           description: "Skip spec/plan reviews, run until blocker"
-         },
-         {
-           label: history.last_used_mode === "interactive"
-             ? "Interactive (last used) ⭐"
-             : "Interactive",
-           description: "Pause at spec review and plan review"
-         }
-       ]
-     }]
-   });
-   ```
-
-   **Smart defaults behavior:**
-
-   - If `preferences.commands.epic.skip_mode_prompt === true` AND default_mode is set: Use configured default without asking
-   - If `preferences.ui.recommend_last_used === true`: Mark last-used option with ⭐
-   - If user has strong preference (>80% usage of one mode): Can auto-select without prompting
-   - Otherwise: Always prompt user to choose
-
-   **Skip prompt when preference is clear:**
-
-   ```javascript
-   const skipPrompt =
-     preferences.commands?.epic?.skip_mode_prompt === true ||
-     (history.total_uses >= 5 &&
-      (history.usage_count.auto / history.total_uses > 0.8 ||
-       history.usage_count.interactive / history.total_uses > 0.8));
-
-   if (skipPrompt) {
-     selectedMode = preferredMode;  // Use learned/configured preference
-     console.log(`Using ${selectedMode} mode (from preferences)`);
-   } else {
-     // Show AskUserQuestion prompt above
-   }
-   ```
-
-5. **Create/update state.yaml and track usage:**
-
-   ```yaml
-   # epics/{EPIC_SLUG}/state.yaml
-   epic:
-     number: { EPIC_NUMBER }
-     slug: { EPIC_SLUG }
-     title: { EPIC_TITLE }
-     auto_mode: { true|false } # Based on selectedMode
-     started_at: { ISO_TIMESTAMP }
-     current_phase: specification
-
-   phases:
-     specification:
-       status: in_progress
-       started_at: { ISO_TIMESTAMP }
-     research:
-       status: pending
-     planning:
-       status: pending
-     implementation:
-       status: pending
-     optimization:
-       status: pending
-     deployment:
-       status: pending
-     finalization:
-       status: pending
-
-   manual_gates:
-     spec_review:
-       status: { auto_skipped|pending } # auto_skipped if auto_mode: true
-       blocking: { false|true } # false if auto_mode: true
-       skipped_at: { ISO_TIMESTAMP } # if auto_skipped
-     plan_review:
-       status: { auto_skipped|pending } # auto_skipped if auto_mode: true
-       blocking: { false|true } # false if auto_mode: true
-       skipped_at: { ISO_TIMESTAMP } # if auto_skipped
-
-   sprints:
-     total: 0 # Updated after planning
-     completed: 0
-     failed: 0
-
-   layers:
-     total: 0 # Updated after planning
-     completed: 0
-   ```
-
-   ```powershell
-   # Display selected mode
-   if ($selectedMode -eq 'auto') {
-       "🤖 Auto-mode enabled - will run automatically until blocker"
-       # manual_gates.*.status set to "auto_skipped"
-   } else {
-       "📋 Interactive mode - will pause at reviews"
-       # manual_gates.*.status set to "pending"
-   }
-
-   # Track this usage for learning system
-   & .spec-flow/scripts/utils/track-command-usage.ps1 -Command "epic" -Mode $selectedMode
-   ```
-
-**If auto-mode selected:**
-
-- Bypass all PAUSE points (spec review, plan review)
-- Auto-execute `/run-prompt` after `/create-prompt` (skip "What's next?" prompt)
-- Only stop for critical blockers: CI failures, security issues, deployment errors
-
-**If interactive mode selected:**
-
-- Follow standard workflow with manual PAUSE points
+**Autopilot behavior**: All phases execute automatically. Only stops for critical blockers: CI failures, security issues, deployment errors.
 
 ### Step 0.2: Auto-Initialize Project (If Needed)
 
@@ -598,24 +463,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 /meta:enforce-git-commits --phase "epic-specification"
 ```
 
-**PAUSE (Interactive Mode Only)**: Review epic-spec.md. User can run `/clarify` if ambiguous, or continue to planning.
-
-**When paused (interactive mode):**
-
-- Display: "📋 Spec review complete. Continue to planning? (y/n)"
-- If approved, update state.yaml:
-  ```yaml
-  manual_gates:
-    spec_review:
-      status: approved
-      approved_at: { ISO_TIMESTAMP }
-      approved_by: user
-  ```
-
-**If auto-mode enabled**:
-
-- Skip this PAUSE - proceed directly to Step 1.5
-- Manual gate already set to "auto_skipped" in state.yaml (from Step 0.1)
+**Auto-proceed**: Specification complete, continuing to scoping questions.
 
 ### Step 1.5: Interactive Epic Scoping (Question Bank-Driven)
 
@@ -681,9 +529,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 **Outputs**: `research.md` (findings, confidence, open questions) and `plan.md` (architecture, phases, risks)
 
-**PAUSE (Interactive Mode Only)**: Review research.md and plan.md before sprint breakdown.
-
-**Auto-mode**: Skips PAUSE, proceeds directly to Step 4.
+**Auto-proceed**: Research and planning complete, continuing to sprint breakdown.
 
 ### Step 4: Sprint Breakdown with Dependency Graph
 
@@ -1025,9 +871,9 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 5. **State correctly recorded**:
    - state.yaml marks epic as completed
-   - All phase statuses accurately reflect reality
-   - Manual gates properly recorded (approved/skipped)
-     </success_criteria>
+   - All phase statuses show `completed`
+   - No blocking failures or errors in state file
+</success_criteria>
 
 <verification>
 **Before marking epic complete, verify:**
@@ -1105,14 +951,9 @@ All steps read/write `epics/<NNN-slug>/state.yaml`.
 TodoWrite({
   todos: [
     {
-      content: "Parse args, initialize epic state",
+      content: "Initialize epic state",
       status: "completed",
       activeForm: "Initialized",
-    },
-    {
-      content: "Auto-check: /init-project (if needed)",
-      status: "completed",
-      activeForm: "Project initialized",
     },
     {
       content: "Phase 0: Epic specification",
@@ -1120,67 +961,52 @@ TodoWrite({
       activeForm: "Created epic-spec.md",
     },
     {
-      content: "Phase 0.5: Clarification (auto-invoked)",
+      content: "Phase 0.5: Clarification (if needed)",
       status: "completed",
       activeForm: "Resolved ambiguities",
     },
     {
-      content: "Manual gate: Epic spec review",
-      status: "completed",
-      activeForm: "Spec approved",
-    },
-    {
-      content: "Phase 1: Meta-prompting research",
+      content: "Phase 1: Research",
       status: "completed",
       activeForm: "Research complete",
     },
     {
-      content: "Phase 1: Meta-prompting planning",
+      content: "Phase 1: Planning",
       status: "completed",
       activeForm: "Plan complete",
     },
     {
-      content: "Manual gate: Plan review",
-      status: "completed",
-      activeForm: "Plan approved",
-    },
-    {
-      content: "Phase 2: Sprint breakdown (auto)",
+      content: "Phase 2: Sprint breakdown",
       status: "completed",
       activeForm: "Sprint plan generated",
     },
     {
-      content: "Phase 3: Parallel implementation Layer 1",
+      content: "Phase 3: Implementation Layer 1",
       status: "completed",
       activeForm: "S01 complete",
     },
     {
-      content: "Phase 3: Parallel implementation Layer 2",
+      content: "Phase 3: Implementation Layer 2",
       status: "in_progress",
       activeForm: "S02 implementing",
     },
     {
-      content: "Phase 3: Parallel implementation Layer 3",
+      content: "Phase 3: Implementation Layer 3",
       status: "pending",
       activeForm: "S03 pending",
     },
     {
-      content: "Phase 3: Workflow audit (auto)",
-      status: "pending",
-      activeForm: "Auditing workflow",
-    },
-    {
-      content: "Phase 4: Optimization (auto)",
+      content: "Phase 4: Optimization",
       status: "pending",
       activeForm: "Running quality gates",
     },
     {
-      content: "Phase 5: Unified deployment",
+      content: "Phase 5: Deployment",
       status: "pending",
       activeForm: "Deploying",
     },
     {
-      content: "Phase 6: Walkthrough + self-improvement",
+      content: "Phase 6: Finalization",
       status: "pending",
       activeForm: "Finalizing epic",
     },
@@ -1190,9 +1016,9 @@ TodoWrite({
 
 **Rules**:
 
-- Exactly one phase is `in_progress`
-- **Manual gates**: Epic spec review (gate #1), Plan review (gate #2), Staging validation (gate #3, from /ship)
-- **Auto-progression**: After plan approval, automatically execute through deployment
+- Exactly one phase is `in_progress` at a time
+- All phases execute automatically (true autopilot)
+- Only blocks on critical failures: CI failures, security issues, quality gate failures, deployment errors
 - Deployment phases adapt to model: `staging-prod`, `direct-prod`, or `local-only`
 
 ---
@@ -1245,6 +1071,9 @@ TodoWrite({
 
 **Epics orchestrate multiple sprints**
 Unlike `/feature` (single sprint), `/epic` coordinates 2+ sprints with dependencies.
+
+**True autopilot execution**
+All phases execute automatically without manual intervention. Only blocks on critical failures.
 
 **State truth lives in `state.yaml`**
 Never guess; always read, quote, and update atomically.

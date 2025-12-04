@@ -1,7 +1,7 @@
 ---
 name: spec
-description: Generate complete feature specification with research, requirements analysis, and quality gates
-argument-hint: <feature-description> [--interactive] [--yes] [--skip-clarify]
+description: Generate complete feature specification with research, requirements analysis, and quality validation
+argument-hint: <feature-description> [--skip-clarify]
 allowed-tools:
   [
     Read,
@@ -21,6 +21,8 @@ allowed-tools:
 <context>
 **User Input**: $ARGUMENTS
 
+**Feature Classification**: !`bash .spec-flow/scripts/bash/classify-feature.sh "$ARGUMENTS" 2>/dev/null || echo '{"error": "classification unavailable"}'`
+
 **Current Git Status**: !`git status --short 2>$null || echo "clean"`
 
 **Current Branch**: !`git branch --show-current 2>$null || echo "none"`
@@ -29,7 +31,16 @@ allowed-tools:
 
 **Project Documentation**: !`dir /b docs\project\*.md 2>$null | head -5 || echo "none"`
 
-**Roadmap**: !`gh issue list --label roadmap --limit 5 2>$null || echo "none"`
+**Tech Stack Context** (if available):
+!`head -50 docs/project/tech-stack.md 2>/dev/null || echo "No tech-stack.md found"`
+
+**API Strategy Context** (if available):
+!`head -30 docs/project/api-strategy.md 2>/dev/null || echo "No api-strategy.md found"`
+
+**Data Architecture Context** (if available):
+!`head -30 docs/project/data-architecture.md 2>/dev/null || echo "No data-architecture.md found"`
+
+**Roadmap (Similar Features)**: !`gh issue list --label roadmap --limit 5 2>$null || echo "none"`
 
 **Specification Artifacts** (after execution):
 
@@ -37,63 +48,50 @@ allowed-tools:
 - @specs/NNN-slug/NOTES.md
 - @specs/NNN-slug/checklists/requirements.md
 - @specs/NNN-slug/state.yaml
-  </context>
+</context>
 
 <objective>
 Generate a production-grade feature specification from natural language input.
 
 Specification workflow:
 
-1. Analyze user input for ambiguity (clarification gate)
+1. Analyze user input for ambiguity (clarification if needed)
 2. Invoke Python CLI for deterministic slug generation and artifact creation
 3. Classify feature type and research mode
 4. Generate requirements (functional + non-functional) with FR-XXX/NFR-XXX identifiers
 5. Create user scenarios using Gherkin format (Given/When/Then)
 6. Validate quality with automated checklist
-7. Present confirmation gate before committing
-8. Commit to git with detailed summary
-9. Show decision tree for next steps
+7. Auto-commit to git with detailed summary
+8. Auto-proceed to next phase
 
-**Mental Model - Pipeline with HITL Gates**:
+**Mental Model - Autopilot Pipeline**:
 
 ```
-[CLARIFICATION GATE] → spec-flow → classify → research → artifacts → [CONFIRMATION GATE] → commit → [DECISION TREE]
+[clarify if needed] → spec-flow → classify → research → artifacts → commit → [auto-proceed]
 ```
 
 **Key principles**:
 
 - **Deterministic**: Slug generation and directory structure are predictable
-- **Guardrails**: Prevent speculation, cite sources, require human confirmation before commit
+- **Guardrails**: Prevent speculation, cite sources, validate quality automatically
 - **User-value**: Success criteria are measurable and tech-agnostic
 - **Conditional**: UI/metrics/deployment sections enabled by classification flags
-- **HITL gates (3 total)**:
-  1. **Clarification** (upfront): Detects ambiguous input, asks targeted questions (max 3)
-  2. **Confirmation** (before commit): Shows quality summary with 10s timeout
-  3. **Decision tree** (after commit): Executable next-step commands
-- **Automation-friendly**: `--yes` skips all gates, `--skip-clarify` skips only gate #1
+- **Autopilot**: Auto-proceeds through phases, only blocks on errors
 
 **Clarification Behavior**:
 
 - Use `[NEEDS CLARIFICATION]` **only for blocking questions** in spec.md (max 3)
 - Blocking = questions that make it unsafe to define requirements or acceptance criteria
 - Additional or non-blocking questions go into `clarify.md`
-- If blocking questions remain, spec is allowed to block further phases
-
-**Flags**:
-
-- `--interactive`: Force wait for user confirmation (no auto-proceed timeout)
-- `--yes`: Skip all HITL gates (clarification + confirmation) and auto-commit (full automation)
-- `--skip-clarify`: Skip upfront clarification gate only (still show confirmation before commit)
-- Environment: `SPEC_FLOW_INTERACTIVE=true` for global interactive mode
+- If blocking questions remain, auto-runs /clarify before proceeding
 
 **References**:
 
 - Gherkin for scenarios (Given/When/Then)
 - HEART metrics (Happiness, Engagement, Adoption, Retention, Task success)
 - Conventional Commits for commit messages
-- Feature flags for risky changes
 
-**Workflow position**: `spec → clarify? → plan → tasks → implement → optimize → preview → ship`
+**Workflow position**: `spec → clarify? → plan → tasks → implement → optimize → ship`
 </objective>
 
 ## Anti-Hallucination Rules
@@ -321,6 +319,56 @@ Scenario: User edits profile information
 - Use `[NEEDS CLARIFICATION]` for **blocking questions only** (max 3)
 - Move non-blocking questions to `clarify.md`
 
+### Step 2.5: Apply Informed Guess Heuristics
+
+**After filling spec.md, check for missing common requirements and apply sensible defaults:**
+
+Run the informed guess script to detect gaps and apply defaults:
+
+```bash
+bash .spec-flow/scripts/bash/apply-defaults.sh "$FEATURE_DIR/spec.md"
+```
+
+**Default Categories Applied:**
+| Category | Default Value | When Applied |
+|----------|---------------|--------------|
+| Performance | <500ms p95, <3s page load | If perf mentioned but no target |
+| Authentication | OAuth2/JWT, 30min session | If auth mentioned but no method |
+| Error Handling | Structured JSON errors | If errors mentioned but no format |
+| Rate Limiting | 100 req/min authenticated | If rate limit mentioned but no value |
+| Caching | Stale-while-revalidate, 5min TTL | If caching mentioned but no strategy |
+| Pagination | 20 default, 100 max, cursor-based | If pagination mentioned but no limits |
+
+**All applied defaults are marked with `[INFORMED GUESS]` for stakeholder review.**
+
+### Step 2.6: Clarification Deduplication (Max 3 Rule)
+
+**If spec.md has more than 3 `[NEEDS CLARIFICATION]` markers:**
+
+1. **Prioritize by impact:**
+   - P1: Security implications (auth, permissions, data exposure)
+   - P2: Data model ambiguity (relationships, constraints, types)
+   - P3: User-facing behavior (flows, error states, edge cases)
+   - P4: Technical implementation (lower priority - can make informed guess)
+
+2. **Keep top 3 blocking questions in spec.md**
+
+3. **Move remainder to clarify.md with informed guess applied:**
+   ```markdown
+   ## Deferred Clarifications
+
+   The following questions were auto-resolved with informed guesses:
+
+   - Q: What auth method should we use?
+     - [INFORMED GUESS]: OAuth2/JWT (standard for web apps)
+     - Review with stakeholders if different method needed
+   ```
+
+4. **Log deferred count:**
+   ```
+   ⚠️ Clarifications reduced: 7 → 3 (4 resolved with informed guesses)
+   ```
+
 ### Step 3: Generate Quality Checklist
 
 **Update checklists/requirements.md:**
@@ -356,7 +404,7 @@ Scenario: User edits profile information
 - [ ] Assumptions are stated explicitly
 ```
 
-### Step 4: Confirmation Gate (Before Commit HITL)
+### Step 4: Quality Summary and Auto-Commit
 
 **Calculate quality metrics:**
 
@@ -378,7 +426,7 @@ checklist_pct = (checklist_completed / checklist_items) * 100
 ready = (blocking_count == 0 and checklist_pct >= 80)
 ```
 
-**Show confirmation summary:**
+**Display summary (no confirmation needed):**
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -403,34 +451,9 @@ Location: specs/<NNN-slug>/
 - NOTES.md
 - checklists/requirements.md
 - state.yaml
-
-Commit this specification? [Y/n] (auto-proceed in 10s)
 ```
 
-**Handle user response:**
-
-```python
-# Check for --yes flag (skip confirmation)
-if "--yes" in $ARGUMENTS:
-    confirmation = "yes"
-else:
-    # Show timeout if not --interactive
-    if "--interactive" in $ARGUMENTS or SPEC_FLOW_INTERACTIVE == "true":
-        confirmation = AskUserQuestion("Commit specification?", ["Yes", "No", "Review first"])
-    else:
-        # 10-second timeout, default to Yes
-        confirmation = wait_for_input(timeout=10, default="yes")
-```
-
-**If No or Review first:**
-
-- Exit without committing
-- Show file locations for manual review
-- Tell user to run `/spec continue` when ready
-
-**If Yes (or timeout):**
-
-- Proceed to git commit
+**Auto-proceed to git commit** (no confirmation required).
 
 ### Step 5: Commit Specification
 
@@ -465,9 +488,9 @@ Next: /clarify (if blockers) or /plan
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
-### Step 6: Decision Tree (Post-Commit HITL)
+### Step 6: Auto-Proceed to Next Phase
 
-**Determine spec state and present decision tree:**
+**Determine spec state:**
 
 ```python
 # Determine state
@@ -479,7 +502,7 @@ else:
     state = "READY"
 ```
 
-**Present executable options:**
+**Display completion and auto-proceed:**
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -494,96 +517,15 @@ Spec: specs/<slug>/spec.md
 - User scenarios: {scenario_count}
 - Blocking clarifications: {blocking_count}
 - Checklist completion: {checklist_pct}%
-- Ready for planning: {state == "READY" ? "Yes" : "No"}
-
-What's next?
-
-<if state == "BLOCKED_CLARIFICATIONS">
-⚠️ Spec has ambiguities that need resolution
-
-1. Resolve ambiguities first (/clarify) [RECOMMENDED]
-   Duration: ~5-10 min
-   Impact: Prevents rework in planning phase
-
-2. Proceed to planning anyway (/plan)
-   ⚠️ May require plan revisions when ambiguities clarified
-
-3. Review spec.md manually
-   Location: specs/<slug>/spec.md
-
-4. Continue automated workflow (/feature continue)
-   Will attempt /clarify → /plan → /tasks → /implement
-
-Choose (1-4):
-</if>
-
-<if state == "BLOCKED_CHECKLIST">
-⚠️ Quality checklist incomplete
-
-1. Review checklist and complete items
-   Location: specs/<slug>/checklists/requirements.md
-
-2. Proceed to planning anyway (/plan)
-   ⚠️ May not meet quality standards
-
-3. Continue automated workflow (/feature continue)
-
-Choose (1-3):
-</if>
-
-<if state == "READY">
-✅ Spec is ready for planning
-
-1. Generate implementation plan (/plan) [RECOMMENDED]
-   Duration: ~10-15 min
-   Output: Architecture decisions, component reuse analysis
-
-2. Continue automated workflow (/feature continue)
-   Executes: /plan → /tasks → /implement → /optimize → /ship
-   Duration: ~60-90 min (full feature delivery)
-
-3. Review spec.md first
-   Location: specs/<slug>/spec.md
-
-Choose (1-3):
-</if>
 ```
 
-**Execute user choice via SlashCommand tool:**
-
-```python
-if choice == 1:
-    if state == "BLOCKED_CLARIFICATIONS":
-        SlashCommand(f"/clarify {slug}")
-    elif state == "BLOCKED_CHECKLIST":
-        print(f"Review and update: specs/{slug}/checklists/requirements.md")
-        print("Run /plan when ready")
-    else:  # READY
-        SlashCommand(f"/plan {slug}")
-
-elif choice == 2:
-    if state in ["BLOCKED_CLARIFICATIONS", "BLOCKED_CHECKLIST"]:
-        confirm = AskUserQuestion("⚠️ Proceeding with blockers may require rework. Continue?", ["Yes", "No"])
-        if confirm == "Yes":
-            SlashCommand(f"/plan {slug}")
-    else:  # READY
-        SlashCommand(f"/feature continue {slug}")
-
-elif choice == 3:
-    if state in ["BLOCKED_CLARIFICATIONS", "BLOCKED_CHECKLIST"]:
-        print(f"Review complete. Run /clarify or /plan when ready.")
-    else:  # READY
-        print(f"Review complete. Run /plan when ready.")
-
-elif choice == 4 and state == "BLOCKED_CLARIFICATIONS":
-    SlashCommand(f"/feature continue {slug}")
-```
-
-**Automation mode**: When invoked by `/feature continue`, skip decision tree and auto-proceed:
+**Auto-proceed based on state:**
 
 - `BLOCKED_CLARIFICATIONS` → auto-run `/clarify`
-- `BLOCKED_CHECKLIST` → auto-run `/plan` (log warning)
+- `BLOCKED_CHECKLIST` → auto-run `/plan` (log warning about quality)
 - `READY` → auto-run `/plan`
+
+No user confirmation required - workflow continues automatically.
 
 </process>
 
@@ -695,40 +637,27 @@ elif choice == 4 and state == "BLOCKED_CLARIFICATIONS":
 
 ## Quick Reference
 
-### Automation Flags
-
-- `--interactive`: Force manual confirmation (no auto-proceed)
-- `--yes`: Skip all HITL gates and auto-commit (CI-friendly)
-- `--skip-clarify`: Skip clarification gate only
-- `SPEC_FLOW_INTERACTIVE=true`: Global interactive mode (environment variable)
-
 ### Clarification Behavior
 
 - **Blocking questions**: Max 3 in spec.md using `[NEEDS CLARIFICATION]`
 - **Non-blocking questions**: Unlimited in `clarify.md`
 - **Threshold**: If ≥2 ambiguity signals detected, ask max 3 questions upfront
 
-### Decision Tree States
+### Autopilot States
 
-- **BLOCKED_CLARIFICATIONS**: Has `[NEEDS CLARIFICATION]` markers → recommend `/clarify`
-- **BLOCKED_CHECKLIST**: Quality checklist <80% complete → recommend review
-- **READY**: No blockers, checklist ≥80% → recommend `/plan`
+- **BLOCKED_CLARIFICATIONS**: Has `[NEEDS CLARIFICATION]` markers → auto-runs `/clarify`
+- **BLOCKED_CHECKLIST**: Quality checklist <80% complete → proceeds with warning
+- **READY**: No blockers, checklist ≥80% → auto-runs `/plan`
 
 ### Common Patterns
 
-**Skip all gates for automation:**
+**Standard feature specification:**
 
 ```bash
-/spec "user profile editing" --yes
+/spec "user profile editing"
 ```
 
-**Interactive mode with upfront clarification:**
-
-```bash
-/spec "payment processing" --interactive
-```
-
-**Skip clarification but keep confirmation:**
+**Skip upfront clarification questions:**
 
 ```bash
 /spec "dashboard widgets" --skip-clarify

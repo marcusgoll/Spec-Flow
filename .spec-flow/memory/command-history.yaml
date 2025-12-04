@@ -11,6 +11,13 @@
 #       <mode2>: <count>
 #     last_updated: <ISO 8601 timestamp>
 
+feature:
+  last_used_mode: null
+  usage_count:
+    auto: 0
+    interactive: 0
+  last_updated: null
+
 epic:
   last_used_mode: null
   usage_count:

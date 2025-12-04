@@ -341,6 +341,23 @@ check_e2e_visual() {
     fi
 }
 
+# Run Pre-CI quality gates (Gates 8-15)
+check_pre_ci() {
+    log_info "Running Pre-CI quality gates (8-15)..."
+
+    local gate_script=".spec-flow/scripts/bash/check-pre-ci.sh"
+
+    if [ -f "$gate_script" ]; then
+        if bash "$gate_script" "$FEATURE_DIR"; then
+            log_success "Pre-CI gates completed"
+        else
+            log_error "Pre-CI gates failed"
+        fi
+    else
+        log_warning "Pre-CI gate script not found: $gate_script"
+    fi
+}
+
 # Aggregate results
 aggregate_results() {
     log_info "Aggregating results..."
@@ -348,8 +365,8 @@ aggregate_results() {
 
     local blockers=()
 
-    # Check each result file (Gates 1-7)
-    for check_file in optimization-performance.md optimization-security.md optimization-accessibility.md code-review.md optimization-migrations.md optimization-docker.md optimization-e2e.md; do
+    # Check each result file (Gates 1-7, plus pre-ci report for Gates 8-15)
+    for check_file in optimization-performance.md optimization-security.md optimization-accessibility.md code-review.md optimization-migrations.md optimization-docker.md optimization-e2e.md pre-ci-report.md; do
         if [ -f "$FEATURE_DIR/$check_file" ]; then
             local status
             status=$(grep -o "Status: .*" "$FEATURE_DIR/$check_file" 2>/dev/null | tail -1 | cut -d' ' -f2)
@@ -434,6 +451,8 @@ main() {
     check_docker
     # Gate 7: E2E and Visual Regression (runs for both features and epics)
     check_e2e_visual
+    # Gates 8-15: Pre-CI validation (license, env, circular deps, dead code, etc.)
+    check_pre_ci
 
     echo ""
 

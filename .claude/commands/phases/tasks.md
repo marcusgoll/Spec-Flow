@@ -29,7 +29,7 @@ Generate concrete TDD tasks from design artifacts with test-first sequencing.
 
 - **Epic workflows**: Auto-generates sprint breakdown with dependency graph and contract locking (multiple sprints for >16h work or 2+ subsystems)
 - **Feature workflows**: Generates 20-30 tasks organized by user story priority
-- **UI-first mode** (--ui-first flag): Generates HTML mockup tasks first, blocks implementation until approval
+- **UI-first mode** (--ui-first flag): Generates HTML mockup tasks first, then auto-proceeds to implementation
 
 This ensures traceable, deterministic task generation that prevents hallucinated tasks referencing non-existent code.
 
@@ -41,7 +41,7 @@ This ensures traceable, deterministic task generation that prevents hallucinated
 
 **Flags**:
 
-- `--ui-first`: Generate HTML mockup tasks before implementation (sets manual gate for mockup approval)
+- `--ui-first`: Generate HTML mockup tasks before implementation
 - `--standard`: Standard TDD task generation (no mockups) - explicit override of config/history
 - `--no-input`: Non-interactive mode for CI/CD - uses default (standard) mode
   </objective>
@@ -302,9 +302,9 @@ ORM tasks (T010+) must declare dependency on migration tasks:
 
    - Detect multi-screen workflow (≥3 screens in spec.md)
    - Generate mockup tasks: navigation hub (index.html) + individual screens
-   - Create mockup-approval-checklist.md
-   - Set manual gate in state.yaml (blocks /implement)
-   - Tasks include: hub, screens, navigation wiring, approval checklist
+   - Create mockup-approval-checklist.md for reference
+   - Auto-proceed to /implement after task generation
+   - Tasks include: hub, screens, navigation wiring, quality checklist
 
 2. **Generate E2E Test Suite** (Epic workflows only):
 
@@ -406,10 +406,10 @@ Before completing, verify:
 - Workspace type correctly detected (epic vs feature)
 - Epic workflows: sprint-plan.md validates, contracts locked, tasks.md per sprint, e2e-tests.md generated
 - Feature workflows: tasks.md has 20-30 tasks, organized by user story
-- UI-first: mockup tasks generated, manual gate set in state.yaml
+- UI-first: mockup tasks generated, checklist created for reference
 - E2E tests (epic only): ≥3 critical user journeys documented, E2E tasks added to tasks.md
 - Git commit successful with task summary
-- Next-step suggestions presented
+- Auto-proceeding to /implement
 </verification>
 
 <success_criteria>
@@ -434,9 +434,8 @@ Before completing, verify:
 **UI-first mode**:
 
 - Mockup tasks generated (hub + screens if multi-screen)
-- mockup-approval-checklist.md created
-- state.yaml manual gate set
-- Implementation tasks blocked until approval
+- mockup-approval-checklist.md created for reference
+- Auto-proceeds to implementation (no blocking gate)
 
 **All workflows**:
 
@@ -448,7 +447,7 @@ Before completing, verify:
   </success_criteria>
 
 <mental_model>
-**Workflow state machine**:
+**Workflow state machine (Autopilot)**:
 
 ```
 Setup
@@ -461,22 +460,18 @@ Setup
     → Generate Per-Sprint Tasks
 {ELSE IF feature + --ui-first}
   → Generate Mockup Tasks
-    → Set Manual Gate (blocks /implement)
+    → Auto-proceed to /implement
 {ELSE}
   → Generate Traditional Tasks (20-30)
 {ENDIF}
   ↓
 Git Commit
   ↓
-[SUGGEST NEXT STEP]
+Auto-proceed to /implement
 ```
 
-**Next steps after tasks**:
-
-- Feature: `/validate` (recommended) or `/implement`
-- Epic: `/implement` (parallel sprint execution)
-- UI-first: `/implement` → Generate mockups → Approval → `/implement --continue`
-  </mental_model>
+**Auto-continues to /implement after task generation** (no manual gate).
+</mental_model>
 
 <anti_hallucination_rules>
 **CRITICAL**: Follow these rules to prevent creating impossible tasks.
@@ -573,8 +568,8 @@ See `.claude/skills/task-breakdown-phase/reference.md` for full epic sprint brea
 - Generates HTML mockup tasks before implementation
 - Creates multi-screen navigation hub (index.html) if ≥3 screens detected
 - Creates individual screen mockups with state switching (S key)
-- Creates mockup-approval-checklist.md
-- Sets manual gate in state.yaml (blocks /implement)
+- Creates mockup-approval-checklist.md for reference
+- Auto-proceeds to /implement (no blocking gate)
 
 ### Multi-Screen Detection
 
@@ -606,19 +601,9 @@ ${BASE_DIR}/NNN-slug/mockups/
 └── mockup-approval-checklist.md
 ```
 
-### Mockup Approval Process
+### Mockup Quality Checklist (Reference)
 
-**After mockup generation:**
-
-1. Open navigation hub: `${BASE_DIR}/NNN-slug/mockups/index.html`
-2. Review each screen (press 1-9 to navigate, S to cycle states)
-3. Complete mockup-approval-checklist.md
-4. Update state.yaml: `manual_gates.mockup_approval.status = approved`
-5. Continue implementation: `/feature continue` or `/implement`
-
-### Quality Gates
-
-**Before approval:**
+**Generated mockups should have:**
 
 - Multi-screen flow: All screens accessible via keyboard (1-9)
 - State completeness: All 4 states (Success, Loading, Error, Empty)
@@ -626,9 +611,11 @@ ${BASE_DIR}/NNN-slug/mockups/
 - Component reuse: Match ui-inventory.md patterns
 - Accessibility: Contrast ≥4.5:1, touch targets ≥24x24px
 
-### Component Extraction Tasks (Post-Approval)
+**mockup-approval-checklist.md** is created for reference but does not block workflow. Implementation proceeds automatically.
 
-**When mockups are approved**, `/implement` triggers component extraction (Step 0.7) which generates extraction tasks. These tasks are appended to tasks.md:
+### Component Extraction Tasks
+
+**During `/implement`**, component extraction (Step 0.7) generates extraction tasks. These tasks are appended to tasks.md:
 
 **Extraction task structure:**
 

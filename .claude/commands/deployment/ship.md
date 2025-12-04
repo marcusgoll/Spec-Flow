@@ -1,7 +1,7 @@
 ---
 name: ship
 description: Deploy feature through automated staging validation to production with rollback testing
-argument-hint: [continue|status]
+argument-hint: [continue|status|budget|--staging|--prod|--validate]
 allowed-tools:
   [
     Read,
@@ -85,6 +85,10 @@ Orchestrate complete post-implementation deployment workflow from pre-flight val
 - (empty): Start deployment workflow from beginning
 - `continue`: Resume from last completed phase (if failure occurred)
 - `status`: Display current deployment status and exit
+- `budget`: Display deployment quota status (routes to archived command)
+- `--staging`: Deploy to staging only (routes to archived command)
+- `--prod`: Deploy to production only (routes to archived command)
+- `--validate`: Validate deployment readiness (routes to archived command)
 
 **Dependencies**: Requires completed `/implement` phase
 
@@ -146,6 +150,25 @@ Orchestrate complete post-implementation deployment workflow from pre-flight val
 4. On completion - Mark all todos as completed
 
 **Only ONE todo should be in_progress at a time.**
+
+---
+
+### Step 0: Route Consolidated Arguments
+
+**Check $ARGUMENTS for routing to archived commands:**
+
+If `$ARGUMENTS` contains any of these, route to archived command and EXIT:
+
+| Argument | Route To |
+|----------|----------|
+| `budget` | `/_archived/deployment-budget` |
+| `--staging` | `/_archived/ship-staging` |
+| `--prod` | `/_archived/ship-prod` |
+| `--validate` | `/_archived/validate-staging` or `/_archived/validate-deploy` |
+
+Use SlashCommand tool to invoke the appropriate archived command.
+
+**If none of the above, continue to Step 1.**
 
 ---
 
@@ -476,7 +499,23 @@ python .spec-flow/scripts/spec-cli.py ship-finalize preflight --feature-dir "$FE
 
    **Update roadmap issue to 'shipped'**:
 
-   - Finds GitHub issue for feature (by matching feature slug to issue title)
+   ```bash
+   # Check if roadmap issue was linked during /feature
+   ROADMAP_ISSUE=$(yq eval '.roadmap.issue_number' "$FEATURE_DIR/state.yaml" 2>/dev/null)
+
+   if [ -n "$ROADMAP_ISSUE" ] && [ "$ROADMAP_ISSUE" != "null" ]; then
+       # Use roadmap manager to mark as shipped
+       source .spec-flow/scripts/bash/github-roadmap-manager.sh
+       mark_issue_shipped "$FEATURE_SLUG" "$VERSION" "$(date +%Y-%m-%d)" "$PRODUCTION_URL"
+   else
+       # Fallback: Search by feature slug
+       gh issue list --label "roadmap" --search "$FEATURE_SLUG in:body" --json number --jq '.[0].number' | while read -r issue_num; do
+           [ -n "$issue_num" ] && mark_issue_shipped "$FEATURE_SLUG" "$VERSION"
+       done
+   fi
+   ```
+
+   - Uses issue number from state.yaml (stored by /feature) OR searches by slug
    - Updates labels: adds `status:shipped`, removes `status:in-progress`
    - Adds shipped comment with deployment details (URLs, version, timestamp)
    - Closes the issue
@@ -596,11 +635,15 @@ python .spec-flow/scripts/spec-cli.py ship-finalize preflight --feature-dir "$FE
    - Feature branch deleted (local + remote)
    - Roadmap issue #{issue-number} closed and marked shipped
 
+   📋 POST-DEPLOY CHECKLIST:
+   □ Check health endpoint in 15 minutes: {production-url}/health
+   □ Check error rates in 1 hour (monitoring dashboard)
+   □ If issues detected: /ship rollback
+
    Next Steps:
-   1. Monitor production metrics and error rates
-   2. {If feature flags detected} Remove feature flags: /flag-cleanup
-   3. {If tech debt detected} Address technical debt before next feature
-   4. Start next feature: /roadmap → /feature
+   1. Complete post-deploy checklist above
+   2. {If tech debt detected} Address technical debt before next feature
+   3. Start next feature: /roadmap → /feature
 
    Total time: {elapsed-time}
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -31,32 +31,41 @@ All workflow artifacts live in `specs/` (features) or `epics/` (complex work). T
 
 **Resume work**: `/feature continue` or `/epic continue`
 
-### Essential Commands
+### Essential Commands (23 total)
 
 | Command | Purpose |
 |---------|---------|
 | `/feature "name"` | Start single-subsystem feature |
 | `/epic "goal"` | Start multi-sprint complex work |
+| `/quick "desc"` | Quick fix (<100 LOC) |
 | `/plan` | Generate implementation design |
 | `/tasks` | Create TDD task breakdown |
 | `/implement` | Execute tasks with TDD |
 | `/optimize` | Run quality gates |
-| `/ship` | Deploy to appropriate environment |
+| `/ship` | Deploy (--staging, --prod, status, budget) |
 | `/help` | Context-aware guidance |
 
-**Workflow Health**: `/audit-workflow`, `/heal-workflow`, `/workflow-health`
+**Project Setup**: `/init`, `/init --preferences`, `/init --tokens`, `/roadmap`
 
-**Context Management**: `/whats-next`, `/add-to-todos`, `/check-todos`
+**Context Management**: `/context next`, `/context todos`, `/context add`
 
-**Project Setup**: `/init-project`, `/init-preferences`, `/roadmap`
+**Quality Gates**: `/gate ci`, `/gate sec`, `/fix-ci`
+
+**Create Extensions**: `/create prompt`, `/create command`, `/create agent`
 
 ### Deployment Models (Auto-Detected)
 
-- **staging-prod**: `/ship-staging` → `/validate-staging` → `/ship-prod`
-- **direct-prod**: `/deploy-prod`
+- **staging-prod**: `/ship` (auto-detects staging → production flow)
+- **direct-prod**: `/ship` (auto-detects direct deployment)
 - **local-only**: `/build-local`
 
 Detection: git remote + staging branch + `.github/workflows/deploy-staging.yml`
+
+### Archived Commands
+
+46 specialized commands are archived in `.claude/commands/_archived/`. Access via:
+- `/help --all` to see full list
+- Direct invocation: `/_archived/command-name`
 
 ### Quality Gates
 
@@ -75,15 +84,16 @@ Resume: `/ship continue` or `/feature continue`
 ### Directory Structure
 
 ```
-.claude/agents/     — Specialist briefs (load on-demand)
-.claude/commands/   — Slash command definitions
-.claude/skills/     — Progressive disclosure content
-.spec-flow/scripts/ — Automation scripts
-.spec-flow/config/  — User preferences
-specs/NNN-slug/     — Feature workspaces
-epics/NNN-slug/     — Epic workspaces
-docs/project/       — Project documentation
-docs/references/    — Deep-dive documentation
+.claude/agents/           — Specialist briefs (load on-demand)
+.claude/commands/         — 23 active slash commands
+.claude/commands/_archived/ — 46 specialized commands (hidden from /help)
+.claude/skills/           — Progressive disclosure content
+.spec-flow/scripts/       — Automation scripts
+.spec-flow/config/        — User preferences
+specs/NNN-slug/           — Feature workspaces
+epics/NNN-slug/           — Epic workspaces
+docs/project/             — Project documentation
+docs/references/          — Deep-dive documentation
 ```
 
 ### Agent Categories

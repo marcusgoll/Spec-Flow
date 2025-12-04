@@ -48,12 +48,21 @@
     $env:INIT_NAME="MyProject"; $env:INIT_VISION="A great app"; .\init-project.ps1 -CI
     CI mode with environment variables
 
+.EXAMPLE
+    .\init-project.ps1 "MyProject" -WithDesign
+    Initialize with interactive questionnaire and generate design system docs
+
 .NOTES
     Environment Variables (used in non-interactive mode):
     INIT_NAME, INIT_VISION, INIT_USERS, INIT_SCALE, INIT_TEAM_SIZE
     INIT_ARCHITECTURE, INIT_DATABASE, INIT_DEPLOY_PLATFORM, INIT_API_STYLE
     INIT_AUTH_PROVIDER, INIT_BUDGET_MVP, INIT_PRIVACY, INIT_GIT_WORKFLOW
-    INIT_DEPLOY_MODEL, INIT_FRONTEND
+    INIT_DEPLOY_MODEL, INIT_FRONTEND, INIT_COMPONENT_LIBRARY
+
+    With --WithDesign:
+    - Generates 4 design documents in docs/design/
+    - Creates tokens.css and tokens.json in design/systems/
+    - Sets up OKLCH color system with design tokens
 #>
 
 [CmdletBinding()]
@@ -77,7 +86,10 @@ param(
     [switch]$NonInteractive,
 
     [Parameter()]
-    [string]$ConfigFile = ""
+    [string]$ConfigFile = "",
+
+    [Parameter()]
+    [switch]$WithDesign
 )
 
 $ErrorActionPreference = "Stop"
@@ -317,9 +329,508 @@ function Invoke-Questionnaire {
         }
     }
 
-    # Remaining questions follow same pattern (abbreviated for brevity)
+    # Q6: Architecture
+    if (-not $env:INIT_ARCHITECTURE) {
+        Write-Host ""
+        Write-Host "Q6. System architecture pattern?"
+        Write-Host "  1. Monolith (single deployable unit)"
+        Write-Host "  2. Modular Monolith (domain boundaries)"
+        Write-Host "  3. Microservices (distributed system)"
+        Write-Host "  4. Serverless (functions as a service)"
+        $archChoice = Read-Host "Choice (1-4)"
+        $env:INIT_ARCHITECTURE = switch ($archChoice) {
+            "1" { "monolith" }
+            "2" { "modular-monolith" }
+            "3" { "microservices" }
+            "4" { "serverless" }
+            default { "monolith" }
+        }
+    }
+
+    # Q7: Database
+    if (-not $env:INIT_DATABASE) {
+        Write-Host ""
+        Write-Host "Q7. Primary database?"
+        Write-Host "  1. PostgreSQL"
+        Write-Host "  2. MySQL"
+        Write-Host "  3. MongoDB"
+        Write-Host "  4. SQLite"
+        Write-Host "  5. Supabase (PostgreSQL + Auth)"
+        Write-Host "  6. PlanetScale (MySQL + Edge)"
+        Write-Host "  7. Other"
+        $dbChoice = Read-Host "Choice (1-7)"
+        $env:INIT_DATABASE = switch ($dbChoice) {
+            "1" { "PostgreSQL" }
+            "2" { "MySQL" }
+            "3" { "MongoDB" }
+            "4" { "SQLite" }
+            "5" { "Supabase" }
+            "6" { "PlanetScale" }
+            "7" { Read-Host "Enter database name" }
+            default { "PostgreSQL" }
+        }
+    }
+
+    # Q8: Deploy Platform
+    if (-not $env:INIT_DEPLOY_PLATFORM) {
+        Write-Host ""
+        Write-Host "Q8. Deployment platform?"
+        Write-Host "  1. Vercel (frontend + serverless)"
+        Write-Host "  2. Railway (containers + databases)"
+        Write-Host "  3. AWS (full cloud suite)"
+        Write-Host "  4. GCP (full cloud suite)"
+        Write-Host "  5. Azure (full cloud suite)"
+        Write-Host "  6. Self-hosted (VPS/dedicated)"
+        Write-Host "  7. Hybrid (multiple platforms)"
+        $deployChoice = Read-Host "Choice (1-7)"
+        $env:INIT_DEPLOY_PLATFORM = switch ($deployChoice) {
+            "1" { "Vercel" }
+            "2" { "Railway" }
+            "3" { "AWS" }
+            "4" { "GCP" }
+            "5" { "Azure" }
+            "6" { "Self-hosted" }
+            "7" { "Hybrid" }
+            default { "Vercel" }
+        }
+    }
+
+    # Q9: API Style
+    if (-not $env:INIT_API_STYLE) {
+        Write-Host ""
+        Write-Host "Q9. API style?"
+        Write-Host "  1. REST (resource-based)"
+        Write-Host "  2. GraphQL (flexible queries)"
+        Write-Host "  3. tRPC (type-safe, TypeScript)"
+        Write-Host "  4. gRPC (high-performance RPC)"
+        Write-Host "  5. Hybrid (multiple styles)"
+        $apiChoice = Read-Host "Choice (1-5)"
+        $env:INIT_API_STYLE = switch ($apiChoice) {
+            "1" { "REST" }
+            "2" { "GraphQL" }
+            "3" { "tRPC" }
+            "4" { "gRPC" }
+            "5" { "Hybrid" }
+            default { "REST" }
+        }
+    }
+
+    # Q10: Auth Provider
+    if (-not $env:INIT_AUTH_PROVIDER) {
+        Write-Host ""
+        Write-Host "Q10. Authentication provider?"
+        Write-Host "  1. Clerk (hosted + components)"
+        Write-Host "  2. NextAuth.js (open-source)"
+        Write-Host "  3. Auth0 (enterprise)"
+        Write-Host "  4. Supabase Auth (with Supabase)"
+        Write-Host "  5. Firebase Auth (with Firebase)"
+        Write-Host "  6. Custom (roll your own)"
+        Write-Host "  7. None (no auth needed)"
+        $authChoice = Read-Host "Choice (1-7)"
+        $env:INIT_AUTH_PROVIDER = switch ($authChoice) {
+            "1" { "Clerk" }
+            "2" { "NextAuth.js" }
+            "3" { "Auth0" }
+            "4" { "Supabase" }
+            "5" { "Firebase" }
+            "6" { "Custom" }
+            "7" { "None" }
+            default { "Clerk" }
+        }
+    }
+
+    # Q11: Budget for MVP
+    if (-not $env:INIT_BUDGET_MVP) {
+        Write-Host ""
+        Write-Host "Q11. Monthly infrastructure budget for MVP?"
+        Write-Host "  1. `$0 (free tier only)"
+        Write-Host "  2. `$50 or less"
+        Write-Host "  3. `$50-200"
+        Write-Host "  4. `$200-500"
+        Write-Host "  5. `$500+"
+        $budgetChoice = Read-Host "Choice (1-5)"
+        $env:INIT_BUDGET_MVP = switch ($budgetChoice) {
+            "1" { "0" }
+            "2" { "50" }
+            "3" { "200" }
+            "4" { "500" }
+            "5" { "500+" }
+            default { "50" }
+        }
+    }
+
+    # Q12: Privacy Requirements
+    if (-not $env:INIT_PRIVACY) {
+        Write-Host ""
+        Write-Host "Q12. Privacy/compliance requirements?"
+        Write-Host "  1. Basic (standard web app)"
+        Write-Host "  2. PII handling (user data)"
+        Write-Host "  3. GDPR compliant (EU users)"
+        Write-Host "  4. HIPAA (healthcare data)"
+        Write-Host "  5. SOC2 (enterprise security)"
+        Write-Host "  6. Multiple standards"
+        $privacyChoice = Read-Host "Choice (1-6)"
+        $env:INIT_PRIVACY = switch ($privacyChoice) {
+            "1" { "Basic" }
+            "2" { "PII" }
+            "3" { "GDPR" }
+            "4" { "HIPAA" }
+            "5" { "SOC2" }
+            "6" { "Multiple" }
+            default { "PII" }
+        }
+    }
+
+    # Q13: Git Workflow
+    if (-not $env:INIT_GIT_WORKFLOW) {
+        Write-Host ""
+        Write-Host "Q13. Git branching strategy?"
+        Write-Host "  1. GitHub Flow (simple feature branches)"
+        Write-Host "  2. GitFlow (develop + release branches)"
+        Write-Host "  3. Trunk-based (main only)"
+        Write-Host "  4. Ship/Show/Ask (async)"
+        $gitChoice = Read-Host "Choice (1-4)"
+        $env:INIT_GIT_WORKFLOW = switch ($gitChoice) {
+            "1" { "GitHub Flow" }
+            "2" { "GitFlow" }
+            "3" { "Trunk-based" }
+            "4" { "Ship/Show/Ask" }
+            default { "GitHub Flow" }
+        }
+    }
+
+    # Q14: Deployment Model
+    if (-not $env:INIT_DEPLOY_MODEL) {
+        Write-Host ""
+        Write-Host "Q14. Deployment model?"
+        Write-Host "  1. staging-prod (staging preview before production)"
+        Write-Host "  2. direct-prod (deploy directly to production)"
+        Write-Host "  3. local-only (no remote deployment)"
+        $deployModelChoice = Read-Host "Choice (1-3)"
+        $env:INIT_DEPLOY_MODEL = switch ($deployModelChoice) {
+            "1" { "staging-prod" }
+            "2" { "direct-prod" }
+            "3" { "local-only" }
+            default { "staging-prod" }
+        }
+    }
+
+    # Q15: Frontend Framework
+    if (-not $env:INIT_FRONTEND) {
+        Write-Host ""
+        Write-Host "Q15. Frontend framework?"
+        Write-Host "  1. Next.js (React + SSR)"
+        Write-Host "  2. Remix (React + Web standards)"
+        Write-Host "  3. Vite + React (SPA)"
+        Write-Host "  4. Vue.js / Nuxt"
+        Write-Host "  5. Svelte / SvelteKit"
+        Write-Host "  6. Astro (content-focused)"
+        Write-Host "  7. None (API only)"
+        $frontendChoice = Read-Host "Choice (1-7)"
+        $env:INIT_FRONTEND = switch ($frontendChoice) {
+            "1" { "Next.js" }
+            "2" { "Remix" }
+            "3" { "Vite + React" }
+            "4" { "Vue.js" }
+            "5" { "Svelte" }
+            "6" { "Astro" }
+            "7" { "None" }
+            default { "Next.js" }
+        }
+    }
 
     Write-Success "Questionnaire complete"
+}
+
+# Detect component library from package.json
+function Get-ComponentLibrary {
+    if (-not (Test-Path "package.json")) {
+        return
+    }
+
+    $packageJson = Get-Content "package.json" -Raw
+
+    # shadcn/ui detection (Radix + custom components in src/components/ui)
+    if (($packageJson -match '@radix-ui/') -and
+        ((Test-Path "src/components/ui") -or (Test-Path "components/ui"))) {
+        if (-not $env:INIT_COMPONENT_LIBRARY) {
+            $env:INIT_COMPONENT_LIBRARY = "shadcn/ui"
+            Write-Success "Detected component library: shadcn/ui (Radix + custom components)"
+        }
+        return
+    }
+
+    # Chakra UI
+    if ($packageJson -match '@chakra-ui/react') {
+        if (-not $env:INIT_COMPONENT_LIBRARY) {
+            $env:INIT_COMPONENT_LIBRARY = "Chakra UI"
+            Write-Success "Detected component library: Chakra UI"
+        }
+        return
+    }
+
+    # Material UI (MUI)
+    if ($packageJson -match '@mui/material') {
+        if (-not $env:INIT_COMPONENT_LIBRARY) {
+            $env:INIT_COMPONENT_LIBRARY = "MUI"
+            Write-Success "Detected component library: Material UI (MUI)"
+        }
+        return
+    }
+
+    # HeroUI
+    if ($packageJson -match '@heroui/') {
+        if (-not $env:INIT_COMPONENT_LIBRARY) {
+            $env:INIT_COMPONENT_LIBRARY = "HeroUI"
+            Write-Success "Detected component library: HeroUI"
+        }
+        return
+    }
+
+    # Ant Design
+    if ($packageJson -match '"antd"') {
+        if (-not $env:INIT_COMPONENT_LIBRARY) {
+            $env:INIT_COMPONENT_LIBRARY = "Ant Design"
+            Write-Success "Detected component library: Ant Design"
+        }
+        return
+    }
+
+    # Mantine
+    if ($packageJson -match '@mantine/core') {
+        if (-not $env:INIT_COMPONENT_LIBRARY) {
+            $env:INIT_COMPONENT_LIBRARY = "Mantine"
+            Write-Success "Detected component library: Mantine"
+        }
+        return
+    }
+
+    # Radix UI (standalone, not shadcn)
+    if ($packageJson -match '@radix-ui/') {
+        if (-not $env:INIT_COMPONENT_LIBRARY) {
+            $env:INIT_COMPONENT_LIBRARY = "Radix UI"
+            Write-Success "Detected component library: Radix UI"
+        }
+        return
+    }
+
+    # Headless UI
+    if ($packageJson -match '@headlessui/') {
+        if (-not $env:INIT_COMPONENT_LIBRARY) {
+            $env:INIT_COMPONENT_LIBRARY = "Headless UI"
+            Write-Success "Detected component library: Headless UI"
+        }
+        return
+    }
+
+    # DaisyUI (requires tailwindcss)
+    if (($packageJson -match '"daisyui"') -and ($packageJson -match '"tailwindcss"')) {
+        if (-not $env:INIT_COMPONENT_LIBRARY) {
+            $env:INIT_COMPONENT_LIBRARY = "DaisyUI"
+            Write-Success "Detected component library: DaisyUI"
+        }
+        return
+    }
+}
+
+# Generate project CLAUDE.md
+function New-ProjectClaudeMd {
+    Write-Info "Generating project CLAUDE.md..."
+
+    $claudeMdPath = Join-Path $ProjectRoot "docs\project\CLAUDE.md"
+    $docsDir = Join-Path $ProjectRoot "docs\project"
+
+    # Ensure docs directory exists
+    if (-not (Test-Path $docsDir)) {
+        New-Item -ItemType Directory -Path $docsDir -Force | Out-Null
+    }
+
+    # Try using the bash script if available
+    $bashScript = Join-Path $ProjectRoot ".spec-flow\scripts\bash\generate-project-claude-md.sh"
+    if ((Get-Command bash -ErrorAction SilentlyContinue) -and (Test-Path $bashScript)) {
+        Push-Location $ProjectRoot
+        & bash $bashScript
+        Pop-Location
+        return
+    }
+
+    # Fallback: Generate simple CLAUDE.md inline
+    $content = @"
+# Project: $($env:INIT_NAME)
+
+## Overview
+$($env:INIT_VISION)
+
+## Technical Stack
+- **Frontend**: $($env:INIT_FRONTEND)
+- **Database**: $($env:INIT_DATABASE)
+- **Authentication**: $($env:INIT_AUTH_PROVIDER)
+- **Deployment**: $($env:INIT_DEPLOY_PLATFORM) ($($env:INIT_DEPLOY_MODEL))
+
+## Architecture
+- **Pattern**: $($env:INIT_ARCHITECTURE)
+- **API Style**: $($env:INIT_API_STYLE)
+- **Scale Tier**: $($env:INIT_SCALE)
+
+## Documentation Index
+- [Overview](overview.md) - Project vision and scope
+- [System Architecture](system-architecture.md) - C4 model diagrams
+- [Tech Stack](tech-stack.md) - Technology choices
+- [Data Architecture](data-architecture.md) - Database schema
+- [API Strategy](api-strategy.md) - API design
+- [Capacity Planning](capacity-planning.md) - Scale requirements
+- [Deployment Strategy](deployment-strategy.md) - CI/CD pipeline
+- [Development Workflow](development-workflow.md) - Team processes
+
+## Quick Commands
+- ``/feature "name"`` - Start a new feature
+- ``/roadmap`` - Manage product roadmap
+- ``/help`` - Get context-aware guidance
+"@
+
+    Set-Content -Path $claudeMdPath -Value $content
+    Write-Success "Generated project CLAUDE.md"
+}
+
+# Create foundation issue for greenfield projects
+function New-FoundationIssue {
+    param([string]$ProjectType)
+
+    # Only create for greenfield projects
+    if ($ProjectType -ne "greenfield") {
+        return
+    }
+
+    # Check if gh CLI available
+    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+        Write-Info "GitHub CLI not found, skipping foundation issue creation"
+        return
+    }
+
+    # Check if authenticated
+    try {
+        $authStatus = & gh auth status 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Info "GitHub CLI not authenticated, skipping foundation issue creation"
+            return
+        }
+    }
+    catch {
+        return
+    }
+
+    Write-Info "Creating foundation issue for greenfield project..."
+
+    $issueBody = @"
+<!-- roadmap-metadata
+feature_slug: foundation-setup
+area: infrastructure
+role: fullstack
+priority: P0
+complexity: M
+status: next
+-->
+
+## Overview
+
+Foundation setup for **$($env:INIT_NAME)** - initial project scaffolding based on architecture decisions.
+
+## Acceptance Criteria
+
+### Core Setup
+- [ ] Frontend framework initialized ($($env:INIT_FRONTEND))
+- [ ] Backend API scaffolding ($($env:INIT_API_STYLE))
+- [ ] Database connection configured ($($env:INIT_DATABASE))
+- [ ] Authentication provider integrated ($($env:INIT_AUTH_PROVIDER))
+
+### Infrastructure
+- [ ] Deployment pipeline ($($env:INIT_DEPLOY_PLATFORM))
+- [ ] Environment configuration (dev, staging, prod)
+- [ ] CI/CD workflows (GitHub Actions)
+
+### Developer Experience
+- [ ] TypeScript strict mode
+- [ ] ESLint + Prettier configured
+- [ ] Husky pre-commit hooks
+- [ ] Testing framework (Jest/Vitest + Playwright)
+
+## Technical Notes
+
+Generated from ``/init-project`` questionnaire responses.
+
+---
+Generated by Spec-Flow
+"@
+
+    try {
+        $result = & gh issue create --title "[Foundation] Initial project scaffolding for $($env:INIT_NAME)" --body $issueBody --label "foundation,status:next,area:infrastructure,priority:P0"
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "Created foundation issue"
+        }
+    }
+    catch {
+        Write-Warning-Custom "Failed to create foundation issue: $_"
+    }
+}
+
+# Render design documentation (when --WithDesign is specified)
+function Invoke-DesignDocumentRender {
+    param([string]$AnswersFile)
+
+    Write-Info "Generating design documentation..."
+
+    $designDocs = @(
+        "brand-guidelines",
+        "style-guide",
+        "wireframe-library",
+        "motion-design"
+    )
+
+    $designDir = Join-Path $ProjectRoot "docs\design"
+    if (-not (Test-Path $designDir)) {
+        New-Item -ItemType Directory -Path $designDir -Force | Out-Null
+    }
+
+    foreach ($doc in $designDocs) {
+        $template = Join-Path $ProjectRoot ".spec-flow\templates\design\$doc.md"
+        $output = Join-Path $designDir "$doc.md"
+
+        if (-not (Test-Path $template)) {
+            Write-Warning-Custom "Template not found: $doc.md"
+            continue
+        }
+
+        # Skip if write-missing-only and file exists
+        if (($Mode -eq "write-missing-only") -and (Test-Path $output)) {
+            Write-Info "Skipping existing: $doc.md"
+            continue
+        }
+
+        # Render with Node.js
+        $renderScript = Join-Path $ProjectRoot ".spec-flow\scripts\node\render.js"
+        & node $renderScript --template $template --output $output --answers $AnswersFile
+    }
+
+    # Copy tokens templates
+    $tokensDir = Join-Path $ProjectRoot "design\systems"
+    if (-not (Test-Path $tokensDir)) {
+        New-Item -ItemType Directory -Path $tokensDir -Force | Out-Null
+    }
+
+    $tokensCss = Join-Path $ProjectRoot ".spec-flow\templates\design\tokens.css"
+    $tokensJson = Join-Path $ProjectRoot ".spec-flow\templates\design\tokens.json"
+
+    if (Test-Path $tokensCss) {
+        Copy-Item $tokensCss (Join-Path $tokensDir "tokens.css") -Force
+        Write-Success "Created design/systems/tokens.css"
+    }
+
+    if (Test-Path $tokensJson) {
+        Copy-Item $tokensJson (Join-Path $tokensDir "tokens.json") -Force
+        Write-Success "Created design/systems/tokens.json"
+    }
+
+    Write-Success "Design documentation generated"
 }
 
 # Generate answers JSON
@@ -611,6 +1122,9 @@ function Main {
         Invoke-BrownfieldScan
     }
 
+    # Detect component library
+    Get-ComponentLibrary
+
     # Run questionnaire if interactive
     if ($Interactive) {
         Invoke-Questionnaire
@@ -635,6 +1149,14 @@ function Main {
     $renderMode = if ($Mode -eq "update") { "update" } else { "default" }
     Invoke-DocumentationRender $answersFile $renderMode
 
+    # Render design documentation if --WithDesign
+    if ($WithDesign) {
+        Invoke-DesignDocumentRender $answersFile
+    }
+
+    # Generate project CLAUDE.md
+    New-ProjectClaudeMd
+
     # Create ADR baseline
     New-ADRBaseline
 
@@ -644,6 +1166,9 @@ function Main {
         Remove-Item $answersFile -ErrorAction SilentlyContinue
         exit $gateResult
     }
+
+    # Create foundation issue for greenfield projects
+    New-FoundationIssue $projectType
 
     # Commit documentation
     Invoke-DocumentationCommit

@@ -35,7 +35,7 @@ if [[ -f "$SCRIPT_DIR/common.sh" ]]; then
 fi
 
 # Default values
-OUTPUT_FILE="$REPO_ROOT/CLAUDE.md"
+OUTPUT_FILE="$REPO_ROOT/docs/project/CLAUDE.md"
 JSON_OUTPUT=false
 
 # Parse arguments

@@ -1,7 +1,7 @@
 ---
 description: Manage product roadmap via GitHub Issues (brainstorm, prioritize, track). Auto-validates features against project vision (from overview.md) before adding to roadmap.
 allowed-tools: [Read, Bash(.spec-flow/scripts/bash/github-roadmap-manager.sh:*), Bash(.spec-flow/scripts/powershell/github-roadmap-manager.ps1:*), Bash(gh issue:*), Bash(gh api:*), Bash(gh label:*), Bash(gh milestone:*), Bash(git remote:*), Bash(test:*), Bash(ls:*), Bash(jq:*), WebSearch, AskUserQuestion]
-argument-hint: [add|brainstorm|move|delete|search|list|milestone|epic|import-from-prototype] [additional args]
+argument-hint: [add|brainstorm|move|delete|search|list|milestone|epic] [additional args]
 ---
 
 <context>
@@ -22,7 +22,6 @@ Manage product roadmap via GitHub Issues with vision alignment validation.
 **Actions supported:**
 - **add** — Add new feature with vision validation
 - **brainstorm** — Generate feature ideas via web research
-- **import-from-prototype** — Import features discovered during `/prototype discover`
 - **move** — Change feature status (Backlog → Next → In Progress → Shipped)
 - **delete** — Remove feature from roadmap
 - **search** — Find features by keyword/area/role
@@ -32,14 +31,13 @@ Manage product roadmap via GitHub Issues with vision alignment validation.
 
 **Workflow integration**:
 ```
-/init-project → /prototype discover → /roadmap import-from-prototype → /feature or /epic
+/init-project → /roadmap add|brainstorm → /feature or /epic
 ```
 
 **Dependencies:**
 - GitHub authentication (gh CLI or GITHUB_TOKEN)
 - Git repository with remote
 - Optional: docs/project/overview.md for vision validation
-- Optional: design/prototype/discovered-features.md for import-from-prototype
 </objective>
 
 <process>
@@ -47,9 +45,24 @@ Manage product roadmap via GitHub Issues with vision alignment validation.
    - If "❌ Not authenticated": Display authentication instructions and exit
    - If "✅ Authenticated": Proceed with action
 
-2. **Parse user intent** from $ARGUMENTS to determine action type:
-   - Extract action: add, brainstorm, move, delete, search, list, milestone, epic
-   - Extract parameters based on action (feature name, slug, target status, etc.)
+2. **Parse user intent** from $ARGUMENTS and route to action:
+
+   **Action routing:**
+   ```
+   If $ARGUMENTS starts with "add "        → ADD action (remaining = feature description)
+   If $ARGUMENTS starts with "brainstorm " → BRAINSTORM action (remaining = topic)
+   If $ARGUMENTS starts with "move "       → MOVE action (parse: slug, target status)
+   If $ARGUMENTS starts with "delete "     → DELETE action (remaining = slug)
+   If $ARGUMENTS starts with "search "     → SEARCH action (remaining = query)
+   If $ARGUMENTS equals "list"             → LIST action (no params)
+   If $ARGUMENTS starts with "milestone "  → MILESTONE sub-actions:
+      - "milestone list"                   → list all milestones
+      - "milestone create <name> [date]"   → create milestone
+      - "milestone plan <name>"            → interactive assignment
+   If $ARGUMENTS starts with "epic "       → EPIC sub-actions:
+      - "epic list"                        → list all epic labels
+      - "epic create <name> [description]" → create epic label
+   ```
 
 3. **Execute platform-specific script**:
 
@@ -116,83 +129,7 @@ Manage product roadmap via GitHub Issues with vision alignment validation.
    - epic list: Display all epic:* labels
    - epic create: Create new epic label (purple, auto-namespaced)
 
-7. **For IMPORT-FROM-PROTOTYPE action** — Import discovered features:
-
-   a. **Check for discovered-features.md:**
-      ```bash
-      test -f design/prototype/discovered-features.md || echo "ERROR: No discovered features. Run '/prototype extract' first."
-      ```
-
-   b. **Read discovered features:**
-      - Parse `design/prototype/discovered-features.md`
-      - Extract feature list from "Feature Summary" table
-      - For each feature, extract: name, screens, complexity, priority hint
-
-   c. **Present features for selection:**
-      ```json
-      {
-        "question": "Which discovered features should be imported to roadmap?",
-        "header": "Import",
-        "multiSelect": true,
-        "options": [
-          {"label": "[Feature 1]", "description": "[Complexity] - [Screens]"},
-          {"label": "[Feature 2]", "description": "[Complexity] - [Screens]"}
-        ]
-      }
-      ```
-
-   d. **Set priorities for selected features:**
-      ```json
-      {
-        "question": "Set priority for [Feature Name]?",
-        "header": "Priority",
-        "multiSelect": false,
-        "options": [
-          {"label": "P0 - Foundation", "description": "Must be built first, other features depend on it"},
-          {"label": "P0 - Core", "description": "Core value proposition, MVP requirement"},
-          {"label": "P1 - Important", "description": "Important for launch but not blocking"},
-          {"label": "P2 - Enhancement", "description": "Nice to have, can defer"}
-        ]
-      }
-      ```
-
-   e. **Create GitHub Issues for each feature:**
-      - Apply vision validation (same as ADD action)
-      - Set labels: type:epic or type:feature (based on complexity)
-      - Set status:backlog
-      - Add "prototype" label to indicate source
-      - Include link to prototype screens in description
-      - Include user stories from discovered-features.md
-
-   f. **Display import summary:**
-      ```
-      ═══════════════════════════════════════════════════════════════════════════════
-        Prototype Import Complete!
-      ═══════════════════════════════════════════════════════════════════════════════
-
-        Imported to roadmap:
-          • #1 User Authentication (Feature, P0-Foundation)
-          • #2 Task Management (Epic, P0-Core)
-          • #3 Dashboard Overview (Feature, P1)
-          • #4 Settings & Profile (Feature, P2)
-
-        Skipped:
-          • None
-
-        Ideas not imported (review manually):
-          • [Ideas from _discovery/ideas.md]
-
-        Open questions (resolve before implementation):
-          • [Questions from _discovery/questions.md]
-
-        NEXT STEPS:
-          1. Run /roadmap list to see full roadmap
-          2. Run /prototype lock-theme to finalize design
-          3. Start /epic or /feature for highest priority item
-      ═══════════════════════════════════════════════════════════════════════════════
-      ```
-
-8. **Present results** to user:
+7. **Present results** to user:
    - Show created/updated issue with metadata
    - Display roadmap summary (count by status)
    - Suggest next action based on context

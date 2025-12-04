@@ -1,5 +1,5 @@
 ---
-description: Run 10 parallel quality gates (performance, security, accessibility, code review, migrations, Docker, E2E, contracts, load testing, migration integrity) with auto-retry for transient failures
+description: Run 15 parallel quality gates (core checks, E2E/visual, pre-CI validation, plus contracts/load/integrity for epics) with auto-retry for transient failures
 allowed-tools:
   [
     Bash(python .spec-flow/scripts/spec-cli.py optimize:*),
@@ -28,7 +28,7 @@ WCAG requirements: Auto-detected from ${BASE_DIR}/\*/plan.md
 <objective>
 Run fast, parallel production-readiness checks with auto-retry logic for transient failures, and block deployment if any hard blockers are found.
 
-This command validates features meet production quality standards across 10 parallel checks:
+This command validates features meet production quality standards across 15 parallel checks:
 
 **Core Quality Gates** (Checks 1-7 - All workflows):
 
@@ -38,12 +38,23 @@ This command validates features meet production quality standards across 10 para
 4. **Code Review** - Lints, type checks, test coverage
 5. **Migrations** - Reversibility and drift-free validation
 6. **Docker Build** - Validates Dockerfile builds successfully (skipped if no Dockerfile)
-7. **E2E + Visual Testing** - Playwright E2E tests with visual regression (toHaveScreenshot), auto-starts dev server, skipped if no playwright.config found
+7. **E2E + Visual Testing** - Playwright E2E tests with visual regression (toHaveScreenshot), auto-starts dev server, skipped if no playwright.config found or `e2e_visual.enabled=false`. Failure mode controlled by `e2e_visual.failure_mode` preference (blocking/warning)
 
-**Enhanced Validation Gates** (Checks 8-10 - Epic workflows only):
-8. **Contract Validation** - API contract compliance (OpenAPI schemas), contract tests (Pact CDC)
-9. **Load Testing** - Performance under production-like load (100 VUs, 30s duration)
-10. **Migration Integrity** - Data integrity validation during up/down migrations, no data corruption
+**Pre-CI Validation Gates** (Checks 8-15 - All workflows, tech-stack agnostic):
+
+8. **License Compliance** - Detects GPL/AGPL/Unlicensed dependencies that break distribution (BLOCKING)
+9. **Environment Validation** - Compares .env.example vs .env for missing required vars (BLOCKING)
+10. **Circular Dependencies** - Detects import cycles using madge (Node) or pydeps (Python) (BLOCKING)
+11. **Dead Code Detection** - Finds unused exports via ts-prune (TypeScript) or vulture (Python) (BLOCKS if >10 items)
+12. **Dockerfile Best Practices** - Lints Dockerfile with hadolint, validates docker-compose syntax (BLOCKING)
+13. **Dependency Freshness** - Reports outdated dependencies (WARNING only, non-blocking)
+14. **Bundle Size Analysis** - Checks frontend bundle size against 500KB threshold (WARNING only)
+15. **Health Check Validation** - Verifies health endpoint exists in code (WARNING if missing)
+
+**Enhanced Validation Gates** (Checks 16-18 - Epic workflows only):
+16. **Contract Validation** - API contract compliance (OpenAPI schemas), contract tests (Pact CDC)
+17. **Load Testing** - Performance under production-like load (100 VUs, 30s duration)
+18. **Migration Integrity** - Data integrity validation during up/down migrations, no data corruption
 
 **Auto-Retry Logic**:
 
@@ -98,6 +109,44 @@ else
     echo "⚠ Could not auto-detect workflow type - using fallback"
 fi
 ```
+
+---
+
+### Step 0.1: LOAD USER PREFERENCES
+
+**Load user preferences that affect quality gate behavior:**
+
+```bash
+# Load preference utility functions
+source .spec-flow/scripts/utils/load-preferences.sh 2>/dev/null || true
+
+# Load E2E visual testing preferences
+E2E_ENABLED=$(get_preference_value --key "e2e_visual.enabled" --default "true")
+E2E_FAILURE_MODE=$(get_preference_value --key "e2e_visual.failure_mode" --default "blocking")
+E2E_THRESHOLD=$(get_preference_value --key "e2e_visual.threshold" --default "0.1")
+E2E_AUTO_COMMIT=$(get_preference_value --key "e2e_visual.auto_commit_baselines" --default "true")
+
+# Load automation preferences
+AUTO_APPROVE_MINOR=$(get_preference_value --key "automation.auto_approve_minor_changes" --default "false")
+CI_MODE=$(get_preference_value --key "automation.ci_mode_default" --default "false")
+
+echo "User Preferences Loaded:"
+echo "  E2E Testing: $( [ "$E2E_ENABLED" = "true" ] && echo "enabled" || echo "disabled" )"
+echo "  E2E Failure Mode: $E2E_FAILURE_MODE"
+echo "  Visual Threshold: ${E2E_THRESHOLD}%"
+echo "  Auto-approve Minor: $AUTO_APPROVE_MINOR"
+echo "  CI Mode: $CI_MODE"
+```
+
+**Preferences affecting quality gates:**
+
+| Preference | Gate | Effect |
+|------------|------|--------|
+| `e2e_visual.enabled` | Gate 7 (E2E + Visual) | Skip gate if false |
+| `e2e_visual.failure_mode` | Gate 7 | blocking=hard fail, warning=continue |
+| `e2e_visual.threshold` | Gate 7 (Visual) | Pixel diff allowed (0.1=10%) |
+| `automation.auto_approve_minor` | Code Review | Auto-approve formatting-only changes |
+| `automation.ci_mode_default` | All gates | Non-interactive, assumes defaults |
 
 ---
 
@@ -439,17 +488,27 @@ Before completing, verify:
 ✅ Optimization PASSED
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Core Quality Gates (1-6):
+Core Quality Gates (1-7):
 ✅ Performance: PASSED
 ✅ Security: PASSED
 ✅ Accessibility: PASSED
 ✅ Code Review: PASSED
 ✅ Migrations: PASSED
 ✅ Docker Build: PASSED (or SKIPPED)
+✅ E2E + Visual: PASSED (or SKIPPED)
+
+Pre-CI Validation Gates (8-15):
+✅ License Compliance: PASSED
+✅ Environment Validation: PASSED
+✅ Circular Dependencies: PASSED
+✅ Dead Code Detection: PASSED
+✅ Dockerfile Best Practices: PASSED (or SKIPPED)
+⚠️ Dependency Freshness: 3 outdated (non-blocking)
+✅ Bundle Size: 420KB (under threshold)
+✅ Health Check: PASSED
 
 {IF epic workflow}
-Enhanced Validation Gates (7-10):
-✅ E2E Testing: PASSED (3 user journeys validated)
+Enhanced Validation Gates (16-18):
 ✅ Contract Validation: PASSED (5 contracts compliant)
 ✅ Load Testing: PASSED (p95: 180ms, error rate: 0.1%) [or SKIPPED]
 ✅ Migration Integrity: PASSED (no data corruption)
@@ -485,17 +544,27 @@ All quality gates passed. Ready for /preview
 ❌ Optimization FAILED
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Core Quality Gates (1-6):
+Core Quality Gates (1-7):
 ❌ Performance: FAILED (Lighthouse performance: 65/100, target: 85)
 ✅ Security: PASSED
 ❌ Accessibility: FAILED (Color contrast violations: 3 issues)
 ❌ Code Review: FAILED (TypeScript errors: 12)
 ✅ Migrations: PASSED
 ❌ Docker Build: FAILED (Build timeout after 10 minutes)
+❌ E2E + Visual: FAILED (User registration journey failed)
+
+Pre-CI Validation Gates (8-15):
+❌ License Compliance: FAILED (GPL dependency: node-gpl-lib)
+✅ Environment Validation: PASSED
+❌ Circular Dependencies: FAILED (5 import cycles detected)
+⚠️ Dead Code Detection: 8 unused exports (under threshold)
+✅ Dockerfile Best Practices: PASSED
+⚠️ Dependency Freshness: 12 outdated (non-blocking)
+❌ Bundle Size: 680KB (exceeds 500KB threshold)
+⚠️ Health Check: No /health endpoint found
 
 {IF epic workflow}
-Enhanced Validation Gates (7-10):
-❌ E2E Testing: FAILED (User registration journey failed)
+Enhanced Validation Gates (16-18):
 ✅ Contract Validation: PASSED (5 contracts compliant)
 ⚠️ Load Testing: SKIPPED (not required for this epic)
 ❌ Migration Integrity: FAILED (Data corruption detected in rollback)
@@ -709,13 +778,23 @@ See .claude/skills/optimization-phase/reference.md for detailed audit integratio
   </standards>
 
 <notes>
-**Script location**: The bash implementation is at `.spec-flow/scripts/bash/optimize-workflow.sh`. It is invoked via spec-cli.py for cross-platform compatibility.
+**Script locations**:
+- Core gates: `.spec-flow/scripts/bash/optimize-workflow.sh`
+- Pre-CI gates (8-15): `.spec-flow/scripts/bash/check-pre-ci.sh`
+
+Both are invoked via spec-cli.py for cross-platform compatibility.
 
 **Reference documentation**: Detailed quality gate criteria, error recovery procedures, and alternative modes are documented in `.claude/skills/optimization-phase/reference.md`.
 
-**Result files**: All checks write to `specs/{slug}/optimization-*.md` and `specs/{slug}/code-review.md` with Status: PASSED/FAILED/SKIPPED.
+**Result files**:
+- Core checks: `specs/{slug}/optimization-*.md`, `specs/{slug}/code-review.md`
+- Pre-CI checks: `specs/{slug}/pre-ci-report.md`
+
+All files include Status: PASSED/FAILED/SKIPPED.
 
 **Log files**: Detailed logs are written to `specs/{slug}/*.log` for debugging failures.
 
 **Idempotency**: Re-running /optimize is safe. All checks overwrite previous results.
+
+**Tech stack detection**: Pre-CI gates auto-detect project type (Node.js, Python, Docker, Frontend) and run appropriate tools. Checks gracefully skip if tools aren't installed.
 </notes>

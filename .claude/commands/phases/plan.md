@@ -26,7 +26,130 @@ Feature workspace: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json 
 Project docs: !`ls -1 docs/project/*.md 2>/dev/null | wc -l` files available
 
 Spec exists: Auto-detected (epics/_/epic-spec.md OR specs/_/spec.md)
+
+**Feature Classification** (from state.yaml if exists):
+!`cat specs/*/state.yaml 2>/dev/null | grep -E "HAS_UI|IS_IMPROVEMENT|recommended_workflow" | head -5 || echo "No classification available"`
+
+**Tech Stack Context** (prevents hallucination):
+!`head -30 docs/project/tech-stack.md 2>/dev/null || echo "Not available - will analyze codebase"`
+
+**Data Architecture Context** (prevents duplicate entities):
+!`head -20 docs/project/data-architecture.md 2>/dev/null || echo "Not available - will analyze codebase"`
 </context>
+
+<research_instructions>
+## REQUIRED RESEARCH STEPS (Claude Code Must Execute)
+
+**Before generating plan.md, you MUST perform this research:**
+
+### Step R1: Read Feature Spec
+```
+Read the spec.md file completely. Extract:
+- All functional requirements (FR-XXX)
+- All non-functional requirements (NFR-XXX)
+- Success criteria (measurable outcomes)
+- Classification flags (HAS_UI, IS_IMPROVEMENT, etc.)
+```
+
+### Step R2: Search for Reusable Components
+
+**Backend patterns** (execute these Grep/Glob searches):
+```bash
+# Find existing service patterns
+Glob("api/src/services/*.py")       # or api/app/services/
+Glob("api/src/modules/*/service.py")
+
+# Find existing repository patterns
+Grep("class.*Repository", path="api/", type="py")
+
+# Find existing schemas/validators
+Glob("api/src/**/schemas.py")
+```
+
+**Frontend patterns** (execute these Grep/Glob searches):
+```bash
+# Find existing UI components
+Glob("apps/*/components/**/*.tsx")
+Glob("src/components/**/*.tsx")
+
+# Find existing hooks
+Grep("export function use", path="apps/", glob="*.ts*")
+Grep("export const use", path="apps/", glob="*.ts*")
+
+# Find existing layouts
+Glob("apps/*/app/**/layout.tsx")
+```
+
+**Database patterns** (if HAS_MIGRATIONS detected):
+```bash
+# Find existing migrations to understand naming/style
+Glob("api/migrations/versions/*.py")   # Alembic
+Glob("prisma/migrations/**/*.sql")     # Prisma
+
+# Find existing models
+Grep("class.*Model|Table\\(", path="api/", type="py")
+```
+
+### Step R3: Analyze Similar Implementations
+
+For each major component needed:
+1. Search codebase for similar functionality
+2. Read the found file(s) to understand patterns
+3. Document as "reusable" or "new needed"
+
+**Example workflow**:
+```
+If spec requires "user preferences storage":
+  1. Grep("preferences|settings|user.*config", path="api/")
+  2. Read matching files
+  3. If found: REUSABLE_COMPONENTS+=("api/src/services/preferences.py")
+  4. If not found: NEW_COMPONENTS+=("api/src/services/preferences.py: New service needed")
+```
+
+### Step R4: Verify Dependencies
+
+Before recommending any library:
+```bash
+# Check package.json for existing dependencies
+Grep("library-name", path="package.json")
+
+# Check requirements.txt / pyproject.toml
+Grep("library-name", path="requirements.txt")
+Grep("library-name", path="pyproject.toml")
+```
+
+**Never recommend a library without checking if it's already installed!**
+
+### Step R5: Document Research Decisions
+
+For each architectural decision, provide:
+- **Decision**: What was decided
+- **Source**: Where you found the pattern (file:line)
+- **Rationale**: Why this approach
+
+**Example**:
+```markdown
+## Research Decisions
+
+1. **State Management**: Use SWR for data fetching
+   - Source: `apps/app/lib/swr/config.ts:12-30`
+   - Rationale: Already configured with refresh intervals and error handling
+
+2. **API Pattern**: Follow existing FastAPI router structure
+   - Source: `api/src/modules/users/controller.py:5-50`
+   - Rationale: Consistent with existing codebase conventions
+```
+
+### Step R6: Anti-Hallucination Checklist
+
+Before finalizing plan.md, verify:
+- [ ] Every "reuse" recommendation cites a specific file path
+- [ ] Every "new" component explains why existing code doesn't suffice
+- [ ] Every library recommendation was verified in package.json/requirements.txt
+- [ ] No speculative statements ("probably", "might", "usually")
+- [ ] All tech stack choices match docs/project/tech-stack.md (if exists)
+
+</research_instructions>
 
 <objective>
 Generate implementation plan for $ARGUMENTS using research-driven design.
@@ -42,13 +165,8 @@ This ensures architecture decisions are grounded in existing codebase patterns a
 - Feature spec completed (spec.md exists)
 - Required tools: git, jq, yq (xmllint for epics)
 
-**Flags**:
-
-- `--interactive` : Force wait for user confirmation (no auto-proceed timeout)
-- `--yes` : Skip all HITL gates (ambiguity + confirmation) and auto-commit
-- `--skip-clarify` : Skip spec ambiguity gate only
-- Environment: `SPEC_FLOW_INTERACTIVE=true` for global interactive mode
-  </objective>
+**Autopilot**: Auto-proceeds to next phase after completion. Only blocks on errors.
+</objective>
 
 <process>
 
@@ -207,26 +325,25 @@ When `HAS_MIGRATIONS=true`:
    c. **Feature workflows** (Traditional planning):
 
    - Load all 8 project docs (if available)
-   - Run ambiguity gate (blocking if score > 30%)
+   - Check ambiguity (auto-run /clarify if score > 30%)
    - Run constitution check (validate against 8 core standards)
    - Phase 0.5: Design system research (UI features only)
    - Phase 1: Generate design artifacts (plan.md, data-model.md, contracts/, quickstart.md, error-log.md)
-   - Confirmation gate (10s timeout before commit)
    - Git commit with architecture summary
-   - Decision tree (suggest next steps)
+   - Auto-proceed to next phase
 
    d. **All workflows**:
 
    - Apply anti-hallucination rules (cite existing code, verify dependencies)
    - Use structured reasoning for complex decisions
-   - Follow HITL gates (ambiguity, confirmation, decision tree)
+   - Auto-proceed to next phase after commit
    - Auto-suggest next step based on feature type
 
-2. **HITL Gates** (3 checkpoints):
+2. **Quality checks**:
 
-   - **Ambiguity gate** (blocking): If spec ambiguity > 30%, recommend /clarify
-   - **Confirmation** (10s timeout): Show architecture summary before commit
-   - **Decision tree**: Present next-step options (UI: /tasks --ui-first, Backend: /tasks)
+   - **Ambiguity check**: If spec ambiguity > 30%, auto-run /clarify first
+   - **Auto-proceed**: Commits and continues to next phase automatically
+   - **Next step**: Auto-suggests /tasks (or /tasks --ui-first for UI features)
 
 3. **Review generated artifacts**:
 
@@ -294,9 +411,8 @@ Before completing, verify:
 - Markdown validation passed (epic workflows only)
 - **Epic frontend blueprints generated** (if Frontend subsystem detected in epic-spec.md)
 - Constitution check passed (all 8 standards considered)
-- HITL gates respected (unless --yes or --skip-clarify)
-- Git commit successful (if auto-commit enabled)
-- Next-step suggestions presented
+- Git commit successful
+- Auto-proceeding to /tasks
 </verification>
 
 <success_criteria>
@@ -320,18 +436,17 @@ Before completing, verify:
 
 - Anti-hallucination rules followed (citations to existing code)
 - Constitution check passed or auto-remediated
-- HITL gates handled appropriately
-- Git commit created (unless skipped)
-- User knows next action
-  </success_criteria>
+- Git commit created
+- Auto-proceeding to next phase
+</success_criteria>
 
 <mental_model>
-**Workflow state machine**:
+**Workflow state machine (Autopilot)**:
 
 ```
 Setup
   ↓
-[AMBIGUITY GATE] (blocking if score > 30%)
+Ambiguity check (auto-run /clarify if score > 30%)
   ↓
 Constitution Check (8 standards)
   ↓
@@ -345,20 +460,13 @@ Phase 0.5: Design System Research (UI only)
   ↓
 Phase 1: Design & Contracts
   ↓
-[CONFIRMATION GATE] (10s timeout)
+Git Commit (auto)
   ↓
-Git Commit
-  ↓
-[DECISION TREE] (suggest next steps)
+Auto-proceed to /tasks
 ```
 
-**Auto-skip HITL gates when**:
-
-- `--yes` flag: Skip all gates
-- `--skip-clarify` flag: Skip ambiguity gate only
-- `/feature continue` mode: Skip all gates
-- `SPEC_FLOW_INTERACTIVE=false`: No timeouts
-  </mental_model>
+**Autopilot behavior**: All phases execute automatically without manual confirmation. Only blocks on errors.
+</mental_model>
 
 <anti_hallucination_rules>
 **CRITICAL**: Follow these rules to prevent invented architecture:

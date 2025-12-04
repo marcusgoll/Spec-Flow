@@ -297,6 +297,44 @@ When `ITERATION_MODE=true`, the implementation script should:
 
 ---
 
+### Step 0.55: LOAD USER PREFERENCES
+
+**Load user preferences that affect implementation behavior:**
+
+```bash
+# Load preference utility functions
+source .spec-flow/scripts/utils/load-preferences.sh 2>/dev/null || true
+
+# Load migration preferences
+MIGRATION_STRICTNESS=$(get_preference_value --key "migrations.strictness" --default "blocking")
+MIGRATION_AUTO_PLAN=$(get_preference_value --key "migrations.auto_generate_plan" --default "true")
+
+# Load automation preferences
+AUTO_APPROVE_MINOR=$(get_preference_value --key "automation.auto_approve_minor_changes" --default "false")
+CI_MODE=$(get_preference_value --key "automation.ci_mode_default" --default "false")
+
+# Load learning preferences
+LEARNING_ENABLED=$(get_preference_value --key "learning.enabled" --default "true")
+AUTO_APPLY_LOW_RISK=$(get_preference_value --key "learning.auto_apply_low_risk" --default "true")
+
+echo "User Preferences Loaded:"
+echo "  Migration Strictness: $MIGRATION_STRICTNESS"
+echo "  Auto-approve Minor: $AUTO_APPROVE_MINOR"
+echo "  CI Mode: $CI_MODE"
+echo "  Learning: $( [ "$LEARNING_ENABLED" = "true" ] && echo "enabled" || echo "disabled" )"
+```
+
+**Preferences affecting implementation:**
+
+| Preference | Phase | Effect |
+|------------|-------|--------|
+| `migrations.strictness` | Step 0.6 | blocking/warning/auto_apply |
+| `automation.auto_approve_minor` | Commit | Skip review for formatting |
+| `automation.ci_mode_default` | All steps | Non-interactive mode |
+| `learning.enabled` | Pattern detection | Track successful patterns |
+
+---
+
 ### Step 0.6: MIGRATION ENFORCEMENT (v10.5 - Migration Safety)
 
 **Pre-flight check**: Block tests if migrations not applied.
@@ -319,8 +357,10 @@ if [ "$HAS_MIGRATIONS" = "true" ]; then
         APPLY_CMD=$(echo "$MIGRATION_STATUS" | jq -r '.apply_command')
 
         if [ "$PENDING" = "true" ]; then
-            # Read user preference for strictness
-            MIGRATION_STRICTNESS=$(yq eval '.migrations.strictness // "blocking"' .spec-flow/config/user-preferences.yaml 2>/dev/null || echo "blocking")
+            # Use loaded preference (from Step 0.55) or fallback to yq
+            if [ -z "$MIGRATION_STRICTNESS" ]; then
+                MIGRATION_STRICTNESS=$(yq eval '.migrations.strictness // "blocking"' .spec-flow/config/user-preferences.yaml 2>/dev/null || echo "blocking")
+            fi
 
             case "$MIGRATION_STRICTNESS" in
                 blocking)

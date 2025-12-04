@@ -172,48 +172,68 @@ echo ""
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📜 CONSTITUTION CHECK"
+echo "📜 CONSTITUTION CHECK (8 Engineering Standards)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Read constitution if exists
-if [ -f "$CONSTITUTION_FILE" ]; then
-  echo "Checking feature against constitution.md..."
+# Run automated constitution check against 8 engineering standards
+CONSTITUTION_SCRIPT="$SCRIPT_DIR/check-constitution.sh"
 
-  # Claude Code: Read constitution and spec, verify alignment
-  # Check for violations of:
-  # - Mission alignment
-  # - Value constraints
-  # - Technical principles
-  # - Quality standards
+if [ -f "$CONSTITUTION_SCRIPT" ]; then
+  echo "Validating spec against 8 engineering standards..."
+  echo ""
 
-  # Track violations (Claude Code populates this array)
-  CONSTITUTION_VIOLATIONS=()
-
-  # Example checks (Claude Code implements actual logic):
-  # - Does feature support core mission?
-  # - Does it violate privacy principles?
-  # - Does it compromise security standards?
-  # - Does it create technical debt against principles?
-
-  # If violations found:
-  if [ ${#CONSTITUTION_VIOLATIONS[@]} -gt 0 ]; then
-    echo "❌ Constitution violations detected:"
-    for violation in "${CONSTITUTION_VIOLATIONS[@]}"; do
-      echo "  - $violation"
-    done
+  # Run constitution check (validates against: Code Reuse, TDD, API Stability,
+  # Security, Accessibility, Performance, Observability, Deployment Safety)
+  if ! bash "$CONSTITUTION_SCRIPT" "$FEATURE_SPEC"; then
     echo ""
-    echo "Fix: Violations must be justified or feature redesigned"
-    echo "     Update spec.md to align with constitution.md principles"
-    exit 1
+    echo "❌ Constitution check failed - required standards not addressed"
+    echo ""
+    echo "Options:"
+    echo "  1. Update spec.md to address missing standards"
+    echo "  2. Run with --auto-fix to add TODO sections:"
+    echo "     bash $CONSTITUTION_SCRIPT $FEATURE_SPEC --auto-fix"
+    echo "  3. Use --skip-constitution flag to bypass (not recommended)"
+    echo ""
+
+    # Check for skip flag
+    if [[ "$*" == *"--skip-constitution"* ]]; then
+      echo "⚠️  Proceeding anyway (--skip-constitution flag detected)"
+      echo ""
+    else
+      exit 1
+    fi
   else
-    echo "✅ Feature aligns with constitution"
+    echo ""
+    echo "✅ Spec addresses required engineering standards"
   fi
 else
-  echo "⚠️  No constitution.md found - skipping alignment check"
-  echo ""
-  echo "Recommendation: Create constitution.md to enforce quality standards"
-  echo "                Run /constitution to initialize"
+  # Fallback to legacy constitution.md check
+  if [ -f "$CONSTITUTION_FILE" ]; then
+    echo "Checking feature against constitution.md (legacy mode)..."
+    echo "⚠️  check-constitution.sh not found - using basic validation"
+    echo ""
+
+    # Basic check: ensure spec mentions key standards
+    STANDARDS_MENTIONED=0
+    for keyword in "test" "security" "performance" "accessibility" "deploy"; do
+      if grep -qi "$keyword" "$FEATURE_SPEC" 2>/dev/null; then
+        ((STANDARDS_MENTIONED++))
+      fi
+    done
+
+    if [ "$STANDARDS_MENTIONED" -ge 3 ]; then
+      echo "✅ Feature mentions $STANDARDS_MENTIONED/5 key standards"
+    else
+      echo "⚠️  Only $STANDARDS_MENTIONED/5 standards mentioned in spec"
+      echo "    Consider adding: testing, security, performance, accessibility, deployment"
+    fi
+  else
+    echo "⚠️  No constitution check available"
+    echo ""
+    echo "Recommendation: Ensure check-constitution.sh exists in scripts/bash/"
+    echo "                Or create .spec-flow/memory/constitution.md"
+  fi
 fi
 
 echo ""
@@ -237,23 +257,92 @@ for template in "${REQUIRED_TEMPLATES[@]}"; do
 done
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# DETECT FEATURE TYPE
+# DETECT FEATURE TYPE (Multi-Source Detection)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 HAS_SCREENS=false
+HAS_UI=false
+IS_IMPROVEMENT=false
 SCREEN_COUNT=0
+UI_CONFIDENCE="none"
+RECOMMEND_UI_FIRST=false
 
+# Source 1: Check design/screens.yaml (explicit screens)
 if [ -f "$FEATURE_DIR/design/screens.yaml" ]; then
   # Count screens (lines starting with 2 spaces + letter)
   SCREEN_COUNT=$(grep -c "^  [a-z]" "$FEATURE_DIR/design/screens.yaml" 2>/dev/null || echo 0)
   if [ "$SCREEN_COUNT" -gt 0 ]; then
     HAS_SCREENS=true
+    UI_CONFIDENCE="high"
+    RECOMMEND_UI_FIRST=true
   fi
 fi
 
+# Source 2: Check state.yaml classification (from /spec phase)
+if [ -f "$FEATURE_DIR/state.yaml" ]; then
+  STATE_HAS_UI=$(grep "HAS_UI:" "$FEATURE_DIR/state.yaml" 2>/dev/null | grep -o "true\|false" || echo "false")
+  STATE_IS_IMPROVEMENT=$(grep "IS_IMPROVEMENT:" "$FEATURE_DIR/state.yaml" 2>/dev/null | grep -o "true\|false" || echo "false")
+
+  if [ "$STATE_HAS_UI" = "true" ]; then
+    HAS_UI=true
+    if [ "$UI_CONFIDENCE" = "none" ]; then
+      UI_CONFIDENCE="medium"
+    fi
+  fi
+
+  if [ "$STATE_IS_IMPROVEMENT" = "true" ]; then
+    IS_IMPROVEMENT=true
+  fi
+fi
+
+# Source 3: Analyze spec.md content for UI indicators (fallback detection)
+if [ "$HAS_SCREENS" = "false" ] && [ -f "$FEATURE_SPEC" ]; then
+  # Count UI-related keywords in spec
+  UI_INDICATORS=$(grep -ciE "ui|frontend|component|form|modal|button|dashboard|page|screen|view|layout|widget|display|render|css|style|theme|responsive|mobile" "$FEATURE_SPEC" 2>/dev/null || echo 0)
+
+  # If spec mentions UI concepts 3+ times, likely a UI feature
+  if [ "$UI_INDICATORS" -ge 3 ]; then
+    HAS_UI=true
+    if [ "$UI_CONFIDENCE" = "none" ]; then
+      UI_CONFIDENCE="low"
+    fi
+    # Recommend UI-first only if strong UI signals
+    if [ "$UI_INDICATORS" -ge 6 ]; then
+      RECOMMEND_UI_FIRST=true
+      UI_CONFIDENCE="medium"
+    fi
+  fi
+
+  # Check for explicit HAS_UI flag in spec classification table
+  if grep -q "HAS_UI.*true" "$FEATURE_SPEC" 2>/dev/null; then
+    HAS_UI=true
+    UI_CONFIDENCE="high"
+    RECOMMEND_UI_FIRST=true
+  fi
+fi
+
+# Determine feature classification for decision tree
+FEATURE_TYPE="backend"
+if [ "$HAS_SCREENS" = "true" ] || [ "$HAS_UI" = "true" ]; then
+  FEATURE_TYPE="ui"
+fi
+
 # Store for use in RETURN section
-echo "HAS_SCREENS=$HAS_SCREENS" > "$FEATURE_DIR/.planning-context"
-echo "SCREEN_COUNT=$SCREEN_COUNT" >> "$FEATURE_DIR/.planning-context"
+cat > "$FEATURE_DIR/.planning-context" <<EOF
+HAS_SCREENS=$HAS_SCREENS
+HAS_UI=$HAS_UI
+IS_IMPROVEMENT=$IS_IMPROVEMENT
+SCREEN_COUNT=$SCREEN_COUNT
+UI_CONFIDENCE=$UI_CONFIDENCE
+RECOMMEND_UI_FIRST=$RECOMMEND_UI_FIRST
+FEATURE_TYPE=$FEATURE_TYPE
+EOF
+
+echo "Feature type detected: $FEATURE_TYPE (UI confidence: $UI_CONFIDENCE)"
+if [ "$RECOMMEND_UI_FIRST" = "true" ]; then
+  echo "  → Mockup-first workflow recommended (/tasks --ui-first)"
+fi
+echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # PHASE 0: RESEARCH & DISCOVERY
@@ -307,16 +396,24 @@ if [ -d "$PROJECT_DOCS_DIR" ]; then
   done
 
   if [ ${#MISSING_DOCS[@]} -gt 0 ]; then
-    echo "❌ Missing required project documentation:"
+    echo "⚠️  Some project documentation missing:"
     for doc in "${MISSING_DOCS[@]}"; do
       echo "   - $PROJECT_DOCS_DIR/$doc"
     done
     echo ""
-    echo "These files are critical for accurate planning."
+    echo "Note: Missing docs may lead to assumptions during planning."
+    echo "      Run /init-project to generate complete documentation."
     echo ""
-    echo "Fix: Run /init-project to generate project documentation"
-    echo "     This prevents hallucination and ensures consistency"
-    exit 1
+
+    # Check for --strict flag to enforce complete docs
+    if [[ "$*" == *"--strict"* ]]; then
+      echo "❌ Strict mode: All project docs required"
+      echo "   Remove --strict flag or run /init-project first"
+      exit 1
+    else
+      echo "⚠️  Proceeding with partial documentation (use --strict to enforce)"
+      echo ""
+    fi
   fi
 
   # Read and parse project documentation
@@ -435,7 +532,7 @@ if [ -d "$PROJECT_DOCS_DIR" ]; then
   echo ""
 
 else
-  echo "❌ No project documentation found at $PROJECT_DOCS_DIR"
+  echo "⚠️  No project documentation found at $PROJECT_DOCS_DIR"
   echo ""
   echo "Project documentation provides:"
   echo "  • Tech stack (prevents hallucination)"
@@ -443,9 +540,25 @@ else
   echo "  • API patterns (ensures consistency)"
   echo "  • Performance targets (better design)"
   echo ""
-  echo "Fix: Run /init-project (one-time setup, ~10 minutes)"
-  echo "     This generates 8 comprehensive project docs"
-  exit 1
+  echo "Recommendation: Run /init-project (one-time setup, ~10 minutes)"
+  echo "                This generates 8 comprehensive project docs"
+  echo ""
+
+  # Check for --strict flag
+  if [[ "$*" == *"--strict"* ]]; then
+    echo "❌ Strict mode: Project documentation required"
+    echo "   Remove --strict flag or run /init-project first"
+    exit 1
+  else
+    echo "⚠️  Proceeding without project docs (use --strict to require them)"
+    echo "    Planning will use codebase analysis and heuristics instead"
+    echo ""
+
+    # Set fallback values for research decisions
+    RESEARCH_DECISIONS+=("Tech stack: Not documented (analyze codebase)")
+    RESEARCH_DECISIONS+=("Data architecture: Not documented (analyze codebase)")
+    RESEARCH_DECISIONS+=("API strategy: Not documented (analyze codebase)")
+  fi
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

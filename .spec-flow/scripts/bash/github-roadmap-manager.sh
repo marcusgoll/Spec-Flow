@@ -477,6 +477,300 @@ EOF
 }
 
 # ============================================================================
+# BRAINSTORM FEATURES
+# ============================================================================
+
+# Process brainstormed feature ideas (called after Claude performs WebSearch)
+# Input: JSON array of ideas from stdin or file
+# Output: Creates validated GitHub issues for selected ideas
+brainstorm_features() {
+  local topic="$1"
+  local ideas_json="$2"  # JSON array: [{"title": "...", "description": "..."}]
+
+  if [ -z "$topic" ]; then
+    echo "Error: Topic required for brainstorming" >&2
+    return 1
+  fi
+
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "💡 BRAINSTORM: $topic"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  # If no ideas JSON provided, prompt Claude to do web search
+  if [ -z "$ideas_json" ] || [ "$ideas_json" = "[]" ]; then
+    echo "BRAINSTORM_SEARCH_NEEDED"
+    echo "topic: $topic"
+    echo ""
+    echo "Claude should perform:"
+    echo "  1. WebSearch: \"$topic best practices 2025\""
+    echo "  2. WebSearch: \"$topic user pain points\""
+    echo "  3. Extract feature ideas from results"
+    echo "  4. Call brainstorm_features with ideas JSON"
+    return 0
+  fi
+
+  # Parse ideas from JSON
+  local idea_count
+  idea_count=$(echo "$ideas_json" | jq 'length')
+
+  if [ "$idea_count" -eq 0 ]; then
+    echo "No ideas provided for brainstorming"
+    return 1
+  fi
+
+  echo "Found $idea_count feature ideas to evaluate:"
+  echo ""
+
+  # Validate each idea against vision
+  local validated_ideas=()
+  local idx=0
+
+  while [ $idx -lt "$idea_count" ]; do
+    local title
+    title=$(echo "$ideas_json" | jq -r ".[$idx].title")
+    local description
+    description=$(echo "$ideas_json" | jq -r ".[$idx].description // empty")
+
+    echo "[$((idx + 1))/$idea_count] $title"
+
+    # Run vision validation (capture result without user prompts for batch mode)
+    local validation_result
+    if [ -f "docs/project/overview.md" ]; then
+      # Silent validation check
+      local overview_content
+      overview_content=$(cat "docs/project/overview.md")
+      local out_of_scope
+      out_of_scope=$(echo "$overview_content" | awk '/^## Out.of.Scope/,/^## / {if (!/^## /) print}')
+
+      local is_aligned=true
+      local title_lower
+      title_lower=$(echo "$title" | tr '[:upper:]' '[:lower:]')
+
+      # Check against out-of-scope
+      while IFS= read -r oos_item; do
+        [ -z "$oos_item" ] && continue
+        local oos_clean
+        oos_clean=$(echo "$oos_item" | sed 's/^[[:space:]]*[-*][[:space:]]*//' | tr '[:upper:]' '[:lower:]')
+        if echo "$title_lower" | grep -qi "$oos_clean"; then
+          is_aligned=false
+          echo "   ⚠️  Potential conflict with Out-of-Scope"
+          break
+        fi
+      done <<< "$(echo "$out_of_scope" | grep -E '^\s*[-*]')"
+
+      if [ "$is_aligned" = true ]; then
+        echo "   ✅ Aligned with project vision"
+        validated_ideas+=("$idx")
+      fi
+    else
+      # No overview.md - all ideas are valid
+      echo "   ℹ️  No vision file - skipping validation"
+      validated_ideas+=("$idx")
+    fi
+
+    idx=$((idx + 1))
+  done
+
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "Validated ${#validated_ideas[@]} of $idea_count ideas"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  # Output validated ideas for Claude to present via AskUserQuestion
+  echo "VALIDATED_IDEAS_FOR_SELECTION"
+  echo "["
+  local first=true
+  for vidx in "${validated_ideas[@]}"; do
+    local title
+    title=$(echo "$ideas_json" | jq -r ".[$vidx].title")
+    local description
+    description=$(echo "$ideas_json" | jq -r ".[$vidx].description // \"\"")
+
+    if [ "$first" = true ]; then
+      first=false
+    else
+      echo ","
+    fi
+    echo "  {\"index\": $vidx, \"title\": \"$title\", \"description\": \"$description\"}"
+  done
+  echo "]"
+}
+
+# Create issues for selected brainstormed ideas
+create_brainstormed_issues() {
+  local ideas_json="$1"
+  local selected_indices="$2"  # Comma-separated indices: "0,2,4"
+
+  if [ -z "$ideas_json" ] || [ -z "$selected_indices" ]; then
+    echo "Error: ideas_json and selected_indices required" >&2
+    return 1
+  fi
+
+  local repo
+  repo=$(get_repo_info)
+  if [ -z "$repo" ]; then
+    echo "Error: Could not determine repository" >&2
+    return 1
+  fi
+
+  echo ""
+  echo "Creating GitHub issues for selected ideas..."
+  echo ""
+
+  local created_count=0
+  IFS=',' read -ra indices <<< "$selected_indices"
+
+  for idx in "${indices[@]}"; do
+    local title
+    title=$(echo "$ideas_json" | jq -r ".[$idx].title")
+    local description
+    description=$(echo "$ideas_json" | jq -r ".[$idx].description // \"\"")
+
+    # Generate slug
+    local slug
+    slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | cut -c1-40)
+
+    # Create issue body
+    local body
+    body=$(cat <<EOF
+## Problem
+
+Discovered during brainstorming session.
+
+## Description
+
+$description
+
+## Proposed Solution
+
+To be determined during specification phase.
+
+## Requirements
+
+- [ ] To be defined
+
+---
+*Created via /roadmap brainstorm*
+EOF
+)
+
+    # Create the issue
+    create_roadmap_issue "$title" "$body" "app" "all" "$slug" "type:feature,status:backlog,brainstorm"
+
+    created_count=$((created_count + 1))
+    echo "  ✅ Created: $title"
+  done
+
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "Created $created_count issues from brainstorm"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+# ============================================================================
+# VISION ALIGNMENT VALIDATION
+# ============================================================================
+
+# Validate feature against project vision (docs/project/overview.md)
+# Returns: aligned|misaligned|needs_override
+validate_vision_alignment() {
+  local feature_desc="$1"
+  local overview_file="docs/project/overview.md"
+
+  # Check if overview.md exists
+  if [ ! -f "$overview_file" ]; then
+    echo "⚠️  No docs/project/overview.md found - skipping vision validation"
+    echo "   Run /init-project for vision-aligned roadmap"
+    echo "aligned"  # Return aligned to allow creation without validation
+    return 0
+  fi
+
+  local overview_content
+  overview_content=$(cat "$overview_file")
+
+  # Extract Vision section (content between ## Vision and next ## heading)
+  local vision
+  vision=$(echo "$overview_content" | awk '/^## Vision/,/^## / {if (!/^## /) print}' | head -20)
+
+  # Extract Out-of-Scope section
+  local out_of_scope
+  out_of_scope=$(echo "$overview_content" | awk '/^## Out.of.Scope/,/^## / {if (!/^## /) print}' | head -20)
+
+  # Extract Target Users section
+  local target_users
+  target_users=$(echo "$overview_content" | awk '/^## Target Users/,/^## / {if (!/^## /) print}' | head -20)
+
+  local validation_result="aligned"
+  local alignment_notes=""
+
+  # Check against Out-of-Scope (case-insensitive word matching)
+  if [ -n "$out_of_scope" ]; then
+    # Extract keywords from out-of-scope bullet points
+    local oos_keywords
+    oos_keywords=$(echo "$out_of_scope" | grep -E '^\s*[-*]' | sed 's/^[[:space:]]*[-*][[:space:]]*//' | tr '[:upper:]' '[:lower:]')
+
+    local feature_lower
+    feature_lower=$(echo "$feature_desc" | tr '[:upper:]' '[:lower:]')
+
+    while IFS= read -r oos_item; do
+      [ -z "$oos_item" ] && continue
+      # Check if out-of-scope keyword appears in feature description
+      if echo "$feature_lower" | grep -qi "$oos_item"; then
+        validation_result="misaligned"
+        alignment_notes="Potential conflict with Out-of-Scope: '$oos_item'"
+        break
+      fi
+    done <<< "$oos_keywords"
+  fi
+
+  # Output validation result
+  if [ "$validation_result" = "misaligned" ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "⚠️  VISION ALIGNMENT WARNING"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Feature: $feature_desc"
+    echo ""
+    echo "Issue: $alignment_notes"
+    echo ""
+    echo "Project Vision:"
+    echo "$vision" | head -5
+    echo ""
+    echo "Out-of-Scope items:"
+    echo "$out_of_scope" | head -10
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    # Prompt user for override
+    read -r -p "Override and add anyway? (yes/revise/skip): " override_choice
+
+    case "$override_choice" in
+      yes|y|Y)
+        read -r -p "Enter justification for override: " justification
+        echo "needs_override:$justification"
+        return 0
+        ;;
+      revise|r|R)
+        echo "revise"
+        return 0
+        ;;
+      *)
+        echo "skip"
+        return 0
+        ;;
+    esac
+  else
+    echo "aligned"
+    return 0
+  fi
+}
+
+# ============================================================================
 # ROADMAP MANAGEMENT FUNCTIONS
 # ============================================================================
 
@@ -1162,6 +1456,9 @@ export -f mark_issue_in_progress
 export -f mark_issue_shipped
 export -f list_issues_by_status
 export -f suggest_feature_addition
+export -f validate_vision_alignment
+export -f brainstorm_features
+export -f create_brainstormed_issues
 export -f move_issue_to_section
 export -f search_roadmap
 export -f show_roadmap_summary

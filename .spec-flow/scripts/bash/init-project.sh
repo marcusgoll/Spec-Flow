@@ -20,7 +20,7 @@
 #   INIT_NAME, INIT_VISION, INIT_USERS, INIT_SCALE, INIT_TEAM_SIZE
 #   INIT_ARCHITECTURE, INIT_DATABASE, INIT_DEPLOY_PLATFORM, INIT_API_STYLE
 #   INIT_AUTH_PROVIDER, INIT_BUDGET_MVP, INIT_PRIVACY, INIT_GIT_WORKFLOW
-#   INIT_DEPLOY_MODEL, INIT_FRONTEND
+#   INIT_DEPLOY_MODEL, INIT_FRONTEND, INIT_COMPONENT_LIBRARY
 #
 # Exit Codes:
 #   0 - Success
@@ -167,6 +167,7 @@ load_config() {
     INIT_GIT_WORKFLOW=$(yq eval '.project.git_workflow // ""' "$CONFIG_FILE")
     INIT_DEPLOY_MODEL=$(yq eval '.project.deploy_model // ""' "$CONFIG_FILE")
     INIT_FRONTEND=$(yq eval '.project.frontend // ""' "$CONFIG_FILE")
+    INIT_COMPONENT_LIBRARY=$(yq eval '.project.component_library // ""' "$CONFIG_FILE")
   elif [[ "$CONFIG_FILE" == *.json ]]; then
     # Load JSON config
     INIT_NAME=$(jq -r '.project.name // ""' "$CONFIG_FILE")
@@ -184,6 +185,7 @@ load_config() {
     INIT_GIT_WORKFLOW=$(jq -r '.project.git_workflow // ""' "$CONFIG_FILE")
     INIT_DEPLOY_MODEL=$(jq -r '.project.deploy_model // ""' "$CONFIG_FILE")
     INIT_FRONTEND=$(jq -r '.project.frontend // ""' "$CONFIG_FILE")
+    INIT_COMPONENT_LIBRARY=$(jq -r '.project.component_library // ""' "$CONFIG_FILE")
   else
     error "Config file must be .yaml, .yml, or .json"
     exit 1
@@ -223,6 +225,9 @@ scan_brownfield() {
     elif grep -q '"vue"' package.json; then
       INIT_FRONTEND="${INIT_FRONTEND:-Vue/Nuxt}"
     fi
+
+    # Detect component library
+    detect_component_library
   elif [[ -f "requirements.txt" ]]; then
     if grep -q "psycopg2" requirements.txt; then
       INIT_DATABASE="${INIT_DATABASE:-PostgreSQL}"
@@ -251,6 +256,86 @@ scan_brownfield() {
   fi
 
   success "Brownfield scan complete"
+}
+
+# Detect component library from package.json
+detect_component_library() {
+  if [[ ! -f "package.json" ]]; then
+    return 0
+  fi
+
+  local pkg_content
+  pkg_content=$(cat package.json)
+
+  # shadcn/ui detection (most common in Next.js)
+  # shadcn uses @radix-ui primitives + custom components in src/components/ui
+  if echo "$pkg_content" | grep -q '"@radix-ui/' && \
+     [[ -d "src/components/ui" || -d "components/ui" ]]; then
+    INIT_COMPONENT_LIBRARY="${INIT_COMPONENT_LIBRARY:-shadcn/ui}"
+    success "Detected component library: shadcn/ui (Radix + custom components)"
+    return 0
+  fi
+
+  # Chakra UI
+  if echo "$pkg_content" | grep -q '"@chakra-ui/react"'; then
+    INIT_COMPONENT_LIBRARY="${INIT_COMPONENT_LIBRARY:-Chakra UI}"
+    success "Detected component library: Chakra UI"
+    return 0
+  fi
+
+  # MUI (Material UI)
+  if echo "$pkg_content" | grep -q '"@mui/material"'; then
+    INIT_COMPONENT_LIBRARY="${INIT_COMPONENT_LIBRARY:-MUI}"
+    success "Detected component library: MUI (Material UI)"
+    return 0
+  fi
+
+  # HeroUI (newer library)
+  if echo "$pkg_content" | grep -q '"@heroui/'; then
+    INIT_COMPONENT_LIBRARY="${INIT_COMPONENT_LIBRARY:-HeroUI}"
+    success "Detected component library: HeroUI"
+    return 0
+  fi
+
+  # Ant Design
+  if echo "$pkg_content" | grep -q '"antd"'; then
+    INIT_COMPONENT_LIBRARY="${INIT_COMPONENT_LIBRARY:-Ant Design}"
+    success "Detected component library: Ant Design"
+    return 0
+  fi
+
+  # Mantine
+  if echo "$pkg_content" | grep -q '"@mantine/core"'; then
+    INIT_COMPONENT_LIBRARY="${INIT_COMPONENT_LIBRARY:-Mantine}"
+    success "Detected component library: Mantine"
+    return 0
+  fi
+
+  # Radix UI (standalone, without shadcn)
+  if echo "$pkg_content" | grep -q '"@radix-ui/' && \
+     [[ ! -d "src/components/ui" && ! -d "components/ui" ]]; then
+    INIT_COMPONENT_LIBRARY="${INIT_COMPONENT_LIBRARY:-Radix UI}"
+    success "Detected component library: Radix UI (primitives)"
+    return 0
+  fi
+
+  # Headless UI (Tailwind)
+  if echo "$pkg_content" | grep -q '"@headlessui/react"'; then
+    INIT_COMPONENT_LIBRARY="${INIT_COMPONENT_LIBRARY:-Headless UI}"
+    success "Detected component library: Headless UI"
+    return 0
+  fi
+
+  # DaisyUI (Tailwind)
+  if echo "$pkg_content" | grep -q '"daisyui"'; then
+    INIT_COMPONENT_LIBRARY="${INIT_COMPONENT_LIBRARY:-DaisyUI}"
+    success "Detected component library: DaisyUI"
+    return 0
+  fi
+
+  # No known library detected
+  info "No component library detected (custom components or none)"
+  INIT_COMPONENT_LIBRARY="${INIT_COMPONENT_LIBRARY:-}"
 }
 
 # Interactive questionnaire
@@ -317,8 +402,199 @@ run_questionnaire() {
     esac
   fi
 
-  # Remaining questions follow same pattern...
-  # (Abbreviated for brevity - full implementation would include all 15 questions)
+  # Q6: Architecture
+  if [[ -z "$INIT_ARCHITECTURE" ]]; then
+    echo ""
+    echo "Q6. System architecture?"
+    echo "  1. Monolith (single deployable unit)"
+    echo "  2. Microservices (multiple services)"
+    echo "  3. Serverless (functions, lambdas)"
+    echo "  4. Hybrid (mono + some services)"
+    read -r -p "Choice (1-4): " arch_choice
+    case $arch_choice in
+      1) INIT_ARCHITECTURE="monolith" ;;
+      2) INIT_ARCHITECTURE="microservices" ;;
+      3) INIT_ARCHITECTURE="serverless" ;;
+      4) INIT_ARCHITECTURE="hybrid" ;;
+      *) INIT_ARCHITECTURE="monolith" ;;
+    esac
+  fi
+
+  # Q7: Database
+  if [[ -z "$INIT_DATABASE" ]]; then
+    echo ""
+    echo "Q7. Primary database?"
+    echo "  1. PostgreSQL"
+    echo "  2. MySQL"
+    echo "  3. MongoDB"
+    echo "  4. SQLite"
+    echo "  5. None (static site)"
+    read -r -p "Choice (1-5): " db_choice
+    case $db_choice in
+      1) INIT_DATABASE="PostgreSQL" ;;
+      2) INIT_DATABASE="MySQL" ;;
+      3) INIT_DATABASE="MongoDB" ;;
+      4) INIT_DATABASE="SQLite" ;;
+      5) INIT_DATABASE="None" ;;
+      *) INIT_DATABASE="PostgreSQL" ;;
+    esac
+  fi
+
+  # Q8: Deploy Platform
+  if [[ -z "$INIT_DEPLOY_PLATFORM" ]]; then
+    echo ""
+    echo "Q8. Deployment platform?"
+    echo "  1. Vercel"
+    echo "  2. Railway"
+    echo "  3. AWS (EC2/ECS)"
+    echo "  4. Docker + VPS"
+    echo "  5. Netlify"
+    echo "  6. Fly.io"
+    read -r -p "Choice (1-6): " deploy_choice
+    case $deploy_choice in
+      1) INIT_DEPLOY_PLATFORM="Vercel" ;;
+      2) INIT_DEPLOY_PLATFORM="Railway" ;;
+      3) INIT_DEPLOY_PLATFORM="AWS" ;;
+      4) INIT_DEPLOY_PLATFORM="Docker" ;;
+      5) INIT_DEPLOY_PLATFORM="Netlify" ;;
+      6) INIT_DEPLOY_PLATFORM="Fly.io" ;;
+      *) INIT_DEPLOY_PLATFORM="Vercel" ;;
+    esac
+  fi
+
+  # Q9: API Style
+  if [[ -z "$INIT_API_STYLE" ]]; then
+    echo ""
+    echo "Q9. API style?"
+    echo "  1. REST (traditional endpoints)"
+    echo "  2. GraphQL (query language)"
+    echo "  3. tRPC (type-safe RPC)"
+    echo "  4. gRPC (protocol buffers)"
+    read -r -p "Choice (1-4): " api_choice
+    case $api_choice in
+      1) INIT_API_STYLE="REST" ;;
+      2) INIT_API_STYLE="GraphQL" ;;
+      3) INIT_API_STYLE="tRPC" ;;
+      4) INIT_API_STYLE="gRPC" ;;
+      *) INIT_API_STYLE="REST" ;;
+    esac
+  fi
+
+  # Q10: Auth Provider
+  if [[ -z "$INIT_AUTH_PROVIDER" ]]; then
+    echo ""
+    echo "Q10. Authentication provider?"
+    echo "  1. Clerk (managed auth)"
+    echo "  2. Auth0 (enterprise auth)"
+    echo "  3. NextAuth.js (self-hosted)"
+    echo "  4. Firebase Auth"
+    echo "  5. Custom (roll your own)"
+    echo "  6. None (public app)"
+    read -r -p "Choice (1-6): " auth_choice
+    case $auth_choice in
+      1) INIT_AUTH_PROVIDER="Clerk" ;;
+      2) INIT_AUTH_PROVIDER="Auth0" ;;
+      3) INIT_AUTH_PROVIDER="NextAuth" ;;
+      4) INIT_AUTH_PROVIDER="Firebase" ;;
+      5) INIT_AUTH_PROVIDER="Custom" ;;
+      6) INIT_AUTH_PROVIDER="None" ;;
+      *) INIT_AUTH_PROVIDER="Clerk" ;;
+    esac
+  fi
+
+  # Q11: Budget MVP
+  if [[ -z "$INIT_BUDGET_MVP" ]]; then
+    echo ""
+    echo "Q11. Monthly infrastructure budget for MVP?"
+    echo "  1. Free tier only (\$0)"
+    echo "  2. Hobby (\$10-50/month)"
+    echo "  3. Startup (\$50-200/month)"
+    echo "  4. Growth (\$200-1000/month)"
+    echo "  5. Enterprise (\$1000+/month)"
+    read -r -p "Choice (1-5): " budget_choice
+    case $budget_choice in
+      1) INIT_BUDGET_MVP="0" ;;
+      2) INIT_BUDGET_MVP="50" ;;
+      3) INIT_BUDGET_MVP="200" ;;
+      4) INIT_BUDGET_MVP="1000" ;;
+      5) INIT_BUDGET_MVP="5000" ;;
+      *) INIT_BUDGET_MVP="50" ;;
+    esac
+  fi
+
+  # Q12: Privacy Requirements
+  if [[ -z "$INIT_PRIVACY" ]]; then
+    echo ""
+    echo "Q12. Privacy/compliance requirements?"
+    echo "  1. Basic PII (names, emails)"
+    echo "  2. GDPR (EU users)"
+    echo "  3. CCPA (California)"
+    echo "  4. HIPAA (healthcare)"
+    echo "  5. SOC2 (enterprise)"
+    echo "  6. None (no user data)"
+    read -r -p "Choice (1-6): " privacy_choice
+    case $privacy_choice in
+      1) INIT_PRIVACY="PII" ;;
+      2) INIT_PRIVACY="GDPR" ;;
+      3) INIT_PRIVACY="CCPA" ;;
+      4) INIT_PRIVACY="HIPAA" ;;
+      5) INIT_PRIVACY="SOC2" ;;
+      6) INIT_PRIVACY="None" ;;
+      *) INIT_PRIVACY="PII" ;;
+    esac
+  fi
+
+  # Q13: Git Workflow
+  if [[ -z "$INIT_GIT_WORKFLOW" ]]; then
+    echo ""
+    echo "Q13. Git workflow?"
+    echo "  1. Trunk-based (main + short-lived branches)"
+    echo "  2. GitHub Flow (main + feature branches + PRs)"
+    echo "  3. GitFlow (main + develop + release branches)"
+    read -r -p "Choice (1-3): " git_choice
+    case $git_choice in
+      1) INIT_GIT_WORKFLOW="trunk-based" ;;
+      2) INIT_GIT_WORKFLOW="github-flow" ;;
+      3) INIT_GIT_WORKFLOW="gitflow" ;;
+      *) INIT_GIT_WORKFLOW="github-flow" ;;
+    esac
+  fi
+
+  # Q14: Deployment Model
+  if [[ -z "$INIT_DEPLOY_MODEL" ]]; then
+    echo ""
+    echo "Q14. Deployment model?"
+    echo "  1. staging-prod (staging → validation → production)"
+    echo "  2. direct-prod (direct to production)"
+    echo "  3. local-only (local dev, no deployment)"
+    read -r -p "Choice (1-3): " deploy_model_choice
+    case $deploy_model_choice in
+      1) INIT_DEPLOY_MODEL="staging-prod" ;;
+      2) INIT_DEPLOY_MODEL="direct-prod" ;;
+      3) INIT_DEPLOY_MODEL="local-only" ;;
+      *) INIT_DEPLOY_MODEL="staging-prod" ;;
+    esac
+  fi
+
+  # Q15: Frontend Framework
+  if [[ -z "$INIT_FRONTEND" ]]; then
+    echo ""
+    echo "Q15. Frontend framework?"
+    echo "  1. Next.js (React + SSR)"
+    echo "  2. React + Vite (SPA)"
+    echo "  3. Vue/Nuxt"
+    echo "  4. SvelteKit"
+    echo "  5. None (API only)"
+    read -r -p "Choice (1-5): " frontend_choice
+    case $frontend_choice in
+      1) INIT_FRONTEND="Next.js" ;;
+      2) INIT_FRONTEND="React+Vite" ;;
+      3) INIT_FRONTEND="Vue/Nuxt" ;;
+      4) INIT_FRONTEND="SvelteKit" ;;
+      5) INIT_FRONTEND="None" ;;
+      *) INIT_FRONTEND="Next.js" ;;
+    esac
+  fi
 
   success "Questionnaire complete"
 }
@@ -344,9 +620,35 @@ generate_answers_json() {
   "GIT_WORKFLOW": "${INIT_GIT_WORKFLOW:-GitHub Flow}",
   "DEPLOY_MODEL": "${INIT_DEPLOY_MODEL:-staging-prod}",
   "FRONTEND": "${INIT_FRONTEND:-Next.js}",
+  "COMPONENT_LIBRARY": "${INIT_COMPONENT_LIBRARY:-}",
   "DATE": "$(date +%Y-%m-%d)"
 }
 EOF
+}
+
+# Generate project-level CLAUDE.md
+generate_project_claude_md() {
+  local claude_script="$REPO_ROOT/.spec-flow/scripts/bash/generate-project-claude-md.sh"
+  local output_file="$REPO_ROOT/docs/project/CLAUDE.md"
+
+  if [[ ! -f "$claude_script" ]]; then
+    warning "CLAUDE.md generator script not found, skipping"
+    return 0
+  fi
+
+  # Check if should skip (write-missing-only mode)
+  if [[ "$MODE" == "write-missing-only" ]] && [[ -f "$output_file" ]]; then
+    info "Skipping existing: docs/project/CLAUDE.md"
+    return 0
+  fi
+
+  info "Generating project CLAUDE.md..."
+
+  if bash "$claude_script" --output "$output_file" 2>/dev/null; then
+    success "Generated docs/project/CLAUDE.md"
+  else
+    warning "Failed to generate project CLAUDE.md (non-blocking)"
+  fi
 }
 
 # Render project documentation
@@ -396,6 +698,106 @@ render_docs() {
   success "Documentation generated"
 }
 
+# Create foundation roadmap issue for greenfield projects
+create_foundation_issue() {
+  # Only create for greenfield projects
+  if [[ "$PROJECT_TYPE" != "greenfield" ]]; then
+    return 0
+  fi
+
+  # Check if gh CLI is available and authenticated
+  if ! command -v gh &> /dev/null; then
+    info "GitHub CLI not found, skipping foundation issue creation"
+    return 0
+  fi
+
+  # Check if repository has a remote
+  if ! git remote -v | grep -q "origin"; then
+    info "No git remote found, skipping foundation issue creation"
+    return 0
+  fi
+
+  # Check if issues already exist with roadmap label
+  local existing_issues
+  existing_issues=$(gh issue list --label "roadmap" --limit 1 --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+  if [[ -n "$existing_issues" && "$existing_issues" != "null" ]]; then
+    info "Roadmap issues already exist, skipping foundation issue"
+    return 0
+  fi
+
+  info "Creating foundation roadmap issue..."
+
+  # Create foundation issue body
+  local issue_body
+  issue_body=$(cat <<EOF
+<!-- roadmap-metadata
+feature_slug: foundation-setup
+area: infrastructure
+role: fullstack
+priority: P0
+complexity: M
+status: next
+-->
+
+## Overview
+
+Foundation setup for **${INIT_NAME}** - initial project scaffolding based on architecture decisions from project initialization.
+
+## User Story
+
+As a **developer**, I want **the foundational project structure in place** so that **I can start implementing features immediately**.
+
+## Acceptance Criteria
+
+### Core Setup
+- [ ] Frontend framework initialized (${INIT_FRONTEND})
+- [ ] Backend API scaffolding (${INIT_API_STYLE})
+- [ ] Database connection configured (${INIT_DATABASE})
+- [ ] Authentication provider integrated (${INIT_AUTH_PROVIDER})
+
+### Development Infrastructure
+- [ ] CI/CD pipeline configured (GitHub Actions)
+- [ ] Environment variables documented
+- [ ] Local development setup documented in README
+- [ ] Development database seeded with test data
+
+### Quality Gates
+- [ ] ESLint/Prettier configured (frontend)
+- [ ] Pre-commit hooks installed
+- [ ] Type checking enabled (TypeScript)
+- [ ] Basic test infrastructure in place
+
+## Technical Notes
+
+**Architecture**: ${INIT_ARCHITECTURE}
+**Deployment**: ${INIT_DEPLOY_PLATFORM} (${INIT_DEPLOY_MODEL})
+**Scale Tier**: ${INIT_SCALE}
+**Team Size**: ${INIT_TEAM_SIZE}
+
+## References
+
+- [Tech Stack](docs/project/tech-stack.md)
+- [System Architecture](docs/project/system-architecture.md)
+- [Deployment Strategy](docs/project/deployment-strategy.md)
+EOF
+)
+
+  # Create the issue
+  local issue_url
+  issue_url=$(gh issue create \
+    --title "Foundation: Project Scaffolding for ${INIT_NAME}" \
+    --body "$issue_body" \
+    --label "roadmap,type:feature,status:next,area:infrastructure,priority:P0" \
+    2>/dev/null || echo "")
+
+  if [[ -n "$issue_url" ]]; then
+    success "Created foundation issue: $issue_url"
+  else
+    warning "Could not create foundation issue (check GitHub permissions)"
+  fi
+}
+
 # Create ADR-0001
 create_adr_baseline() {
   local adr_dir="$REPO_ROOT/docs/adr"
@@ -428,6 +830,7 @@ We have decided to build ${INIT_NAME} with the following architecture:
 ### Technology Stack
 
 - **Frontend**: ${INIT_FRONTEND}
+- **Component Library**: ${INIT_COMPONENT_LIBRARY:-None detected}
 - **Backend**: [Based on API style: ${INIT_API_STYLE}]
 - **Database**: ${INIT_DATABASE}
 - **Authentication**: ${INIT_AUTH_PROVIDER}
@@ -641,8 +1044,14 @@ main() {
   fi
   render_docs "$answers_file" "$render_mode"
 
+  # Generate project-level CLAUDE.md (aggregated context)
+  generate_project_claude_md
+
   # Create ADR baseline
   create_adr_baseline
+
+  # Create foundation issue for greenfield projects
+  create_foundation_issue
 
   # Run quality gates
   if ! run_quality_gates; then
