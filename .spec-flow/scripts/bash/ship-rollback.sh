@@ -97,7 +97,7 @@ if [ -z "$TARGET_VERSION" ]; then
     TARGET_VERSION=$(echo "$TAGS" | sed -n '2p')
     log_info "Auto-selected: $TARGET_VERSION (--no-input mode)"
   else
-    read -p "Select version to rollback to [1]: " VERSION_CHOICE
+    read -rp "Select version to rollback to [1]: " VERSION_CHOICE
 
     # Default to 1 if empty
     VERSION_CHOICE="${VERSION_CHOICE:-1}"
@@ -141,7 +141,7 @@ if [ "$NO_INPUT" != true ]; then
   echo "   2. Trigger rollback workflow in GitHub Actions"
   echo "   3. Deploy $TARGET_VERSION to production"
   echo ""
-  read -p "Continue with rollback? [y/N]: " CONFIRM
+  read -rp "Continue with rollback? [y/N]: " CONFIRM
 
   if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     log_info "Rollback cancelled"
