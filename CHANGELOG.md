@@ -2,6 +2,40 @@
 
 ---
 
+## [10.15.1] - 2025-12-05
+
+### 🔧 Changed
+
+**Command Architecture Optimization**
+
+Refactored command distribution for cleaner package structure and reduced size.
+
+- **Consolidated Commands**: Merged 11 archived commands into 4 active commands with XML routing
+  - `/gate` now handles both CI and security gates internally
+  - `/create` consolidated 6 creation commands with skill routing
+  - `/context` merged session management commands
+  - `/init` updated routing to new active paths
+- **Moved Essential Commands**: 6 frequently-used commands moved from archived to active directories
+  - Project setup commands now in `.claude/commands/project/`
+  - Deployment commands in `.claude/commands/deployment/`
+  - Meta commands in `.claude/commands/meta/`
+- **Optimized Distribution**: Excluded 48 archived commands from npm package
+  - Package size reduced by 27% (8.5 MB → 6.27 MB)
+  - Archived commands accessible via GitHub source only
+  - All essential functionality available through 30 active commands
+
+**Build System**
+
+- Updated build script to exclude internal and archived directories
+- Enhanced BUILD_REPORT with clearer exclusion documentation
+
+**Documentation**
+
+- Updated CLAUDE.md to clarify archived command availability
+- All user-facing functionality now in active commands
+
+---
+
 ## [10.15.0] - 2025-12-05
 
 ### ✨ Added

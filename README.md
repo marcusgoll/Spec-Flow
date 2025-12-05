@@ -252,6 +252,25 @@ See a complete feature workflow in [`specs/001-example-feature/`](specs/001-exam
 - Performance benchmarks
 - Release notes
 
+## 🆕 Recent Updates
+
+### v10.15.1 (December 2025)
+
+**Command Architecture Optimization** - Cleaner package structure with 27% size reduction
+
+- **Consolidated Commands**: Merged 11 archived commands into 4 active commands
+  - `/gate` now handles both CI and security gates
+  - `/create` consolidated 6 creation commands
+  - `/context` merged session management commands
+  - `/init` updated routing to new active paths
+- **Optimized Distribution**: Excluded 48 archived commands from npm package
+  - Package size: 8.5 MB → 6.27 MB (27% reduction)
+  - Archived commands accessible via GitHub source only
+  - All essential functionality in 30 active commands
+- **Moved Essential Commands**: Project, deployment, and meta commands organized in active directories
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
