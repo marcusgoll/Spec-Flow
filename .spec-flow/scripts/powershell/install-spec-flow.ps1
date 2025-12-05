@@ -275,8 +275,25 @@ if (Test-Path -LiteralPath $quickstartSource -PathType Leaf) {
     }
 }
 
-# Settings files are copied as-is from source .claude/ directory
-# Users should manually configure .claude/settings.local.json per the documentation
+# --- Auto-create settings.local.json from example ----------------------------
+Write-Step "Checking settings configuration..."
+$settingsExample = Join-Path -Path $claudeTargetDir -ChildPath 'settings.example.json'
+$settingsLocal = Join-Path -Path $claudeTargetDir -ChildPath 'settings.local.json'
+
+if ((Test-Path -LiteralPath $settingsExample) -and (-not (Test-Path -LiteralPath $settingsLocal))) {
+    try {
+        Copy-Item -LiteralPath $settingsExample -Destination $settingsLocal
+        $results.copied += 'settings.local.json'
+        Write-Success "Created settings.local.json from example"
+    } catch {
+        $results.errors += @{ item = 'settings.local.json'; error = $_.Exception.Message }
+        Write-Warn "Failed to create settings.local.json: $($_.Exception.Message)"
+    }
+} elseif (Test-Path -LiteralPath $settingsLocal) {
+    Write-Step "settings.local.json already exists (kept existing)"
+} else {
+    Write-Warn "settings.example.json not found - settings.local.json not created"
+}
 
 # --- Initialize Memory Files ------------------------------------------------
 if (-not $SkipInit) {
@@ -299,6 +316,43 @@ if (-not $SkipInit) {
     }
 } else {
     Write-Step "Skipping memory initialization (use -SkipInit=`$false to enable)"
+}
+
+# --- Install Git Hooks -------------------------------------------------------
+$gitDir = Join-Path -Path $targetAbsolute -ChildPath '.git'
+if (Test-Path -LiteralPath $gitDir -PathType Container) {
+    Write-Step "Installing git hooks..."
+    $gitHooksScript = Join-Path -Path $targetAbsolute -ChildPath '.spec-flow/scripts/bash/install-git-hooks.sh'
+
+    if (Test-Path -LiteralPath $gitHooksScript) {
+        try {
+            $origLocation = Get-Location
+            Set-Location -Path $targetAbsolute
+
+            # Try to run bash script (works on Windows with Git Bash)
+            $bashCmd = Get-Command -Name 'bash' -ErrorAction SilentlyContinue
+            if ($bashCmd) {
+                $null = & bash '.spec-flow/scripts/bash/install-git-hooks.sh' --force 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Success "Git hooks installed"
+                } else {
+                    Write-Warn "Git hooks installation had issues (non-critical)"
+                }
+            } else {
+                Write-Warn "Bash not found - skipping git hooks installation"
+                Write-Step "  Run manually: bash .spec-flow/scripts/bash/install-git-hooks.sh"
+            }
+
+            Set-Location -Path $origLocation
+        } catch {
+            Set-Location -Path $origLocation
+            Write-Warn "Could not install git hooks: $($_.Exception.Message)"
+        }
+    } else {
+        Write-Warn "Git hooks script not found at $gitHooksScript"
+    }
+} else {
+    Write-Step "Skipping git hooks (not a git repository)"
 }
 
 # --- Run Prerequisite Checks ------------------------------------------------
@@ -357,8 +411,7 @@ if ($Json) {
     Write-Host "Next Steps:" -ForegroundColor Cyan
     Write-Host "1. Configure Claude Code settings:" -ForegroundColor White
     Write-Host "   cd $targetAbsolute" -ForegroundColor DarkGray
-    Write-Host "   cp .claude/settings.example.json .claude/settings.local.json" -ForegroundColor DarkGray
-    Write-Host "   # Edit .claude/settings.local.json and add your project paths" -ForegroundColor DarkGray
+    Write-Host "   # Edit .claude/settings.local.json and add your project paths to 'allow'" -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "2. Customize your engineering principles:" -ForegroundColor White
     Write-Host "   # Edit .spec-flow/memory/constitution.md" -ForegroundColor DarkGray
