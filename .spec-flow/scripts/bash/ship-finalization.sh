@@ -219,10 +219,108 @@ fi
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 6.3: Check for Infrastructure Cleanup Needs
+# 6.3: Detect Feature Flags (v10.14+)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-echo "Step 3: Checking infrastructure cleanup needs..."
+echo "Step 3: Detecting feature flags..."
+echo ""
+
+# Detect feature flag system in use
+FLAG_SYSTEM=""
+FLAG_FILES=()
+FLAG_PATTERNS=()
+
+# LaunchDarkly detection
+if [ -f "ldconfig.json" ] || grep -rql "launchdarkly" package.json 2>/dev/null || \
+   grep -rql "ld-" src/ 2>/dev/null; then
+  FLAG_SYSTEM="LaunchDarkly"
+  FLAG_PATTERNS+=("useFlags" "useLDClient" "ld-" "variation(" "ldclient")
+fi
+
+# Unleash detection
+if [ -f "unleash-config.json" ] || grep -rql "unleash" package.json 2>/dev/null || \
+   grep -rql "useUnleashContext" src/ 2>/dev/null; then
+  FLAG_SYSTEM="${FLAG_SYSTEM:+$FLAG_SYSTEM, }Unleash"
+  FLAG_PATTERNS+=("isEnabled(" "useUnleash" "unleash.isEnabled")
+fi
+
+# GrowthBook detection
+if [ -f ".growthbook" ] || grep -rql "@growthbook" package.json 2>/dev/null; then
+  FLAG_SYSTEM="${FLAG_SYSTEM:+$FLAG_SYSTEM, }GrowthBook"
+  FLAG_PATTERNS+=("useFeature" "useFeatureIsOn" "gb.isOn")
+fi
+
+# Custom flag detection (common patterns)
+CUSTOM_FLAGS=$(grep -rhlE "(FEATURE_FLAG_|ENABLE_|FF_|isFeatureEnabled|featureFlags)" src/ app/ lib/ 2>/dev/null | head -10)
+
+if [ -n "$CUSTOM_FLAGS" ]; then
+  FLAG_SYSTEM="${FLAG_SYSTEM:+$FLAG_SYSTEM, }Custom"
+  FLAG_PATTERNS+=("FEATURE_FLAG_" "ENABLE_" "FF_" "isFeatureEnabled")
+fi
+
+if [ -n "$FLAG_SYSTEM" ]; then
+  echo "Detected feature flag system(s): $FLAG_SYSTEM"
+  echo ""
+
+  # Search for active flags in codebase
+  ACTIVE_FLAGS=""
+  FLAG_COUNT=0
+
+  for pattern in "${FLAG_PATTERNS[@]}"; do
+    FOUND=$(grep -rhoE "${pattern}[A-Za-z0-9_-]+" src/ app/ lib/ 2>/dev/null | sort -u | head -20)
+    if [ -n "$FOUND" ]; then
+      ACTIVE_FLAGS+="$FOUND\n"
+      FLAG_COUNT=$((FLAG_COUNT + $(echo "$FOUND" | wc -l)))
+    fi
+  done
+
+  if [ "$FLAG_COUNT" -gt 0 ]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🚩 FEATURE FLAGS DETECTED ($FLAG_COUNT unique)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Active flags found:"
+    echo -e "$ACTIVE_FLAGS" | sort -u | head -15 | while read -r flag; do
+      [ -n "$flag" ] && echo "  • $flag"
+    done
+    echo ""
+    echo "Recommendations:"
+    echo "  1. Review flags related to this feature"
+    echo "  2. Remove flags that are 100% rolled out"
+    echo "  3. Update flag documentation"
+    echo ""
+    echo "Commands:"
+    case "$FLAG_SYSTEM" in
+      *LaunchDarkly*)
+        echo "  ld flags list                   # List all flags"
+        echo "  ld flags archive <flag-key>     # Archive obsolete flag"
+        ;;
+      *Unleash*)
+        echo "  unleash flags list              # List all flags"
+        echo "  unleash flags disable <name>    # Disable obsolete flag"
+        ;;
+      *)
+        echo "  grep -r 'FEATURE_FLAG_' src/    # Find flag usages"
+        echo "  # Remove flag checks after full rollout"
+        ;;
+    esac
+    echo ""
+    echo "Keeping stale flags increases tech debt."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  else
+    echo "✅ No active feature flags found in code"
+  fi
+else
+  echo "⏭️  No feature flag system detected"
+fi
+
+echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 6.4: Check for Infrastructure Cleanup Needs
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+echo "Step 4: Checking infrastructure cleanup needs..."
 echo ""
 
 if [ -f .spec-flow/scripts/bash/detect-infrastructure-needs.sh ]; then
@@ -233,10 +331,10 @@ if [ -f .spec-flow/scripts/bash/detect-infrastructure-needs.sh ]; then
     FLAG_COUNT=$(echo "$ACTIVE_FLAGS" | wc -l)
 
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "🚩 ACTIVE FEATURE FLAGS DETECTED ($FLAG_COUNT)"
+    echo "🏗️  INFRASTRUCTURE CLEANUP NEEDED"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    echo "Remove flags that are no longer needed:"
+    echo "Additional cleanup tasks:"
     echo ""
 
     while IFS= read -r flag; do
@@ -246,10 +344,9 @@ if [ -f .spec-flow/scripts/bash/detect-infrastructure-needs.sh ]; then
     done <<< "$ACTIVE_FLAGS"
 
     echo ""
-    echo "Keeping flags increases tech debt. Clean up before next sprint."
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   else
-    echo "✅ No infrastructure cleanup needed"
+    echo "✅ No additional infrastructure cleanup needed"
   fi
 else
   echo "⏭️  Infrastructure detection script not found, skipping"

@@ -63,9 +63,35 @@ This command updates CHANGELOG.md, README.md, help docs, GitHub milestones/relea
 
    - Generate walkthrough.md with velocity metrics
    - Calculate sprint results and lessons learned
-   - Run post-mortem audit (/audit-workflow --post-mortem)
-   - Detect patterns across epics (if 2-3+ completed)
-   - Offer workflow healing (/heal-workflow)
+   - Run pattern detection across completed epics (if 2+ completed)
+   - **Auto-offer workflow healing** (v10.14+):
+     - Check `.spec-flow/analytics/patterns.json` for recommendations
+     - If `avg_blockers > 3` or `avg_duration > 14 days`, prompt user:
+
+     ```
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Pattern Analysis Suggests Improvements
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+     Detected patterns across {N} completed epics:
+     - Average blockers per epic: {avg_blockers}
+     - Average duration: {avg_duration} days
+     - Common blocker themes: {themes}
+
+     Recommendations:
+     {recommendations from patterns.json}
+     ```
+
+     Use AskUserQuestion:
+     - Question: "Apply workflow improvements?"
+     - Header: "Healing"
+     - Options:
+       - "Yes" - Run `/heal-workflow` to create improvement issues
+       - "No" - Skip healing, continue finalization
+
+     **If user selects "Yes"**:
+     - Invoke `/heal-workflow` via SlashCommand tool
+     - Continue to standard finalization after healing completes
 
    b. **Standard finalization** (all workflows):
 

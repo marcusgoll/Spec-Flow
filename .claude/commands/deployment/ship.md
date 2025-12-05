@@ -1,7 +1,7 @@
 ---
 name: ship
 description: Deploy feature through automated staging validation to production with rollback testing
-argument-hint: [continue|status|budget|--staging|--prod|--validate]
+argument-hint: [continue|status|budget|rollback|recover|--staging|--prod|--validate]
 allowed-tools:
   [
     Read,
@@ -85,6 +85,8 @@ Orchestrate complete post-implementation deployment workflow from pre-flight val
 - (empty): Start deployment workflow from beginning
 - `continue`: Resume from last completed phase (if failure occurred)
 - `status`: Display current deployment status and exit
+- `rollback [version]`: Rollback to previous deployment version (v10.14+)
+- `recover`: Recover corrupted state.yaml from git history (v10.14+)
 - `budget`: Display deployment quota status (routes to archived command)
 - `--staging`: Deploy to staging only (routes to archived command)
 - `--prod`: Deploy to production only (routes to archived command)
@@ -155,7 +157,28 @@ Orchestrate complete post-implementation deployment workflow from pre-flight val
 
 ### Step 0: Route Consolidated Arguments
 
-**Check $ARGUMENTS for routing to archived commands:**
+**Check $ARGUMENTS for routing to scripts or archived commands:**
+
+**Rollback or Recover Operations** (v10.14+):
+
+If `$ARGUMENTS` starts with `rollback`:
+
+1. Extract version if provided (e.g., `rollback v1.2.3` → `v1.2.3`)
+2. Run rollback script:
+   ```bash
+   python .spec-flow/scripts/spec-cli.py ship-rollback [version]
+   ```
+3. Display rollback results and EXIT
+
+If `$ARGUMENTS` is `recover`:
+
+1. Run state recovery script:
+   ```bash
+   python .spec-flow/scripts/spec-cli.py ship-recover --feature-dir "$FEATURE_DIR"
+   ```
+2. Display recovered state and EXIT
+
+**Route to archived commands:**
 
 If `$ARGUMENTS` contains any of these, route to archived command and EXIT:
 
@@ -345,6 +368,11 @@ python .spec-flow/scripts/spec-cli.py ship-finalize preflight --feature-dir "$FE
 
    - ✅ E2E test results (already passed in CI before staging deployment)
    - ✅ Lighthouse CI results (performance/accessibility/best practices)
+   - ✅ **Performance baseline comparison** (v10.14+):
+     - Compares current Lighthouse scores against baseline
+     - Checks TTFB, LCP, CLS, FID against thresholds
+     - Compares bundle size against previous deployment
+     - Blocks deployment if regression >10% (configurable)
    - ✅ Rollback capability test (verifies deployment IDs, tests alias swap)
    - ✅ Health checks (staging deployment responding correctly)
 
@@ -917,3 +945,36 @@ python .spec-flow/scripts/spec-cli.py ship-finalize preflight --feature-dir "$FE
 - If validation fails: Review `$FEATURE_DIR/staging-validation-report.md` for specific test failures
 - If finalization fails: Ensure GitHub CLI is authenticated (`gh auth login`)
 - If continue mode doesn't resume: Check state.yaml for correct phase status
+
+**Performance Baseline (v10.14+)**:
+
+Performance baseline comparison is stored in `.spec-flow/analytics/performance-baseline.json`:
+
+```json
+{
+  "baseline_date": "2025-12-01",
+  "lighthouse": {
+    "performance": 85,
+    "accessibility": 95,
+    "best_practices": 90,
+    "seo": 100
+  },
+  "web_vitals": {
+    "ttfb_ms": 200,
+    "lcp_ms": 2500,
+    "cls": 0.1,
+    "fid_ms": 100
+  },
+  "bundle_size_kb": 150
+}
+```
+
+During staging validation, current metrics are compared against baseline:
+- **Regression threshold**: 10% (configurable via `PERF_REGRESSION_THRESHOLD` env var)
+- **Blocking**: Deployment blocked if any metric regresses beyond threshold
+- **Override**: Use `--skip-perf-check` to bypass (not recommended for production)
+
+To update baseline after intentional changes:
+```bash
+python .spec-flow/scripts/spec-cli.py update-perf-baseline --feature-dir "$FEATURE_DIR"
+```

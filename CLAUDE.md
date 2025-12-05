@@ -31,7 +31,7 @@ All workflow artifacts live in `specs/` (features) or `epics/` (complex work). T
 
 **Resume work**: `/feature continue` or `/epic continue`
 
-### Essential Commands (23 total)
+### Essential Commands (30 total)
 
 | Command | Purpose |
 |---------|---------|
@@ -41,17 +41,22 @@ All workflow artifacts live in `specs/` (features) or `epics/` (complex work). T
 | `/plan` | Generate implementation design |
 | `/tasks` | Create TDD task breakdown |
 | `/implement` | Execute tasks with TDD |
+| `/implement-epic` | Parallel sprint execution for epics |
 | `/optimize` | Run quality gates |
 | `/ship` | Deploy (--staging, --prod, status, budget) |
 | `/help` | Context-aware guidance |
 
-**Project Setup**: `/init`, `/init --preferences`, `/init --tokens`, `/roadmap`
+**Project Setup**: `/init`, `/init --preferences`, `/init --tokens`, `/roadmap`, `/prototype`
 
 **Context Management**: `/context next`, `/context todos`, `/context add`
 
 **Quality Gates**: `/gate ci`, `/gate sec`, `/fix-ci`
 
 **Create Extensions**: `/create prompt`, `/create command`, `/create agent`
+
+**Meta-Prompting**: `/create-prompt`, `/run-prompt`
+
+**Infrastructure**: `/audit-workflow`, `/heal-workflow`, `/workflow-health`
 
 ### Deployment Models (Auto-Detected)
 
@@ -63,7 +68,7 @@ Detection: git remote + staging branch + `.github/workflows/deploy-staging.yml`
 
 ### Archived Commands
 
-46 specialized commands are archived in `.claude/commands/_archived/`. Access via:
+39 specialized commands are archived in `.claude/commands/_archived/`. Access via:
 - `/help --all` to see full list
 - Direct invocation: `/_archived/command-name`
 
@@ -85,8 +90,8 @@ Resume: `/ship continue` or `/feature continue`
 
 ```
 .claude/agents/           — Specialist briefs (load on-demand)
-.claude/commands/         — 23 active slash commands
-.claude/commands/_archived/ — 46 specialized commands (hidden from /help)
+.claude/commands/         — 30 active slash commands
+.claude/commands/_archived/ — 39 specialized commands (hidden from /help)
 .claude/skills/           — Progressive disclosure content
 .spec-flow/scripts/       — Automation scripts
 .spec-flow/config/        — User preferences

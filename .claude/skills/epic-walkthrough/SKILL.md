@@ -12,6 +12,25 @@ Create walkthrough.md documenting the epic journey and trigger workflow audit/he
 - After deployment completes successfully
 - Via `/finalize` command
 
+## Template Reference
+
+Use the template at `.spec-flow/templates/epic/walkthrough.md` as the base structure.
+
+**Template variables** (replace with actual values):
+- `{{EPIC_TITLE}}`, `{{EPIC_NUMBER}}`, `{{EPIC_SLUG}}`
+- `{{START_DATE}}`, `{{END_DATE}}`, `{{DURATION_DAYS}}`, `{{DURATION_HOURS}}`
+- `{{SPRINT_COUNT}}`, `{{TASKS_COMPLETED}}`
+- `{{EXPECTED_VELOCITY}}`, `{{ACTUAL_VELOCITY}}`
+- Phase durations, sprint details, quality gate results
+- File change statistics, deployment information
+
+**Data sources**:
+- `state.yaml` - Phase timestamps, sprint status
+- `epic-spec.md` - Business value, constraints
+- `sprint-plan.md` - Sprint dependencies, estimates
+- `optimization-report.md` - Quality gate results
+- `git log` - Commit history, file statistics
+
 ## Walkthrough Structure
 
 ```xml

@@ -304,6 +304,24 @@ def cmd_ship_prod(args):
         script_args.append(args.feature_dir)
     return run_script('ship-prod-workflow', script_args)
 
+def cmd_ship_rollback(args):
+    """Rollback to previous deployment version"""
+    script_args = []
+    if args.version:
+        script_args.append(args.version)
+    if args.feature_dir:
+        script_args.extend(['--feature-dir', args.feature_dir])
+    if args.no_input:
+        script_args.append('--no-input')
+    return run_script('ship-rollback', script_args)
+
+def cmd_ship_recover(args):
+    """Recover corrupted state.yaml from git history"""
+    script_args = []
+    if args.feature_dir:
+        script_args.extend(['--feature-dir', args.feature_dir])
+    return run_script('ship-recover', script_args)
+
 def cmd_compact(args):
     """Run context compaction"""
     # PowerShell uses PascalCase parameters: -FeatureDir, -Phase
@@ -689,6 +707,16 @@ Examples:
     ship_prod_parser = subparsers.add_parser('ship-prod', help='Deploy to production via tagged promotion')
     ship_prod_parser.add_argument('feature_dir', nargs='?', help='Feature directory path (optional, auto-detected)')
 
+    # ship-rollback
+    ship_rollback_parser = subparsers.add_parser('ship-rollback', help='Rollback to previous deployment version')
+    ship_rollback_parser.add_argument('version', nargs='?', help='Version to rollback to (e.g., v1.2.3)')
+    ship_rollback_parser.add_argument('--feature-dir', help='Feature directory path')
+    ship_rollback_parser.add_argument('--no-input', action='store_true', help='Non-interactive mode')
+
+    # ship-recover
+    ship_recover_parser = subparsers.add_parser('ship-recover', help='Recover corrupted state.yaml from git history')
+    ship_recover_parser.add_argument('--feature-dir', help='Feature directory path')
+
     # compact
     compact_parser = subparsers.add_parser('compact', help='Compact context for phase')
     compact_parser.add_argument('--feature-dir', required=True, help='Feature directory path')
@@ -872,6 +900,8 @@ Examples:
         'feature': cmd_feature,
         'ship-finalize': cmd_ship_finalize,
         'ship-prod': cmd_ship_prod,
+        'ship-rollback': cmd_ship_rollback,
+        'ship-recover': cmd_ship_recover,
         'compact': cmd_compact,
         'create-feature': cmd_create_feature,
         'calculate-tokens': cmd_calculate_tokens,

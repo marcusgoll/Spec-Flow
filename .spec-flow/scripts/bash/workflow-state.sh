@@ -111,9 +111,20 @@ artifacts:
 
 quality_gates: {}
 
+session:
+  id: null
+  started_at: null
+  last_activity: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+  phase_at_start: spec-flow
+  tasks_at_start: 0
+  tasks_completed_this_session: 0
+  decisions_made: []
+  handoffs: []
+  autopilot_enabled: false
+
 metadata:
-  schema_version: "2.1.0"
-  workflow_version: "2.1.0"
+  schema_version: "2.2.0"
+  workflow_version: "2.2.0"
 EOF
 
   echo "✅ Workflow state initialized: $state_file"
@@ -883,6 +894,254 @@ display_workflow_summary() {
   echo ""
 }
 
+# ============================================================================
+# Session Management Functions
+# ============================================================================
+
+start_session() {
+  local feature_dir="$1"
+  local session_id="${2:-session-$(date +%Y%m%d-%H%M%S)}"
+
+  # Auto-migrate if needed
+  migrate_json_to_yaml_if_needed "$feature_dir"
+
+  local state_file="$feature_dir/state.yaml"
+
+  if [ ! -f "$state_file" ]; then
+    echo "Error: Workflow state not found: $state_file" >&2
+    return 1
+  fi
+
+  local timestamp
+  timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  # Get current phase and task count
+  local current_phase tasks_count
+  current_phase=$(yq eval '.workflow.phase' "$state_file")
+
+  # Count tasks if tasks.md exists
+  local tasks_file="$feature_dir/tasks.md"
+  if [ -f "$tasks_file" ]; then
+    tasks_count=$(grep -c '^\- \[' "$tasks_file" 2>/dev/null || echo "0")
+  else
+    tasks_count=0
+  fi
+
+  # Update session info
+  yq eval -i --arg sid "$session_id" --arg ts "$timestamp" --arg phase "$current_phase" \
+    '.session.id = $sid | .session.started_at = $ts | .session.last_activity = $ts | .session.phase_at_start = $phase | .session.tasks_completed_this_session = 0' \
+    "$state_file"
+
+  # Note: tasks_count is numeric, safe to interpolate
+  yq eval -i ".session.tasks_at_start = $tasks_count" "$state_file"
+
+  echo "Session started: $session_id"
+}
+
+end_session() {
+  local feature_dir="$1"
+  local session_summary="${2:-}"
+
+  # Auto-migrate if needed
+  migrate_json_to_yaml_if_needed "$feature_dir"
+
+  local state_file="$feature_dir/state.yaml"
+
+  if [ ! -f "$state_file" ]; then
+    echo "Error: Workflow state not found: $state_file" >&2
+    return 1
+  fi
+
+  local timestamp
+  timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  # Get session info
+  local session_id started_at
+  session_id=$(yq eval '.session.id' "$state_file")
+  started_at=$(yq eval '.session.started_at' "$state_file")
+
+  # Calculate session duration if we have start time
+  if [ "$started_at" != "null" ] && [ -n "$started_at" ]; then
+    local started_epoch ended_epoch duration
+
+    if date -d "$started_at" +%s &>/dev/null; then
+      started_epoch=$(date -d "$started_at" +%s)
+      ended_epoch=$(date +%s)
+    elif date -j -f "%Y-%m-%dT%H:%M:%SZ" "$started_at" +%s &>/dev/null; then
+      started_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$started_at" +%s)
+      ended_epoch=$(date +%s)
+    else
+      duration=0
+    fi
+
+    if [ -z "$duration" ]; then
+      duration=$((ended_epoch - started_epoch))
+    fi
+
+    # Update with duration
+    yq eval -i --arg ts "$timestamp" ".session.ended_at = \$ts | .session.duration_seconds = $duration" "$state_file"
+  else
+    yq eval -i --arg ts "$timestamp" '.session.ended_at = $ts' "$state_file"
+  fi
+
+  # Add summary if provided
+  if [ -n "$session_summary" ]; then
+    yq eval -i --arg summary "$session_summary" '.session.summary = $summary' "$state_file"
+  fi
+
+  echo "Session ended: $session_id"
+}
+
+update_session_activity() {
+  local feature_dir="$1"
+
+  # Auto-migrate if needed
+  migrate_json_to_yaml_if_needed "$feature_dir"
+
+  local state_file="$feature_dir/state.yaml"
+
+  if [ ! -f "$state_file" ]; then
+    return 1
+  fi
+
+  local timestamp
+  timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  yq eval -i --arg ts "$timestamp" '.session.last_activity = $ts' "$state_file"
+}
+
+record_session_decision() {
+  local feature_dir="$1"
+  local decision="$2"
+
+  # Auto-migrate if needed
+  migrate_json_to_yaml_if_needed "$feature_dir"
+
+  local state_file="$feature_dir/state.yaml"
+
+  if [ ! -f "$state_file" ]; then
+    echo "Error: Workflow state not found: $state_file" >&2
+    return 1
+  fi
+
+  # Add decision to array
+  yq eval -i --arg dec "$decision" '.session.decisions_made += [$dec]' "$state_file"
+}
+
+increment_session_tasks() {
+  local feature_dir="$1"
+  local count="${2:-1}"
+
+  # Auto-migrate if needed
+  migrate_json_to_yaml_if_needed "$feature_dir"
+
+  local state_file="$feature_dir/state.yaml"
+
+  if [ ! -f "$state_file" ]; then
+    return 1
+  fi
+
+  # Increment tasks completed this session
+  local current
+  current=$(yq eval '.session.tasks_completed_this_session' "$state_file")
+  current=${current:-0}
+
+  local new_count=$((current + count))
+  yq eval -i ".session.tasks_completed_this_session = $new_count" "$state_file"
+}
+
+record_session_handoff() {
+  local feature_dir="$1"
+  local handoff_id="$2"
+
+  # Auto-migrate if needed
+  migrate_json_to_yaml_if_needed "$feature_dir"
+
+  local state_file="$feature_dir/state.yaml"
+
+  if [ ! -f "$state_file" ]; then
+    echo "Error: Workflow state not found: $state_file" >&2
+    return 1
+  fi
+
+  local timestamp
+  timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  # Add handoff to array with timestamp
+  yq eval -i --arg hid "$handoff_id" --arg ts "$timestamp" \
+    '.session.handoffs += [{"id": $hid, "at": $ts}]' "$state_file"
+
+  # Also update last handoff fields
+  yq eval -i --arg hid "$handoff_id" --arg ts "$timestamp" \
+    '.session.last_handoff_id = $hid | .session.last_handoff_at = $ts' "$state_file"
+}
+
+enable_autopilot() {
+  local feature_dir="$1"
+
+  # Auto-migrate if needed
+  migrate_json_to_yaml_if_needed "$feature_dir"
+
+  local state_file="$feature_dir/state.yaml"
+
+  if [ ! -f "$state_file" ]; then
+    return 1
+  fi
+
+  yq eval -i '.session.autopilot_enabled = true' "$state_file"
+  echo "Autopilot mode enabled for current workflow"
+}
+
+disable_autopilot() {
+  local feature_dir="$1"
+
+  # Auto-migrate if needed
+  migrate_json_to_yaml_if_needed "$feature_dir"
+
+  local state_file="$feature_dir/state.yaml"
+
+  if [ ! -f "$state_file" ]; then
+    return 1
+  fi
+
+  yq eval -i '.session.autopilot_enabled = false' "$state_file"
+  echo "Autopilot mode disabled"
+}
+
+get_session_summary() {
+  local feature_dir="$1"
+
+  # Auto-migrate if needed
+  migrate_json_to_yaml_if_needed "$feature_dir"
+
+  local state_file="$feature_dir/state.yaml"
+
+  if [ ! -f "$state_file" ]; then
+    echo "No workflow state found"
+    return 1
+  fi
+
+  # Extract session info
+  local session_id started_at last_activity phase_at_start tasks_completed decisions_count
+  session_id=$(yq eval '.session.id // "none"' "$state_file")
+  started_at=$(yq eval '.session.started_at // "N/A"' "$state_file")
+  last_activity=$(yq eval '.session.last_activity // "N/A"' "$state_file")
+  phase_at_start=$(yq eval '.session.phase_at_start // "N/A"' "$state_file")
+  tasks_completed=$(yq eval '.session.tasks_completed_this_session // 0' "$state_file")
+  decisions_count=$(yq eval '.session.decisions_made | length' "$state_file" 2>/dev/null || echo "0")
+
+  echo ""
+  echo "Session Summary"
+  echo "==============="
+  echo "ID:              $session_id"
+  echo "Started:         $started_at"
+  echo "Last Activity:   $last_activity"
+  echo "Phase at Start:  $phase_at_start"
+  echo "Tasks Completed: $tasks_completed"
+  echo "Decisions Made:  $decisions_count"
+  echo ""
+}
+
 # Export new timing functions
 export -f start_phase_timing
 export -f complete_phase_timing
@@ -891,3 +1150,14 @@ export -f complete_sub_phase_timing
 export -f calculate_workflow_metrics
 export -f format_duration
 export -f display_workflow_summary
+
+# Export session management functions
+export -f start_session
+export -f end_session
+export -f update_session_activity
+export -f record_session_decision
+export -f increment_session_tasks
+export -f record_session_handoff
+export -f enable_autopilot
+export -f disable_autopilot
+export -f get_session_summary

@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # Finalization workflow - Documentation updates and housekeeping after production deployment
 # Standards: Keep a Changelog, SemVer, Shields.io badges, GitHub CLI
+# shellcheck disable=SC2086  # Word splitting intentional for $range in git log
+# shellcheck disable=SC2155  # Declare and assign separately - performance trade-off accepted
 
 set -euo pipefail
+
+# Error handler for debugging
+trap 'log_error "Error on line $LINENO. Exit code: $?"' ERR
 
 # Color output
 RED='\033[0;31m'
@@ -54,9 +59,361 @@ generate_epic_walkthrough() {
 
     log_info "Generating epic walkthrough for: $epic_dir"
 
-    # This would be a complex function - for now, placeholder
-    log_warning "Epic walkthrough generation not yet implemented in bash"
-    log_info "TODO: Implement walkthrough generation using .spec-flow/templates/walkthrough.xml"
+    local walkthrough_file="${epic_dir}/walkthrough.md"
+    local sprint_plan="${epic_dir}/sprint-plan.md"
+    local epic_spec="${epic_dir}/epic-spec.md"
+    local tasks_file="${epic_dir}/tasks.md"
+    local notes_file="${epic_dir}/NOTES.md"
+    local state_file="${epic_dir}/state.yaml"
+
+    # Extract epic metadata
+    local epic_title epic_slug start_date end_date
+    epic_title="$(yq -r '.epic.title // "Unknown Epic"' "$state_file" 2>/dev/null || echo "Unknown Epic")"
+    epic_slug="$(yq -r '.epic.slug // "unknown"' "$state_file" 2>/dev/null || basename "$epic_dir")"
+    start_date="$(yq -r '.epic.started_at // ""' "$state_file" 2>/dev/null || echo "")"
+    end_date="$(date +%F)"
+
+    # Calculate duration
+    local duration_days="N/A"
+    if [ -n "$start_date" ]; then
+        local start_epoch end_epoch
+        start_epoch="$(date -d "$start_date" +%s 2>/dev/null || date -j -f "%Y-%m-%d" "$start_date" +%s 2>/dev/null || echo 0)"
+        end_epoch="$(date +%s)"
+        if [ "$start_epoch" -gt 0 ]; then
+            duration_days="$(( (end_epoch - start_epoch) / 86400 ))"
+        fi
+    fi
+
+    # Count sprints from sprint-plan.md
+    local total_sprints=0
+    local completed_sprints=0
+    if [ -f "$sprint_plan" ]; then
+        total_sprints="$(grep -c "^## Sprint" "$sprint_plan" 2>/dev/null || echo 0)"
+        completed_sprints="$(grep -c "\[x\]" "$sprint_plan" 2>/dev/null || echo "$total_sprints")"
+    fi
+
+    # Count tasks from tasks.md
+    local total_tasks=0
+    local completed_tasks=0
+    if [ -f "$tasks_file" ]; then
+        total_tasks="$(grep -cE "^\s*-\s*\[" "$tasks_file" 2>/dev/null || echo 0)"
+        completed_tasks="$(grep -cE "^\s*-\s*\[x\]" "$tasks_file" 2>/dev/null || echo 0)"
+    fi
+
+    # Calculate velocity (tasks per sprint)
+    local velocity="N/A"
+    if [ "$total_sprints" -gt 0 ]; then
+        velocity="$(echo "scale=1; $completed_tasks / $total_sprints" | bc 2>/dev/null || echo "N/A")"
+    fi
+
+    # Extract blockers from NOTES.md
+    local blockers_count=0
+    if [ -f "$notes_file" ]; then
+        blockers_count="$(grep -ciE "blocker|blocked|issue|problem|error" "$notes_file" 2>/dev/null || echo 0)"
+    fi
+
+    # Generate ASCII velocity chart
+    local velocity_chart=""
+    if [ -f "$sprint_plan" ]; then
+        velocity_chart="$(generate_velocity_chart "$sprint_plan" "$tasks_file")"
+    fi
+
+    # Extract key decisions from NOTES.md
+    local key_decisions=""
+    if [ -f "$notes_file" ]; then
+        key_decisions="$(grep -E "^[-*]\s*(Decision|Decided|Chose|Selected|Using)" "$notes_file" 2>/dev/null | head -10 || echo "- No key decisions recorded")"
+    fi
+
+    # Generate walkthrough file
+    cat > "$walkthrough_file" <<EOF
+# Epic Walkthrough: ${epic_title}
+
+**Epic**: ${epic_slug}
+**Duration**: ${start_date:-"Unknown"} → ${end_date} (${duration_days} days)
+**Status**: ✅ Completed
+
+---
+
+## Executive Summary
+
+This epic was completed in **${duration_days} days** across **${total_sprints} sprints**.
+
+### Key Metrics
+
+| Metric | Value |
+|--------|-------|
+| Total Sprints | ${total_sprints} |
+| Completed Sprints | ${completed_sprints} |
+| Total Tasks | ${total_tasks} |
+| Completed Tasks | ${completed_tasks} |
+| Average Velocity | ${velocity} tasks/sprint |
+| Blockers Encountered | ${blockers_count} |
+
+---
+
+## Sprint-by-Sprint Breakdown
+
+EOF
+
+    # Add sprint details from sprint-plan.md
+    if [ -f "$sprint_plan" ]; then
+        # Extract sprint sections
+        local sprint_num=1
+        while IFS= read -r line; do
+            if [[ "$line" =~ ^##[[:space:]]Sprint ]]; then
+                echo "### Sprint ${sprint_num}" >> "$walkthrough_file"
+                echo "" >> "$walkthrough_file"
+                ((sprint_num++))
+            elif [[ "$line" =~ ^\s*-\s*\[ ]]; then
+                echo "$line" >> "$walkthrough_file"
+            fi
+        done < "$sprint_plan"
+        echo "" >> "$walkthrough_file"
+    else
+        echo "*No sprint-plan.md found*" >> "$walkthrough_file"
+        echo "" >> "$walkthrough_file"
+    fi
+
+    # Add velocity chart
+    cat >> "$walkthrough_file" <<EOF
+---
+
+## Velocity Trends
+
+\`\`\`
+${velocity_chart:-"No velocity data available"}
+\`\`\`
+
+---
+
+## Key Decisions
+
+${key_decisions}
+
+---
+
+## Lessons Learned
+
+<!-- Add lessons learned during epic execution -->
+
+### What Went Well
+-
+
+### What Could Be Improved
+-
+
+### Action Items for Next Epic
+-
+
+---
+
+## Files Modified
+
+\`\`\`
+$(git log --name-only --pretty=format: --since="${start_date:-"1 year ago"}" -- . 2>/dev/null | sort -u | head -30 || echo "Unable to retrieve file list")
+\`\`\`
+
+---
+
+*Generated by Spec-Flow /finalize on ${end_date}*
+EOF
+
+    log_success "Epic walkthrough generated: ${walkthrough_file}"
+}
+
+# Generate ASCII velocity chart
+generate_velocity_chart() {
+    local sprint_plan="$1"
+    local tasks_file="$2"
+
+    # Simple ASCII bar chart of tasks per sprint
+    local chart=""
+    local sprint_num=1
+    local max_tasks=10
+
+    # Count tasks per sprint (simplified - counts all tasks divided by sprints)
+    local total_tasks
+    total_tasks="$(grep -cE "^\s*-\s*\[" "$tasks_file" 2>/dev/null || echo 0)"
+    local total_sprints
+    total_sprints="$(grep -c "^## Sprint" "$sprint_plan" 2>/dev/null || echo 1)"
+
+    if [ "$total_sprints" -eq 0 ]; then
+        total_sprints=1
+    fi
+
+    local avg_per_sprint=$(( total_tasks / total_sprints ))
+
+    # Generate simple bar chart
+    chart="Tasks per Sprint (avg: ${avg_per_sprint})\n"
+    chart+="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+    for i in $(seq 1 "$total_sprints"); do
+        local bar_len=$avg_per_sprint
+        if [ "$bar_len" -gt 20 ]; then
+            bar_len=20
+        fi
+        local bar=""
+        for j in $(seq 1 "$bar_len"); do
+            bar+="█"
+        done
+        chart+="Sprint $i: ${bar} (${avg_per_sprint})\n"
+    done
+
+    echo -e "$chart"
+}
+
+# Detect patterns across completed epics
+detect_patterns() {
+    log_info "Analyzing patterns across completed epics"
+
+    local analytics_dir=".spec-flow/analytics"
+    local patterns_file="${analytics_dir}/patterns.json"
+    mkdir -p "$analytics_dir"
+
+    # Count completed epics
+    local completed_epics
+    completed_epics="$(find epics -maxdepth 2 -name "completed" -type d 2>/dev/null | wc -l || echo 0)"
+
+    if [ "$completed_epics" -lt 2 ]; then
+        log_info "Need at least 2 completed epics for pattern detection (found: ${completed_epics})"
+        return 0
+    fi
+
+    log_info "Found ${completed_epics} completed epics, analyzing patterns..."
+
+    # Initialize pattern data
+    local total_duration=0
+    local total_tasks=0
+    local total_sprints=0
+    local total_blockers=0
+    local epic_count=0
+
+    # Collect common blocker keywords
+    local blocker_keywords=""
+    local task_types=""
+    local quality_gate_failures=""
+
+    # Iterate over completed epics
+    for epic_dir in epics/*/; do
+        local state_file="${epic_dir}state.yaml"
+        local notes_file="${epic_dir}NOTES.md"
+        local walkthrough="${epic_dir}completed/walkthrough.md"
+
+        # Skip if no state file
+        [ -f "$state_file" ] || continue
+
+        # Check if epic is completed
+        local status
+        status="$(yq -r '.status // ""' "$state_file" 2>/dev/null || echo "")"
+        if [ "$status" != "complete" ] && [ "$status" != "completed" ]; then
+            continue
+        fi
+
+        ((epic_count++))
+
+        # Extract metrics from state.yaml
+        local start_date end_date
+        start_date="$(yq -r '.epic.started_at // ""' "$state_file" 2>/dev/null || echo "")"
+        end_date="$(yq -r '.epic.completed_at // ""' "$state_file" 2>/dev/null || echo "")"
+
+        # Calculate duration if dates available
+        if [ -n "$start_date" ] && [ -n "$end_date" ]; then
+            local start_epoch end_epoch
+            start_epoch="$(date -d "$start_date" +%s 2>/dev/null || echo 0)"
+            end_epoch="$(date -d "$end_date" +%s 2>/dev/null || echo 0)"
+            if [ "$start_epoch" -gt 0 ] && [ "$end_epoch" -gt 0 ]; then
+                local duration=$(( (end_epoch - start_epoch) / 86400 ))
+                total_duration=$((total_duration + duration))
+            fi
+        fi
+
+        # Count tasks from tasks.md or walkthrough
+        if [ -f "${epic_dir}tasks.md" ]; then
+            local tasks
+            tasks="$(grep -cE "^\s*-\s*\[" "${epic_dir}tasks.md" 2>/dev/null || echo 0)"
+            total_tasks=$((total_tasks + tasks))
+        fi
+
+        # Count sprints
+        if [ -f "${epic_dir}sprint-plan.md" ]; then
+            local sprints
+            sprints="$(grep -c "^## Sprint" "${epic_dir}sprint-plan.md" 2>/dev/null || echo 0)"
+            total_sprints=$((total_sprints + sprints))
+        fi
+
+        # Extract blocker patterns from NOTES.md
+        if [ -f "$notes_file" ]; then
+            local blockers
+            blockers="$(grep -iE "blocker|blocked|stuck|issue|problem" "$notes_file" 2>/dev/null || echo "")"
+            if [ -n "$blockers" ]; then
+                blocker_keywords+="$blockers\n"
+                total_blockers=$((total_blockers + $(echo -e "$blockers" | wc -l)))
+            fi
+        fi
+
+        # Extract quality gate failures
+        if [ -f "${epic_dir}optimization-report.md" ]; then
+            local failures
+            failures="$(grep -E "❌|FAIL|failed" "${epic_dir}optimization-report.md" 2>/dev/null || echo "")"
+            if [ -n "$failures" ]; then
+                quality_gate_failures+="$failures\n"
+            fi
+        fi
+    done
+
+    # Calculate averages
+    local avg_duration=0
+    local avg_tasks=0
+    local avg_sprints=0
+    local avg_blockers=0
+
+    if [ "$epic_count" -gt 0 ]; then
+        avg_duration=$((total_duration / epic_count))
+        avg_tasks=$((total_tasks / epic_count))
+        avg_sprints=$((total_sprints / epic_count))
+        avg_blockers=$((total_blockers / epic_count))
+    fi
+
+    # Extract common blocker themes
+    local common_blockers=""
+    if [ -n "$blocker_keywords" ]; then
+        common_blockers="$(echo -e "$blocker_keywords" | grep -oE '\b(API|auth|database|CI|deploy|test|config|env)\b' | sort | uniq -c | sort -rn | head -5 | awk '{print $2}' | tr '\n' ',' | sed 's/,$//')"
+    fi
+
+    # Write patterns.json
+    cat > "$patterns_file" <<EOF
+{
+  "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "epic_count": ${epic_count},
+  "averages": {
+    "duration_days": ${avg_duration},
+    "tasks_per_epic": ${avg_tasks},
+    "sprints_per_epic": ${avg_sprints},
+    "blockers_per_epic": ${avg_blockers}
+  },
+  "velocity": {
+    "tasks_per_sprint": $(echo "scale=1; ${avg_tasks} / (${avg_sprints} + 1)" | bc 2>/dev/null || echo "0")
+  },
+  "common_blocker_themes": "${common_blockers:-none}",
+  "quality_gate_failure_count": $(echo -e "$quality_gate_failures" | grep -c "." || echo 0),
+  "recommendations": [
+    $([ "$avg_blockers" -gt 3 ] && echo '"Consider adding more upfront clarification to reduce blockers",' || echo "")
+    $([ "$avg_duration" -gt 14 ] && echo '"Average epic duration exceeds 2 weeks - consider smaller scope",' || echo "")
+    $([ -n "$common_blockers" ] && echo "\"Focus on: ${common_blockers} - recurring blocker themes\"," || echo "")
+    "Review patterns after next epic"
+  ]
+}
+EOF
+
+    log_success "Pattern analysis complete: ${patterns_file}"
+    log_info "Analyzed ${epic_count} epics | Avg duration: ${avg_duration}d | Avg velocity: ${avg_tasks}/${avg_sprints} tasks/sprint"
+
+    # Check if patterns suggest workflow improvements
+    if [ "$avg_blockers" -gt 3 ] || [ "$avg_duration" -gt 14 ]; then
+        log_warning "Patterns suggest workflow improvements may help"
+        log_info "Run /heal-workflow to review and apply improvements"
+        echo "PATTERNS_SUGGEST_HEALING=true"
+    fi
 }
 
 # Load feature context
@@ -355,7 +712,11 @@ EOF
 commit_docs() {
     log_info "Committing documentation changes"
 
-    git add CHANGELOG.md README.md docs/ 2>/dev/null || true
+    # Add documentation files (ignore errors for missing files)
+    for doc in CHANGELOG.md README.md; do
+        [ -f "$doc" ] && git add "$doc" 2>/dev/null || log_info "Skipped $doc (not found or no changes)"
+    done
+    [ -d "docs/" ] && git add docs/ 2>/dev/null || log_info "Skipped docs/ (not found or no changes)"
 
     if git diff --cached --quiet; then
         log_info "No documentation changes to commit"
@@ -492,13 +853,23 @@ main() {
     # Step 1: Load context
     load_feature_context
 
-    # Step 2: Epic walkthrough (if applicable)
+    # Step 2: Epic walkthrough and pattern detection (if applicable)
     local workspace_type
     workspace_type="$(detect_workspace_type)"
+    export WORKFLOW_TYPE="$workspace_type"
+
     if [ "$workspace_type" == "epic" ]; then
         local epic_dir
         epic_dir="$(dirname "$(ls epics/*/epic-spec.xml 2>/dev/null | head -1)")"
+        export WORKSPACE="$epic_dir"
+
+        # Generate walkthrough
         generate_epic_walkthrough "$epic_dir"
+
+        # Run pattern detection after epic completion
+        detect_patterns
+    else
+        export WORKSPACE="${FEATURE_DIR%/}"
     fi
 
     # Step 3: Update CHANGELOG.md

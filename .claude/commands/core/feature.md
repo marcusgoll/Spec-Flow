@@ -1,7 +1,7 @@
 ---
 description: Execute feature development workflow from specification through production deployment with automated quality gates
 argument-hint: [description|slug|continue|next|epic:<name>|epic:<name>:sprint:<num>|sprint:<num>]
-allowed-tools: Bash(python .spec-flow/scripts/spec-cli.py:*), Bash(git:*), Read(specs/**), Read(state.yaml), Read(.github/**), SlashCommand(/spec), SlashCommand(/clarify), SlashCommand(/plan), SlashCommand(/tasks), SlashCommand(/design-*), SlashCommand(/analyze), SlashCommand(/implement), SlashCommand(/optimize), SlashCommand(/ship-staging), SlashCommand(/ship-prod), SlashCommand(/finalize), TodoWrite
+allowed-tools: Bash(python .spec-flow/scripts/spec-cli.py:*), Bash(git:*), Read(specs/**), Read(state.yaml), Read(.github/**), SlashCommand(/spec), SlashCommand(/clarify), SlashCommand(/plan), SlashCommand(/tasks), SlashCommand(/phases:validate), SlashCommand(/implement), SlashCommand(/optimize), SlashCommand(/deployment:ship-staging), SlashCommand(/deployment:ship-prod), SlashCommand(/ship), SlashCommand(/finalize), TodoWrite
 version: 4.0
 updated: 2025-12-04
 ---
@@ -44,12 +44,7 @@ Deployment model detection:
 <process>
 ## Step 0.1: Initialize Feature State
 
-**Parse user input and initialize feature workspace:**
-
-```javascript
-const args = "$ARGUMENTS".trim();
-const featureDescription = args;
-```
+**Parse user input and initialize feature workspace via spec-cli.py.**
 
 **Display autopilot mode:**
 
@@ -108,9 +103,122 @@ python .spec-flow/scripts/spec-cli.py feature "$ARGUMENTS"
        echo "✅ Linked to roadmap issue #$ROADMAP_ISSUE"
    fi
    ```
-3. Execute workflow phases based on current state
-4. Handle manual gates appropriately
-5. Resume from correct phase if using `continue` mode
+3. **Execute autopilot phase loop** (see below)
+
+---
+
+## Step 0.2: Autopilot Phase Orchestration
+
+**CRITICAL**: This is the autopilot loop that drives the entire workflow. After initialization, execute each phase in sequence until completion or error.
+
+### Determine Starting Phase
+
+Read `state.yaml` to find current phase:
+
+```bash
+FEATURE_DIR=$(ls -td specs/[0-9]*-* 2>/dev/null | head -1)
+STATE_FILE="$FEATURE_DIR/state.yaml"
+
+# Read current phase status
+CURRENT_PHASE=$(yq eval '.phase' "$STATE_FILE" 2>/dev/null || echo "init")
+echo "Current phase: $CURRENT_PHASE"
+```
+
+### Phase Execution Loop
+
+**Execute phases in sequence using SlashCommand:**
+
+```javascript
+const PHASES = [
+  { name: "spec", command: "/spec", next: "clarify" },
+  { name: "clarify", command: "/clarify", next: "plan", optional: true },
+  { name: "plan", command: "/plan", next: "tasks" },
+  { name: "tasks", command: "/tasks", next: "analyze" },
+  { name: "analyze", command: "/phases:validate", next: "implement" },
+  { name: "implement", command: "/implement", next: "optimize" },
+  { name: "optimize", command: "/optimize", next: "ship" },
+  { name: "ship", command: "/ship", next: "finalize" },
+  { name: "finalize", command: "/finalize", next: "complete" }
+];
+
+// Find current phase index
+let currentIndex = PHASES.findIndex(p => p.name === currentPhase);
+if (currentIndex === -1) currentIndex = 0; // Start from beginning
+
+// Execute phases in sequence
+while (currentIndex < PHASES.length) {
+  const phase = PHASES[currentIndex];
+
+  console.log(`\n${"═".repeat(60)}`);
+  console.log(`🔄 Executing Phase: ${phase.name.toUpperCase()}`);
+  console.log(`${"═".repeat(60)}\n`);
+
+  // Invoke phase command via SlashCommand
+  await SlashCommand(phase.command);
+
+  // Read state to check if phase succeeded
+  const state = readYAML(STATE_FILE);
+  const phaseStatus = state.phases?.[phase.name];
+
+  if (phaseStatus === "failed") {
+    console.log(`\n❌ Phase ${phase.name} FAILED`);
+    console.log(`   Check ${FEATURE_DIR}/error-log.md for details`);
+    console.log(`   Fix issues and run: /feature continue`);
+    break;
+  }
+
+  if (phaseStatus === "skipped" && phase.optional) {
+    console.log(`⏭️  Phase ${phase.name} skipped (optional)`);
+  }
+
+  // Advance to next phase
+  currentIndex++;
+
+  if (currentIndex >= PHASES.length) {
+    console.log(`\n${"═".repeat(60)}`);
+    console.log(`✅ FEATURE COMPLETE`);
+    console.log(`${"═".repeat(60)}\n`);
+  }
+}
+```
+
+### Manual Gate Detection
+
+**If a phase requires manual approval, pause the loop:**
+
+```javascript
+// Check for manual gates after phase completion
+const manualGates = ["mockup_approval", "staging_validation"];
+
+for (const gate of manualGates) {
+  const gateStatus = state.gates?.[gate];
+
+  if (gateStatus === "pending") {
+    console.log(`\n⏸️  MANUAL GATE: ${gate.replace("_", " ")}`);
+    console.log(`   Workflow paused for approval`);
+    console.log(`   After approval, run: /feature continue`);
+
+    // Update state to reflect pause
+    state.status = "paused";
+    state.paused_at = new Date().toISOString();
+    state.paused_reason = gate;
+    writeYAML(STATE_FILE, state);
+
+    break; // Exit loop
+  }
+}
+```
+
+### Error Recovery
+
+**On any phase failure:**
+
+1. State is automatically saved by the phase command
+2. Error details logged to `error-log.md`
+3. User fixes issues manually
+4. Resume with `/feature continue` which reads state and continues from failed phase
+
+**Key principle**: The loop reads state after EVERY phase invocation. Never assume success - always verify from state.yaml.
    </process>
 
 <workflow>
@@ -201,7 +309,7 @@ Generates `plan.md` with architecture decisions and implementation approach.
 **Phase 3: Cross-Artifact Analysis** (automatic):
 
 ```bash
-/analyze
+/phases:validate
 ```
 
 **Phase 4: Implementation** (automatic):
@@ -270,11 +378,42 @@ The workflow flows continuously from specification through deployment:
 
 When running `/feature continue`:
 
-1. **Detect feature workspace and branch:**
+### Step 0: Session Context Restoration
 
-   ```bash
-   # Run detection utility to find feature workspace
-   WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null || pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
+**Check for handoff documents and session state:**
+
+```bash
+# Detect active workflow
+WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null)
+SLUG=$(echo "$WORKFLOW_INFO" | grep -o '"slug":"[^"]*"' | cut -d'"' -f4)
+FEATURE_DIR="specs/$SLUG"
+
+# Display session status
+bash .spec-flow/scripts/bash/session-manager.sh status 2>/dev/null || true
+
+# Check for handoff document
+if [ -f "$FEATURE_DIR/sessions/latest-handoff.md" ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📋 Handoff Available"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    # Show handoff summary (first 20 lines)
+    head -20 "$FEATURE_DIR/sessions/latest-handoff.md"
+    echo ""
+    echo "Full handoff: $FEATURE_DIR/sessions/latest-handoff.md"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+fi
+
+# Start new session
+bash .spec-flow/scripts/bash/session-manager.sh start 2>/dev/null || true
+```
+
+### Step 1: Detect feature workspace and branch
+
+```bash
+# Run detection utility to find feature workspace
+WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null || pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
 
    if [ $? -eq 0 ]; then
        WORKFLOW_TYPE=$(echo "$WORKFLOW_INFO" | jq -r '.type')

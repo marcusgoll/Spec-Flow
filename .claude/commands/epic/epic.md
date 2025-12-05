@@ -183,7 +183,7 @@ PROTOTYPE_EXISTS=$(test -f design/prototype/state.yaml && echo "true" || echo "f
    }
    ```
 
-4. **If "Yes"**: Pause and suggest running `/prototype update`
+4. **If "Yes"**: Pause and suggest running `/project:prototype update`
 5. **If "Later" or "Not needed"**: Continue to specification phase
 
 **If no prototype exists**: Skip silently (backward compatible)
@@ -262,7 +262,7 @@ EPIC_SOURCE=$(yq eval '.source // "manual"' "$EPIC_DIR/state.yaml" 2>/dev/null)
 
 6. **If "Yes"**: Skip to Step 2 (Planning Phase)
 7. **If "Modify spec"**: Open epic-spec.md for editing, then proceed
-8. **If "Add more features"**: Pause and suggest `/prototype explore`
+8. **If "Add more features"**: Pause and suggest `/project:prototype explore`
 
 **If `source: manual` or not set**: Proceed with normal Step 1 scoping questions.
 
@@ -489,12 +489,92 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 **NEW in v5.0**: With interactive scoping (Step 1.5), /clarify should **rarely** be needed for epics.
 
+**Ambiguity Score Algorithm:**
+
+```javascript
+function calculateAmbiguityScore(epicSpecPath) {
+  const spec = readFile(epicSpecPath);
+  let score = 0;
+
+  // Factor 1: Explicit placeholders (10 points each, max 50)
+  const placeholders = (spec.match(/\[NEEDS CLARIFICATION\]/g) || []).length;
+  score += Math.min(placeholders * 10, 50);
+
+  // Factor 2: Missing required sections (15 points each)
+  const requiredSections = [
+    'Business Value',     // Why this matters
+    'Success Metrics',    // How we measure success
+    'Constraints',        // Technical/time/resource limits
+    'Subsystems'          // What systems are involved
+  ];
+  for (const section of requiredSections) {
+    if (!spec.includes(`## ${section}`) && !spec.includes(`### ${section}`)) {
+      score += 15;
+    }
+  }
+
+  // Factor 3: Vague language indicators (5 points each, max 25)
+  const vaguePatterns = [
+    /\bsomehow\b/i, /\bmaybe\b/i, /\bpossibly\b/i,
+    /\bTBD\b/, /\bTBC\b/, /\?\?\?/,
+    /\bsomething like\b/i, /\betc\.?\b/i
+  ];
+  let vagueCount = 0;
+  for (const pattern of vaguePatterns) {
+    if (pattern.test(spec)) vagueCount++;
+  }
+  score += Math.min(vagueCount * 5, 25);
+
+  // Factor 4: Missing subsystem details (10 points each)
+  const subsystemPatterns = [
+    { name: 'Backend', marker: /Backend.*Involved.*:\s*(Yes|No)/i },
+    { name: 'Frontend', marker: /Frontend.*Involved.*:\s*(Yes|No)/i },
+    { name: 'Database', marker: /Database.*Involved.*:\s*(Yes|No)/i }
+  ];
+  for (const sub of subsystemPatterns) {
+    if (!sub.marker.test(spec)) {
+      score += 10;
+    }
+  }
+
+  return {
+    score: score,
+    threshold: 30,
+    needsClarification: score > 30,
+    breakdown: {
+      placeholders: Math.min(placeholders * 10, 50),
+      missingSections: requiredSections.filter(s =>
+        !spec.includes(`## ${s}`) && !spec.includes(`### ${s}`)
+      ).length * 15,
+      vagueLanguage: Math.min(vagueCount * 5, 25),
+      missingSubsystems: subsystemPatterns.filter(s => !s.marker.test(spec)).length * 10
+    }
+  };
+}
+```
+
 **Ambiguity check** (after interactive scoping):
 
-- Count placeholders in epic-spec.md: `grep -c "\[NEEDS CLARIFICATION\]" epics/NNN-slug/epic-spec.md`
-- Check for missing subsystems
-- Verify success metrics defined
-- Confirm constraints documented
+```bash
+# Count explicit placeholders
+PLACEHOLDER_COUNT=$(grep -c "\[NEEDS CLARIFICATION\]" epics/${EPIC_SLUG}/epic-spec.md 2>/dev/null || echo "0")
+
+# Check for required sections
+MISSING_SECTIONS=0
+for section in "Business Value" "Success Metrics" "Constraints" "Subsystems"; do
+  grep -q "## $section\|### $section" epics/${EPIC_SLUG}/epic-spec.md || ((MISSING_SECTIONS++))
+done
+
+# Calculate score
+AMBIGUITY_SCORE=$((PLACEHOLDER_COUNT * 10 + MISSING_SECTIONS * 15))
+echo "Ambiguity Score: $AMBIGUITY_SCORE (threshold: 30)"
+```
+
+**Score interpretation:**
+- **0-15**: Excellent clarity, proceed directly to planning
+- **16-30**: Minor gaps, acceptable to proceed
+- **31-50**: Moderate ambiguity, /clarify recommended
+- **51+**: High ambiguity, /clarify required
 
 **If ambiguities detected** (ambiguity score > 30):
 
@@ -521,10 +601,10 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 **Process summary**:
 
-1. `/create-prompt "Research technical approach for: [epic objective]"` → generates research prompt
-2. `/run-prompt 001-[epic-slug]-research` → executes research, outputs research.md
-3. `/create-prompt "Create implementation plan based on research"` → generates plan prompt
-4. `/run-prompt 002-[epic-slug]-plan` → executes planning, outputs plan.md
+1. `/internal:create-prompt "Research technical approach for: [epic objective]"` → generates research prompt
+2. `/meta:run-prompt 001-[epic-slug]-research` → executes research, outputs research.md
+3. `/internal:create-prompt "Create implementation plan based on research"` → generates plan prompt
+4. `/meta:run-prompt 002-[epic-slug]-plan` → executes planning, outputs plan.md
 5. Commit both artifacts with `/meta:enforce-git-commits`
 
 **Outputs**: `research.md` (findings, confidence, open questions) and `plan.md` (architecture, phases, risks)
@@ -724,11 +804,42 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 **When resuming with `/epic continue`:**
 
-1. **Detect epic workspace and branch:**
+### Step 1: Session Context Restoration
 
-   ```bash
-   # Run detection utility to find epic workspace
-   WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null || pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
+**Check for handoff documents and session state:**
+
+```bash
+# Detect active workflow
+WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null)
+SLUG=$(echo "$WORKFLOW_INFO" | grep -o '"slug":"[^"]*"' | cut -d'"' -f4)
+EPIC_DIR="epics/$SLUG"
+
+# Display session status
+bash .spec-flow/scripts/bash/session-manager.sh status 2>/dev/null || true
+
+# Check for handoff document
+if [ -f "$EPIC_DIR/sessions/latest-handoff.md" ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📋 Handoff Available"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    # Show handoff summary (first 20 lines)
+    head -20 "$EPIC_DIR/sessions/latest-handoff.md"
+    echo ""
+    echo "Full handoff: $EPIC_DIR/sessions/latest-handoff.md"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+fi
+
+# Start new session
+bash .spec-flow/scripts/bash/session-manager.sh start 2>/dev/null || true
+```
+
+### Step 2: Detect epic workspace and branch
+
+```bash
+# Run detection utility to find epic workspace
+WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null || pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
 
    if [ $? -eq 0 ]; then
        WORKFLOW_TYPE=$(echo "$WORKFLOW_INFO" | jq -r '.type')

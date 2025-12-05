@@ -112,12 +112,73 @@ Recent commits (last 3):
 
 ## 4. Implement Changes
 
-**Determine implementation agent:**
+**Determine implementation agent using detection algorithm:**
 
-- Backend/API/Python → Use Task tool with `backend-dev` agent
-- Frontend/UI/React/TypeScript → Use Task tool with `frontend-dev` agent
-- Tests only → Use Task tool with `qa-test` agent
-- Documentation only → Implement directly (no agent needed)
+```javascript
+function detectAgent(description, modifiedFiles = []) {
+  const desc = description.toLowerCase();
+  const files = modifiedFiles.map(f => f.toLowerCase());
+
+  // 1. Check file extensions first (highest confidence)
+  const filePatterns = {
+    backend: ['.py', '.go', '.rs', '.java', '.rb', '.php'],
+    frontend: ['.tsx', '.jsx', '.vue', '.svelte', '.css', '.scss'],
+    test: ['test.', 'spec.', '_test.', '.test.', '.spec.']
+  };
+
+  for (const file of files) {
+    if (filePatterns.test.some(p => file.includes(p))) return 'qa-test';
+    if (filePatterns.frontend.some(p => file.endsWith(p))) return 'frontend-dev';
+    if (filePatterns.backend.some(p => file.endsWith(p))) return 'backend-dev';
+  }
+
+  // 2. Check keywords in description (medium confidence)
+  const keywords = {
+    'qa-test': ['test', 'spec', 'coverage', 'fixture', 'mock', 'assert'],
+    'frontend-dev': ['component', 'ui', 'button', 'form', 'style', 'css',
+                     'react', 'vue', 'svelte', 'tailwind', 'layout', 'page'],
+    'backend-dev': ['api', 'endpoint', 'model', 'service', 'database', 'query',
+                    'migration', 'route', 'controller', 'repository', 'fastapi']
+  };
+
+  for (const [agent, words] of Object.entries(keywords)) {
+    if (words.some(w => desc.includes(w))) return agent;
+  }
+
+  // 3. Check for documentation-only (no agent needed)
+  const docKeywords = ['readme', 'documentation', 'comment', 'docstring', 'changelog'];
+  if (docKeywords.some(w => desc.includes(w))) return null; // Direct implementation
+
+  // 4. Fallback: Ask user
+  return 'ask_user';
+}
+```
+
+**Agent routing rules:**
+
+| Detection | Agent | Reason |
+|-----------|-------|--------|
+| `.py`, `.go`, `.rs`, `.java`, `.rb` files | `backend-dev` | Backend language detected |
+| `.tsx`, `.jsx`, `.vue`, `.svelte` files | `frontend-dev` | Frontend framework detected |
+| `test.`, `spec.`, `_test.` in filename | `qa-test` | Test file pattern detected |
+| Keywords: api, endpoint, model, service | `backend-dev` | Backend concept mentioned |
+| Keywords: component, ui, button, style | `frontend-dev` | UI concept mentioned |
+| Keywords: test, coverage, mock, assert | `qa-test` | Testing concept mentioned |
+| Keywords: readme, documentation, comment | None | Direct implementation |
+| No match | Ask user | Ambiguous - clarify before proceeding |
+
+**If agent detection returns 'ask_user':**
+
+Use AskUserQuestion:
+```
+Question: "What type of change is this?"
+Header: "Domain"
+Options:
+  - Backend (API, database, services)
+  - Frontend (UI, components, styles)
+  - Tests (test coverage, specs)
+  - Documentation (README, comments)
+```
 
 **Agent prompt format:**
 
@@ -199,19 +260,79 @@ After implementation, provide:
 
 ## 5. Run Tests (If Applicable)
 
-**Detect test framework and run tests:**
+**Detect test framework using project indicators:**
 
-**Backend (Python):**
+```javascript
+function detectTestFramework(projectRoot) {
+  // Python
+  if (exists('pytest.ini') || exists('conftest.py') || exists('pyproject.toml')) {
+    return { framework: 'pytest', command: 'pytest -v --tb=short' };
+  }
 
-- If `pytest.ini` or `tests/` directory exists with `.py` files
-- Run: `pytest tests/ -v --tb=short`
-- Capture output and pass/fail status
+  // Node (check package.json for specific runner)
+  if (exists('package.json')) {
+    const pkg = readJSON('package.json');
+    if (pkg.devDependencies?.vitest || pkg.dependencies?.vitest) {
+      return { framework: 'vitest', command: 'npm test -- --run' };
+    }
+    if (pkg.devDependencies?.jest || pkg.dependencies?.jest) {
+      return { framework: 'jest', command: 'npm test' };
+    }
+    if (pkg.scripts?.test) {
+      return { framework: 'npm', command: 'npm test' };
+    }
+  }
 
-**Frontend (Node):**
+  // Go
+  if (exists('go.mod')) {
+    return { framework: 'go', command: 'go test ./... -v' };
+  }
 
-- If `package.json` exists with test script
-- Run: `npm test -- --run` or `npm run test:ci`
-- Capture output and pass/fail status
+  // Rust
+  if (exists('Cargo.toml')) {
+    return { framework: 'cargo', command: 'cargo test' };
+  }
+
+  // Java (Maven)
+  if (exists('pom.xml')) {
+    return { framework: 'maven', command: 'mvn test -B' };
+  }
+
+  // Java/Kotlin (Gradle)
+  if (exists('build.gradle') || exists('build.gradle.kts')) {
+    return { framework: 'gradle', command: 'gradle test' };
+  }
+
+  // Ruby (RSpec)
+  if (exists('Gemfile') && readFile('Gemfile').includes('rspec')) {
+    return { framework: 'rspec', command: 'bundle exec rspec' };
+  }
+
+  // Ruby (Minitest)
+  if (exists('Gemfile') && exists('test/')) {
+    return { framework: 'minitest', command: 'bundle exec rake test' };
+  }
+
+  return { framework: null, command: null };
+}
+```
+
+**Test framework reference:**
+
+| Indicator | Framework | Command |
+|-----------|-----------|---------|
+| `pytest.ini`, `conftest.py` | pytest (Python) | `pytest -v --tb=short` |
+| `package.json` + vitest | Vitest (Node) | `npm test -- --run` |
+| `package.json` + jest | Jest (Node) | `npm test` |
+| `go.mod` | Go testing | `go test ./... -v` |
+| `Cargo.toml` | Cargo (Rust) | `cargo test` |
+| `pom.xml` | Maven (Java) | `mvn test -B` |
+| `build.gradle` | Gradle (Java/Kotlin) | `gradle test` |
+| `Gemfile` + rspec | RSpec (Ruby) | `bundle exec rspec` |
+| `Gemfile` + test/ | Minitest (Ruby) | `bundle exec rake test` |
+| None detected | Skip tests | Warn user |
+
+**Execute test command based on detected framework.**
 
 **Handle test failures:**
 
@@ -219,6 +340,11 @@ After implementation, provide:
   1. Fix failing tests before committing
   2. Skip tests (document why in commit message)
   3. Abort and investigate failures
+
+**If no test framework detected:**
+
+- Warn: "No test framework detected - consider adding tests"
+- Skip test execution (don't fail)
 
 ## 6. Validate Style Guide Compliance (UI Changes Only)
 

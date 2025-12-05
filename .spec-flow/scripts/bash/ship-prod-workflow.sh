@@ -8,10 +8,46 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 cd "$REPO_ROOT"
 
 # Parse arguments
-FEATURE_DIR="${1:-}"
+FEATURE_DIR=""
+VERSION_ARG=""
+NO_INPUT=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --version)
+      VERSION_ARG="${2:-patch}"
+      shift 2
+      ;;
+    --no-input)
+      NO_INPUT=true
+      shift
+      ;;
+    -*)
+      echo "Unknown option: $1"
+      exit 1
+      ;;
+    *)
+      FEATURE_DIR="$1"
+      shift
+      ;;
+  esac
+done
+
+# Check for NO_INPUT environment variable (CI/CD mode)
+if [ "${SPEC_FLOW_NO_INPUT:-}" = "true" ] || [ "${CI:-}" = "true" ]; then
+  NO_INPUT=true
+fi
 
 if [ -z "$FEATURE_DIR" ]; then
-  echo "Usage: ship-prod-workflow.sh <feature-dir>"
+  echo "Usage: ship-prod-workflow.sh <feature-dir> [--version major|minor|patch] [--no-input]"
+  echo ""
+  echo "Options:"
+  echo "  --version TYPE   Version bump type: major, minor, or patch (default: patch)"
+  echo "  --no-input       Non-interactive mode for CI/CD (uses patch if --version not specified)"
+  echo ""
+  echo "Environment variables:"
+  echo "  SPEC_FLOW_NO_INPUT=true   Same as --no-input"
+  echo "  CI=true                   Same as --no-input (auto-detected in CI environments)"
   exit 1
 fi
 
@@ -82,42 +118,76 @@ PATCH_VERSION="v$MAJOR.$MINOR.$((PATCH + 1))"
 MINOR_VERSION="v$MAJOR.$((MINOR + 1)).0"
 MAJOR_VERSION="v$((MAJOR + 1)).0.0"
 
-echo "Version options:"
-echo "  1. Patch: $PATCH_VERSION (bug fixes, minor changes)"
-echo "  2. Minor: $MINOR_VERSION (new features, backwards compatible)"
-echo "  3. Major: $MAJOR_VERSION (breaking changes)"
-echo "  4. Custom"
-echo ""
+# Handle non-interactive mode or --version argument
+if [ -n "$VERSION_ARG" ] || [ "$NO_INPUT" = true ]; then
+  # Use VERSION_ARG if provided, otherwise default to patch
+  VERSION_TYPE="${VERSION_ARG:-patch}"
 
-read -p "Select version [1]: " VERSION_CHOICE
+  case "$VERSION_TYPE" in
+    major)
+      NEXT_VERSION="$MAJOR_VERSION"
+      ;;
+    minor)
+      NEXT_VERSION="$MINOR_VERSION"
+      ;;
+    patch)
+      NEXT_VERSION="$PATCH_VERSION"
+      ;;
+    *)
+      # Assume it's a custom version string (e.g., v1.2.3)
+      if [[ ! "$VERSION_TYPE" =~ ^v ]]; then
+        VERSION_TYPE="v$VERSION_TYPE"
+      fi
+      NEXT_VERSION="$VERSION_TYPE"
+      VERSION_TYPE="custom"
+      ;;
+  esac
 
-case "${VERSION_CHOICE:-1}" in
-  1)
-    NEXT_VERSION="$PATCH_VERSION"
-    VERSION_TYPE="patch"
-    ;;
-  2)
-    NEXT_VERSION="$MINOR_VERSION"
-    VERSION_TYPE="minor"
-    ;;
-  3)
-    NEXT_VERSION="$MAJOR_VERSION"
-    VERSION_TYPE="major"
-    ;;
-  4)
-    read -p "Enter custom version (e.g., v1.2.3): " CUSTOM_VERSION
-    # Ensure 'v' prefix
-    if [[ ! "$CUSTOM_VERSION" =~ ^v ]]; then
-      CUSTOM_VERSION="v$CUSTOM_VERSION"
-    fi
-    NEXT_VERSION="$CUSTOM_VERSION"
-    VERSION_TYPE="custom"
-    ;;
-  *)
-    NEXT_VERSION="$PATCH_VERSION"
-    VERSION_TYPE="patch"
-    ;;
-esac
+  echo "Version options:"
+  echo "  - Patch: $PATCH_VERSION (bug fixes, minor changes)"
+  echo "  - Minor: $MINOR_VERSION (new features, backwards compatible)"
+  echo "  - Major: $MAJOR_VERSION (breaking changes)"
+  echo ""
+  echo "Auto-selected: $VERSION_TYPE (--no-input mode)"
+else
+  # Interactive mode
+  echo "Version options:"
+  echo "  1. Patch: $PATCH_VERSION (bug fixes, minor changes)"
+  echo "  2. Minor: $MINOR_VERSION (new features, backwards compatible)"
+  echo "  3. Major: $MAJOR_VERSION (breaking changes)"
+  echo "  4. Custom"
+  echo ""
+
+  read -p "Select version [1]: " VERSION_CHOICE
+
+  case "${VERSION_CHOICE:-1}" in
+    1)
+      NEXT_VERSION="$PATCH_VERSION"
+      VERSION_TYPE="patch"
+      ;;
+    2)
+      NEXT_VERSION="$MINOR_VERSION"
+      VERSION_TYPE="minor"
+      ;;
+    3)
+      NEXT_VERSION="$MAJOR_VERSION"
+      VERSION_TYPE="major"
+      ;;
+    4)
+      read -p "Enter custom version (e.g., v1.2.3): " CUSTOM_VERSION
+      # Ensure 'v' prefix
+      if [[ ! "$CUSTOM_VERSION" =~ ^v ]]; then
+        CUSTOM_VERSION="v$CUSTOM_VERSION"
+      fi
+      NEXT_VERSION="$CUSTOM_VERSION"
+      VERSION_TYPE="custom"
+      ;;
+    *)
+      NEXT_VERSION="$PATCH_VERSION"
+      VERSION_TYPE="patch"
+      ;;
+  esac
+fi
 
 echo ""
 echo "Selected version: $NEXT_VERSION ($VERSION_TYPE)"
@@ -155,15 +225,24 @@ if ! git diff-index --quiet HEAD --; then
   echo ""
   git status --short
   echo ""
-  read -p "Commit changes before tagging? [y/N]: " COMMIT_CHOICE
 
-  if [[ "$COMMIT_CHOICE" =~ ^[Yy]$ ]]; then
+  if [ "$NO_INPUT" = true ]; then
+    # In non-interactive mode, auto-commit changes
+    echo "Auto-committing changes (--no-input mode)..."
     git add .
     git commit -m "chore: prepare release $NEXT_VERSION" --no-verify
     echo "✅ Changes committed"
   else
-    echo "❌ Cannot create tag with uncommitted changes"
-    exit 1
+    read -p "Commit changes before tagging? [y/N]: " COMMIT_CHOICE
+
+    if [[ "$COMMIT_CHOICE" =~ ^[Yy]$ ]]; then
+      git add .
+      git commit -m "chore: prepare release $NEXT_VERSION" --no-verify
+      echo "✅ Changes committed"
+    else
+      echo "❌ Cannot create tag with uncommitted changes"
+      exit 1
+    fi
   fi
 fi
 

@@ -11,6 +11,23 @@ allowed-tools:
 
 Create a comprehensive, detailed handoff document that captures all context from the current conversation. This allows continuing the work in a fresh context with complete precision.
 
+## Session Integration
+
+**First, check for active Spec-Flow workflow:**
+
+```bash
+bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null
+```
+
+**If workflow detected:**
+1. Generate handoff in workflow's sessions/ directory
+2. Update state.yaml with handoff info
+3. Record session boundary in NOTES.md
+
+**Handoff location (priority order):**
+1. If Spec-Flow workflow active: `specs/{slug}/sessions/handoff-{timestamp}.md` or `epics/{slug}/sessions/handoff-{timestamp}.md`
+2. Otherwise: `whats-next.md` in current directory
+
 ## Instructions
 
 **PRIORITY: Comprehensive detail and precision over brevity.** The goal is to enable someone (or a fresh Claude instance) to pick up exactly where you left off with zero information loss.
