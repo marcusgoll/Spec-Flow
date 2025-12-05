@@ -215,5 +215,5 @@ Add `--with-design` for 4 design docs + tokens.css.
 - [README.md](README.md) — Quick start
 - [docs/commands.md](docs/commands.md) — Command catalog
 - [docs/architecture.md](docs/architecture.md) — Workflow structure
-- [docs/LIVING_DOCUMENTATION.md](docs/LIVING_DOCUMENTATION.md) — Hierarchical context guide
+- [docs/developer-guide.md](docs/developer-guide.md) — Complete developer reference
 - [CHANGELOG.md](CHANGELOG.md) — Version history
