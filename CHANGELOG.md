@@ -2,6 +2,29 @@
 
 ---
 
+## [10.15.0] - 2025-12-05
+
+### ✨ Added
+
+**Automatic Hook Updates**
+
+Design token hooks now update automatically when running `npx spec-flow update`.
+
+- **Interactive Prompt**: Users asked to update hooks (default: Yes)
+- **Timestamped Backups**: Existing hooks backed up before overwriting
+- **Auto-Update in CI**: Non-interactive mode auto-updates without prompting
+- **Command Flags**: `--update-hooks` (force) or `--skip-hooks` (skip)
+- **Status Feedback**: Clear colored output showing update status
+
+This ensures users get the latest hook improvements without manual intervention.
+
+### 📚 Documentation
+
+- Reorganized developer documentation for better clarity
+- Added comprehensive developer guide with platform-specific instructions
+
+---
+
 ## [10.14.0] - 2025-12-05
 
 ### ✨ Added
