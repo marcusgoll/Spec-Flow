@@ -87,10 +87,7 @@ Orchestrate complete post-implementation deployment workflow from pre-flight val
 - `status`: Display current deployment status and exit
 - `rollback [version]`: Rollback to previous deployment version (v10.14+)
 - `recover`: Recover corrupted state.yaml from git history (v10.14+)
-- `budget`: Display deployment quota status (routes to archived command)
-- `--staging`: Deploy to staging only (routes to archived command)
-- `--prod`: Deploy to production only (routes to archived command)
-- `--validate`: Validate deployment readiness (routes to archived command)
+- `budget`: Display deployment quota status
 
 **Dependencies**: Requires completed `/implement` phase
 
@@ -178,18 +175,15 @@ If `$ARGUMENTS` is `recover`:
    ```
 2. Display recovered state and EXIT
 
-**Route to archived commands:**
+**Route budget command:**
 
-If `$ARGUMENTS` contains any of these, route to archived command and EXIT:
+If `$ARGUMENTS` is `budget`:
 
-| Argument | Route To |
-|----------|----------|
-| `budget` | `/_archived/deployment-budget` |
-| `--staging` | `/_archived/ship-staging` |
-| `--prod` | `/_archived/ship-prod` |
-| `--validate` | `/_archived/validate-staging` or `/_archived/validate-deploy` |
+```
+SlashCommand: /deployment/budget
+```
 
-Use SlashCommand tool to invoke the appropriate archived command.
+Display deployment quota status and EXIT.
 
 **If none of the above, continue to Step 1.**
 

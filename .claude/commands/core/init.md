@@ -30,37 +30,37 @@ All flags are passed through to the underlying commands.
 1. **If `--preferences` flag present:**
    ```
    Extract: Remove --preferences from arguments
-   Route to: /_archived/init-preferences $remaining_args
+   Route to: /project/init-preferences $remaining_args
    ```
 
 2. **If `--tokens` flag present:**
    ```
    Extract: Remove --tokens from arguments
-   Route to: /_archived/init-brand-tokens $remaining_args
+   Route to: /project/init-tokens $remaining_args
    ```
 
 3. **Otherwise (default):**
    ```
-   Route to: /_archived/init-project $ARGUMENTS
+   Route to: /project/init-project $ARGUMENTS
    ```
 
 ## Step 2: Execute Routed Command
 
-Use SlashCommand tool to invoke the appropriate archived command with all arguments passed through.
+Use SlashCommand tool to invoke the appropriate active command with all arguments passed through.
 
 **For preferences:**
 ```
-SlashCommand: /_archived/init-preferences [remaining args]
+SlashCommand: /project/init-preferences [remaining args]
 ```
 
 **For tokens:**
 ```
-SlashCommand: /_archived/init-brand-tokens [remaining args]
+SlashCommand: /project/init-tokens [remaining args]
 ```
 
 **For project (default):**
 ```
-SlashCommand: /_archived/init-project [all args]
+SlashCommand: /project/init-project [all args]
 ```
 
 </process>

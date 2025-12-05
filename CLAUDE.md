@@ -68,9 +68,12 @@ Detection: git remote + staging branch + `.github/workflows/deploy-staging.yml`
 
 ### Archived Commands
 
-39 specialized commands are archived in `.claude/commands/_archived/`. Access via:
-- `/help --all` to see full list
-- Direct invocation: `/_archived/command-name`
+48 specialized commands archived in `.claude/commands/_archived/` (source-only).
+NOT included in npm package - accessible via GitHub clone only.
+
+All essential functionality available via 30 active commands.
+
+For development/debugging: Clone GitHub repo to access archived commands.
 
 ### Quality Gates
 

@@ -66,6 +66,7 @@ const BUILD_CONFIG = {
     '**/dist/**',
     '**/.git/**',
     '**/commands/internal/**',
+    '**/commands/_archived/**',
     '**/scripts/internal/**'
   ],
 
@@ -127,8 +128,8 @@ function copyDirectory(src, dest, options = {}) {
     const destPath = path.join(dest, entry.name);
     const relativePath = path.relative(BUILD_CONFIG.sourceDir, srcPath);
 
-    // Skip internal directories explicitly
-    if (entry.isDirectory() && entry.name === 'internal') {
+    // Skip internal and archived directories explicitly
+    if (entry.isDirectory() && (entry.name === 'internal' || entry.name === '_archived')) {
       console.log(`  ⊗ Excluded: ${relativePath}`);
       continue;
     }
@@ -473,20 +474,31 @@ CHANGELOG.md      # Version history
 CLAUDE.md         # AI assistant instructions
 \`\`\`
 
-## Excluded Beta Features
+## Exclusions
 
-The following beta/niche features have been excluded from this distribution:
+The following files/directories are excluded from distribution:
 
-- Contract management (contract-bump, contract-verify, fixture-refresh)
-- Feature flags (flag-add, flag-cleanup, flag-list)
-- Scheduler (scheduler-assign, scheduler-list, scheduler-park)
-- DORA metrics (metrics-dora, dora-calculate)
-- Development scripts (migrate-*, test-*)
-- Old design system templates (design-system/*)
-- Internal commands (.claude/commands/internal/)
-- Internal scripts (.spec-flow/scripts/internal/)
+1. **Archived Commands** (development-only): 48 commands in .claude/commands/_archived/
+   - Specialized commands for development and debugging
+   - Accessible via GitHub source only
+   - All essential functionality available via 30 active commands
+
+2. **Internal Commands** (development-only): Commands in .claude/commands/internal/
+   - Repository maintenance and internal tooling
+   - Not intended for end users
+
+3. **Internal Scripts** (repo maintenance): Scripts in .spec-flow/scripts/internal/
+   - Build automation and development utilities
+   - Not needed for package functionality
+
+4. **User Data** (never touch): specs/, node_modules/, .git/, dist/, build/
+   - User-generated content and build artifacts
+   - Never included in distribution
 
 Total excluded: ${results.filesExcluded} files
+
+Note: Archived commands are accessible by cloning the GitHub repository.
+Active commands provide all user-facing functionality.
 
 ## Build Status
 
