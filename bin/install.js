@@ -250,10 +250,12 @@ async function install(options) {
  * @param {Object} options
  * @param {string} options.targetDir
  * @param {boolean} [options.verbose=false]
- * @returns {Promise<{ success: boolean, error: string|null }>}
+ * @param {boolean|null} [options.updateHooks=null] - null=prompt, true=force, false=skip
+ * @param {boolean} [options.nonInteractive=false] - Non-interactive mode (auto-update hooks)
+ * @returns {Promise<{ success: boolean, error: string|null, hooksStatus?: string, hooksMessage?: string }>}
  */
 async function update(options) {
-  let { targetDir, verbose = false } = options || {};
+  let { targetDir, verbose = false, updateHooks = null, nonInteractive = false } = options || {};
   if (!targetDir) {
     return { success: false, error: 'options.targetDir is required' };
   }
@@ -279,12 +281,89 @@ async function update(options) {
       return { success: false, error: result.error || 'Unknown update error' };
     }
 
+    // Handle hook updates
+    const { updateHooksIfInstalled } = require('./install-hooks');
+
+    // Check if hooks exist
+    const hooksExist = await fs.pathExists(
+      path.join(targetDir, '.claude', 'hooks', 'design-token-validator.sh')
+    );
+
+    let hooksStatus = 'not_checked';
+    let hooksMessage = '';
+
+    if (hooksExist) {
+      // Determine action: prompt, force, or skip
+      if (updateHooks === false) {
+        // Explicit skip
+        hooksStatus = 'skipped';
+      } else if (updateHooks === true || nonInteractive) {
+        // Force update or non-interactive mode
+        if (verbose) console.log('\nUpdating design token hooks...');
+        const hookResult = await updateHooksIfInstalled(targetDir, {
+          silent: false
+        });
+        hooksStatus = hookResult.updated ? 'updated' : 'failed';
+        if (!hookResult.updated && hookResult.error) {
+          hooksMessage = hookResult.error;
+        }
+      } else {
+        // Interactive prompt (default)
+        let inquirer;
+        try {
+          const m = await import('inquirer');
+          inquirer = m.default || m;
+        } catch {
+          try {
+            inquirer = require('inquirer');
+          } catch {
+            // If inquirer not available, skip prompt
+            hooksStatus = 'skipped';
+            return {
+              success: true,
+              error: null,
+              conflictActions: result.conflictActions || [],
+              backupPaths: {},
+              hooksStatus,
+              hooksMessage
+            };
+          }
+        }
+
+        console.log('');
+        const { shouldUpdate } = await inquirer.prompt([{
+          type: 'confirm',
+          name: 'shouldUpdate',
+          message: 'Update design token hooks to latest version?',
+          default: true
+        }]);
+
+        if (shouldUpdate) {
+          console.log('');
+          const hookResult = await updateHooksIfInstalled(targetDir, {
+            silent: false
+          });
+          hooksStatus = hookResult.updated ? 'updated' : 'failed';
+          if (!hookResult.updated && hookResult.error) {
+            hooksMessage = hookResult.error;
+          }
+        } else {
+          hooksStatus = 'skipped_by_user';
+        }
+      }
+    } else {
+      hooksStatus = 'not_installed';
+      hooksMessage = 'Design token hooks not detected. Run `npx spec-flow install-hooks` to enable.';
+    }
+
     // Return success with conflictActions for cli.js to display
     return {
       success: true,
       error: null,
       conflictActions: result.conflictActions || [],
-      backupPaths: {} // No backups created during update (templates only)
+      backupPaths: {}, // No backups created during update (templates only)
+      hooksStatus,
+      hooksMessage
     };
   } catch (error) {
     return { success: false, error: `Update error: ${error.message}` };

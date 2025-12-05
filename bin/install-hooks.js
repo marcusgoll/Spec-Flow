@@ -341,6 +341,67 @@ async function cleanSettings(targetDir, options = {}) {
 }
 
 /**
+ * Update hooks if already installed (for use during update)
+ * Backs up existing hooks before overwriting
+ * @param {string} targetDir - Target directory
+ * @param {object} options - Options
+ * @param {boolean} options.force - Force update even if installed
+ * @param {boolean} options.silent - Suppress output
+ * @returns {Promise<{updated: boolean, reason?: string, installed?: string[], error?: string}>}
+ */
+async function updateHooksIfInstalled(targetDir, options = {}) {
+  const { force = false, silent = false } = options;
+  const log = silent ? () => {} : console.log;
+
+  // Check if hooks already installed
+  const hooksDir = path.join(targetDir, '.claude', 'hooks');
+  if (!fs.existsSync(hooksDir)) {
+    return { updated: false, reason: 'not_installed' };
+  }
+
+  // Backup existing hooks
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const hookFiles = [
+    'design-token-validator.sh',
+    'design-token-validator.ps1',
+    'design-system-context.sh',
+    'design-system-context.ps1'
+  ];
+
+  let backedUp = 0;
+  for (const file of hookFiles) {
+    const hookPath = path.join(hooksDir, file);
+    if (fs.existsSync(hookPath)) {
+      const backupPath = `${hookPath}.backup-${timestamp}`;
+      try {
+        fs.copyFileSync(hookPath, backupPath);
+        backedUp++;
+        log(`  Backed up ${file}`);
+      } catch (e) {
+        // Continue if backup fails
+      }
+    }
+  }
+
+  // Install updated hooks
+  const result = await installHooks(targetDir, { silent, force: true });
+
+  if (result.success) {
+    log(`  ${backedUp} hook(s) backed up`);
+    return {
+      updated: true,
+      installed: result.installed,
+      backedUp
+    };
+  } else {
+    return {
+      updated: false,
+      error: result.error
+    };
+  }
+}
+
+/**
  * Prompt user to install hooks (for use during init/update)
  * @param {string} targetDir - Target directory
  * @param {object} chalk - Chalk instance for colors
@@ -409,6 +470,7 @@ module.exports = {
   checkHooksInstalled,
   installHooks,
   uninstallHooks,
+  updateHooksIfInstalled,
   promptInstallHooks,
   updateSettings,
   cleanSettings

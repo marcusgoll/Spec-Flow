@@ -65,6 +65,8 @@ program
   .command('update')
   .description('Update Spec-Flow to latest version')
   .option('-t, --target <path>', 'Target directory (defaults to current directory)')
+  .option('--update-hooks', 'Force update hooks without prompting')
+  .option('--skip-hooks', 'Skip hook updates')
   .action(async (options) => {
     const targetDir = options.target ? path.resolve(options.target) : process.cwd();
 
@@ -73,7 +75,9 @@ program
     try {
       const result = await update({
         targetDir,
-        verbose: true
+        verbose: true,
+        updateHooks: options.updateHooks ? true : options.skipHooks ? false : null,
+        nonInteractive: !process.stdin.isTTY
       });
 
       if (!result.success) {
@@ -84,6 +88,22 @@ program
       printSuccess('\nUpdate complete!');
       console.log(chalk.cyan(`\nSpec-Flow version: ${chalk.bold(VERSION)}`));
       console.log(chalk.gray('Templates updated, user data preserved (memory, specs, learnings.md)'));
+
+      // Show hook status
+      if (result.hooksStatus) {
+        console.log('');
+        if (result.hooksStatus === 'updated') {
+          console.log(chalk.green('✓ Design token hooks updated to latest version'));
+        } else if (result.hooksStatus === 'not_installed') {
+          console.log(chalk.yellow(`⚠️  ${result.hooksMessage}`));
+        } else if (result.hooksStatus === 'skipped_by_user') {
+          console.log(chalk.gray('  Hooks update skipped by user'));
+        } else if (result.hooksStatus === 'skipped') {
+          console.log(chalk.gray('  Hooks update skipped'));
+        } else if (result.hooksStatus === 'failed') {
+          console.log(chalk.red(`✗ Hooks update failed: ${result.hooksMessage || 'Unknown error'}`));
+        }
+      }
 
       // Show conflict resolutions if any
       const { formatActions } = require('./conflicts');
