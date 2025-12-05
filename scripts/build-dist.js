@@ -64,7 +64,9 @@ const BUILD_CONFIG = {
     '**/*package-lock.json',
     '**/*tsconfig.json',
     '**/dist/**',
-    '**/.git/**'
+    '**/.git/**',
+    '**/commands/internal/**',
+    '**/scripts/internal/**'
   ],
 
   // Core files that must exist in dist
@@ -124,6 +126,12 @@ function copyDirectory(src, dest, options = {}) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
     const relativePath = path.relative(BUILD_CONFIG.sourceDir, srcPath);
+
+    // Skip internal directories explicitly
+    if (entry.isDirectory() && entry.name === 'internal') {
+      console.log(`  ⊗ Excluded: ${relativePath}`);
+      continue;
+    }
 
     // Check exclusion patterns
     if (shouldExclude(relativePath, exclude)) {
@@ -475,6 +483,8 @@ The following beta/niche features have been excluded from this distribution:
 - DORA metrics (metrics-dora, dora-calculate)
 - Development scripts (migrate-*, test-*)
 - Old design system templates (design-system/*)
+- Internal commands (.claude/commands/internal/)
+- Internal scripts (.spec-flow/scripts/internal/)
 
 Total excluded: ${results.filesExcluded} files
 
