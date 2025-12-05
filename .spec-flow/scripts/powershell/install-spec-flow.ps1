@@ -281,6 +281,7 @@ $settingsExample = Join-Path -Path $claudeTargetDir -ChildPath 'settings.example
 $settingsLocal = Join-Path -Path $claudeTargetDir -ChildPath 'settings.local.json'
 
 if ((Test-Path -LiteralPath $settingsExample) -and (-not (Test-Path -LiteralPath $settingsLocal))) {
+    # New install: create from example
     try {
         Copy-Item -LiteralPath $settingsExample -Destination $settingsLocal
         $results.copied += 'settings.local.json'
@@ -289,8 +290,44 @@ if ((Test-Path -LiteralPath $settingsExample) -and (-not (Test-Path -LiteralPath
         $results.errors += @{ item = 'settings.local.json'; error = $_.Exception.Message }
         Write-Warn "Failed to create settings.local.json: $($_.Exception.Message)"
     }
-} elseif (Test-Path -LiteralPath $settingsLocal) {
-    Write-Step "settings.local.json already exists (kept existing)"
+} elseif ((Test-Path -LiteralPath $settingsLocal) -and (Test-Path -LiteralPath $settingsExample)) {
+    # Upgrade: check if hooks need to be merged
+    try {
+        $localSettings = Get-Content -LiteralPath $settingsLocal -Raw | ConvertFrom-Json
+        $exampleSettings = Get-Content -LiteralPath $settingsExample -Raw | ConvertFrom-Json
+
+        $needsUpdate = $false
+        $updatedFields = @()
+
+        # Check if hooks section is missing or empty
+        if (-not $localSettings.hooks -or ($localSettings.hooks.PSObject.Properties.Count -eq 0)) {
+            if ($exampleSettings.hooks) {
+                $localSettings | Add-Member -NotePropertyName 'hooks' -NotePropertyValue $exampleSettings.hooks -Force
+                $needsUpdate = $true
+                $updatedFields += 'hooks'
+            }
+        }
+
+        # Check if disableAllHooks needs to be set to false
+        if ($localSettings.disableAllHooks -eq $true -and $exampleSettings.disableAllHooks -eq $false) {
+            Write-Warn "disableAllHooks is true - hooks won't run. Set to false to enable."
+        } elseif ($null -eq $localSettings.disableAllHooks -and $null -ne $exampleSettings.disableAllHooks) {
+            $localSettings | Add-Member -NotePropertyName 'disableAllHooks' -NotePropertyValue $exampleSettings.disableAllHooks -Force
+            $needsUpdate = $true
+            $updatedFields += 'disableAllHooks'
+        }
+
+        if ($needsUpdate) {
+            $localSettings | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $settingsLocal -Encoding UTF8
+            Write-Success "Updated settings.local.json with: $($updatedFields -join ', ')"
+            $results.copied += 'settings.local.json (merged)'
+        } else {
+            Write-Step "settings.local.json already has hooks configuration"
+        }
+    } catch {
+        Write-Warn "Could not check/merge settings: $($_.Exception.Message)"
+        Write-Step "settings.local.json kept as-is"
+    }
 } else {
     Write-Warn "settings.example.json not found - settings.local.json not created"
 }
