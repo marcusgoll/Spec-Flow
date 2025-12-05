@@ -2,6 +2,78 @@
 
 ---
 
+## [10.16.0] - 2025-12-05
+
+### ✨ Added
+
+**Quality Feedback Loop System**
+
+Integrated multi-agent voting, continuous quality checks, and perpetual learning into active workflow feedback loops.
+
+- **Multi-Agent Voting System** - Error decorrelation through diverse sampling
+  - 3-agent voting with k=2 strategy (MAKER algorithm)
+  - Temperature variation (0.5, 0.7, 0.9) for error decorrelation
+  - Voting strategies: first-to-ahead-by-k, unanimous, majority, weighted
+  - Operations: code review, security review, breaking change detection
+  - Automatic in `/optimize`, manual via `/review --voting`
+  - Graceful fallback to single agent if voting unavailable
+
+- **Continuous Quality Checks** - Lightweight validation during implementation
+  - Runs after each task batch (3-4 tasks) in `/implement` phase
+  - 6 checks: linting (auto-fix), type checking, unit tests, coverage delta, dead code, gap detection
+  - Performance target: < 30 seconds total
+  - Non-blocking warnings with user choice: fix now, continue, or abort
+  - Skipped in iteration 2+ to focus on gap fixes
+
+- **Progressive Quality Gates** - Three levels throughout workflow
+  - Level 1 (Continuous): After each batch, < 30s, warn & continue
+  - Level 2 (Full): `/optimize` phase, 10-15m, block deployment
+  - Level 3 (Critical): `/ship` pre-flight, < 2m, block production
+  - Configuration: `.spec-flow/config/progressive-gates.yaml`
+  - Epic-specific gates: contracts, load testing, migration integrity
+
+- **On-Demand Review Command** - `/review` for anytime code review
+  - Single-agent review (default, ~2-3 min)
+  - Multi-agent voting review (`--voting` flag, ~5-8 min)
+  - Scope options: `changes` (default) or `all`
+  - Auto-fix for linting issues
+  - File:line reference extraction
+  - Interactive action prompts
+
+- **Perpetual Learning Integration** - Auto-apply proven patterns
+  - Performance patterns (≥0.90 confidence) auto-applied at workflow start
+  - Anti-patterns (≥0.85 confidence) generate warnings
+  - Custom abbreviations (≥0.95 confidence) auto-expanded
+  - CLAUDE.md tweaks (≥0.95 confidence) queued for approval
+  - Activated in `/feature` and `/epic` command startup
+
+- **Early Gap Detection** - Find missing implementations before validation
+  - Scans for TODO, FIXME, HACK comments
+  - Detects placeholder implementations (NotImplementedError, "Not implemented")
+  - Identifies edge cases and error handling gaps
+  - Runs as Check 6/6 in continuous checks
+  - Non-blocking warnings saved to `.potential-gaps.yaml`
+  - High-confidence gaps (≥0.8) likely need fixes
+
+**New Files Created (8)**:
+- `.claude/skills/multi-agent-voting/voting-engine.sh` - Voting orchestration
+- `.claude/skills/multi-agent-voting/vote-aggregator.py` - MAKER algorithm implementation
+- `.spec-flow/scripts/bash/continuous-checks.sh` - Continuous quality checks
+- `.claude/commands/quality/review.md` - On-demand review command
+- `.spec-flow/config/progressive-gates.yaml` - Progressive gate configuration
+- `.spec-flow/scripts/python/early-gap-detector.py` - Gap detection script
+
+### 🔧 Changed
+
+**Command Updates**:
+- Updated `/optimize` to initialize voting system (Step 0.8)
+- Updated `/implement` to run continuous checks after each batch (Step 1.7)
+- Updated `/feature` to auto-apply learned patterns at startup (Step 0.15)
+- Updated `/epic` to auto-apply learned patterns at startup (Step 0.5)
+- Updated `CLAUDE.md` with comprehensive "Continuous Quality Features (v10.16)" documentation
+
+---
+
 ## [10.15.1] - 2025-12-05
 
 ### 🔧 Changed

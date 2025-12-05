@@ -675,7 +675,129 @@ If a task fails (tests don't pass, error occurs):
 
 ---
 
-### Step 1.7: TDD WORKFLOW REFERENCE
+### Step 1.7: RUN CONTINUOUS QUALITY CHECKS (NEW - v10.16)
+
+**After each batch group of 3-4 tasks completes**, run lightweight quality checks:
+
+#### 1.7.1 When to Run
+
+Run continuous checks when:
+- A batch group (3-4 tasks) has been completed
+- At least one task involved code changes
+- NOT in iteration 2+ (gaps should be small, focus on completion)
+
+Skip continuous checks when:
+- Batch has < 3 tasks
+- No code changes (documentation-only tasks)
+- Iteration ≥ 2 (quality gates already ran in iteration 1)
+- User passes `--no-checks` flag to /implement
+
+#### 1.7.2 Execute Continuous Checks
+
+```bash
+# Run continuous checks for current batch
+bash .spec-flow/scripts/bash/continuous-checks.sh \
+  --batch-num $BATCH_NUM \
+  --feature-dir "$FEATURE_DIR"
+```
+
+**Exit codes:**
+- `0`: All checks passed, continue to next batch
+- `1`: Some checks failed, user decision required
+- `2`: Timeout exceeded (> 30s), consider reducing scope
+
+#### 1.7.3 Checks Performed
+
+The continuous-checks.sh script runs 5 lightweight checks:
+
+1. **Linting** (auto-fix enabled)
+   - ESLint, Prettier for frontend
+   - Ruff, Black for backend
+   - Auto-fixes applied, committed if successful
+
+2. **Type Checking** (quick mode)
+   - TypeScript: `tsc --noEmit --incremental`
+   - Python: `mypy --incremental`
+   - Changed files only
+
+3. **Unit Tests** (related tests only)
+   - Frontend: `pnpm test --findRelatedTests`
+   - Backend: `pytest` on related test files
+   - Fast feedback on new code
+
+4. **Coverage Delta**
+   - Check if coverage dropped since last batch
+   - Baseline stored in `.baseline-coverage`
+   - Warn if coverage decreased
+
+5. **Dead Code Detection**
+   - Detect new unused exports (TypeScript)
+   - Flag potential cleanup opportunities
+   - Non-blocking, warning only
+
+#### 1.7.4 Handling Failures
+
+If continuous checks fail:
+
+**Option 1: Fix now and continue (recommended)**
+```bash
+# Review failures in batch log
+cat .continuous-checks/batch-${BATCH_NUM}.log
+
+# Fix the issues
+# ... make corrections ...
+
+# Commit fixes
+git add .
+git commit -m "fix: address continuous check failures from batch $BATCH_NUM"
+
+# Re-run continuous checks
+bash .spec-flow/scripts/bash/continuous-checks.sh --batch-num $BATCH_NUM --feature-dir "$FEATURE_DIR"
+```
+
+**Option 2: Continue anyway** (not recommended)
+- Use for minor issues that don't block progress
+- Issues will be caught again in /optimize
+- Add TODO comments for tracking
+
+**Option 3: Abort batch**
+- For critical failures (build breaks, tests won't run)
+- Rollback last task: `git reset --hard HEAD~1`
+- Fix the blocking issue
+- Resume /implement
+
+#### 1.7.5 Performance Target
+
+Continuous checks should complete in < 30 seconds:
+- Linting + auto-fix: ~5-8s
+- Type checking (incremental): ~5-10s
+- Unit tests (related only): ~8-12s
+- Coverage + dead code: ~2-5s
+
+If checks exceed 30s, consider:
+- Reducing batch size (2-3 tasks instead of 3-4)
+- Skipping dead code detection (lowest value)
+- Running some checks only in /optimize
+
+#### 1.7.6 Continuous vs Full Quality Gates
+
+**Continuous (after each batch)**:
+- Fast (< 30s)
+- Incremental (changed files only)
+- Auto-fix enabled
+- Warning-based (mostly non-blocking)
+- Purpose: Catch issues early
+
+**Full Quality Gates (/optimize phase)**:
+- Comprehensive (10-15 min)
+- Full codebase scan
+- No auto-fix
+- Blocking failures
+- Purpose: Production-readiness validation
+
+---
+
+### Step 1.8: TDD WORKFLOW REFERENCE
 
 **Strict TDD sequence per task:**
 

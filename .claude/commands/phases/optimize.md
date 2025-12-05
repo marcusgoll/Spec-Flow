@@ -296,6 +296,55 @@ fi
 
 ---
 
+### Step 0.8: Initialize Multi-Agent Voting System
+
+**NEW (v10.16)**: Initialize voting system for quality gates if enabled.
+
+```bash
+# Check if voting configuration exists
+if [ -f ".spec-flow/config/voting.yaml" ]; then
+    echo "🗳️  Multi-agent voting enabled"
+
+    # Source voting engine functions
+    if [ -f ".claude/skills/multi-agent-voting/voting-engine.sh" ]; then
+        source .claude/skills/multi-agent-voting/voting-engine.sh
+
+        # Check dependencies (yq, python3, bc)
+        check_dependencies
+
+        VOTING_ENABLED=true
+        echo "  ✓ Voting engine loaded"
+        echo "  ✓ Operations with voting: code_review, security_review, breaking_change_detection"
+        echo ""
+    else
+        echo "  ⚠ voting-engine.sh not found, falling back to single-agent"
+        VOTING_ENABLED=false
+    fi
+else
+    VOTING_ENABLED=false
+fi
+```
+
+**Voting-enabled operations:**
+
+When `VOTING_ENABLED=true`, the following quality gates use multi-agent voting:
+
+| Gate | Strategy | Agents | k | Benefit |
+|------|----------|--------|---|---------|
+| Gate 4: Code Review | first_to_ahead_by_k | 3 | 2 | Error decorrelation, higher accuracy |
+| Gate 2: Security Review | unanimous | 3 | - | All agents must agree (safety first) |
+| Gate 16: Breaking Changes | first_to_ahead_by_k | 3 | 2 | Consensus on API compatibility |
+
+**Voting disabled fallback:**
+
+If voting is disabled (missing config or engine), gates use single specialist agents as before. No functionality loss, just less accuracy.
+
+**Error decorrelation:**
+
+Voting uses temperature variation (0.5, 0.7, 0.9) to decorrelate errors across agents. Based on MAKER paper's findings that diverse sampling improves aggregate accuracy.
+
+---
+
 ### Step 1: Execute Optimization Workflow
 
 1. **Execute optimization workflow** via spec-cli.py:

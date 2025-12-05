@@ -107,6 +107,72 @@ python .spec-flow/scripts/spec-cli.py feature "$ARGUMENTS"
 
 ---
 
+## Step 0.15: Apply Learned Patterns (NEW - v10.16)
+
+**Auto-apply performance optimizations and patterns from perpetual learning system.**
+
+```bash
+# Check if auto-apply learnings is available
+if [ -f ".spec-flow/scripts/bash/auto-apply-learnings.sh" ]; then
+    echo ""
+    echo "🧠 Checking for learned patterns to apply..."
+    echo ""
+
+    # Run pattern auto-apply
+    bash .spec-flow/scripts/bash/auto-apply-learnings.sh before-tool "feature" "workflow_start" || true
+
+    # Note: The script will:
+    # - Apply performance patterns (confidence ≥0.90)
+    # - Warn about anti-patterns (confidence ≥0.85)
+    # - Expand custom abbreviations (confidence ≥0.95)
+    # - Queue CLAUDE.md tweaks for approval (confidence ≥0.95)
+
+    echo ""
+fi
+```
+
+**Displays applied patterns:**
+
+If patterns are auto-applied, you'll see output like:
+```
+🧠 Checking for learned patterns to apply...
+
+💡 Performance patterns applied: 3
+  - Use Glob instead of find for file search
+  - Batch git commits (3-4 files)
+  - Prefer Edit over Write for existing files
+
+⚠️  Anti-patterns to avoid: 2
+  - Don't edit schema files without migration
+  - Avoid nested Task calls (use sequential execution)
+
+🎯 Custom abbreviations available: 5
+  - "auth" → "authentication"
+  - "db" → "database"
+  - "feat" → "feature"
+
+✅ Learned patterns active in workflow
+```
+
+**Pending approvals:**
+
+If CLAUDE.md tweaks need approval:
+```
+📝 CLAUDE.md tweaks pending approval: 1
+  Review: .spec-flow/learnings/pending-approvals.yaml
+  Apply: /heal-workflow
+```
+
+**Skip conditions:**
+
+Auto-apply is skipped if:
+- No learnings collected yet (first few workflows)
+- Learning system disabled in preferences
+- CI/non-interactive mode
+- `.spec-flow/learnings/` directory doesn't exist
+
+---
+
 ## Step 0.2: Autopilot Phase Orchestration
 
 **CRITICAL**: This is the autopilot loop that drives the entire workflow. After initialization, execute each phase in sequence until completion or error.

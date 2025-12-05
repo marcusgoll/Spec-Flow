@@ -89,6 +89,51 @@ For development/debugging: Clone GitHub repo to access archived commands.
 
 Resume: `/ship continue` or `/feature continue`
 
+### Continuous Quality Features (v10.16)
+
+**Multi-Agent Voting** - Error decorrelation through diverse sampling:
+- Code reviews: 3 agents, k=2 voting (MAKER algorithm)
+- Security audits: Unanimous consensus required
+- Breaking changes: 3 agents, k=2 for API compatibility
+- Temperature variation (0.5, 0.7, 0.9) decorrelates errors
+- Auto-fallback to single agent if voting unavailable
+- Usage: `/review --voting` or automatic in `/optimize`
+
+**Continuous Checks** - Lightweight validation after each task batch:
+- Runs after 3-4 tasks during `/implement` phase
+- Checks: linting (auto-fix), type checking, unit tests, coverage delta, dead code, gap detection
+- Performance target: < 30 seconds total
+- Non-blocking warnings, user decides: fix now, continue, or abort
+- Skipped in iteration 2+ (focus on gaps only)
+
+**Progressive Quality Gates** - Three levels throughout workflow:
+```
+Level 1 (Continuous)    → After each batch    → < 30s   → Warn & continue
+Level 2 (Full)          → /optimize phase     → 10-15m  → Block deployment
+Level 3 (Critical)      → /ship pre-flight    → < 2m    → Block production
+```
+
+**On-Demand Review** - Code review anytime:
+- `/review` - Quick review of uncommitted changes
+- `/review --voting` - 3-agent voting for high confidence
+- `/review --scope all` - Review entire feature
+- Auto-fix linting, show file:line references, generate coverage gaps
+
+**Perpetual Learning** - Auto-apply proven patterns:
+- Performance patterns (≥0.90 confidence) - auto-applied at workflow start
+- Anti-patterns (≥0.85 confidence) - warnings issued
+- Custom abbreviations (≥0.95 confidence) - auto-expanded
+- CLAUDE.md tweaks (≥0.95 confidence) - queued for approval via `/heal-workflow`
+- Collected from past workflows, applied at `/feature` and `/epic` start
+
+**Early Gap Detection** - Find missing implementations before validation:
+- Scans changed files for TODO, FIXME, placeholders, edge cases
+- Runs during continuous checks (Check 6/6)
+- Non-blocking warnings, saved to `.potential-gaps.yaml`
+- High-confidence gaps (≥0.8) likely need fixes before deployment
+
+Configuration: `.spec-flow/config/progressive-gates.yaml`, `.spec-flow/config/voting.yaml`
+
 ### Directory Structure
 
 ```

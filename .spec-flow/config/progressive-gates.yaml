@@ -1,0 +1,400 @@
+# Progressive Quality Gates Configuration
+# Defines three levels of quality checks throughout the workflow
+
+# Version: 10.16.0
+# Last updated: 2025-12-05
+
+gates:
+  # ═══════════════════════════════════════════════════════════════════
+  # Level 1: Continuous Gates (After Each Task Batch)
+  # ═══════════════════════════════════════════════════════════════════
+  #
+  # Purpose: Catch issues early during /implement phase
+  # Frequency: After every 3-4 tasks complete
+  # Performance target: < 30 seconds total
+  # Failure action: Warning (user decides: fix, continue, abort)
+  #
+  continuous:
+    - name: lint
+      description: Linting with auto-fix enabled
+      command: |
+        # Frontend
+        if [ -d apps ]; then
+          pnpm --filter @app lint --fix
+        fi
+        # Backend
+        if [ -d api ]; then
+          cd api && ruff check . --fix && cd -
+        fi
+      timeout: 8s
+      auto_fix: true
+      failure_severity: warning
+
+    - name: type_check
+      description: Type checking (incremental mode, changed files only)
+      command: |
+        # TypeScript
+        if [ -f tsconfig.json ]; then
+          npx tsc --noEmit --incremental
+        fi
+        # Python
+        if [ -d api ]; then
+          cd api && mypy app/ --incremental && cd -
+        fi
+      timeout: 10s
+      auto_fix: false
+      failure_severity: warning
+
+    - name: unit_tests
+      description: Unit tests for changed files only
+      command: |
+        # Detect changed files
+        CHANGED=$(git diff --name-only HEAD~1)
+        # Frontend tests
+        if echo "$CHANGED" | grep -q "^apps/"; then
+          pnpm --filter @app test --findRelatedTests $CHANGED
+        fi
+        # Backend tests
+        if echo "$CHANGED" | grep -q "^api/"; then
+          cd api && pytest -v && cd -
+        fi
+      timeout: 12s
+      auto_fix: false
+      failure_severity: error
+
+    - name: coverage_delta
+      description: Check test coverage hasn't dropped
+      command: |
+        # Run coverage and compare to baseline
+        pnpm --filter @app test --coverage --silent
+        CURRENT=$(grep -oP "All files.*\K\d+" coverage/coverage-summary.txt)
+        BASELINE=$(cat .baseline-coverage 2>/dev/null || echo "0")
+        if [ "$CURRENT" -lt "$BASELINE" ]; then
+          echo "Coverage dropped: $BASELINE% → $CURRENT%"
+          exit 1
+        fi
+      timeout: 5s
+      auto_fix: false
+      failure_severity: warning
+
+    - name: dead_code
+      description: Detect new unused exports
+      command: |
+        if command -v npx >/dev/null && [ -d apps ]; then
+          npx ts-prune | grep -v "used in module" || true
+        fi
+      timeout: 5s
+      auto_fix: false
+      failure_severity: info
+
+    timing: after_each_batch
+    total_timeout: 30s
+    failure_action: warn_and_continue
+    skip_conditions:
+      - batch_size_less_than: 3
+      - iteration_greater_than: 1
+      - no_code_changes: true
+
+  # ═══════════════════════════════════════════════════════════════════
+  # Level 2: Full Quality Gates (/optimize Phase)
+  # ═══════════════════════════════════════════════════════════════════
+  #
+  # Purpose: Comprehensive production-readiness validation
+  # Frequency: Once after /implement completes
+  # Performance target: 10-15 minutes
+  # Failure action: Block deployment (hard stop)
+  #
+  full:
+    - name: performance
+      description: Backend benchmarks, frontend Lighthouse, bundle size
+      command: bash .spec-flow/scripts/bash/optimize-workflow.sh performance
+      timeout: 3m
+      auto_fix: false
+      failure_severity: error
+      retry:
+        enabled: true
+        max_attempts: 2
+        delay: 10s
+
+    - name: security
+      description: SAST, dependency audit, security tests
+      command: bash .spec-flow/scripts/bash/optimize-workflow.sh security
+      timeout: 5m
+      auto_fix: false
+      failure_severity: critical  # Immediate block
+      retry:
+        enabled: false  # No retry for security failures
+
+    - name: accessibility
+      description: WCAG 2.1 AA compliance via jest-axe and Lighthouse
+      command: bash .spec-flow/scripts/bash/optimize-workflow.sh accessibility
+      timeout: 3m
+      auto_fix: false
+      failure_severity: error
+      retry:
+        enabled: true
+        max_attempts: 2
+        delay: 5s
+
+    - name: code_review
+      description: Comprehensive code review (with voting if enabled)
+      command: |
+        # Check if voting is enabled
+        if [ "$VOTING_ENABLED" = "true" ]; then
+          invoke_voting "code_review" "$FEATURE_DIR"
+        else
+          # Use Task tool to invoke code-reviewer agent
+          # (This would be handled by Claude Code, not bash)
+          echo "Running single-agent code review..."
+        fi
+      timeout: 5m
+      auto_fix: false
+      failure_severity: error
+      voting_enabled: true  # Use multi-agent voting if available
+
+    - name: e2e_tests
+      description: Playwright E2E tests with visual regression
+      command: bash .spec-flow/scripts/bash/optimize-workflow.sh e2e
+      timeout: 10m
+      auto_fix: false
+      failure_severity: error
+      retry:
+        enabled: true
+        max_attempts: 3  # E2E can be flaky
+        delay: 15s
+      skip_if:
+        - no_playwright_config: true
+        - e2e_visual_enabled: false
+
+    - name: migrations
+      description: Database migration reversibility check
+      command: bash .spec-flow/scripts/bash/optimize-workflow.sh migrations
+      timeout: 2m
+      auto_fix: false
+      failure_severity: error
+
+    - name: docker_build
+      description: Validate Dockerfile builds successfully
+      command: bash .spec-flow/scripts/bash/optimize-workflow.sh docker
+      timeout: 5m
+      auto_fix: false
+      failure_severity: error
+      skip_if:
+        - no_dockerfile: true
+
+    timing: optimize_phase
+    total_timeout: 15m
+    failure_action: block
+    parallel_execution: true  # Run gates in parallel where possible
+    max_concurrent: 5
+
+  # ═══════════════════════════════════════════════════════════════════
+  # Level 3: Critical Gates (/ship Pre-Flight)
+  # ═══════════════════════════════════════════════════════════════════
+  #
+  # Purpose: Final safety checks before production deployment
+  # Frequency: Once before /ship-prod
+  # Performance target: < 2 minutes
+  # Failure action: Block deployment (cannot deploy)
+  #
+  critical:
+    - name: breaking_changes
+      description: Detect API/schema breaking changes (with voting)
+      command: |
+        # Check if voting is enabled
+        if [ "$VOTING_ENABLED" = "true" ]; then
+          invoke_voting "breaking_change_detection" "$FEATURE_DIR"
+        else
+          # Use Task tool to invoke breaking-change-detector agent
+          echo "Running single-agent breaking change detection..."
+        fi
+      timeout: 1m
+      auto_fix: false
+      failure_severity: critical
+      voting_enabled: true  # Always use voting for breaking changes
+
+    - name: rollback_test
+      description: Verify rollback capability exists
+      command: bash .spec-flow/scripts/bash/ship-rollback.sh --test
+      timeout: 30s
+      auto_fix: false
+      failure_severity: critical
+      skip_if:
+        - deployment_model: local-only
+
+    - name: health_checks
+      description: Verify all health endpoints exist
+      command: |
+        # Check for health endpoint in code
+        if grep -r "health" api/app/routes/ >/dev/null 2>&1; then
+          echo "Health endpoint found"
+        else
+          echo "WARNING: No health endpoint detected"
+          exit 1
+        fi
+      timeout: 10s
+      auto_fix: false
+      failure_severity: warning
+
+    - name: license_scan
+      description: Detect GPL/AGPL/Unlicensed dependencies
+      command: |
+        # Frontend license check
+        if [ -d apps ]; then
+          npx license-checker --production --failOn 'GPL;AGPL;UNLICENSED'
+        fi
+        # Backend license check
+        if [ -d api ]; then
+          cd api && pip-licenses --fail-on 'GPL;AGPL;UNKNOWN' && cd -
+        fi
+      timeout: 30s
+      auto_fix: false
+      failure_severity: critical
+
+    - name: env_validation
+      description: Compare .env.example vs .env for missing vars
+      command: |
+        if [ -f .env.example ] && [ -f .env ]; then
+          # Extract required vars from .env.example
+          REQUIRED=$(grep -oP '^[A-Z_]+(?==)' .env.example)
+          # Check each is present in .env
+          for var in $REQUIRED; do
+            if ! grep -q "^$var=" .env; then
+              echo "ERROR: Missing required env var: $var"
+              exit 1
+            fi
+          done
+        fi
+      timeout: 5s
+      auto_fix: false
+      failure_severity: error
+
+    timing: ship_preflight
+    total_timeout: 2m
+    failure_action: block_deployment
+    parallel_execution: true
+    max_concurrent: 5
+
+# ═══════════════════════════════════════════════════════════════════
+# Epic-Specific Gates (Only for Epic Workflows)
+# ═══════════════════════════════════════════════════════════════════
+#
+# These gates run in addition to full gates during /optimize for epics
+#
+epic_gates:
+  - name: contract_validation
+    description: API contract compliance (OpenAPI schemas, Pact CDC)
+    command: bash .spec-flow/scripts/bash/validate-contracts.sh
+    timeout: 3m
+    auto_fix: false
+    failure_severity: error
+
+  - name: load_testing
+    description: Performance under production-like load (100 VUs, 30s)
+    command: bash .spec-flow/scripts/bash/run-load-tests.sh --vus 100 --duration 30s
+    timeout: 2m
+    auto_fix: false
+    failure_severity: warning  # Non-blocking for now
+
+  - name: migration_integrity
+    description: Data integrity validation during up/down migrations
+    command: bash .spec-flow/scripts/bash/test-migration-integrity.sh
+    timeout: 5m
+    auto_fix: false
+    failure_severity: critical
+
+# ═══════════════════════════════════════════════════════════════════
+# Configuration Options
+# ═══════════════════════════════════════════════════════════════════
+
+options:
+  # Auto-retry transient failures
+  auto_retry:
+    enabled: true
+    transient_patterns:
+      - "ECONNREFUSED"
+      - "timeout"
+      - "flaky test"
+      - "network error"
+    max_retries: 3
+    progressive_delay: [5s, 10s, 15s]
+
+  # Notification preferences
+  notifications:
+    on_failure: true
+    on_success: false
+    channels:
+      - console
+      # - slack  # Optional integration
+      # - email  # Optional integration
+
+  # Parallel execution settings
+  parallelization:
+    enabled: true
+    max_concurrent_gates: 5
+    respect_dependencies: true
+
+  # Caching
+  caching:
+    enabled: true
+    cache_dir: .spec-flow/cache/quality-gates
+    ttl: 3600  # 1 hour
+    invalidate_on:
+      - git_commit
+      - dependency_change
+
+  # Integration with CI/CD
+  ci_mode:
+    auto_detect: true
+    non_interactive: true
+    fail_fast: false  # Run all gates even if one fails
+    export_results: true
+    export_format: json
+
+# ═══════════════════════════════════════════════════════════════════
+# Gate Dependencies
+# ═══════════════════════════════════════════════════════════════════
+#
+# Some gates depend on others completing first
+#
+dependencies:
+  code_review:
+    requires:
+      - lint
+      - type_check
+  e2e_tests:
+    requires:
+      - unit_tests
+  docker_build:
+    requires:
+      - lint
+      - type_check
+      - unit_tests
+
+# ═══════════════════════════════════════════════════════════════════
+# Severity Definitions
+# ═══════════════════════════════════════════════════════════════════
+
+severity_levels:
+  info:
+    description: Informational only, no action required
+    blocks_deployment: false
+    requires_acknowledgment: false
+
+  warning:
+    description: Should be addressed but not blocking
+    blocks_deployment: false
+    requires_acknowledgment: true
+
+  error:
+    description: Must be fixed before deployment
+    blocks_deployment: true
+    requires_acknowledgment: true
+    auto_retry: true
+
+  critical:
+    description: Immediate blocker, no retry
+    blocks_deployment: true
+    requires_acknowledgment: true
+    auto_retry: false
+    escalate: true

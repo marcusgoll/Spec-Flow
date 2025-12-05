@@ -254,6 +254,35 @@ See a complete feature workflow in [`specs/001-example-feature/`](specs/001-exam
 
 ## 🆕 Recent Updates
 
+### v10.16.0 (December 2025)
+
+**Quality Feedback Loop System** - Multi-agent voting, continuous checks, and perpetual learning
+
+- **Multi-Agent Voting** - Error decorrelation through diverse sampling (MAKER algorithm)
+  - 3-agent voting with k=2 strategy for code reviews, security audits, breaking changes
+  - Temperature variation (0.5, 0.7, 0.9) decorrelates errors across agents
+  - Automatic in `/optimize` phase, manual via `/review --voting`
+- **Continuous Quality Checks** - Lightweight validation during `/implement` phase
+  - Runs after each task batch (3-4 tasks), < 30s performance target
+  - 6 checks: linting (auto-fix), type checking, unit tests, coverage delta, dead code, gap detection
+  - Non-blocking warnings with user choice: fix now, continue, or abort
+- **Progressive Quality Gates** - Three escalating levels throughout workflow
+  - Level 1: Continuous (after each batch, < 30s, warn & continue)
+  - Level 2: Full quality gates (`/optimize` phase, 10-15m, block deployment)
+  - Level 3: Critical pre-flight (`/ship`, < 2m, block production)
+- **On-Demand Review** - New `/review` command for anytime code review
+  - Quick review (single agent, ~2-3 min) or comprehensive voting review (3 agents, ~5-8 min)
+  - Auto-fix linting, extract file:line references, generate coverage gaps
+- **Perpetual Learning** - Auto-apply proven patterns at workflow start
+  - Performance optimizations (≥0.90 confidence) auto-applied
+  - Anti-patterns (≥0.85 confidence) generate warnings
+  - Custom abbreviations (≥0.95 confidence) auto-expanded
+- **Early Gap Detection** - Find missing implementations before staging validation
+  - Scans for TODO/FIXME/HACK comments, placeholders, edge cases
+  - High-confidence gaps (≥0.8) flag likely issues before deployment
+
+---
+
 ### v10.15.1 (December 2025)
 
 **Command Architecture Optimization** - Cleaner package structure with 27% size reduction

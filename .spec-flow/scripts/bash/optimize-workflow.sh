@@ -213,6 +213,11 @@ check_code_review() {
 
     local failed=0
 
+    # NOTE: This function runs automated checks (linters, type checkers).
+    # For agent-based code review with voting, Claude Code should invoke
+    # the voting system directly when $VOTING_ENABLED=true
+    # Example: invoke_voting "code_review" "$FEATURE_DIR" --output "$result_file"
+
     # Backend linting and type checking
     if [ -d api ]; then
         cd api

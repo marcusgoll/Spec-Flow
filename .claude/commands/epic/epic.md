@@ -268,6 +268,72 @@ EPIC_SOURCE=$(yq eval '.source // "manual"' "$EPIC_DIR/state.yaml" 2>/dev/null)
 
 ---
 
+### Step 0.5: Apply Learned Patterns (NEW - v10.16)
+
+**Auto-apply performance optimizations and patterns from perpetual learning system.**
+
+```bash
+# Check if auto-apply learnings is available
+if [ -f ".spec-flow/scripts/bash/auto-apply-learnings.sh" ]; then
+    echo ""
+    echo "🧠 Checking for learned patterns to apply..."
+    echo ""
+
+    # Run pattern auto-apply
+    bash .spec-flow/scripts/bash/auto-apply-learnings.sh before-tool "epic" "workflow_start" || true
+
+    # Note: The script will:
+    # - Apply performance patterns (confidence ≥0.90)
+    # - Warn about anti-patterns (confidence ≥0.85)
+    # - Expand custom abbreviations (confidence ≥0.95)
+    # - Queue CLAUDE.md tweaks for approval (confidence ≥0.95)
+
+    echo ""
+fi
+```
+
+**Displays applied patterns:**
+
+If patterns are auto-applied, you'll see output like:
+```
+🧠 Checking for learned patterns to apply...
+
+💡 Performance patterns applied: 3
+  - Use parallel Task() calls for independent operations
+  - Batch git commits for related changes
+  - Prefer meta-prompting for complex research
+
+⚠️  Anti-patterns to avoid: 2
+  - Don't modify contracts after locking
+  - Avoid circular dependencies between sprints
+
+🎯 Custom abbreviations available: 5
+  - "auth" → "authentication"
+  - "db" → "database"
+  - "API" → "Application Programming Interface"
+
+✅ Learned patterns active in epic workflow
+```
+
+**Pending approvals:**
+
+If CLAUDE.md tweaks need approval:
+```
+📝 CLAUDE.md tweaks pending approval: 1
+  Review: .spec-flow/learnings/pending-approvals.yaml
+  Apply: /heal-workflow
+```
+
+**Skip conditions:**
+
+Auto-apply is skipped if:
+- No learnings collected yet (first few workflows)
+- Learning system disabled in preferences
+- CI/non-interactive mode
+- `.spec-flow/learnings/` directory doesn't exist
+
+---
+
 ### Step 1: Create Epic Specification
 
 **Parse user input and detect complexity:**
