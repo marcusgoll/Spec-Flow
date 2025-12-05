@@ -45,6 +45,18 @@
 
 ## 🆕 Recent Updates
 
+### v10.14.0 (December 2025)
+
+**Multi-Context Session Management & Self-Sufficient Phases** - Seamless session continuity and independent command execution.
+
+- **Session Hooks**: SessionStart, PreCompact, Stop hooks for context preservation
+- **Handoff Documents**: Auto-generated context snapshots before compaction
+- **Self-Sufficient `/tasks`**: Embedded task breakdown logic (no script dependency)
+- **Self-Sufficient `/implement`**: Embedded implementation logic (no script dependency)
+- **Auto-Install Hooks**: Settings auto-merge on upgrade, git hooks installed automatically
+
+---
+
 ### v10.12.0 (December 2025)
 
 **Dev Studio: Parallel AI Development** - Run multiple Claude Code instances in parallel as persistent AI developer workstations.

@@ -2,6 +2,54 @@
 
 ---
 
+## [10.14.0] - 2025-12-05
+
+### ✨ Added
+
+**Multi-Context Session Management**
+
+Comprehensive session continuity with handoff documents, checkpoints, and context restoration.
+
+- **SessionStart Hooks** (startup, resume, compact)
+  - Auto-restore workflow context from handoff docs
+  - Load active feature/epic state on session start
+  - Preserve context across compaction events
+
+- **PreCompact Hooks**
+  - Generate handoff documents before context compaction
+  - Capture current state, decisions, and next steps
+  - Enable seamless continuation in new contexts
+
+- **Stop Hooks**
+  - Create checkpoints on session termination
+  - Save progress for future session restoration
+
+**Self-Sufficient Phases**
+
+`/tasks` and `/implement` commands now work independently without external scripts.
+
+- **Embedded Task Breakdown Logic**
+  - Task generation directly in `/tasks` command
+  - No dependency on `task-breakdown.sh` script
+  - TDD task sequencing with complexity scoring
+
+- **Embedded Implementation Logic**
+  - Implementation execution directly in `/implement` command
+  - No dependency on `implement-workflow.sh` script
+  - Parallel batch execution with checkpoint commits
+
+### 🔧 Changed
+
+- Hook configuration auto-merges with existing user settings on upgrade
+- `settings.local.json` auto-created from example during installation
+- Git hooks installed automatically during setup
+
+### 🐛 Fixed
+
+- ShellCheck SC2162: Added `-r` flag to read commands in `ship-rollback.sh`
+
+---
+
 ## [10.13.0] - 2025-12-04
 
 ### ✨ Added
