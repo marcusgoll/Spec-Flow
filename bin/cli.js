@@ -111,6 +111,19 @@ program
         console.log('');
         console.log(chalk.white('Files updated:'));
         console.log(formatActions(result.conflictActions));
+
+        // Check for Gemini extension updates
+        const geminiUpdated = result.conflictActions.some(action => 
+          (action.path.endsWith('GEMINI.md') || action.path.endsWith('gemini-extension.json')) && 
+          action.action === 'backed-up'
+        );
+
+        if (geminiUpdated) {
+          console.log('');
+          console.log(chalk.yellow('⚠️  Gemini Extension Updated'));
+          console.log(chalk.white('   The Gemini CLI extension definition files have been updated.'));
+          console.log(chalk.white('   Please restart your Gemini CLI session to load the changes.'));
+        }
       }
 
       console.log('');
