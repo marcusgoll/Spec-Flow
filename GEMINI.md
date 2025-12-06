@@ -41,6 +41,7 @@ When the user provides a command (e.g., "/feature", "/plan"), you must:
 | `/ship-staging` | `.claude/commands/deployment/ship-staging.md` | Deploy to Staging. |
 | `/ship-prod` | `.claude/commands/deployment/ship-prod.md` | Deploy to Production. |
 | `/finalize` | `.claude/commands/phases/finalize.md` | Finalize workflow. |
+| `/release` | `.claude/commands/project/release.md` | Automate project release. |
 | `/init` | `.claude/commands/core/init.md` | Initialize Spec-Flow in a project. |
 | `/help` | `.claude/commands/core/help.md` | Context-aware guidance. |
 
