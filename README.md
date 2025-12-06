@@ -224,6 +224,27 @@ your-project/
     └── project/          # Project documentation
 ```
 
+## Using with Gemini CLI
+
+Spec-Flow can be installed as a Gemini CLI extension to bring the same structured workflow to Gemini.
+
+1.  **Install**:
+    ```bash
+    # From within your project root
+    npx spec-flow install-gemini-extension
+    ```
+    *Alternatively, run: `gemini extensions install .` inside your project.*
+
+2.  **Use**:
+    The extension provides the same slash commands (`/feature`, `/plan`, etc.) directly within your Gemini CLI session.
+
+    ```
+    /feature "add user authentication"
+    ```
+
+3.  **Skills & Agents**:
+    The Gemini extension automatically adapts Spec-Flow's agents and skills to work within the Gemini environment, allowing you to leverage specialized personas like `backend-dev` or `git-workflow-enforcer`.
+
 ## Requirements
 
 - **Claude Code** with slash command support

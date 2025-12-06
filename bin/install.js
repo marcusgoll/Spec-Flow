@@ -27,7 +27,7 @@ const USER_DATA_DIRECTORIES = [
 ];
 
 /** Root-level docs we ship */
-const ROOT_DOC_FILES = ['CLAUDE.md', 'QUICKSTART.md', 'LICENSE'];
+const ROOT_DOC_FILES = ['CLAUDE.md', 'QUICKSTART.md', 'LICENSE', 'GEMINI.md', 'gemini-extension.json'];
 
 /** Merge and normalize an exclude list */
 function buildExcludeList(extra = []) {

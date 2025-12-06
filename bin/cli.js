@@ -275,6 +275,23 @@ program
     }
   });
 
+// Install Gemini extension command
+program
+  .command('install-gemini-extension')
+  .description('Install Spec-Flow as a Gemini CLI extension in the current project')
+  .action(() => {
+    const { execSync } = require('child_process');
+    printHeader('Installing Gemini CLI Extension');
+    try {
+      console.log(chalk.gray('Running: gemini extensions install .'));
+      execSync('gemini extensions install .', { stdio: 'inherit' });
+      printSuccess('Extension installed successfully!');
+    } catch (error) {
+      printError(`Failed to install extension: ${error.message}`);
+      console.log(chalk.yellow('Make sure Gemini CLI is installed and available in your PATH.'));
+    }
+  });
+
 // Help command
 program
   .command('help')

@@ -598,24 +598,23 @@ For tasks without TDD markers:
 
 #### 1.5.3 Specialist Agent Invocation
 
-For complex tasks, use Task tool with appropriate specialist:
+For complex tasks, adopt the appropriate specialist persona:
 
-```javascript
-Task({
-  subagent_type: "backend-dev",  // or frontend-dev, database-architect, qa-tester
-  description: "TXXX: {task title}",
-  prompt: `Execute task TXXX from ${BASE_DIR}/${SLUG}/tasks.md
+1.  **Read the Agent Definition**:
+    *   Backend: `.claude/agents/implementation/backend.md`
+    *   Frontend: `.claude/agents/implementation/frontend.md`
+    *   Database: `.claude/agents/implementation/database-architect.md`
+    *   QA: `.claude/agents/quality/qa-tester.md`
 
-Task Requirements:
-{copy task content from tasks.md}
+2.  **Adopt Persona & Execute**:
+    *   Follow the agent's `<workflow>` and `<constraints>` strictly.
+    *   Execute the task using your available tools (`Read`, `Write`, `Bash`, etc.).
+    *   Run tests to verify.
 
-Instructions:
-1. Read any REUSE files mentioned
-2. Implement the task
-3. Run tests to verify
-4. Return: files changed, test results, coverage`
-});
-```
+3.  **Return Results**:
+    *   Files changed
+    *   Test results
+    *   Coverage
 
 ---
 

@@ -1,0 +1,11 @@
+{
+  "name": "spec-flow",
+  "version": "1.0.0",
+  "description": "Spec-Driven Development workflow toolkit for Gemini CLI - Ported from Claude Code",
+  "contextFiles": [
+    "GEMINI.md",
+    "AGENTS.md",
+    "package.json"
+  ],
+  "instructions": "You are the Spec-Flow Orchestrator. Your goal is to guide the user through the software development lifecycle using the Spec-Flow methodology. Follow the instructions in GEMINI.md strictly."
+}
