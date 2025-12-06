@@ -111,6 +111,19 @@ program
         console.log('');
         console.log(chalk.white('Files updated:'));
         console.log(formatActions(result.conflictActions));
+
+        // Check for Gemini extension updates
+        const geminiUpdated = result.conflictActions.some(action => 
+          (action.path.endsWith('GEMINI.md') || action.path.endsWith('gemini-extension.json')) && 
+          action.action === 'backed-up'
+        );
+
+        if (geminiUpdated) {
+          console.log('');
+          console.log(chalk.yellow('⚠️  Gemini Extension Updated'));
+          console.log(chalk.white('   The Gemini CLI extension definition files have been updated.'));
+          console.log(chalk.white('   Please restart your Gemini CLI session to load the changes.'));
+        }
       }
 
       console.log('');
@@ -272,6 +285,23 @@ program
     } catch (error) {
       printError(`Removal failed: ${error.message}`);
       process.exit(1);
+    }
+  });
+
+// Install Gemini extension command
+program
+  .command('install-gemini-extension')
+  .description('Install Spec-Flow as a Gemini CLI extension in the current project')
+  .action(() => {
+    const { execSync } = require('child_process');
+    printHeader('Installing Gemini CLI Extension');
+    try {
+      console.log(chalk.gray('Running: gemini extensions install .'));
+      execSync('gemini extensions install .', { stdio: 'inherit' });
+      printSuccess('Extension installed successfully!');
+    } catch (error) {
+      printError(`Failed to install extension: ${error.message}`);
+      console.log(chalk.yellow('Make sure Gemini CLI is installed and available in your PATH.'));
     }
   });
 

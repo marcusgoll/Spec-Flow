@@ -36,6 +36,10 @@ const fs = require('fs');
     chalk.gray('  4. Run /constitution, /design-inspiration (optional)'),
     chalk.gray('  5. Start building: /feature "feature-name"'),
     '',
+    chalk.white('Gemini CLI Support:'),
+    chalk.gray('  To use with Gemini CLI, run inside your project:'),
+    chalk.green(`  ${dlx} spec-flow install-gemini-extension`),
+    '',
     chalk.white('Documentation:'),
     chalk.gray('  https://github.com/marcusgoll/Spec-Flow')
   ].join('\n');

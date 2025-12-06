@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     Enable auto-merge on a GitHub pull request.
@@ -60,7 +60,8 @@ function Test-GitHubCLI {
     try {
         $null = gh --version
         return $true
-    } catch {
+    }
+    catch {
         Write-Error "GitHub CLI (gh) not found. Install from: https://cli.github.com/"
         return $false
     }
@@ -71,14 +72,15 @@ function Get-PRDetails {
     param([int]$PrNumber)
 
     try {
-        $prJson = gh pr view $PrNumber --json number,state,title,baseRefName,headRefName,autoMergeRequest 2>$null
+        $prJson = gh pr view $PrNumber --json number, state, title, baseRefName, headRefName, autoMergeRequest 2>$null
         if ($LASTEXITCODE -ne 0) {
             throw "PR #$PrNumber not found"
         }
 
         return $prJson | ConvertFrom-Json
 
-    } catch {
+    }
+    catch {
         Write-Error "Error fetching PR #${PrNumber}: $_"
         return $null
     }
@@ -109,7 +111,8 @@ function Test-BranchProtection {
         # Has some protection, but no required checks
         return $false
 
-    } catch {
+    }
+    catch {
         # No branch protection configured
         return $false
     }
@@ -137,17 +140,17 @@ function Enable-AutoMerge {
 
         # Map merge method to GraphQL enum
         $mergeMethodEnum = switch ($MergeMethod) {
-            "merge"  { "MERGE" }
+            "merge" { "MERGE" }
             "squash" { "SQUASH" }
             "rebase" { "REBASE" }
         }
 
         # GraphQL mutation to enable auto-merge
         $mutation = @{
-            query = "mutation(`$pullRequestId: ID!, `$mergeMethod: PullRequestMergeMethod!) { enablePullRequestAutoMerge(input: {pullRequestId: `$pullRequestId, mergeMethod: `$mergeMethod}) { pullRequest { autoMergeRequest { enabledAt enabledBy { login } mergeMethod } } } }"
+            query     = "mutation(`$pullRequestId: ID!, `$mergeMethod: PullRequestMergeMethod!) { enablePullRequestAutoMerge(input: {pullRequestId: `$pullRequestId, mergeMethod: `$mergeMethod}) { pullRequest { autoMergeRequest { enabledAt enabledBy { login } mergeMethod } } } }"
             variables = @{
                 pullRequestId = $prNodeId
-                mergeMethod = $mergeMethodEnum
+                mergeMethod   = $mergeMethodEnum
             }
         } | ConvertTo-Json -Depth 10 -Compress
 
@@ -165,17 +168,18 @@ function Enable-AutoMerge {
 
         # Success
         return @{
-            success = $true
-            enabledAt = $result.data.enablePullRequestAutoMerge.pullRequest.autoMergeRequest.enabledAt
-            enabledBy = $result.data.enablePullRequestAutoMerge.pullRequest.autoMergeRequest.enabledBy.login
+            success     = $true
+            enabledAt   = $result.data.enablePullRequestAutoMerge.pullRequest.autoMergeRequest.enabledAt
+            enabledBy   = $result.data.enablePullRequestAutoMerge.pullRequest.autoMergeRequest.enabledBy.login
             mergeMethod = $result.data.enablePullRequestAutoMerge.pullRequest.autoMergeRequest.mergeMethod
         }
 
-    } catch {
+    }
+    catch {
         Write-Error "Error enabling auto-merge: $_"
         return @{
             success = $false
-            error = $_.Exception.Message
+            error   = $_.Exception.Message
         }
     }
 }
@@ -192,8 +196,8 @@ function Main {
     if ($null -eq $pr) {
         if ($Json) {
             @{
-                success = $false
-                error = "PR #$PrNumber not found"
+                success  = $false
+                error    = "PR #$PrNumber not found"
                 prNumber = $PrNumber
             } | ConvertTo-Json
         }
@@ -205,12 +209,13 @@ function Main {
         $errorMsg = "PR #$PrNumber is not open (state: $($pr.state))"
         if ($Json) {
             @{
-                success = $false
-                error = $errorMsg
+                success  = $false
+                error    = $errorMsg
                 prNumber = $PrNumber
-                prState = $pr.state
+                prState  = $pr.state
             } | ConvertTo-Json
-        } else {
+        }
+        else {
             Write-Error $errorMsg
         }
         exit 1
@@ -221,13 +226,14 @@ function Main {
         $message = "Auto-merge already enabled on PR #$PrNumber (method: $($pr.autoMergeRequest.mergeMethod))"
         if ($Json) {
             @{
-                success = $true
+                success        = $true
                 alreadyEnabled = $true
-                message = $message
-                prNumber = $PrNumber
-                mergeMethod = $pr.autoMergeRequest.mergeMethod
+                message        = $message
+                prNumber       = $PrNumber
+                mergeMethod    = $pr.autoMergeRequest.mergeMethod
             } | ConvertTo-Json
-        } else {
+        }
+        else {
             Write-Host " $message" -ForegroundColor Green
         }
         exit 0
@@ -239,13 +245,14 @@ function Main {
         $errorMsg = "Branch protection not configured on '$($pr.baseRefName)'. Auto-merge requires branch protection with required status checks."
         if ($Json) {
             @{
-                success = $false
-                error = $errorMsg
-                prNumber = $PrNumber
+                success    = $false
+                error      = $errorMsg
+                prNumber   = $PrNumber
                 baseBranch = $pr.baseRefName
                 suggestion = "Configure branch protection: Settings > Branches > Add rule for '$($pr.baseRefName)'"
             } | ConvertTo-Json
-        } else {
+        }
+        else {
             Write-Warning $errorMsg
             Write-Host ""
             Write-Host "To configure branch protection:" -ForegroundColor Yellow
@@ -273,28 +280,31 @@ function Main {
     if ($result.success) {
         if ($Json) {
             @{
-                success = $true
-                prNumber = $PrNumber
+                success     = $true
+                prNumber    = $PrNumber
                 mergeMethod = $result.mergeMethod
-                enabledAt = $result.enabledAt
-                enabledBy = $result.enabledBy
-                message = "Auto-merge enabled successfully"
+                enabledAt   = $result.enabledAt
+                enabledBy   = $result.enabledBy
+                message     = "Auto-merge enabled successfully"
             } | ConvertTo-Json
-        } else {
+        }
+        else {
             Write-Host " Auto-merge enabled successfully!" -ForegroundColor Green
             Write-Host "   PR #$PrNumber will automatically merge when all checks pass" -ForegroundColor Green
             Write-Host "   Merge method: $($result.mergeMethod)" -ForegroundColor Gray
             Write-Host "   Enabled by: $($result.enabledBy) at $($result.enabledAt)" -ForegroundColor Gray
         }
         exit 0
-    } else {
+    }
+    else {
         if ($Json) {
             @{
-                success = $false
+                success  = $false
                 prNumber = $PrNumber
-                error = $result.error
+                error    = $result.error
             } | ConvertTo-Json
-        } else {
+        }
+        else {
             Write-Error "Failed to enable auto-merge: $($result.error)"
         }
         exit 1
@@ -303,4 +313,5 @@ function Main {
 
 # Run main function
 Main
+
 

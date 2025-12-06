@@ -4,7 +4,13 @@
   "title": "Spec-Flow Task List",
   "description": "Canonical task breakdown with verified paths and dependencies",
   "type": "object",
-  "required": ["version", "feature", "metadata", "tasks", "dependency_graph"],
+  "required": [
+    "version",
+    "feature",
+    "metadata",
+    "tasks",
+    "dependency_graph"
+  ],
   "properties": {
     "version": {
       "type": "string",
@@ -13,7 +19,11 @@
     },
     "feature": {
       "type": "object",
-      "required": ["slug", "name", "feature_dir"],
+      "required": [
+        "slug",
+        "name",
+        "feature_dir"
+      ],
       "properties": {
         "slug": {
           "type": "string",
@@ -31,7 +41,11 @@
     },
     "metadata": {
       "type": "object",
-      "required": ["generated_at", "plan_file", "spec_file"],
+      "required": [
+        "generated_at",
+        "plan_file",
+        "spec_file"
+      ],
       "properties": {
         "generated_at": {
           "type": "string",
@@ -61,7 +75,13 @@
       "description": "List of tasks in execution order",
       "items": {
         "type": "object",
-        "required": ["id", "description", "phase", "files", "from"],
+        "required": [
+          "id",
+          "description",
+          "phase",
+          "files",
+          "from"
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -91,7 +111,12 @@
           },
           "phase": {
             "type": "string",
-            "enum": ["setup", "foundational", "story", "polish"],
+            "enum": [
+              "setup",
+              "foundational",
+              "story",
+              "polish"
+            ],
             "description": "Task phase category"
           },
           "phase_label": {
@@ -107,12 +132,21 @@
           },
           "from": {
             "type": "object",
-            "required": ["doc", "start_line", "end_line"],
+            "required": [
+              "doc",
+              "start_line",
+              "end_line"
+            ],
             "description": "Traceability to source design document",
             "properties": {
               "doc": {
                 "type": "string",
-                "enum": ["plan.md", "spec.md", "data-model.md", "contracts"],
+                "enum": [
+                  "plan.md",
+                  "spec.md",
+                  "data-model.md",
+                  "contracts"
+                ],
                 "description": "Source document"
               },
               "section": {
@@ -136,7 +170,10 @@
             "description": "Existing code/patterns to reuse (paths verified)",
             "items": {
               "type": "object",
-              "required": ["name", "path"],
+              "required": [
+                "name",
+                "path"
+              ],
               "properties": {
                 "name": {
                   "type": "string",
@@ -173,7 +210,9 @@
             "description": "Quoted verbatim from spec.md or derived in Given-When-Then format",
             "items": {
               "type": "object",
-              "required": ["text"],
+              "required": [
+                "text"
+              ],
               "properties": {
                 "text": {
                   "type": "string",
@@ -199,7 +238,10 @@
     },
     "dependency_graph": {
       "type": "object",
-      "required": ["is_acyclic", "story_order"],
+      "required": [
+        "is_acyclic",
+        "story_order"
+      ],
       "properties": {
         "is_acyclic": {
           "type": "boolean",
@@ -220,7 +262,10 @@
           "description": "Story completion order based on dependencies",
           "items": {
             "type": "object",
-            "required": ["story", "phase"],
+            "required": [
+              "story",
+              "phase"
+            ],
             "properties": {
               "story": {
                 "type": "string"
@@ -245,7 +290,10 @@
           "description": "Groups of tasks that can run in parallel",
           "items": {
             "type": "object",
-            "required": ["phase", "task_ids"],
+            "required": [
+              "phase",
+              "task_ids"
+            ],
             "properties": {
               "phase": {
                 "type": "string"
@@ -277,7 +325,12 @@
         },
         "testing_approach": {
           "type": "string",
-          "enum": ["TDD required", "Optional - integration only", "E2E only", "No tests"],
+          "enum": [
+            "TDD required",
+            "Optional - integration only",
+            "E2E only",
+            "No tests"
+          ],
           "description": "Testing strategy from spec"
         }
       }

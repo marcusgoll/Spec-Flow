@@ -96,23 +96,23 @@ function Import-ExistingPrefs {
 
     # Parse values using regex (simple YAML parsing)
     $patterns = @{
-        "feature_default_mode" = "feature:\s*\n\s*default_mode:\s*(\w+)"
-        "feature_skip_mode_prompt" = "feature:\s*\n\s*default_mode:\s*\w+\s*\n\s*skip_mode_prompt:\s*(\w+)"
-        "epic_default_mode" = "epic:\s*\n\s*default_mode:\s*(\w+)"
-        "tasks_default_mode" = "tasks:\s*\n\s*default_mode:\s*(\w+)"
+        "feature_default_mode"        = "feature:\s*\n\s*default_mode:\s*(\w+)"
+        "feature_skip_mode_prompt"    = "feature:\s*\n\s*default_mode:\s*\w+\s*\n\s*skip_mode_prompt:\s*(\w+)"
+        "epic_default_mode"           = "epic:\s*\n\s*default_mode:\s*(\w+)"
+        "tasks_default_mode"          = "tasks:\s*\n\s*default_mode:\s*(\w+)"
         "init_project_include_design" = "init-project:\s*\n\s*default_mode:\s*\w+\s*\n\s*include_design:\s*(\w+)"
         "run_prompt_default_strategy" = "run-prompt:\s*\n\s*default_strategy:\s*([\w-]+)"
-        "auto_approve_minor_changes" = "auto_approve_minor_changes:\s*(\w+)"
-        "ci_mode_default" = "ci_mode_default:\s*(\w+)"
-        "show_usage_stats" = "show_usage_stats:\s*(\w+)"
-        "recommend_last_used" = "recommend_last_used:\s*(\w+)"
-        "worktrees_auto_create" = "worktrees:\s*\n\s*auto_create:\s*(\w+)"
-        "studio_auto_continue" = "studio:\s*\n\s*auto_continue:\s*(\w+)"
-        "studio_default_agents" = "studio:\s*\n\s*auto_continue:\s*\w+\s*\n\s*default_agents:\s*(\d+)"
-        "e2e_visual_enabled" = "e2e_visual:\s*\n\s*enabled:\s*(\w+)"
-        "e2e_visual_failure_mode" = "e2e_visual:\s*\n\s*enabled:\s*\w+\s*\n\s*failure_mode:\s*(\w+)"
-        "learning_enabled" = "learning:\s*\n\s*enabled:\s*(\w+)"
-        "migrations_strictness" = "migrations:\s*\n\s*strictness:\s*(\w+)"
+        "auto_approve_minor_changes"  = "auto_approve_minor_changes:\s*(\w+)"
+        "ci_mode_default"             = "ci_mode_default:\s*(\w+)"
+        "show_usage_stats"            = "show_usage_stats:\s*(\w+)"
+        "recommend_last_used"         = "recommend_last_used:\s*(\w+)"
+        "worktrees_auto_create"       = "worktrees:\s*\n\s*auto_create:\s*(\w+)"
+        "studio_auto_continue"        = "studio:\s*\n\s*auto_continue:\s*(\w+)"
+        "studio_default_agents"       = "studio:\s*\n\s*auto_continue:\s*\w+\s*\n\s*default_agents:\s*(\d+)"
+        "e2e_visual_enabled"          = "e2e_visual:\s*\n\s*enabled:\s*(\w+)"
+        "e2e_visual_failure_mode"     = "e2e_visual:\s*\n\s*enabled:\s*\w+\s*\n\s*failure_mode:\s*(\w+)"
+        "learning_enabled"            = "learning:\s*\n\s*enabled:\s*(\w+)"
+        "migrations_strictness"       = "migrations:\s*\n\s*strictness:\s*(\w+)"
     }
 
     foreach ($key in $patterns.Keys) {
@@ -143,7 +143,8 @@ function Ask-Choice {
             $marker = " (current)"
             Write-Host "  $idx. $opt" -NoNewline
             Write-Host $marker -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Host "  $idx. $opt"
         }
         $idx++
@@ -219,7 +220,8 @@ function Ask-Number {
         $num = [int]$answer
         if ($num -ge $Min -and $num -le $Max) {
             $script:Prefs[$Key] = $num.ToString()
-        } else {
+        }
+        else {
             Write-Host "`u{26A0} Value out of range, keeping $current" -ForegroundColor Yellow
         }
     }
@@ -378,7 +380,8 @@ function Main {
         if (Test-Path $PrefFile) {
             Remove-Item $PrefFile -Force
         }
-    } else {
+    }
+    else {
         # Load existing preferences
         Import-ExistingPrefs
     }
@@ -392,7 +395,8 @@ function Main {
         Configure-Worktrees
         Configure-Studio
         Configure-Quality
-    } else {
+    }
+    else {
         # Single section
         switch ($Section.ToLower()) {
             "commands" { Configure-Commands }
@@ -427,3 +431,4 @@ function Main {
 }
 
 Main
+

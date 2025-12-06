@@ -91,11 +91,11 @@ function Parse-InScopeGaps {
         $priority = if ($priorityMatch.Success) { $priorityMatch.Groups[1].Value } else { "P2" }
 
         $gaps += [PSCustomObject]@{
-            Id = $gapId
-            Title = $title
+            Id          = $gapId
+            Title       = $title
             Description = $description
-            Source = $source
-            Priority = $priority
+            Source      = $source
+            Priority    = $priority
         }
     }
 
@@ -194,8 +194,8 @@ try {
         Write-Host "No in-scope gaps to generate tasks for" -ForegroundColor Yellow
         return [PSCustomObject]@{
             TasksGenerated = 0
-            TaskIds = @()
-            TasksPath = $tasksPath
+            TaskIds        = @()
+            TasksPath      = $tasksPath
         }
     }
 
@@ -227,7 +227,8 @@ try {
         $dependencies = Detect-TaskDependencies -GapDescription $gap.Description -TasksContent $tasksContent
         $dependsOnText = if ($dependencies.Count -gt 0) {
             "**Depends On**: $($dependencies -join ', ')"
-        } else {
+        }
+        else {
             "**Depends On**: None"
         }
 
@@ -329,11 +330,12 @@ $($gap.Description)
 
     return [PSCustomObject]@{
         TasksGenerated = $allTaskIds.Count
-        TaskIds = $allTaskIds
-        TasksPath = $tasksPath
+        TaskIds        = $allTaskIds
+        TasksPath      = $tasksPath
     }
 }
 catch {
     Write-Error "Supplemental task generation failed: $_"
     throw
 }
+

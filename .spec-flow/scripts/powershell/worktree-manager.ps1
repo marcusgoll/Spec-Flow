@@ -220,10 +220,10 @@ function Invoke-CreateWorktree {
 
         if ($Json) {
             @{
-                status = 'exists'
+                status        = 'exists'
                 worktree_path = $existingPath
-                branch = $existingBranch
-                message = 'Worktree already exists'
+                branch        = $existingBranch
+                message       = 'Worktree already exists'
             } | ConvertTo-Json
         }
         else {
@@ -265,11 +265,11 @@ function Invoke-CreateWorktree {
 
     if ($Json) {
         @{
-            status = 'created'
+            status        = 'created'
             worktree_path = $worktreePath
-            branch = $Branch
-            type = $Type
-            slug = $Slug
+            branch        = $Branch
+            type          = $Type
+            slug          = $Slug
         } | ConvertTo-Json
     }
     else {
@@ -320,11 +320,11 @@ function Invoke-ListWorktrees {
             $slug = $parts[1]
 
             $worktrees += @{
-                path = $path
+                path   = $path
                 branch = $branch
-                head = $head
-                type = $type
-                slug = $slug
+                head   = $head
+                type   = $type
+                slug   = $slug
             }
         }
     }
@@ -394,8 +394,8 @@ function Invoke-RemoveWorktree {
     if ($Json) {
         @{
             status = if ($DryRun) { 'dry-run' } else { 'removed' }
-            slug = $Slug
-            path = $worktreePath
+            slug   = $Slug
+            path   = $worktreePath
         } | ConvertTo-Json
     }
 }
@@ -604,3 +604,4 @@ switch ($Command) {
         Invoke-LinkMemory -Slug $Slug
     }
 }
+

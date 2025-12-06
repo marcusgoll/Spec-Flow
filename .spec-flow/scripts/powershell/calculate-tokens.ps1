@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env pwsh
+#!/usr/bin/env pwsh
 
 <#
 .SYNOPSIS
@@ -103,9 +103,11 @@ function Get-CurrentPhase {
     # Check last completed phase checkpoint
     if ($content -match "Phase 5.*Completed" -or $content -match "Phase 6.*Completed" -or $content -match "Phase 7.*Completed") {
         return "optimization"
-    } elseif ($content -match "Phase 3.*Completed" -or $content -match "Phase 4.*Completed") {
+    }
+    elseif ($content -match "Phase 3.*Completed" -or $content -match "Phase 4.*Completed") {
         return "implementation"
-    } else {
+    }
+    else {
         return "planning"
     }
 }
@@ -187,7 +189,8 @@ $result = [PSCustomObject]@{
 # --- Output --------------------------------------------------------------
 if ($Json) {
     $result | ConvertTo-Json -Depth 3 | Write-Output
-} else {
+}
+else {
     # Human-readable output
     if ($ShowBreakdown) {
         Write-Output ""
@@ -213,7 +216,8 @@ if ($Json) {
         Write-Output "   Exceeded $Phase threshold ($($compactionThreshold.ToString('N0')) tokens)"
         Write-Output ""
         Write-Output "   Run: compact-context.ps1 -FeatureDir '$FeatureDir' -Phase '$Phase'"
-    } else {
+    }
+    else {
         $marginTokens = $compactionThreshold - $totalTokens
         $marginPercent = [math]::Round(($marginTokens / $compactionThreshold) * 100, 1)
         Write-Output " Within budget ($marginPercent% margin until compaction)"
@@ -221,4 +225,5 @@ if ($Json) {
 }
 
 exit 0
+
 

@@ -87,6 +87,7 @@ Please include the following information in your report:
 ### In Scope
 
 Security issues in:
+
 - PowerShell scripts (`.spec-flow/scripts/powershell/`)
 - Bash scripts (`.spec-flow/scripts/bash/`)
 - Template files that could lead to code execution
@@ -94,6 +95,7 @@ Security issues in:
 - Documentation that could mislead users into insecure practices
 
 Common vulnerability types:
+
 - Command injection
 - Path traversal
 - Arbitrary code execution
@@ -104,6 +106,7 @@ Common vulnerability types:
 ### Out of Scope
 
 The following are **not** considered security vulnerabilities:
+
 - Issues in third-party tools (Claude Code, Cursor, Windsurf, etc.)
 - Vulnerabilities requiring physical access to the machine
 - Social engineering attacks
@@ -124,16 +127,19 @@ When using Spec-Flow, we recommend:
 ## Known Security Considerations
 
 ### Script Execution
+
 - PowerShell and Bash scripts execute with the permissions of the user running them
 - Always review scripts before execution, especially when obtained from untrusted sources
 - Use `-WhatIf` flags (where available) to preview changes before applying them
 
 ### User Input
+
 - Feature names and spec content are user-provided
 - Scripts sanitize inputs to prevent command injection
 - Validate that sanitization is working in your environment
 
 ### File Operations
+
 - Scripts create and modify files in your working directory
 - Ensure you have backups before running destructive operations
 - Use version control (git) to track all changes
@@ -141,11 +147,13 @@ When using Spec-Flow, we recommend:
 ## Responsible Disclosure
 
 We ask that you:
+
 - Give us reasonable time to fix the issue before public disclosure
 - Avoid exploiting the vulnerability beyond what's necessary to demonstrate it
 - Act in good faith to avoid privacy violations, data destruction, or service interruption
 
 We commit to:
+
 - Respond promptly to your report
 - Keep you informed of our progress
 - Credit you for the discovery (unless you prefer anonymity)

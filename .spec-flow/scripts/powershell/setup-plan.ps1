@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env pwsh
+#!/usr/bin/env pwsh
 # Setup implementation plan for a feature (Spec-Driven Development)
 
 <#!
@@ -142,4 +142,5 @@ else {
     Write-Output "HAS_GIT: $($paths.HAS_GIT)"
     if ($templateUsed) { Write-Output "TEMPLATE_USED: $templateUsed" }
 }
+
 

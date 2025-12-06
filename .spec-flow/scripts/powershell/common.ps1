@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env pwsh
+#!/usr/bin/env pwsh
 # Common PowerShell helpers for Spec Kit workflows
 # Cross-platform, KISS, and CI-friendly.
 
@@ -265,6 +265,7 @@ function Show-FeatureEnv {
     $envObj = Get-FeaturePathsEnv
     $envObj | Format-Table -AutoSize
 }
+
 
 
 

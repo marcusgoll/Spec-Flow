@@ -314,3 +314,4 @@ if ($Json) {
         progress = $taskProgress
     } | ConvertTo-Json -Compress
 }
+

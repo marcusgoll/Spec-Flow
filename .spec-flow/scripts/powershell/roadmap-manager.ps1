@@ -32,7 +32,7 @@ function Get-FeatureStatus {
         String - Feature status or "not_found"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Slug
     )
 
@@ -99,7 +99,7 @@ function Set-FeatureInProgress {
         Set-FeatureInProgress -Slug "001-login"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Slug
     )
 
@@ -166,16 +166,16 @@ function Set-FeatureShipped {
         Set-FeatureShipped -Slug "001-login" -Version "1.2.0" -ProductionUrl "https://app.example.com"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Slug,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Version,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]$Date = (Get-Date -Format "yyyy-MM-dd"),
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]$ProductionUrl
     )
 
@@ -234,10 +234,10 @@ function Show-FeatureDiscovery {
         Show-FeatureDiscovery -Description "Add OAuth login" -Context "implement-phase"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Description,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]$Context = "unknown"
     )
 
@@ -290,10 +290,10 @@ function Save-DiscoveredFeature {
         Save-DiscoveredFeature -Description "Add OAuth login" -Context "implement-phase"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Description,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Context
     )
 
@@ -351,7 +351,7 @@ function Get-FeatureBlock {
         String - Feature content block
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Slug
     )
 
@@ -400,7 +400,7 @@ function Get-FeatureBasicInfo {
         String - Basic feature info
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Slug
     )
 
@@ -426,7 +426,7 @@ function Remove-FeatureFromSection {
         Feature slug
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Slug
     )
 
@@ -472,13 +472,13 @@ function Add-FeatureToSection {
         Feature slug
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Section,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureBlock,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Slug
     )
 
@@ -532,10 +532,10 @@ function Add-FeatureToSectionStart {
         Feature content block (including ### header)
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Section,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureBlock
     )
 
@@ -570,3 +570,4 @@ function Add-FeatureToSectionStart {
 #     'Show-FeatureDiscovery',
 #     'Save-DiscoveredFeature'
 # )
+

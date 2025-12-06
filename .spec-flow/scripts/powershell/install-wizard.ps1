@@ -71,7 +71,8 @@ function Prompt-Required {
         if ($Default) {
             $response = Read-Host "$Question [$Default]"
             if (-not $response) { return $Default }
-        } else {
+        }
+        else {
             $response = Read-Host "$Question"
         }
     } while (-not $response)
@@ -87,7 +88,8 @@ function Prompt-Optional {
         $response = Read-Host "$Question [$Default]"
         if (-not $response) { return $Default }
         return $response
-    } else {
+    }
+    else {
         return Read-Host "$Question (press Enter to skip)"
     }
 }
@@ -120,17 +122,17 @@ function Detect-ProjectType {
     param([string]$ProjectPath)
 
     $indicators = @{
-        'Next.js' = @('next.config.js', 'next.config.mjs', 'next.config.ts')
-        'React' = @('package.json')  # Will check for react in dependencies
-        'Vue' = @('vue.config.js', 'vite.config.js')
-        'Angular' = @('angular.json')
+        'Next.js'     = @('next.config.js', 'next.config.mjs', 'next.config.ts')
+        'React'       = @('package.json')  # Will check for react in dependencies
+        'Vue'         = @('vue.config.js', 'vite.config.js')
+        'Angular'     = @('angular.json')
         'Node.js API' = @('package.json')  # Will check for express/fastify
-        'Python' = @('requirements.txt', 'pyproject.toml', 'setup.py')
-        'Django' = @('manage.py')
-        'FastAPI' = @('main.py')  # Common convention
-        '.NET' = @('*.csproj', '*.sln')
-        'Go' = @('go.mod')
-        'Rust' = @('Cargo.toml')
+        'Python'      = @('requirements.txt', 'pyproject.toml', 'setup.py')
+        'Django'      = @('manage.py')
+        'FastAPI'     = @('main.py')  # Common convention
+        '.NET'        = @('*.csproj', '*.sln')
+        'Go'          = @('go.mod')
+        'Rust'        = @('Cargo.toml')
     }
 
     $detected = @()
@@ -200,7 +202,8 @@ if (-not $TargetDir) {
 # Resolve absolute path
 $targetAbsolute = if ([System.IO.Path]::IsPathRooted($TargetDir)) {
     $TargetDir
-} else {
+}
+else {
     Join-Path -Path (Get-Location) -ChildPath $TargetDir
 }
 
@@ -214,7 +217,8 @@ if (-not (Test-Path -LiteralPath $targetAbsolute -PathType Container)) {
     if ($create -ne 'n' -and $create -ne 'N') {
         New-Item -ItemType Directory -Path $targetAbsolute -Force | Out-Null
         Write-Host "  [OK] Created directory: $targetAbsolute" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Error "Installation cancelled."
         exit 1
     }
@@ -261,7 +265,8 @@ if (-not (Test-Path -LiteralPath $vscodeSettingsPath)) {
     # Copy template
     Copy-Item -LiteralPath $vscodeTemplatePath -Destination $vscodeSettingsPath -Force
     Write-Host "  [OK] Created .vscode/settings.json with hook configuration" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "  [SKIP] .vscode/settings.json already exists (manual merge required)" -ForegroundColor Yellow
     Write-Host "        Add the following to your settings.json:" -ForegroundColor DarkGray
     Write-Host '        "claude.hooks": [{"type": "command", "command": ".claude/hooks/skill-activation-prompt.sh", "matcher": "UserPromptSubmit"}]' -ForegroundColor DarkGray
@@ -285,7 +290,8 @@ if ($npmAvailable) {
             Pop-Location
         }
     }
-} else {
+}
+else {
     Write-Warning "npm not found. Hook auto-activation requires TypeScript dependencies."
     Write-Host "        Install Node.js/npm, then run: cd .claude/hooks && npm install" -ForegroundColor DarkGray
 }
@@ -308,7 +314,8 @@ if ((Test-Path -LiteralPath $constitutionPath) -and (Test-Path -LiteralPath $roa
     Write-Host "  [OK] Constitution initialized with defaults (80% coverage, <200ms API, <2s page load)" -ForegroundColor Green
     Write-Host "  [OK] Roadmap initialized (empty)" -ForegroundColor Green
     Write-Host "  [OK] Design inspirations initialized (empty)" -ForegroundColor Green
-} else {
+}
+else {
     Write-Warning "Some memory files may not have been created. Check installation output above."
 }
 
@@ -361,3 +368,4 @@ Write-Host "  Full docs: https://github.com/marcusgoll/Spec-Flow" -ForegroundCol
 Write-Host ""
 
 exit 0
+

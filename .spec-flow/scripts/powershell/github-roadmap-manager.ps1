@@ -154,16 +154,16 @@ function New-RoadmapIssue {
         Create a roadmap issue with metadata frontmatter
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Title,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Body,
 
         [string]$Area = "app",
         [string]$Role = "all",
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Slug,
 
         [string]$Labels = "type:feature,status:backlog",
@@ -210,14 +210,14 @@ function New-RoadmapIssue {
         $apiUrl = "https://api.github.com/repos/$repo/issues"
         $headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
 
         $labelArray = $allLabels -split ',' | ForEach-Object { $_.Trim() }
 
         $jsonBody = @{
-            title = $Title
-            body = $fullBody
+            title  = $Title
+            body   = $fullBody
             labels = $labelArray
         } | ConvertTo-Json
 
@@ -234,7 +234,7 @@ function Get-IssueBySlug {
         Get issue by slug (searches in frontmatter)
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Slug
     )
 
@@ -251,7 +251,7 @@ function Get-IssueBySlug {
         $result = gh issue list `
             --repo $repo `
             --search "slug: $Slug in:body" `
-            --json number,title,body,state,labels `
+            --json number, title, body, state, labels `
             --limit 1 | ConvertFrom-Json
 
         return $result[0]
@@ -261,7 +261,7 @@ function Get-IssueBySlug {
         $query = "repo:$repo slug: $Slug in:body"
         $headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
 
         $uri = "$apiUrl?q=$([System.Uri]::EscapeDataString($query))&per_page=1"
@@ -280,7 +280,7 @@ function Set-IssueInProgress {
         Mark issue as in progress
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Slug
     )
 
@@ -312,7 +312,7 @@ function Set-IssueInProgress {
         $apiUrl = "https://api.github.com/repos/$repo/issues/$issueNumber"
         $headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
 
         # Get current labels
@@ -333,10 +333,10 @@ function Set-IssueShipped {
         Mark issue as shipped
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Slug,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Version,
 
         [string]$Date = (Get-Date -Format "yyyy-MM-dd"),
@@ -385,7 +385,7 @@ function Set-IssueShipped {
         $apiUrl = "https://api.github.com/repos/$repo/issues/$issueNumber"
         $headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
 
         # Get current labels
@@ -395,7 +395,7 @@ function Set-IssueShipped {
 
         # Update and close
         $jsonBody = @{
-            state = "closed"
+            state  = "closed"
             labels = $newLabels
         } | ConvertTo-Json
 
@@ -416,7 +416,7 @@ function Get-IssuesByStatus {
         List issues by status label
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateSet("backlog", "next", "later", "in-progress", "shipped")]
         [string]$Status
     )
@@ -435,14 +435,14 @@ function Get-IssuesByStatus {
         gh issue list `
             --repo $repo `
             --label $label `
-            --json number,title,body,labels,state `
+            --json number, title, body, labels, state `
             --limit 100 | ConvertFrom-Json
     }
     elseif ($authMethod -eq "api") {
         $apiUrl = "https://api.github.com/repos/$repo/issues"
         $headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
 
         $uri = "$apiUrl?labels=$label&per_page=100&state=all"
@@ -456,7 +456,7 @@ function Add-DiscoveredFeature {
         Suggest adding a discovered feature (create draft issue)
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Description,
 
         [string]$Context = "unknown"
@@ -484,7 +484,7 @@ function Add-DiscoveredFeature {
 
             # Generate slug
             $slug = $Description -replace '[^a-z0-9-]', '-' -replace '--+', '-' |
-                    Select-Object -First 1 | ForEach-Object { $_.Substring(0, [Math]::Min(30, $_.Length)) }
+                Select-Object -First 1 | ForEach-Object { $_.Substring(0, [Math]::Min(30, $_.Length)) }
 
             # Create issue
             $title = $Description
@@ -546,7 +546,7 @@ function Test-VisionAlignment {
         String - "aligned", "misaligned", "skip", "revise", or "needs_override:<justification>"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDescription
     )
 
@@ -628,7 +628,7 @@ function Invoke-BrainstormFeatures {
         Process brainstormed feature ideas (called after Claude performs WebSearch)
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Topic,
 
         [string]$IdeasJson
@@ -717,8 +717,8 @@ function Invoke-BrainstormFeatures {
     foreach ($vidx in $validatedIdeas) {
         $idea = $ideas[$vidx]
         $output += [PSCustomObject]@{
-            index = $vidx
-            title = $idea.title
+            index       = $vidx
+            title       = $idea.title
             description = if ($idea.description) { $idea.description } else { "" }
         }
     }
@@ -731,10 +731,10 @@ function New-BrainstormedIssues {
         Create issues for selected brainstormed ideas
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$IdeasJson,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$SelectedIndices  # Comma-separated: "0,2,4"
     )
 
@@ -807,10 +807,10 @@ function Move-IssueToStatus {
         Move issue to different status section
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Slug,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateSet("backlog", "next", "later", "in-progress", "blocked", "shipped")]
         [string]$TargetStatus
     )
@@ -874,7 +874,7 @@ function Move-IssueToStatus {
         $apiUrl = "https://api.github.com/repos/$repo/issues/$issueNumber"
         $headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
 
         # Get current labels
@@ -884,7 +884,8 @@ function Move-IssueToStatus {
 
         $jsonBody = if ($TargetStatus -eq "shipped") {
             @{ state = "closed"; labels = $newLabels } | ConvertTo-Json
-        } else {
+        }
+        else {
             @{ labels = $newLabels } | ConvertTo-Json
         }
 
@@ -900,7 +901,7 @@ function Search-Roadmap {
         Search roadmap issues by keyword, label, or milestone
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Query
     )
 
@@ -952,7 +953,7 @@ function Search-Roadmap {
 
         $headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
 
         $uri = "$apiSearchUrl?q=$([System.Uri]::EscapeDataString($searchTerms))&per_page=50"
@@ -1023,7 +1024,7 @@ function Get-RoadmapSummary {
 
         # Show top 5 in Backlog
         Write-Host "Top 5 in Backlog (creation order priority):" -ForegroundColor White
-        $topBacklog = gh issue list --repo $repo --label "status:backlog" --json number,title,createdAt --limit 5 --jq '.[] | "#\(.number) \(.title) (Created: \(.createdAt[0:10]))"' 2>&1
+        $topBacklog = gh issue list --repo $repo --label "status:backlog" --json number, title, createdAt --limit 5 --jq '.[] | "#\(.number) \(.title) (Created: \(.createdAt[0:10]))"' 2>&1
 
         if ([string]::IsNullOrEmpty($topBacklog)) {
             Write-Host "  (Empty)" -ForegroundColor Gray
@@ -1041,7 +1042,7 @@ function Get-RoadmapSummary {
 
         # Show issues in Next
         Write-Host "In Next (ready to start):" -ForegroundColor White
-        $nextIssues = gh issue list --repo $repo --label "status:next" --json number,title --jq '.[] | "#\(.number) \(.title)"' 2>&1
+        $nextIssues = gh issue list --repo $repo --label "status:next" --json number, title --jq '.[] | "#\(.number) \(.title)"' 2>&1
 
         if ([string]::IsNullOrEmpty($nextIssues)) {
             Write-Host "  (Empty)" -ForegroundColor Gray
@@ -1059,7 +1060,7 @@ function Get-RoadmapSummary {
 
         # Show in progress
         Write-Host "In Progress:" -ForegroundColor White
-        $inProgressIssues = gh issue list --repo $repo --label "status:in-progress" --json number,title,milestone --jq '.[] | "#\(.number) \(.title) [Milestone: \(.milestone.title // "None")]"' 2>&1
+        $inProgressIssues = gh issue list --repo $repo --label "status:in-progress" --json number, title, milestone --jq '.[] | "#\(.number) \(.title) [Milestone: \(.milestone.title // "None")]"' 2>&1
 
         if ([string]::IsNullOrEmpty($inProgressIssues)) {
             Write-Host "  (None)" -ForegroundColor Gray
@@ -1089,7 +1090,7 @@ function Remove-RoadmapIssue {
         Delete roadmap issue (close with wont-fix label)
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Slug
     )
 
@@ -1131,7 +1132,7 @@ function Remove-RoadmapIssue {
         $apiUrl = "https://api.github.com/repos/$repo/issues/$issueNumber"
         $headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
 
         # Get current labels and add wont-fix
@@ -1139,7 +1140,7 @@ function Remove-RoadmapIssue {
         $newLabels = ($currentIssue.labels | Select-Object -ExpandProperty name) + "wont-fix"
 
         $jsonBody = @{
-            state = "closed"
+            state  = "closed"
             labels = $newLabels
         } | ConvertTo-Json
 
@@ -1174,7 +1175,7 @@ function Get-Milestones {
         $apiUrl = "https://api.github.com/repos/$repo/milestones?state=all&per_page=100"
         $headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
 
         $milestones = Invoke-RestMethod -Uri $apiUrl -Headers $headers
@@ -1191,7 +1192,7 @@ function New-Milestone {
         Create a new milestone
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Title,
 
         [string]$DueDate,  # YYYY-MM-DD format (optional)
@@ -1226,7 +1227,7 @@ function New-Milestone {
         $apiUrl = "https://api.github.com/repos/$repo/milestones"
         $headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
 
         $body = @{ title = $Title }
@@ -1246,7 +1247,7 @@ function Set-MilestonePlan {
         Plan milestone by assigning backlog issues to it
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$MilestoneName
     )
 
@@ -1266,7 +1267,7 @@ function Set-MilestonePlan {
         $apiUrl = "https://api.github.com/repos/$repo/milestones"
         $headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
         $milestones = Invoke-RestMethod -Uri $apiUrl -Headers $headers
         $milestoneExists = ($milestones | Where-Object { $_.title -eq $MilestoneName }).title
@@ -1289,7 +1290,7 @@ function Set-MilestonePlan {
     Write-Host ""
 
     if ($authMethod -eq "gh_cli") {
-        $backlogIssues = gh issue list --repo $repo --label "status:backlog" --json number,title,createdAt --limit 20 2>&1 | ConvertFrom-Json
+        $backlogIssues = gh issue list --repo $repo --label "status:backlog" --json number, title, createdAt --limit 20 2>&1 | ConvertFrom-Json
 
         if (-not $backlogIssues -or $backlogIssues.Count -eq 0) {
             Write-Host "  (No backlog issues)" -ForegroundColor Gray
@@ -1339,7 +1340,7 @@ function New-EpicLabel {
         Create epic label dynamically
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$EpicName,
 
         [string]$Description,
@@ -1364,7 +1365,7 @@ function New-EpicLabel {
         $apiUrl = "https://api.github.com/repos/$repo/labels/$labelName"
         $headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
         try {
             $labelExists = (Invoke-RestMethod -Uri $apiUrl -Headers $headers).name
@@ -1390,13 +1391,13 @@ function New-EpicLabel {
         $apiUrl = "https://api.github.com/repos/$repo/labels"
         $headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
 
         $jsonBody = @{
-            name = $labelName
+            name        = $labelName
             description = $labelDescription
-            color = $Color
+            color       = $Color
         } | ConvertTo-Json
 
         Invoke-RestMethod -Uri $apiUrl -Method Post -Headers $headers -Body $jsonBody | Out-Null
@@ -1423,13 +1424,13 @@ function Get-EpicLabels {
     Write-Host ""
 
     if ($authMethod -eq "gh_cli") {
-        gh label list --repo $repo --json name,description --jq '.[] | select(.name | startswith("epic:")) | "  \(.name) - \(.description // "No description")"' 2>&1
+        gh label list --repo $repo --json name, description --jq '.[] | select(.name | startswith("epic:")) | "  \(.name) - \(.description // "No description")"' 2>&1
     }
     elseif ($authMethod -eq "api") {
         $apiUrl = "https://api.github.com/repos/$repo/labels?per_page=100"
         $headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
 
         $labels = Invoke-RestMethod -Uri $apiUrl -Headers $headers
@@ -1467,3 +1468,4 @@ Export-ModuleMember -Function @(
     'New-EpicLabel',
     'Get-EpicLabels'
 )
+

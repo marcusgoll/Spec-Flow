@@ -71,7 +71,8 @@ switch ($Type) {
             $content = $content -replace "(\*\*Format\*\*: Document patterns discovered during implementation[^\n]*\r?\n)", "`$1`n$entry`n"
             Set-Content $planFile $content -NoNewline
             Write-Host "[spec-flow] Added reuse pattern $name to plan.md" -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Warning "No 'Reuse Additions' section found in plan.md"
         }
     }
@@ -102,7 +103,8 @@ switch ($Type) {
             $content = $content -replace "(\*\*Format\*\*: Document when actual architecture differs[^\n]*\r?\n)", "`$1`n$entry`n"
             Set-Content $planFile $content -NoNewline
             Write-Host "[spec-flow] Added architecture adjustment to plan.md" -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Warning "No 'Architecture Adjustments' section found in plan.md"
         }
     }
@@ -127,7 +129,8 @@ switch ($Type) {
             $content = $content -replace "(\*\*Format\*\*: Document unexpected integrations[^\n]*\r?\n)", "`$1`n$entry`n"
             Set-Content $planFile $content -NoNewline
             Write-Host "[spec-flow] Added integration discovery to plan.md" -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Warning "No 'Integration Discoveries' section found in plan.md"
         }
     }
@@ -139,3 +142,4 @@ $content = $content -replace "> \*\*Last Updated\*\*:.*", "> **Last Updated**: $
 Set-Content $planFile $content -NoNewline
 
 Write-Host "[spec-flow] Updated plan.md Discovered Patterns ($Type)" -ForegroundColor Cyan
+

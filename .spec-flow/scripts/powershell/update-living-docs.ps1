@@ -65,7 +65,8 @@ function Update-FeatureDocs {
         $generateScript = Join-Path $scriptDir "generate-feature-claude-md.ps1"
         & $generateScript -FeatureDir $FeatureDir | Out-Null
         $updatedFiles += "$FeatureDir/CLAUDE.md"
-    } catch {
+    }
+    catch {
         $errors += "Failed to update $FeatureDir/CLAUDE.md: $_"
     }
 }
@@ -103,11 +104,12 @@ switch ($Scope) {
 # Output results
 if ($Json) {
     @{
-        scope = $Scope
+        scope   = $Scope
         updated = $updatedFiles
-        errors = $errors
+        errors  = $errors
     } | ConvertTo-Json -Compress
-} else {
+}
+else {
     if ($updatedFiles.Count -gt 0) {
         Write-Host "[spec-flow] Updated $($updatedFiles.Count) file(s):" -ForegroundColor Green
         foreach ($file in $updatedFiles) {
@@ -123,3 +125,4 @@ if ($Json) {
         exit 1
     }
 }
+

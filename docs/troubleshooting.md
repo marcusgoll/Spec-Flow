@@ -25,16 +25,19 @@ This guide helps you diagnose and resolve common issues when using Spec-Flow.
 **Solution**:
 
 **Windows**:
+
 ```powershell
 winget install Microsoft.PowerShell
 ```
 
 **macOS**:
+
 ```bash
 brew install --cask powershell
 ```
 
 **Linux**:
+
 ```bash
 # Ubuntu/Debian
 wget -q https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb
@@ -46,6 +49,7 @@ sudo apt install -y powershell
 **Alternative**: Use the Bash scripts instead (`.spec-flow/scripts/bash/*.sh`).
 
 **Verification**:
+
 ```bash
 pwsh --version
 # Expected: PowerShell 7.3 or higher
@@ -62,23 +66,27 @@ pwsh --version
 **Solution**:
 
 **Windows**:
+
 ```powershell
 winget install Python.Python.3.12
 # Make sure "Add Python to PATH" is checked during installation
 ```
 
 **macOS**:
+
 ```bash
 brew install python@3.12
 ```
 
 **Linux**:
+
 ```bash
 sudo apt install python3 python3-pip  # Ubuntu/Debian
 sudo dnf install python3 python3-pip  # Fedora/RHEL
 ```
 
 **Verification**:
+
 ```bash
 python --version  # or python3 --version
 # Expected: Python 3.10 or higher
@@ -95,22 +103,26 @@ python --version  # or python3 --version
 **Solution**:
 
 **Windows**:
+
 ```powershell
 winget upgrade Git.Git
 ```
 
 **macOS**:
+
 ```bash
 brew upgrade git
 ```
 
 **Linux**:
+
 ```bash
 sudo apt update && sudo apt upgrade git  # Ubuntu/Debian
 sudo dnf upgrade git  # Fedora/RHEL
 ```
 
 **Verification**:
+
 ```bash
 git --version
 # Expected: git version 2.39.0 or higher
@@ -127,6 +139,7 @@ git --version
 **Cause**: Windows PowerShell has restricted execution policy.
 
 **Solution**:
+
 ```powershell
 # Check current policy
 Get-ExecutionPolicy
@@ -150,6 +163,7 @@ Get-ExecutionPolicy
 **Cause**: Script is not marked as executable.
 
 **Solution**:
+
 ```bash
 # Make all scripts executable
 chmod +x .spec-flow/scripts/bash/*.sh
@@ -171,6 +185,7 @@ ls -la .spec-flow/scripts/bash/*.sh
 **Cause**: Incorrect working directory or line ending issues (CRLF vs LF).
 
 **Solution 1** (Wrong directory):
+
 ```bash
 # Ensure you're in the repository root
 cd /path/to/spec-flow-workflow-kit
@@ -178,6 +193,7 @@ pwd  # Verify you're in the right place
 ```
 
 **Solution 2** (Line ending issues):
+
 ```bash
 # Convert CRLF to LF (common after Windows checkout)
 dos2unix .spec-flow/scripts/bash/*.sh
@@ -186,6 +202,7 @@ sed -i 's/\r$//' .spec-flow/scripts/bash/*.sh
 ```
 
 **Prevention**: Configure Git to handle line endings:
+
 ```bash
 git config --global core.autocrlf input  # macOS/Linux
 git config --global core.autocrlf true   # Windows
@@ -204,11 +221,13 @@ git config --global core.autocrlf true   # Windows
 **Solution**:
 
 1. Copy example settings:
+
    ```bash
    cp .claude/settings.example.json .claude/settings.local.json
    ```
 
 2. Edit `.claude/settings.local.json` with absolute paths:
+
    ```json
    {
      "permissions": {
@@ -225,6 +244,7 @@ git config --global core.autocrlf true   # Windows
 3. Restart Claude Code
 
 **Windows path format**: Use double backslashes or forward slashes:
+
 ```json
 "Read(C:\\Users\\YourName\\Projects\\your-project)"
 // or
@@ -242,6 +262,7 @@ git config --global core.autocrlf true   # Windows
 **Solution**:
 
 1. **Verify directory structure**:
+
    ```bash
    ls .claude/commands/
    # Should show: spec-flow.md, plan.md, tasks.md, etc.
@@ -266,6 +287,7 @@ git config --global core.autocrlf true   # Windows
 This is normal! Spec-Flow auto-compacts when budgets are exceeded. But you can also manually compact:
 
 **Windows**:
+
 ```powershell
 pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 `
   -FeatureDir specs/001-feature-name `
@@ -273,6 +295,7 @@ pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 `
 ```
 
 **macOS/Linux**:
+
 ```bash
 .spec-flow/scripts/bash/compact-context.sh \
   --feature-dir specs/001-feature-name \
@@ -280,6 +303,7 @@ pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 `
 ```
 
 **Check token usage before compacting**:
+
 ```powershell
 # Windows
 pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 `
@@ -303,6 +327,7 @@ pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 `
 **Cause**: You haven't run `/spec-flow` to create the feature directory structure.
 
 **Solution**:
+
 ```bash
 # In Claude Code
 /spec-flow "Your feature name"
@@ -311,6 +336,7 @@ pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 `
 ```
 
 **Verification**:
+
 ```bash
 ls specs/
 # Should show: 001-feature-name/ or similar
@@ -327,6 +353,7 @@ ls specs/
 **Solution**:
 
 1. **Review the analysis report**:
+
    ```bash
    cat specs/001-feature-name/artifacts/analysis-report.md
    ```
@@ -334,16 +361,19 @@ ls specs/
 2. **Fix identified issues** - Edit spec.md, plan.md, or tasks.md to resolve inconsistencies
 
 3. **Re-run analysis**:
+
    ```bash
    /analyze
    ```
 
 4. **Continue workflow**:
+
    ```bash
    /feature continue
    ```
 
 **Common issues**:
+
 - Requirements in spec not addressed in plan
 - Tasks missing for planned phases
 - Acceptance criteria without corresponding tests
@@ -359,23 +389,27 @@ ls specs/
 **Solution**:
 
 1. **Check files exist**:
+
    ```bash
    ls -la specs/001-feature-name/
    # Should show spec.md, NOTES.md, etc.
    ```
 
 2. **Check files have content**:
+
    ```bash
    cat specs/001-feature-name/spec.md
    # Should show actual content, not empty
    ```
 
 3. **Check file encoding** (Windows):
+
    ```powershell
    Get-Content specs/001-feature-name/spec.md -Encoding UTF8
    ```
 
 4. **Re-create feature** if files are corrupt:
+
    ```bash
    /spec-flow "Feature name"
    ```
@@ -391,6 +425,7 @@ ls specs/
 **Solution**:
 
 Ensure NOTES.md has checkpoints in this format:
+
 ```markdown
 ## Checkpoints
 
@@ -415,6 +450,7 @@ Ensure NOTES.md has checkpoints in this format:
 **Solution**:
 
 **Explicitly\spec-flow phase**:
+
 ```powershell
 # Windows
 pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 `
@@ -440,6 +476,7 @@ pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 `
 **Solution**:
 
 1. **Restore from git**:
+
    ```bash
    git checkout HEAD -- specs/001-feature-name/NOTES.md
    ```
@@ -450,6 +487,7 @@ pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 `
    - Optimization: 30% reduction (minimal)
 
 3. **Manually mark important sections** in NOTES.md with `[KEEP]`:
+
    ```markdown
    ## Decisions
 
@@ -470,12 +508,14 @@ pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 `
 **Solution**:
 
 **Option 1** (Use existing branch):
+
 ```bash
 git checkout 001-feature-name
 # Continue working on existing feature
 ```
 
 **Option 2** (Create new feature with different name):
+
 ```bash
 # In Claude Code
 /spec-flow "Feature name v2"
@@ -483,6 +523,7 @@ git checkout 001-feature-name
 ```
 
 **Option 3** (Delete old branch - **caution**):
+
 ```bash
 git branch -D 001-feature-name  # Delete local branch
 git push origin --delete 001-feature-name  # Delete remote branch
@@ -500,23 +541,27 @@ git push origin --delete 001-feature-name  # Delete remote branch
 **Solution**:
 
 1. **Check PR status**:
+
    ```bash
    gh pr view 123
    # Shows CI status, conflicts, reviews
    ```
 
 2. **Fix CI failures**:
+
    ```bash
    /checks pr 123
    # Claude analyzes and fixes blockers
    ```
 
 3. **Enable auto-merge** (if not configured):
+
    ```bash
    gh pr merge 123 --auto --squash
    ```
 
 4. **Resolve conflicts** (if any):
+
    ```bash
    git pull origin staging
    # Resolve conflicts manually
@@ -534,6 +579,7 @@ git push origin --delete 001-feature-name  # Delete remote branch
 **Cause**: Windows has a default path length limit.
 
 **Solution**:
+
 ```powershell
 # Enable long paths (requires admin)
 New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
@@ -553,6 +599,7 @@ New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
 **Cause**: macOS Gatekeeper blocking unverified scripts.
 
 **Solution**:
+
 ```bash
 # Remove quarantine attribute
 xattr -d com.apple.quarantine .spec-flow/scripts/bash/*.sh
@@ -570,6 +617,7 @@ xattr -d com.apple.quarantine .spec-flow/scripts/bash/check-prerequisites.sh
 **Cause**: Windows line endings (CRLF) in scripts.
 
 **Solution**:
+
 ```bash
 # Install dos2unix if not available
 sudo apt install dos2unix  # Ubuntu/Debian
@@ -600,6 +648,7 @@ file .spec-flow/scripts/bash/check-prerequisites.sh
    - Add project root to exclusion list
 
 2. **Check disk performance**:
+
    ```bash
    # Test disk speed
    dd if=/dev/zero of=testfile bs=1M count=1000
@@ -621,6 +670,7 @@ file .spec-flow/scripts/bash/check-prerequisites.sh
 **Solution**:
 
 1. **Compact context** to reduce token count:
+
    ```bash
    /feature  # Auto-compacts when needed
    ```
@@ -640,12 +690,15 @@ file .spec-flow/scripts/bash/check-prerequisites.sh
 If your issue isn't covered here:
 
 ### 1. Search Existing Issues
+
 [GitHub Issues](https://github.com/your-org/spec-flow-workflow-kit/issues?q=is%3Aissue)
 
 ### 2. Check Discussions
+
 [GitHub Discussions](https://github.com/your-org/spec-flow-workflow-kit/discussions)
 
 ### 3. Review Documentation
+
 - [Installation Guide](installation.md)
 - [Getting Started](getting-started.md)
 - [Architecture Overview](architecture.md)
@@ -654,12 +707,14 @@ If your issue isn't covered here:
 ### 4. Enable Debug Logging
 
 **PowerShell**:
+
 ```powershell
 $VerbosePreference = "Continue"
 pwsh -File .spec-flow/scripts/powershell/check-prerequisites.ps1 -Verbose
 ```
 
 **Bash**:
+
 ```bash
 bash -x .spec-flow/scripts/bash/check-prerequisites.sh
 ```
@@ -669,6 +724,7 @@ bash -x .spec-flow/scripts/bash/check-prerequisites.sh
 When reporting an issue, include:
 
 **Environment**:
+
 ```bash
 # Run this and include output
 pwsh --version
@@ -678,12 +734,14 @@ uname -a  # or systeminfo on Windows
 ```
 
 **Error details**:
+
 - Full error message
 - Steps to reproduce
 - Expected vs actual behavior
 - Relevant logs or screenshots
 
 **Template**:
+
 ```markdown
 ## Environment
 - OS: [Windows 11 / macOS 14 / Ubuntu 22.04]
@@ -707,7 +765,9 @@ uname -a  # or systeminfo on Windows
 
 ## Error Output
 ```
+
 [Paste error messages here]
+
 ```
 
 ## Additional Context
@@ -723,4 +783,3 @@ uname -a  # or systeminfo on Windows
 ---
 
 **Last Updated**: 2025-10-03
-

@@ -62,9 +62,11 @@ function Get-PowerShellCommand {
     # Prefer pwsh (PowerShell 7+) but fall back to powershell (5.1)
     if (Get-Command -Name 'pwsh' -ErrorAction SilentlyContinue) {
         return 'pwsh'
-    } elseif (Get-Command -Name 'powershell' -ErrorAction SilentlyContinue) {
+    }
+    elseif (Get-Command -Name 'powershell' -ErrorAction SilentlyContinue) {
         return 'powershell'
-    } else {
+    }
+    else {
         throw "No PowerShell executable found (pwsh or powershell)"
     }
 }
@@ -119,7 +121,8 @@ if (-not (Test-Path -LiteralPath $specFlowSourceDir -PathType Container)) {
 # --- Validate/Create Target Directory ---------------------------------------
 $targetAbsolute = if ([System.IO.Path]::IsPathRooted($TargetDir)) {
     $TargetDir
-} else {
+}
+else {
     Join-Path -Path (Get-Location) -ChildPath $TargetDir | Resolve-Path -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Path
 }
 
@@ -136,12 +139,12 @@ if (-not (Test-Path -LiteralPath $targetAbsolute -PathType Container)) {
 }
 
 $results = @{
-    targetDir = $targetAbsolute
-    copied = @()
-    skipped = @()
-    errors = @()
+    targetDir   = $targetAbsolute
+    copied      = @()
+    skipped     = @()
+    errors      = @()
     initialized = $false
-    checksPass = $false
+    checksPass  = $false
 }
 
 if (-not $Json) {
@@ -166,22 +169,26 @@ try {
             if ($response -ne 'y' -and $response -ne 'Y') {
                 $results.skipped += '.claude/'
                 Write-Warn "Skipped .claude/ (already exists)"
-            } else {
+            }
+            else {
                 Copy-Item -Path $claudeSourceDir -Destination $targetAbsolute -Recurse -Force
                 $results.copied += '.claude/'
                 Write-Success "Copied .claude/"
             }
-        } else {
+        }
+        else {
             Copy-Item -Path $claudeSourceDir -Destination $targetAbsolute -Recurse -Force
             $results.copied += '.claude/'
             Write-Success "Copied .claude/ (overwritten)"
         }
-    } else {
+    }
+    else {
         Copy-Item -Path $claudeSourceDir -Destination $targetAbsolute -Recurse -Force
         $results.copied += '.claude/'
         Write-Success "Copied .claude/"
     }
-} catch {
+}
+catch {
     $results.errors += @{ item = '.claude/'; error = $_.Exception.Message }
     Write-Error "Failed to copy .claude/: $($_.Exception.Message)"
 }
@@ -198,22 +205,26 @@ try {
             if ($response -ne 'y' -and $response -ne 'Y') {
                 $results.skipped += '.spec-flow/'
                 Write-Warn "Skipped .spec-flow/ (already exists)"
-            } else {
+            }
+            else {
                 Copy-Item -Path $specFlowSourceDir -Destination $targetAbsolute -Recurse -Force
                 $results.copied += '.spec-flow/'
                 Write-Success "Copied .spec-flow/"
             }
-        } else {
+        }
+        else {
             Copy-Item -Path $specFlowSourceDir -Destination $targetAbsolute -Recurse -Force
             $results.copied += '.spec-flow/'
             Write-Success "Copied .spec-flow/ (overwritten)"
         }
-    } else {
+    }
+    else {
         Copy-Item -Path $specFlowSourceDir -Destination $targetAbsolute -Recurse -Force
         $results.copied += '.spec-flow/'
         Write-Success "Copied .spec-flow/"
     }
-} catch {
+}
+catch {
     $results.errors += @{ item = '.spec-flow/'; error = $_.Exception.Message }
     Write-Error "Failed to copy .spec-flow/: $($_.Exception.Message)"
 }
@@ -229,16 +240,19 @@ if (Test-Path -LiteralPath $claudeMdSource -PathType Leaf) {
                 Copy-Item -LiteralPath $claudeMdSource -Destination $claudeMdTarget -Force
                 $results.copied += 'CLAUDE.md'
                 Write-Success "Copied CLAUDE.md (overwritten)"
-            } else {
+            }
+            else {
                 $results.skipped += 'CLAUDE.md'
                 Write-Warn "Skipped CLAUDE.md (already exists)"
             }
-        } else {
+        }
+        else {
             Copy-Item -LiteralPath $claudeMdSource -Destination $claudeMdTarget -Force
             $results.copied += 'CLAUDE.md'
             Write-Success "Copied CLAUDE.md"
         }
-    } catch {
+    }
+    catch {
         $results.errors += @{ item = 'CLAUDE.md'; error = $_.Exception.Message }
         if (-not $Json) {
             Write-Warning "Failed to copy CLAUDE.md: $($_.Exception.Message)"
@@ -258,16 +272,19 @@ if (Test-Path -LiteralPath $quickstartSource -PathType Leaf) {
                 Copy-Item -LiteralPath $quickstartSource -Destination $quickstartTarget -Force
                 $results.copied += 'QUICKSTART.md'
                 Write-Success "Copied QUICKSTART.md (overwritten)"
-            } else {
+            }
+            else {
                 $results.skipped += 'QUICKSTART.md'
                 Write-Warn "Skipped QUICKSTART.md (already exists)"
             }
-        } else {
+        }
+        else {
             Copy-Item -LiteralPath $quickstartSource -Destination $quickstartTarget -Force
             $results.copied += 'QUICKSTART.md'
             Write-Success "Copied QUICKSTART.md"
         }
-    } catch {
+    }
+    catch {
         $results.errors += @{ item = 'QUICKSTART.md'; error = $_.Exception.Message }
         if (-not $Json) {
             Write-Warning "Failed to copy QUICKSTART.md: $($_.Exception.Message)"
@@ -286,11 +303,13 @@ if ((Test-Path -LiteralPath $settingsExample) -and (-not (Test-Path -LiteralPath
         Copy-Item -LiteralPath $settingsExample -Destination $settingsLocal
         $results.copied += 'settings.local.json'
         Write-Success "Created settings.local.json from example"
-    } catch {
+    }
+    catch {
         $results.errors += @{ item = 'settings.local.json'; error = $_.Exception.Message }
         Write-Warn "Failed to create settings.local.json: $($_.Exception.Message)"
     }
-} elseif ((Test-Path -LiteralPath $settingsLocal) -and (Test-Path -LiteralPath $settingsExample)) {
+}
+elseif ((Test-Path -LiteralPath $settingsLocal) -and (Test-Path -LiteralPath $settingsExample)) {
     # Upgrade: check if hooks need to be merged
     try {
         $localSettings = Get-Content -LiteralPath $settingsLocal -Raw | ConvertFrom-Json
@@ -311,7 +330,8 @@ if ((Test-Path -LiteralPath $settingsExample) -and (-not (Test-Path -LiteralPath
         # Check if disableAllHooks needs to be set to false
         if ($localSettings.disableAllHooks -eq $true -and $exampleSettings.disableAllHooks -eq $false) {
             Write-Warn "disableAllHooks is true - hooks won't run. Set to false to enable."
-        } elseif ($null -eq $localSettings.disableAllHooks -and $null -ne $exampleSettings.disableAllHooks) {
+        }
+        elseif ($null -eq $localSettings.disableAllHooks -and $null -ne $exampleSettings.disableAllHooks) {
             $localSettings | Add-Member -NotePropertyName 'disableAllHooks' -NotePropertyValue $exampleSettings.disableAllHooks -Force
             $needsUpdate = $true
             $updatedFields += 'disableAllHooks'
@@ -321,14 +341,17 @@ if ((Test-Path -LiteralPath $settingsExample) -and (-not (Test-Path -LiteralPath
             $localSettings | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $settingsLocal -Encoding UTF8
             Write-Success "Updated settings.local.json with: $($updatedFields -join ', ')"
             $results.copied += 'settings.local.json (merged)'
-        } else {
+        }
+        else {
             Write-Step "settings.local.json already has hooks configuration"
         }
-    } catch {
+    }
+    catch {
         Write-Warn "Could not check/merge settings: $($_.Exception.Message)"
         Write-Step "settings.local.json kept as-is"
     }
-} else {
+}
+else {
     Write-Warn "settings.example.json not found - settings.local.json not created"
 }
 
@@ -344,14 +367,17 @@ if (-not $SkipInit) {
         if ($LASTEXITCODE -eq 0) {
             $results.initialized = $true
             Write-Success "Memory files initialized"
-        } else {
+        }
+        else {
             Write-Warn "Memory initialization had issues (check .spec-flow/memory/)"
         }
-    } catch {
+    }
+    catch {
         $results.errors += @{ item = 'init-memory'; error = $_.Exception.Message }
         Write-Warn "Failed to initialize memory files: $($_.Exception.Message)"
     }
-} else {
+}
+else {
     Write-Step "Skipping memory initialization (use -SkipInit=`$false to enable)"
 }
 
@@ -372,23 +398,28 @@ if (Test-Path -LiteralPath $gitDir -PathType Container) {
                 $null = & bash '.spec-flow/scripts/bash/install-git-hooks.sh' --force 2>&1
                 if ($LASTEXITCODE -eq 0) {
                     Write-Success "Git hooks installed"
-                } else {
+                }
+                else {
                     Write-Warn "Git hooks installation had issues (non-critical)"
                 }
-            } else {
+            }
+            else {
                 Write-Warn "Bash not found - skipping git hooks installation"
                 Write-Step "  Run manually: bash .spec-flow/scripts/bash/install-git-hooks.sh"
             }
 
             Set-Location -Path $origLocation
-        } catch {
+        }
+        catch {
             Set-Location -Path $origLocation
             Write-Warn "Could not install git hooks: $($_.Exception.Message)"
         }
-    } else {
+    }
+    else {
         Write-Warn "Git hooks script not found at $gitHooksScript"
     }
-} else {
+}
+else {
     Write-Step "Skipping git hooks (not a git repository)"
 }
 
@@ -409,21 +440,25 @@ if (-not $SkipChecks) {
         if ($checkData.status -eq 'ready') {
             $results.checksPass = $true
             Write-Success "All prerequisite checks passed"
-        } else {
+        }
+        else {
             Write-Warn "Some prerequisite checks failed (run check-prerequisites.ps1 for details)"
         }
-    } catch {
+    }
+    catch {
         Set-Location -Path $origLocation
         Write-Warn "Could not run prerequisite checks: $($_.Exception.Message)"
     }
-} else {
+}
+else {
     Write-Step "Skipping prerequisite checks (use -SkipChecks=`$false to enable)"
 }
 
 # --- Output Results ---------------------------------------------------------
 if ($Json) {
     $results | ConvertTo-Json -Depth 10 -Compress | Write-Output
-} else {
+}
+else {
     Write-Host ""
     Write-Host "Installation Complete!" -ForegroundColor Green
     Write-Host "======================" -ForegroundColor Green
@@ -462,3 +497,4 @@ if ($Json) {
 }
 
 exit 0
+

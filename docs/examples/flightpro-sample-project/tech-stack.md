@@ -31,6 +31,7 @@
 ### Next.js 14.2.x (App Router)
 
 **Why Next.js?**
+
 - **Solo dev productivity**: File-based routing, built-in API routes, server components
 - **Performance**: SSR + ISR for fast page loads, critical for UX
 - **Deployment**: One-click Vercel deploy, zero config
@@ -38,12 +39,14 @@
 - **Ecosystem**: Huge community, well-documented
 
 **Alternatives rejected**:
+
 - **Create React App (CRA)**: No SSR, deprecated by React team
 - **Vite + React**: Requires custom SSR setup, more boilerplate
 - **SvelteKit**: Smaller ecosystem, less familiar to potential contributors
 - **Remix**: Similar to Next.js but smaller community
 
 **Configuration**:
+
 ```json
 // package.json (key dependencies)
 {
@@ -60,6 +63,7 @@
 ### Tailwind CSS 3.4.x
 
 **Why Tailwind?**
+
 - **Fast prototyping**: No need to write custom CSS for MVP
 - **Consistency**: Design system built-in (spacing, colors, typography)
 - **Performance**: Purges unused CSS, small bundle size
@@ -67,12 +71,14 @@
 - **Maintenance**: No CSS files to manage, all styles in JSX
 
 **Alternatives rejected**:
+
 - **CSS Modules**: More verbose, slower for MVP
 - **Styled-components**: Heavier bundle, runtime overhead
 - **Bootstrap**: Too opinionated, harder to customize
 - **Custom CSS**: Slower, error-prone, hard to maintain
 
 **Configuration**:
+
 ```js
 // tailwind.config.js
 module.exports = {
@@ -93,6 +99,7 @@ module.exports = {
 ### SWR 2.2.x (State Management)
 
 **Why SWR?**
+
 - **Simple API**: `const { data, error } = useSWR('/api/students', fetcher)`
 - **Built-in caching**: No need for Redux or Zustand
 - **Automatic revalidation**: Refetch on focus, reconnect, interval
@@ -100,12 +107,14 @@ module.exports = {
 - **Next.js integration**: Made by Vercel, perfect fit
 
 **Alternatives rejected**:
+
 - **Redux Toolkit**: Overkill for MVP, too much boilerplate
 - **Zustand**: Good for global state, but SWR handles data fetching better
 - **TanStack Query (React Query)**: Similar to SWR, but SWR is lighter
 - **Native fetch**: No caching, no revalidation, manual loading states
 
 **Example usage**:
+
 ```typescript
 // app/components/StudentList.tsx
 import useSWR from 'swr'
@@ -133,6 +142,7 @@ export function StudentList() {
 ### FastAPI 0.110.x
 
 **Why FastAPI?**
+
 - **Async by default**: Fast I/O for database queries, external APIs
 - **Auto-generated docs**: OpenAPI (Swagger) UI at `/docs` for free
 - **Type hints**: Pydantic models enforce validation
@@ -140,12 +150,14 @@ export function StudentList() {
 - **Modern**: WebSockets, GraphQL support if needed later
 
 **Alternatives rejected**:
+
 - **Django**: Too heavyweight, more setup, slower for simple APIs
 - **Flask**: No built-in async, less structure, manual validation
 - **Node.js (Express)**: Would require TypeScript, less familiar to domain experts
 - **Go**: Faster but longer dev time, harder to find contributors
 
 **Configuration**:
+
 ```python
 # requirements.txt (key dependencies)
 fastapi==0.110.0
@@ -157,6 +169,7 @@ pydantic==2.6.1
 ```
 
 **Project structure**:
+
 ```
 api/
 ├── main.py             # FastAPI app entry
@@ -182,6 +195,7 @@ api/
 ### PostgreSQL 15.x + SQLAlchemy 2.0.x
 
 **Why PostgreSQL?**
+
 - **Relational data**: Student-Lesson-Progress relationships fit relational model
 - **ACID compliance**: Critical for FAA-compliant records (no data loss)
 - **Mature ecosystem**: ORMs, tools, hosting all support it
@@ -189,18 +203,21 @@ api/
 - **JSON support**: Can store flexible ACS task data as JSONB if needed
 
 **Why SQLAlchemy?**
+
 - **Industry standard**: Most widely used Python ORM
 - **Type safety**: Works with Pydantic for end-to-end typing
 - **Async support**: SQLAlchemy 2.0 has native async queries
 - **Migration tool**: Alembic is the standard migration tool
 
 **Alternatives rejected**:
+
 - **MongoDB**: No ACID guarantees, overkill for simple relational data
 - **MySQL**: Similar to PostgreSQL but worse JSON support, less features
 - **SQLite**: Not suitable for production web app (concurrency issues)
 - **Prisma (JS)**: Would require Node.js backend
 
 **Example model**:
+
 ```python
 # api/models/student.py
 from sqlalchemy import Column, String, Float, ForeignKey
@@ -230,6 +247,7 @@ class Student(Base):
 ### Clerk (Latest)
 
 **Why Clerk?**
+
 - **Fastest setup**: Drop-in React components, 5 minutes to auth
 - **Free tier**: Up to 5K MAUs (enough for MVP)
 - **Multi-tenancy**: CFI-student role separation built-in
@@ -237,12 +255,14 @@ class Student(Base):
 - **Security**: JWT tokens, refresh tokens, session management handled
 
 **Alternatives rejected**:
+
 - **Auth0**: More expensive ($25/mo), complex setup
 - **Supabase Auth**: Ties us to Supabase backend (we use FastAPI)
 - **NextAuth.js**: Manual setup, need to manage OAuth providers
 - **Custom auth**: Too time-consuming, security risk for solo dev
 
 **Implementation**:
+
 ```typescript
 // app/layout.tsx
 import { ClerkProvider } from '@clerk/nextjs'
@@ -268,6 +288,7 @@ export default authMiddleware({
 ```
 
 **Roles**:
+
 - `cfi` — Can create/edit students, log lessons, view all data
 - `student` — Read-only access to own progress, lessons, profile
 
@@ -278,6 +299,7 @@ export default authMiddleware({
 ### Vercel (Frontend Hosting)
 
 **Why Vercel?**
+
 - **Zero config**: Push to GitHub → auto-deploy
 - **Free tier**: Hobby plan (no credit card required for MVP)
 - **Edge network**: Global CDN for fast page loads
@@ -285,11 +307,13 @@ export default authMiddleware({
 - **Preview deploys**: Every PR gets a preview URL
 
 **Alternatives rejected**:
+
 - **Netlify**: Similar but less Next.js-specific optimizations
 - **AWS Amplify**: More complex setup, manual config
 - **Self-hosted**: Too much DevOps work for solo dev
 
 **Configuration**:
+
 ```json
 // vercel.json
 {
@@ -307,6 +331,7 @@ export default authMiddleware({
 ### Railway (Backend Hosting + Database)
 
 **Why Railway?**
+
 - **All-in-one**: API + PostgreSQL in one platform ($5/mo Starter)
 - **Simple deploy**: Connect GitHub, auto-deploy on push
 - **Free dev tier**: $5 credit/month (enough for testing)
@@ -314,12 +339,14 @@ export default authMiddleware({
 - **Environment variables**: Easy secrets management
 
 **Alternatives rejected**:
+
 - **Heroku**: More expensive ($7/mo dyno + $9/mo DB = $16/mo)
 - **DigitalOcean App Platform**: Manual Docker setup
 - **Render**: Similar to Railway but slower deploys
 - **AWS EC2**: Too much DevOps for solo dev
 
 **Configuration**:
+
 ```toml
 # railway.toml
 [build]
@@ -341,11 +368,13 @@ DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 ### TypeScript 5.x (Frontend)
 
 **Why TypeScript?**
+
 - **Catch bugs early**: Type errors found at compile time, not runtime
 - **Better DX**: Autocomplete, refactoring support in VS Code
 - **Next.js default**: No extra setup required
 
 **Configuration**:
+
 ```json
 // tsconfig.json
 {
@@ -366,16 +395,19 @@ DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 ### Linting & Formatting
 
 **Frontend**:
+
 - **ESLint**: Next.js built-in config (`eslint-config-next`)
 - **Prettier**: Auto-format on save
 - **Husky**: Pre-commit hooks (lint before commit)
 
 **Backend**:
+
 - **Ruff**: Fast Python linter (replaces Pylint, Flake8, isort)
 - **Black**: Auto-formatter for Python
 - **Pyright**: Type checker for Python
 
 **Configuration**:
+
 ```json
 // .eslintrc.json
 {
@@ -400,10 +432,12 @@ line-length = 100
 ### Frontend Testing
 
 **Jest + React Testing Library**:
+
 - **Unit tests**: Component logic, utility functions
 - **Integration tests**: User interactions, form submissions
 
 **Example**:
+
 ```typescript
 // app/components/StudentCard.test.tsx
 import { render, screen } from '@testing-library/react'
@@ -421,10 +455,12 @@ test('displays student name', () => {
 ### Backend Testing
 
 **pytest + TestClient**:
+
 - **Unit tests**: Service logic, progress calculations
 - **Integration tests**: API endpoints, database queries
 
 **Example**:
+
 ```python
 # api/tests/test_students.py
 from fastapi.testclient import TestClient
@@ -447,6 +483,7 @@ def test_create_student():
 ### E2E Testing (Planned)
 
 **Playwright**:
+
 - **Critical user flows**: Login, create student, log lesson
 - **Run before deploy**: Staging environment only
 
@@ -457,6 +494,7 @@ def test_create_student():
 ### Vercel Analytics (Frontend)
 
 **What**: Built-in performance monitoring
+
 - Core Web Vitals (LCP, FID, CLS)
 - Real user monitoring (RUM)
 - Free tier included
@@ -464,6 +502,7 @@ def test_create_student():
 ### PostHog (Planned - Product Analytics)
 
 **What**: Open-source analytics + feature flags
+
 - User behavior tracking (which features used?)
 - Funnel analysis (sign-up → first lesson logged)
 - Free self-hosted or $5/mo cloud
@@ -475,6 +514,7 @@ def test_create_student():
 ### Frontend (npm/pnpm)
 
 **Why pnpm?**
+
 - **Faster installs**: 3x faster than npm
 - **Disk efficient**: Shared packages across projects
 - **Strict**: Prevents phantom dependencies
@@ -486,6 +526,7 @@ def test_create_student():
 ### Backend (pip/uv)
 
 **Why uv?** (Rust-based pip alternative)
+
 - **10x faster** than pip
 - **Automatic venv** management
 - **Lock file** support (like pnpm-lock.yaml)
@@ -493,6 +534,7 @@ def test_create_student():
 **Lock file**: `uv.lock` (committed to git)
 
 **Example workflow**:
+
 ```bash
 # Install dependencies
 uv sync
@@ -511,16 +553,19 @@ uv run uvicorn main:app --reload
 ### Environment Variables
 
 **Never commit**:
+
 - `DATABASE_URL`
 - `CLERK_SECRET_KEY`
 - `STRIPE_SECRET_KEY` (future)
 
 **Storage**:
+
 - **Local**: `.env.local` (gitignored)
 - **Vercel**: Environment Variables UI
 - **Railway**: Railway dashboard
 
 **Example**:
+
 ```bash
 # .env.local (never commit)
 DATABASE_URL="postgresql://user:pass@localhost:5432/flightpro"
@@ -533,6 +578,7 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
 ### CORS Configuration
 
 **Backend** (`main.py`):
+
 ```python
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -552,12 +598,14 @@ app.add_middleware(
 ### API Versioning
 
 **URL-based**: `/api/v1/`, `/api/v2/`
+
 - **Why**: Simple, explicit, easy to route
 - **Future**: Add `/api/v2/` when breaking changes needed
 
 ### Semantic Versioning (SemVer)
 
 **Format**: `MAJOR.MINOR.PATCH` (e.g., `1.2.3`)
+
 - **MAJOR**: Breaking changes (v1 → v2)
 - **MINOR**: New features (backwards compatible)
 - **PATCH**: Bug fixes
@@ -599,16 +647,19 @@ app.add_middleware(
 ## Alternatives Rejected (Summary)
 
 ### Full-Stack Frameworks
+
 - ❌ **T3 Stack (Next.js + tRPC)**: Requires Node.js backend (we chose Python)
 - ❌ **Blitz.js**: Less mature, smaller ecosystem
 - ❌ **RedwoodJS**: More opinionated, GraphQL-first (we use REST)
 
 ### Databases
+
 - ❌ **Supabase**: Ties us to their ecosystem (want flexibility)
 - ❌ **PlanetScale**: MySQL-based (prefer PostgreSQL features)
 - ❌ **Firebase**: NoSQL (need relational data)
 
 ### Hosting
+
 - ❌ **AWS**: Too complex, too expensive ($50+/mo minimum)
 - ❌ **GCP**: Similar complexity to AWS
 - ❌ **Azure**: Microsoft-centric, overkill for MVP

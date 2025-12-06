@@ -23,6 +23,7 @@ Complete guide to configuring Spec-Flow command defaults, learning system, and a
 ### 5-Minute Setup
 
 1. **Run the configuration wizard:**
+
    ```bash
    /init-preferences
    ```
@@ -69,6 +70,7 @@ Spec-Flow uses a **3-tier preference system** to eliminate flag memorization:
 ### Example Flow
 
 **First time (no config):**
+
 ```bash
 /epic "add auth"
 → Prompts: "Run in auto or interactive mode?"
@@ -77,6 +79,7 @@ Spec-Flow uses a **3-tier preference system** to eliminate flag memorization:
 ```
 
 **Next time (has history):**
+
 ```bash
 /epic "add notifications"
 → Suggests: "Interactive (last used, 1/1 times) ⭐"
@@ -84,6 +87,7 @@ Spec-Flow uses a **3-tier preference system** to eliminate flag memorization:
 ```
 
 **With config file:**
+
 ```yaml
 # .spec-flow/config/user-preferences.yaml
 commands:
@@ -97,6 +101,7 @@ commands:
 ```
 
 **Override with flag:**
+
 ```bash
 /epic "add payments" --interactive
 → Uses interactive mode regardless of config/history
@@ -117,26 +122,31 @@ commands:
 #### Round 1: Command Modes (2 questions)
 
 **Question 1: /epic default mode**
+
 - **Interactive** (recommended for new users) - Pause at reviews
 - **Auto** (recommended for experienced users) - Skip prompts
 
 **Question 2: /tasks default mode**
+
 - **Standard** (recommended for most projects) - Direct implementation
 - **UI-first** (recommended for design-heavy projects) - Mockups first
 
 #### Round 2: Project Setup (2 questions)
 
 **Question 3: /init-project default mode**
+
 - **Interactive** (recommended) - Run questionnaire (15-48 questions)
 - **CI** (automation only) - Use environment variables
 
 **Question 4: Include design system by default?**
+
 - **No** (recommended for most projects) - Skip design setup
 - **Yes** (design-focused projects) - Always include design tokens
 
 #### Round 3: Execution Strategy (1 question)
 
 **Question 5: /run-prompt execution strategy**
+
 - **Auto-detect** (recommended) - Analyze dependencies automatically
 - **Parallel** (fast but risky) - Run simultaneously
 - **Sequential** (safe but slow) - One-by-one execution
@@ -144,16 +154,19 @@ commands:
 #### Round 4: UI Preferences (2 questions)
 
 **Question 6: Show usage statistics?**
+
 - **Yes** (recommended) - Display "used 8/10 times"
 - **No** (minimal UI) - Hide statistics
 
 **Question 7: Mark last-used with ⭐?**
+
 - **Yes** (recommended) - Highlight recent choice
 - **No** (treat all equally) - All options look the same
 
 #### Round 5: Automation (1 question)
 
 **Question 8: CI/CD mode default?**
+
 - **No** (interactive use, recommended) - Normal prompting
 - **Yes** (CI/CD only) - Default to --no-input
 
@@ -164,6 +177,7 @@ commands:
 ```
 
 Restores all preferences to defaults:
+
 - /epic: interactive mode
 - /tasks: standard mode
 - /init-project: interactive mode, no design
@@ -213,11 +227,13 @@ ui:
 ### Schema Validation
 
 Configuration is validated against:
+
 ```
 .spec-flow/config/user-preferences-schema.yaml
 ```
 
 **Valid values:**
+
 - `commands.epic.default_mode`: `interactive` | `auto`
 - `commands.tasks.default_mode`: `standard` | `ui-first`
 - `commands.init-project.default_mode`: `interactive` | `ci`
@@ -307,11 +323,13 @@ Commands track your mode selections to provide intelligent suggestions.
 ### How It Works
 
 **Tracking file:**
+
 ```
 .spec-flow/memory/command-history.yaml
 ```
 
 **Structure:**
+
 ```yaml
 epic:
   last_used_mode: auto
@@ -342,6 +360,7 @@ What's next?
 ### Reset History
 
 **Per command:**
+
 ```bash
 # Not yet implemented - manual edit required
 ```
@@ -355,6 +374,7 @@ Edit `.spec-flow/memory/command-history.yaml` and set counts to 0.
 ### /epic Command
 
 **Config options:**
+
 ```yaml
 commands:
   epic:
@@ -362,15 +382,18 @@ commands:
 ```
 
 **Behavior:**
+
 - `interactive`: Pause at spec review and plan review
 - `auto`: Skip all prompts, run until blocker
 
 **Flags:**
+
 - `--auto`: Force auto mode
 - `--interactive`: Force interactive mode
 - `--no-input`: CI/CD mode (same as --auto)
 
 **Examples:**
+
 ```bash
 # Uses preference
 /epic "add auth"
@@ -388,6 +411,7 @@ commands:
 ### /tasks Command
 
 **Config options:**
+
 ```yaml
 commands:
   tasks:
@@ -395,15 +419,18 @@ commands:
 ```
 
 **Behavior:**
+
 - `standard`: Generate TDD tasks for direct implementation
 - `ui-first`: Generate HTML mockups first, then implementation
 
 **Flags:**
+
 - `--ui-first`: Force UI-first mode
 - `--standard`: Force standard mode
 - `--no-input`: CI/CD mode (uses standard)
 
 **Examples:**
+
 ```bash
 # Uses preference
 /tasks
@@ -421,6 +448,7 @@ commands:
 ### /init-project Command
 
 **Config options:**
+
 ```yaml
 commands:
   init-project:
@@ -429,10 +457,12 @@ commands:
 ```
 
 **Behavior:**
+
 - `interactive`: Run questionnaire (15 questions, or 48 with --with-design)
 - `ci`: Non-interactive mode using environment variables
 
 **Flags:**
+
 - `--interactive`: Force interactive mode
 - `--ci` / `--no-input`: Force CI mode
 - `--with-design`: Include design system (overrides include_design config)
@@ -440,6 +470,7 @@ commands:
 - `--force`: Overwrite all docs
 
 **Examples:**
+
 ```bash
 # Uses preferences (interactive, no design)
 /init-project
@@ -461,6 +492,7 @@ commands:
 ### /run-prompt Command
 
 **Config options:**
+
 ```yaml
 commands:
   run-prompt:
@@ -468,17 +500,20 @@ commands:
 ```
 
 **Behavior:**
+
 - `auto-detect`: Analyze prompt dependencies and choose strategy
 - `parallel`: Run all prompts simultaneously
 - `sequential`: Run prompts one-by-one
 
 **Flags:**
+
 - `--auto-detect`: Force auto-detect
 - `--parallel`: Force parallel execution
 - `--sequential`: Force sequential execution
 - `--no-input`: CI/CD mode (uses auto-detect)
 
 **Examples:**
+
 ```bash
 # Uses preference
 /run-prompt 005 006 007
@@ -500,12 +535,14 @@ commands:
 ### CI Mode Configuration
 
 **Enable CI mode by default:**
+
 ```yaml
 automation:
   ci_mode_default: true
 ```
 
 **Effect:**
+
 - All commands assume `--no-input`
 - No interactive prompts
 - Uses safe defaults for all choices
@@ -568,6 +605,7 @@ export DEPLOYMENT_MODEL="staging-prod"
 ### Sharing Configurations Across Team
 
 **Commit preference file:**
+
 ```bash
 git add .spec-flow/config/user-preferences.yaml
 git commit -m "feat: add team workflow preferences"
@@ -575,6 +613,7 @@ git push
 ```
 
 **Team members get preferences:**
+
 ```bash
 git pull
 # Preferences now active for all team members
@@ -583,6 +622,7 @@ git pull
 ### Per-Project vs Global Preferences
 
 **Current behavior:**
+
 - Preferences are per-project (`.spec-flow/config/` in project root)
 - No global preferences yet
 
@@ -601,21 +641,25 @@ From lowest to highest priority:
 ### Debugging Preferences
 
 **Check current configuration:**
+
 ```bash
 cat .spec-flow/config/user-preferences.yaml
 ```
 
 **Check learning history:**
+
 ```bash
 cat .spec-flow/memory/command-history.yaml
 ```
 
 **Validate configuration:**
+
 ```bash
 # Not yet implemented - manual validation required
 ```
 
 Compare against schema:
+
 ```bash
 cat .spec-flow/config/user-preferences-schema.yaml
 ```
@@ -627,17 +671,20 @@ cat .spec-flow/config/user-preferences-schema.yaml
 ### Preferences Not Taking Effect
 
 **Symptoms:**
+
 - Commands still prompt for mode selection
 - Changes to config file don't work
 
 **Solutions:**
 
 1. **Verify file location:**
+
    ```bash
    ls -la .spec-flow/config/user-preferences.yaml
    ```
 
 2. **Check YAML syntax:**
+
    ```bash
    # Ensure proper indentation (2 spaces)
    # No tabs allowed
@@ -645,6 +692,7 @@ cat .spec-flow/config/user-preferences-schema.yaml
    ```
 
 3. **Verify values match schema:**
+
    ```yaml
    # WRONG
    commands:
@@ -662,12 +710,14 @@ cat .spec-flow/config/user-preferences-schema.yaml
 ### Learning System Not Working
 
 **Symptoms:**
+
 - Commands don't show "last used" marker
 - Usage statistics don't appear
 
 **Solutions:**
 
 1. **Check UI preferences:**
+
    ```yaml
    ui:
      show_usage_stats: true  # Must be true
@@ -675,11 +725,13 @@ cat .spec-flow/config/user-preferences-schema.yaml
    ```
 
 2. **Verify history file exists:**
+
    ```bash
    ls -la .spec-flow/memory/command-history.yaml
    ```
 
 3. **Check history has data:**
+
    ```bash
    cat .spec-flow/memory/command-history.yaml
    ```
@@ -689,12 +741,14 @@ cat .spec-flow/config/user-preferences-schema.yaml
 ### Flags Not Overriding Preferences
 
 **Symptoms:**
+
 - `--auto` flag ignored
 - Command uses preference instead of flag
 
 **Solutions:**
 
 1. **Verify flag syntax:**
+
    ```bash
    # WRONG
    /epic --auto "add auth"
@@ -704,6 +758,7 @@ cat .spec-flow/config/user-preferences-schema.yaml
    ```
 
 2. **Check for typos:**
+
    ```bash
    # WRONG
    /epic "add auth" --automatic
@@ -713,6 +768,7 @@ cat .spec-flow/config/user-preferences-schema.yaml
    ```
 
 3. **Use --no-input for CI:**
+
    ```bash
    # Most reliable for automation
    /epic "add auth" --no-input
@@ -721,18 +777,21 @@ cat .spec-flow/config/user-preferences-schema.yaml
 ### Configuration File Corrupted
 
 **Symptoms:**
+
 - YAML parsing errors
 - Commands fail to load preferences
 
 **Solutions:**
 
 1. **Restore from example:**
+
    ```bash
    cp .spec-flow/config/user-preferences.example.yaml \
       .spec-flow/config/user-preferences.yaml
    ```
 
 2. **Reset with wizard:**
+
    ```bash
    /init-preferences --reset
    ```
@@ -746,22 +805,26 @@ cat .spec-flow/config/user-preferences-schema.yaml
 ### File Permissions Issues
 
 **Symptoms:**
+
 - "Permission denied" errors
 - Cannot write preferences
 
 **Solutions:**
 
 1. **Check file permissions:**
+
    ```bash
    ls -la .spec-flow/config/user-preferences.yaml
    ```
 
 2. **Fix permissions:**
+
    ```bash
    chmod 644 .spec-flow/config/user-preferences.yaml
    ```
 
 3. **Check directory permissions:**
+
    ```bash
    chmod 755 .spec-flow/config/
    ```
@@ -777,6 +840,7 @@ cat .spec-flow/config/user-preferences-schema.yaml
 ### Q: Can I disable the learning system?
 
 **A:** Yes, set:
+
 ```yaml
 ui:
   show_usage_stats: false
@@ -788,6 +852,7 @@ This hides usage statistics and last-used markers.
 ### Q: What's the fastest way to configure preferences?
 
 **A:** Use the wizard:
+
 ```bash
 /init-preferences
 ```

@@ -47,6 +47,7 @@ python .spec-flow/scripts/spec-cli.py <command> [options]
 ### Available Commands
 
 #### 1. clarify
+
 Interactive clarification workflow
 
 ```bash
@@ -54,14 +55,17 @@ python .spec-flow/scripts/spec-cli.py clarify [feature-slug]
 ```
 
 **Options:**
+
 - `feature-slug` - Optional feature slug (auto-detected if in feature dir)
 
 **Example:**
+
 ```bash
 python .spec-flow/scripts/spec-cli.py clarify my-feature
 ```
 
 #### 2. compact
+
 Compact context for phase
 
 ```bash
@@ -69,15 +73,18 @@ python .spec-flow/scripts/spec-cli.py compact --feature-dir <dir> --phase <phase
 ```
 
 **Options:**
+
 - `--feature-dir` - Feature directory path (required)
 - `--phase` - Phase name: planning, implementation, or optimization (required)
 
 **Example:**
+
 ```bash
 python .spec-flow/scripts/spec-cli.py compact --feature-dir specs/001-auth --phase implementation
 ```
 
 #### 3. create-feature
+
 Create new feature directory
 
 ```bash
@@ -85,11 +92,13 @@ python .spec-flow/scripts/spec-cli.py create-feature "Feature Name"
 ```
 
 **Example:**
+
 ```bash
 python .spec-flow/scripts/spec-cli.py create-feature "User Authentication"
 ```
 
 #### 4. calculate-tokens
+
 Calculate token budget
 
 ```bash
@@ -97,11 +106,13 @@ python .spec-flow/scripts/spec-cli.py calculate-tokens --feature-dir <dir>
 ```
 
 **Example:**
+
 ```bash
 python .spec-flow/scripts/spec-cli.py calculate-tokens --feature-dir specs/001-auth
 ```
 
 #### 5. check-prereqs
+
 Check prerequisites and validate environment
 
 ```bash
@@ -109,10 +120,12 @@ python .spec-flow/scripts/spec-cli.py check-prereqs [--json] [--paths-only]
 ```
 
 **Options:**
+
 - `--json` - Output as JSON
 - `--paths-only` - Only return paths (requires --json)
 
 **Example:**
+
 ```bash
 # Human-readable output
 python .spec-flow/scripts/spec-cli.py check-prereqs
@@ -125,6 +138,7 @@ python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only
 ```
 
 #### 6. detect-infra
+
 Detect infrastructure needs
 
 ```bash
@@ -132,6 +146,7 @@ python .spec-flow/scripts/spec-cli.py detect-infra [feature-slug]
 ```
 
 #### 7. enable-auto-merge
+
 Enable auto-merge for PR
 
 ```bash
@@ -139,11 +154,13 @@ python .spec-flow/scripts/spec-cli.py enable-auto-merge [--pr <number>]
 ```
 
 **Example:**
+
 ```bash
 python .spec-flow/scripts/spec-cli.py enable-auto-merge --pr 123
 ```
 
 #### 8. branch-enforce
+
 Enforce branch naming conventions
 
 ```bash
@@ -151,6 +168,7 @@ python .spec-flow/scripts/spec-cli.py branch-enforce
 ```
 
 #### 9. debug
+
 Run debug workflow
 
 ```bash
@@ -158,11 +176,13 @@ python .spec-flow/scripts/spec-cli.py debug [--error <message>]
 ```
 
 **Example:**
+
 ```bash
 python .spec-flow/scripts/spec-cli.py debug --error "TypeError: undefined is not a function"
 ```
 
 #### 10. contract-bump
+
 Bump API contract version
 
 ```bash
@@ -170,15 +190,18 @@ python .spec-flow/scripts/spec-cli.py contract-bump --type <type> [--file <path>
 ```
 
 **Options:**
+
 - `--type` - Version bump type: major, minor, or patch (required)
 - `--file` - Contract file path (optional)
 
 **Example:**
+
 ```bash
 python .spec-flow/scripts/spec-cli.py contract-bump --type minor
 ```
 
 #### 11. contract-verify
+
 Verify API contract compatibility
 
 ```bash
@@ -186,6 +209,7 @@ python .spec-flow/scripts/spec-cli.py contract-verify [--baseline <version>]
 ```
 
 **Example:**
+
 ```bash
 python .spec-flow/scripts/spec-cli.py contract-verify --baseline v1.2.0
 ```
@@ -232,6 +256,7 @@ else
 fi
 # ... hundreds more lines
 ```
+
 </instructions>
 ```
 
@@ -248,6 +273,7 @@ python .spec-flow/scripts/spec-cli.py clarify "$ARGUMENTS"
 ```
 
 **What the script does:**
+
 1. Prerequisite checks
 2. Load spec + checkpoint
 3. Fast coverage scan (10 categories)
@@ -256,6 +282,7 @@ python .spec-flow/scripts/spec-cli.py clarify "$ARGUMENTS"
 
 [Rest of LLM instructions for interactive Q/A...]
 </instructions>
+
 ```
 
 ## Adding New Commands
@@ -323,6 +350,7 @@ python .spec-flow/scripts/spec-cli.py my-new-command --arg1 value1 --arg2 value2
 
 [LLM instructions for what to do after script runs...]
 </instructions>
+
 ```
 
 ## Migration Strategy
@@ -340,7 +368,9 @@ To migrate existing commands:
 ### Script not found
 
 ```
+
 Error: Bash script not found: /path/to/script.sh
+
 ```
 
 **Solution**: Ensure the script exists in `.spec-flow/scripts/bash/` or `.spec-flow/scripts/powershell/`
@@ -348,7 +378,9 @@ Error: Bash script not found: /path/to/script.sh
 ### Required shell not found
 
 ```
+
 Error: Required shell not found: pwsh
+
 ```
 
 **Solution**: Install PowerShell (`pwsh`) on your system
@@ -356,7 +388,9 @@ Error: Required shell not found: pwsh
 ### Permission denied
 
 ```
+
 Permission denied: /path/to/script.sh
+
 ```
 
 **Solution**: Make script executable:

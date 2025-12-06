@@ -52,7 +52,9 @@ if (-not (Test-Path -LiteralPath $bashScript -PathType Leaf)) {
 try {
     & bash $bashScript @args
     exit $LASTEXITCODE
-} catch {
+}
+catch {
     Write-Error "Error executing bash script: $_"
     exit 1
 }
+

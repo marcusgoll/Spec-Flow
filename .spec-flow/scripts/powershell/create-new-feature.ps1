@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env pwsh
+#!/usr/bin/env pwsh
 <#!
 Create a new feature scaffold under ./specs and (optionally) create/switch to a git branch.
 
@@ -197,3 +197,4 @@ else {
     Write-Output "HAS_GIT: $hasGit"
     Write-Output "SPEC_FLOW_FEATURE environment variable set to: $branchName"
 }
+

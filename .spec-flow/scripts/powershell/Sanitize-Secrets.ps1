@@ -284,3 +284,4 @@ end {
     # Return sanitized content
     Write-Output $content
 }
+

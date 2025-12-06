@@ -152,7 +152,8 @@ Write-Success "Doppler CLI installed"
 try {
     doppler me 2>&1 | Out-Null
     Write-Success "Doppler authenticated"
-} catch {
+}
+catch {
     Write-Error "Not authenticated with Doppler. Run: doppler login"
     exit 1
 }
@@ -175,11 +176,13 @@ foreach ($svc in $Services) {
 
         if ($configExists) {
             Write-Host "  ✅ Exists"
-        } else {
+        }
+        else {
             Write-Host "  ❌ Missing"
             $MissingConfigs += $cfg
         }
-    } catch {
+    }
+    catch {
         Write-Host "  ❌ Missing"
         $MissingConfigs += $cfg
     }
@@ -240,7 +243,8 @@ function Test-Secret {
             doppler secrets get $key --project $Project --config $Config --plain 2>&1 | Out-Null
             Write-Host "  ✅ $key"
             $script:Present += "${Config}:${key}"
-        } catch {
+        }
+        catch {
             Write-Host "  ❌ $key (missing)"
             $script:Missing += "${Config}:${key}"
         }
@@ -282,10 +286,12 @@ try {
     $ApiEnv = doppler secrets get ENVIRONMENT --project $Project --config $ApiCfg --plain 2>&1
     if ($ApiEnv -ne $Environment) {
         Write-Warning "ENVIRONMENT mismatch in API config: expected '$Environment', got '$ApiEnv'"
-    } else {
+    }
+    else {
         Write-Success "ENVIRONMENT variable correct: $Environment"
     }
-} catch {
+}
+catch {
     Write-Warning "ENVIRONMENT variable not set (already flagged above if missing)"
 }
 
@@ -298,17 +304,21 @@ try {
     if ($Environment -eq 'staging') {
         if ($Domain -match 'staging|railway\.app') {
             Write-Success "NEXT_PUBLIC_API_URL points to staging-like domain: $Domain"
-        } else {
+        }
+        else {
             Write-Warning "NEXT_PUBLIC_API_URL domain '$Domain' doesn't look like staging"
         }
-    } else {
+    }
+    else {
         if ($Domain -eq 'api.cfipros.com') {
             Write-Success "NEXT_PUBLIC_API_URL points to production: $Domain"
-        } else {
+        }
+        else {
             Write-Warning "NEXT_PUBLIC_API_URL domain '$Domain' should be 'api.cfipros.com'"
         }
     }
-} catch {
+}
+catch {
     Write-Warning "NEXT_PUBLIC_API_URL not set (already flagged above if missing)"
 }
 
@@ -325,7 +335,8 @@ if (Get-Command gh -ErrorAction SilentlyContinue) {
         Write-Host "GitHub Secrets (org/repo scope as configured by gh):"
         gh secret list 2>&1 | Out-Null
         Write-Success "gh secret list available"
-    } catch {
+    }
+    catch {
         Write-Warning "gh not authenticated"
     }
 }
@@ -335,7 +346,8 @@ if (Get-Command vercel -ErrorAction SilentlyContinue) {
     try {
         vercel --version 2>&1 | Out-Null
         Write-Success "Vercel CLI available"
-    } catch {
+    }
+    catch {
         Write-Warning "Vercel CLI not working"
     }
 }
@@ -345,7 +357,8 @@ if (Get-Command railway -ErrorAction SilentlyContinue) {
     try {
         railway whoami 2>&1 | Out-Null
         Write-Host "Railway: checking DOPPLER_TOKEN presence is project-specific; verify in deployment env UI/CLI."
-    } catch {
+    }
+    catch {
         Write-Warning "Railway CLI not authenticated"
     }
 }
@@ -361,12 +374,12 @@ $Status = if ($Missing.Count -gt 0) { 1 } else { 0 }
 # Write JSON report
 $Report = @{
     environment = $Environment
-    project = $Project
-    summary = @{
+    project     = $Project
+    summary     = @{
         missing = $Missing.Count
         present = $Present.Count
     }
-    details = @{
+    details     = @{
         missing = $Missing
         present = $Present
     }
@@ -385,10 +398,12 @@ if ($Status -ne 0) {
     Write-Host ""
     Write-Host "See JSON report: $JsonReport"
     exit 1
-} else {
+}
+else {
     Write-Success "ALL SECRETS CONFIGURED IN DOPPLER"
     Write-Host "Environment: $Environment"
     Write-Host "Safe to deploy"
     Write-Host "Report: $JsonReport"
     exit 0
 }
+

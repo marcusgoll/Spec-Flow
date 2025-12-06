@@ -131,6 +131,13 @@ async function resolveConflict(options) {
         return { action: 'merged', path: targetPath };
       }
 
+      // Special handling for Gemini files - always backup and overwrite to ensure extension compatibility
+      if (fileName === 'GEMINI.md' || fileName === 'gemini-extension.json') {
+        const backupPath = await backupFile(targetPath);
+        await fs.copy(sourcePath, targetPath, { overwrite: true });
+        return { action: 'backed-up', path: targetPath, backupPath };
+      }
+
       // For other files, rename to avoid conflict
       const renamedPath = await renameWithSuffix(sourcePath, targetPath);
       return { action: 'renamed', path: renamedPath, originalName: fileName };

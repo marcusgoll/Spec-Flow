@@ -67,7 +67,7 @@ function ConvertFrom-SemanticVersion {
         Hashtable with Major, Minor, Patch properties
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Version
     )
 
@@ -104,7 +104,7 @@ function Get-VersionBumpSuggestion {
         String - Suggested bump type
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir
     )
 
@@ -167,7 +167,7 @@ function New-BumpedVersion {
         String - New version
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateSet("major", "minor", "patch")]
         [string]$BumpType
     )
@@ -213,7 +213,7 @@ function Update-PackageVersion {
         Update-PackageVersion -NewVersion "1.3.0"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$NewVersion
     )
 
@@ -253,10 +253,10 @@ function New-ReleaseTag {
         New-ReleaseTag -Version "1.3.0" -Message "Major release with breaking changes"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Version,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]$Message = "Release version $Version"
     )
 
@@ -290,7 +290,7 @@ function Publish-ReleaseTag {
         Publish-ReleaseTag -Version "1.3.0"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Version
     )
 
@@ -330,13 +330,13 @@ function New-ReleaseNotes {
         New-ReleaseNotes -FeatureDir "specs/001-login" -Version "1.3.0"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Version,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]$OutputFile = "RELEASE_NOTES.md"
     )
 
@@ -418,7 +418,7 @@ function Invoke-InteractiveVersionBump {
         Invoke-InteractiveVersionBump -FeatureDir "specs/001-login"
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir
     )
 
@@ -522,10 +522,10 @@ function Invoke-AutoVersionBump {
         String - New version
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$FeatureDir,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [ValidateSet("auto", "major", "minor", "patch")]
         [string]$BumpType = "auto"
     )
@@ -564,7 +564,7 @@ function Test-VersionFormat {
         Boolean - True if valid, False otherwise
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Version
     )
 
@@ -631,10 +631,10 @@ function Compare-Versions {
         Int - -1 if Version1 < Version2, 0 if equal, 1 if Version1 > Version2
     #>
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Version1,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$Version2
     )
 
@@ -678,3 +678,4 @@ Export-ModuleMember -Function @(
     'Get-LatestVersionTag',
     'Compare-Versions'
 )
+

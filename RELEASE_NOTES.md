@@ -227,6 +227,7 @@ Get-NotesFile, Get-ErrorLogFile # Helper functions
    ```
 
 3. **Verify Integration:**
+
    ```bash
    # Check consistency for a feature
    pwsh -File .spec-flow/scripts/powershell/task-tracker.ps1 \
