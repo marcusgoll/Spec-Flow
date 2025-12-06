@@ -17,6 +17,7 @@ Spec-Flow provides three quality gate commands with distinct scopes:
 **Purpose:** Comprehensive production readiness validation.
 
 **When to use:**
+
 - Before any deployment (staging, production, local)
 - After `/implement` completes
 - Part of the standard workflow (auto-invoked by `/ship`)
@@ -39,6 +40,7 @@ Spec-Flow provides three quality gate commands with distinct scopes:
 **Output:** `optimization-report.md`, `code-review-report.md`
 
 **Behavior:**
+
 - CRITICAL blockers halt deployment
 - HIGH issues require acknowledgment
 - MEDIUM issues logged as warnings
@@ -50,6 +52,7 @@ Spec-Flow provides three quality gate commands with distinct scopes:
 **Purpose:** Fast automated checks for pull request validation.
 
 **When to use:**
+
 - GitHub Actions CI pipeline
 - PR creation/update
 - Pre-merge validation
@@ -66,12 +69,14 @@ Spec-Flow provides three quality gate commands with distinct scopes:
 **Output:** Exit code 0 (pass) or 1 (fail) + CI logs
 
 **Behavior:**
+
 - Blocks PR merge on failure
 - Runs in ~2-5 minutes
 - No manual intervention required
 - Integrated with GitHub Actions workflow
 
 **When NOT to use:**
+
 - Security deep scans (use `/gate-sec`)
 - Performance benchmarking (use `/optimize`)
 - Accessibility audits (use `/optimize`)
@@ -81,6 +86,7 @@ Spec-Flow provides three quality gate commands with distinct scopes:
 **Purpose:** Security-focused validation before deployment.
 
 **When to use:**
+
 - Pre-deployment security review
 - Dependency update validation
 - Security audit requests
@@ -94,6 +100,7 @@ Spec-Flow provides three quality gate commands with distinct scopes:
 | 3 | Dependency Scan | HIGH/CRITICAL | npm audit, safety |
 
 **Severity thresholds:**
+
 - CRITICAL: Blocks deployment immediately
 - HIGH: Requires explicit acknowledgment
 - MEDIUM/LOW: Logged as warnings
@@ -101,6 +108,7 @@ Spec-Flow provides three quality gate commands with distinct scopes:
 **Output:** Security findings report, exit code
 
 **Behavior:**
+
 - Scans entire codebase (not just changed files)
 - Checks committed history for leaked secrets
 - Validates dependency tree for known CVEs

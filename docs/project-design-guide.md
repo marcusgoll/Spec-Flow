@@ -28,6 +28,7 @@
 ### Problems Without Project Design
 
 **Without project-level documentation**, each feature spec/plan involves:
+
 - **Hallucinated tech stack** — Claude might suggest MongoDB when you use PostgreSQL
 - **Inconsistent APIs** — One feature uses REST, another uses GraphQL
 - **Duplicated entities** — Creating a new User table when one already exists
@@ -39,6 +40,7 @@
 ### Benefits With Project Design
 
 **With `/init-project` documentation**, Claude Code:
+
 - ✅ **Knows your tech stack** — Reads from `tech-stack.md`, never suggests wrong frameworks
 - ✅ **Follows established patterns** — Reads `api-strategy.md`, maintains consistency
 - ✅ **Reuses existing entities** — Reads `data-architecture.md`, sees ERD
@@ -54,17 +56,20 @@
 ### ✅ Recommended For
 
 **1. New Projects (Greenfield)**
+
 - Starting a new SaaS, web app, API, or product
 - Have a vision but need to document architecture
 - Want to avoid architectural drift from day one
 
 **2. Existing Projects (Brownfield)**
+
 - Legacy codebase lacking documentation
 - Want Claude Code to understand existing architecture
 - Planning major refactor or team expansion
 - Onboarding new developers (human or AI)
 
 **3. Growing Projects**
+
 - Scaling from solo dev to team
 - Evolving from MVP to production
 - Adding new major features regularly
@@ -72,15 +77,18 @@
 ### ❌ Skip If
 
 **1. Exploratory Prototypes**
+
 - Quick proof-of-concept (< 1 week)
 - Throwaway code
 - Experimenting with new tech
 
 **2. Single-Script Projects**
+
 - One-off scripts or utilities
 - No long-term maintenance planned
 
 **3. Well-Documented Projects**
+
 - Already have comprehensive architecture docs
 - Existing design system and standards
 - Established team conventions
@@ -92,6 +100,7 @@
 ### 1. Prerequisites
 
 Ensure you have Spec-Flow installed:
+
 ```bash
 # Check if /init-project command exists
 ls .claude/commands/init-project.md
@@ -100,6 +109,7 @@ ls .claude/commands/init-project.md
 ### 2. Run /init-project
 
 In Claude Code:
+
 ```bash
 /init-project
 ```
@@ -107,6 +117,7 @@ In Claude Code:
 ### 3. Answer 15 Questions (~10 minutes)
 
 The interactive setup will ask:
+
 - Project name, vision, target users
 - Scale (micro/small/medium/large)
 - Tech stack (database, frontend, backend, deployment)
@@ -116,6 +127,7 @@ The interactive setup will ask:
 ### 4. Review Generated Docs
 
 Claude Code generates 8 files in `docs/project/`:
+
 ```bash
 docs/project/
 ├── overview.md
@@ -131,6 +143,7 @@ docs/project/
 ### 5. Fill Clarifications
 
 Search for `[NEEDS CLARIFICATION]` markers and fill in details:
+
 ```bash
 grep -r "NEEDS CLARIFICATION" docs/project/
 ```
@@ -155,6 +168,7 @@ Now run `/roadmap` or `/feature` — all commands will reference project docs.
 **Purpose**: Single source of truth for "what we're building and why"
 
 **Contents**:
+
 - Vision statement (1 paragraph)
 - Target user personas (primary, secondary)
 - Core value proposition
@@ -164,11 +178,13 @@ Now run `/roadmap` or `/feature` — all commands will reference project docs.
 - Timeline & milestones
 
 **Used by**:
+
 - `/roadmap` — Validates features against vision and scope
 - `/spec` — Ensures features align with target users
 - `/plan` — References success metrics for feature prioritization
 
 **Example**:
+
 ```markdown
 ## Vision Statement
 
@@ -185,6 +201,7 @@ regulations. We exist because current solutions are either too expensive
 **Purpose**: High-level system design with visual diagrams
 
 **Contents**:
+
 - C4 Context Diagram (system boundary, external systems)
 - C4 Container Diagram (apps, services, databases)
 - Component Architecture (modules, layers)
@@ -193,11 +210,13 @@ regulations. We exist because current solutions are either too expensive
 - Infrastructure Diagram (servers, CDN, storage)
 
 **Used by**:
+
 - `/spec` — Identifies integration points for new features
 - `/plan` — Understands where new components fit
 - `/implement` — Knows which services to call
 
 **Example** (Mermaid C4 diagram):
+
 ```mermaid
 C4Context
     title System Context - FlightPro
@@ -223,6 +242,7 @@ C4Context
 **Purpose**: Every framework, library, and tool with rationale
 
 **Contents**:
+
 - Stack overview table (layer, technology, version, purpose)
 - Frontend: Framework, state management, routing, styling
 - Backend: Framework, API, auth, queues
@@ -232,11 +252,13 @@ C4Context
 - Dependency management strategy
 
 **Used by**:
+
 - `/spec` — **Critical** — Avoids suggesting wrong tech
 - `/plan` — Uses correct frameworks, versions
 - `/implement` — Knows what libraries are available
 
 **Example**:
+
 ```markdown
 | Layer | Technology | Version | Purpose |
 |-------|-----------|---------|---------|
@@ -261,6 +283,7 @@ C4Context
 **Purpose**: All database entities, relationships, and migrations
 
 **Contents**:
+
 - High-level domain model (Mermaid ERD)
 - Entity schemas (fields, types, constraints, indexes)
 - Relationships (foreign keys, joins)
@@ -270,11 +293,13 @@ C4Context
 - Privacy & compliance (PII, GDPR, retention)
 
 **Used by**:
+
 - `/spec` — Reuses existing entities, avoids duplication
 - `/plan` — Designs data models that fit existing schema
 - `/implement` — Creates migrations that align with strategy
 
 **Example** (Mermaid ERD):
+
 ```mermaid
 erDiagram
     USER ||--o{ STUDENT : manages
@@ -311,6 +336,7 @@ erDiagram
 **Purpose**: All API design standards and patterns
 
 **Contents**:
+
 - API style (REST, GraphQL, tRPC, gRPC)
 - Versioning strategy (/api/v1/, header-based, etc.)
 - Authentication (JWT, OAuth, API keys)
@@ -322,11 +348,13 @@ erDiagram
 - CORS configuration
 
 **Used by**:
+
 - `/spec` — Follows established REST/GraphQL patterns
 - `/plan` — Designs endpoints that match existing style
 - `/implement` — Uses correct auth, error format, versioning
 
 **Example**:
+
 ```markdown
 ## API Style
 **Primary**: REST (JSON)
@@ -361,6 +389,7 @@ erDiagram
 **Purpose**: Plan for growth from 100 users to 1,000,000
 
 **Contents**:
+
 - Current scale baseline (users, requests, data size)
 - Growth projections (10x, 100x, 1000x)
 - Resource estimates per tier (CPU, memory, storage, DB)
@@ -370,11 +399,13 @@ erDiagram
 - Bottlenecks & mitigation strategies
 
 **Used by**:
+
 - `/spec` — Designs features for current scale tier
 - `/plan` — Plans caching, pagination for performance targets
 - `/optimize` — Benchmarks against documented targets
 
 **Example**:
+
 ```markdown
 ## Current Scale (Tier 0: Micro)
 - **Users**: 100 active CFIs, 500 students
@@ -398,6 +429,7 @@ erDiagram
 **Purpose**: How we deploy, test, and rollback
 
 **Contents**:
+
 - Deployment model (staging-prod, direct-prod, local-only)
 - Environments (dev, staging, production)
 - CI/CD pipeline (GitHub Actions, GitLab CI, etc.)
@@ -408,11 +440,13 @@ erDiagram
 - Rollback procedure (how to revert deployment)
 
 **Used by**:
+
 - `/plan` — Plans migrations aligned with deployment process
 - `/ship` — Uses correct deployment model
 - `/optimize` — Ensures CI/CD pipeline works
 
 **Example**:
+
 ```markdown
 ## Deployment Model
 **Type**: staging-prod (two-stage deployment)
@@ -449,6 +483,7 @@ erDiagram
 **Purpose**: How the team works together (git, PRs, testing)
 
 **Contents**:
+
 - Team structure (roles, responsibilities)
 - Git workflow (GitHub Flow, Git Flow, Trunk-Based)
 - Branch naming conventions
@@ -461,11 +496,13 @@ erDiagram
 - Release process (versioning, changelog, cadence)
 
 **Used by**:
+
 - `/implement` — Follows testing strategy, code style
 - `/ship` — Uses correct git workflow, PR process
 - Developers — Onboarding guide
 
 **Example**:
+
 ```markdown
 ## Git Workflow
 **Strategy**: GitHub Flow (simplified)
@@ -507,12 +544,14 @@ erDiagram
 ### Greenfield (New Project)
 
 **What happens**:
+
 1. You answer 15 questions (~10 min)
 2. Claude generates 8 docs from templates
 3. Many `[NEEDS CLARIFICATION]` sections (you fill later)
 4. Reasonable defaults applied (e.g., monolith for solo dev)
 
 **Example output**:
+
 ```markdown
 # tech-stack.md (greenfield)
 
@@ -530,12 +569,14 @@ erDiagram
 ### Brownfield (Existing Codebase)
 
 **What happens**:
+
 1. You answer 15 questions (~10 min)
 2. **Claude scans your codebase** (auto-detect tech stack)
 3. Fewer `[NEEDS CLARIFICATION]` (more inferred from code)
 4. Generates 8 docs with accurate existing patterns
 
 **Codebase scan** (automatic):
+
 - Reads `package.json` → detects Node.js, React, Next.js, TypeScript
 - Reads `requirements.txt` → detects Python, FastAPI, Django
 - Reads `go.mod`, `Cargo.toml`, `Gemfile` → detects Go, Rust, Ruby
@@ -543,6 +584,7 @@ erDiagram
 - Scans routes → detects API patterns (REST, GraphQL)
 
 **Example output**:
+
 ```markdown
 # tech-stack.md (brownfield)
 
@@ -559,6 +601,7 @@ erDiagram
 **Time to complete**: ~15 minutes (10 min setup + 5 min review — less clarification needed)
 
 **Benefits**:
+
 - 20-30% fewer `[NEEDS CLARIFICATION]` sections
 - Accurate ERD generated from migrations
 - Correct API patterns detected from existing routes
@@ -571,6 +614,7 @@ erDiagram
 ### The 15 Questions
 
 **Q1-Q3: Project Basics**
+
 1. **Project name** (e.g., "FlightPro")
 2. **Vision** (1 sentence: what problem are you solving?)
 3. **Primary users** (who is this for? e.g., "CFIs")
@@ -604,6 +648,7 @@ erDiagram
 ### File Structure
 
 After `/init-project`:
+
 ```
 docs/
 └── project/
@@ -620,11 +665,13 @@ docs/
 ### Coverage Estimate
 
 **Greenfield** (minimal info):
+
 - Filled from questionnaire: 70%
 - Inferred from common patterns: 10%
 - Needs clarification: 20%
 
 **Brownfield** (rich codebase scan):
+
 - Filled from questionnaire: 50%
 - Inferred from codebase: 30%
 - Needs clarification: 20%
@@ -632,11 +679,13 @@ docs/
 ### Clarification Markers
 
 Search for `[NEEDS CLARIFICATION]`:
+
 ```bash
 grep -r "NEEDS CLARIFICATION" docs/project/
 ```
 
 **Example**:
+
 ```markdown
 # overview.md
 ## Competitors
@@ -656,6 +705,7 @@ grep -r "NEEDS CLARIFICATION" docs/project/
 ### How Commands Use Project Docs
 
 **Before /init-project**:
+
 ```bash
 /spec "Add user authentication"
 # Claude: "Should we use JWT? OAuth? Auth0? Clerk? Supabase Auth?"
@@ -663,6 +713,7 @@ grep -r "NEEDS CLARIFICATION" docs/project/
 ```
 
 **After /init-project**:
+
 ```bash
 /spec "Add user authentication"
 # Claude reads: docs/project/api-strategy.md → Auth: Clerk
@@ -674,6 +725,7 @@ grep -r "NEEDS CLARIFICATION" docs/project/
 ### Command-by-Command Integration
 
 **`/roadmap`**:
+
 ```bash
 /roadmap add "Dark mode toggle"
 
@@ -683,6 +735,7 @@ grep -r "NEEDS CLARIFICATION" docs/project/
 ```
 
 **`/spec "Add student progress dashboard"`**:
+
 ```bash
 # Phase 0: Research
 # Reads:
@@ -695,6 +748,7 @@ grep -r "NEEDS CLARIFICATION" docs/project/
 ```
 
 **`/plan`**:
+
 ```bash
 # Phase 0: Research & Discovery
 # Reads ALL 8 docs from docs/project/
@@ -726,6 +780,7 @@ grep -r "NEEDS CLARIFICATION" docs/project/
 **Rarely** — Project docs are stable, change infrequently.
 
 **Update when**:
+
 1. **Major tech stack change**
    - Example: Migrating PostgreSQL → MongoDB
    - Update: `tech-stack.md`, `data-architecture.md`
@@ -749,6 +804,7 @@ grep -r "NEEDS CLARIFICATION" docs/project/
 ### How to Update
 
 **Do**:
+
 ```bash
 # 1. Edit files directly
 vim docs/project/tech-stack.md
@@ -759,6 +815,7 @@ git commit -m "docs: update tech stack - migrate to MongoDB"
 ```
 
 **Don't**:
+
 ```bash
 # ❌ DON'T regenerate with /init-project
 /init-project
@@ -768,10 +825,12 @@ git commit -m "docs: update tech stack - migrate to MongoDB"
 ### Versioning
 
 **Option 1**: Keep history in git
+
 - No special versioning needed
 - Git log shows evolution
 
 **Option 2**: Add version table (if major changes)
+
 ```markdown
 # tech-stack.md
 
@@ -790,6 +849,7 @@ git commit -m "docs: update tech stack - migrate to MongoDB"
 ### Q: Can I skip /init-project and just start coding?
 
 **A**: Yes, but:
+
 - Claude will hallucinate tech stack choices
 - Features may use inconsistent patterns
 - Higher risk of architectural drift
@@ -804,6 +864,7 @@ git commit -m "docs: update tech stack - migrate to MongoDB"
 **A**: Depends on coverage.
 
 **If your README has**:
+
 - Detailed ERD (data-architecture.md equivalent)
 - API patterns documented (api-strategy.md equivalent)
 - Tech stack with versions (tech-stack.md equivalent)
@@ -811,6 +872,7 @@ git commit -m "docs: update tech stack - migrate to MongoDB"
 **Then**: Skip `/init-project`, update constitution.md to reference README sections.
 
 **If your README is**:
+
 - High-level overview only
 - Missing tech stack versions
 - No ERD or API patterns
@@ -824,11 +886,13 @@ git commit -m "docs: update tech stack - migrate to MongoDB"
 **A**: That's okay — use defaults and clarify later.
 
 **During setup**:
+
 - **Unknown budget?** → Enter "$0" or "unknown"
 - **Unsure about scale?** → Choose "micro" (can update later)
 - **Don't have ERD?** → `/init-project` will generate placeholder
 
 **After setup**:
+
 - Search for `[NEEDS CLARIFICATION]`
 - Fill in details as you learn more
 - Commit incremental updates
@@ -840,6 +904,7 @@ git commit -m "docs: update tech stack - migrate to MongoDB"
 **A**: **Not recommended** — it overwrites existing docs.
 
 **If you must**:
+
 1. Backup `docs/project/` to `docs/project-backup/`
 2. Run `/init-project`
 3. Manually merge changes
@@ -859,6 +924,7 @@ git push
 ```
 
 **Team members** can then:
+
 - Read `docs/project/` to understand architecture
 - Update docs as project evolves
 - Reference in PRs and code reviews
@@ -870,6 +936,7 @@ git push
 **A**: Document all stacks in `tech-stack.md`.
 
 **Example**:
+
 ```markdown
 # tech-stack.md
 
@@ -892,6 +959,7 @@ git push
 ### Example 1: Greenfield SaaS (FlightPro)
 
 **Setup**:
+
 - Solo developer
 - Micro scale (100 CFIs)
 - Next.js frontend, FastAPI backend
@@ -899,6 +967,7 @@ git push
 - Vercel + Railway deployment
 
 **Generated docs**:
+
 ```bash
 docs/project/
 ├── overview.md → Vision: "Help CFIs manage students"
@@ -932,6 +1001,7 @@ docs/project/
 ### Example 2: Brownfield Legacy App
 
 **Setup**:
+
 - Existing Next.js + Python codebase
 - No documentation
 - 3-person team
@@ -939,6 +1009,7 @@ docs/project/
 - Railway deployment
 
 **Codebase scan results**:
+
 ```
 Detected:
 - Frontend: Next.js 13.5.x (from package.json)
@@ -951,6 +1022,7 @@ Detected:
 ```
 
 **Generated docs**:
+
 ```bash
 docs/project/
 ├── overview.md → [NEEDS CLARIFICATION: Vision, users, scope]
@@ -978,6 +1050,7 @@ docs/project/
 **[NEEDS CLARIFICATION] count**: 4 sections (70% filled from codebase)
 
 **Benefits**:
+
 - Accurate ERD without manual diagramming
 - Correct tech stack versions documented
 - API patterns preserved in docs

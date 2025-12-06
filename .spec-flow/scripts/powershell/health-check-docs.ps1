@@ -35,7 +35,8 @@ $claudeFiles = Get-ChildItem -Path $repoRoot -Filter "CLAUDE.md" -File -Recurse 
 if (-not $claudeFiles) {
     if ($Json) {
         @{ total = 0; stale = @(); fresh = @(); warnings = @() } | ConvertTo-Json -Compress
-    } else {
+    }
+    else {
         Write-Host "[spec-flow] No CLAUDE.md files found" -ForegroundColor Cyan
     }
     exit 0
@@ -63,7 +64,8 @@ foreach ($file in $claudeFiles) {
     # Check if stale
     if ($mtime -lt $cutoffDate) {
         $staleFiles += @{ file = $file.FullName; age_days = $ageDays }
-    } else {
+    }
+    else {
         $freshFiles += @{ file = $file.FullName; age_days = $ageDays }
     }
 
@@ -76,12 +78,13 @@ foreach ($file in $claudeFiles) {
 # Output results
 if ($Json) {
     @{
-        total = $claudeFiles.Count
-        stale = $staleFiles
-        fresh = $freshFiles
+        total    = $claudeFiles.Count
+        stale    = $staleFiles
+        fresh    = $freshFiles
         warnings = $warnings
     } | ConvertTo-Json -Compress
-} else {
+}
+else {
     Write-Host ""
     Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
     Write-Host "📊 Living Documentation Health Check" -ForegroundColor Cyan
@@ -93,7 +96,8 @@ if ($Json) {
 
     if ($staleFiles.Count -eq 0) {
         Write-Host "[spec-flow] ✅ All CLAUDE.md files are fresh (updated within $MaxAgeDays days)" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "[spec-flow][warn] ⚠️  Found $($staleFiles.Count) stale CLAUDE.md file(s):" -ForegroundColor Yellow
         Write-Host ""
         foreach ($item in $staleFiles) {
@@ -131,3 +135,4 @@ if ($Json) {
 if ($staleFiles.Count -gt 0) {
     exit 1
 }
+

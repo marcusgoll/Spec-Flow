@@ -325,3 +325,4 @@ else {
     Set-Content -Path $OutputFile -Value $markdown -NoNewline
     Write-Host "[spec-flow] Generated project CLAUDE.md at $OutputFile" -ForegroundColor Green
 }
+

@@ -838,22 +838,22 @@ function New-AnswersJson {
     param([string]$OutputPath)
 
     $answers = @{
-        PROJECT_NAME = if ($env:INIT_NAME) { $env:INIT_NAME } else { "[NEEDS CLARIFICATION]" }
-        VISION = if ($env:INIT_VISION) { $env:INIT_VISION } else { "[NEEDS CLARIFICATION]" }
-        PRIMARY_USERS = if ($env:INIT_USERS) { $env:INIT_USERS } else { "[NEEDS CLARIFICATION]" }
-        SCALE = if ($env:INIT_SCALE) { $env:INIT_SCALE } else { "micro" }
-        TEAM_SIZE = if ($env:INIT_TEAM_SIZE) { $env:INIT_TEAM_SIZE } else { "solo" }
-        ARCHITECTURE = if ($env:INIT_ARCHITECTURE) { $env:INIT_ARCHITECTURE } else { "monolith" }
-        DATABASE = if ($env:INIT_DATABASE) { $env:INIT_DATABASE } else { "PostgreSQL" }
+        PROJECT_NAME    = if ($env:INIT_NAME) { $env:INIT_NAME } else { "[NEEDS CLARIFICATION]" }
+        VISION          = if ($env:INIT_VISION) { $env:INIT_VISION } else { "[NEEDS CLARIFICATION]" }
+        PRIMARY_USERS   = if ($env:INIT_USERS) { $env:INIT_USERS } else { "[NEEDS CLARIFICATION]" }
+        SCALE           = if ($env:INIT_SCALE) { $env:INIT_SCALE } else { "micro" }
+        TEAM_SIZE       = if ($env:INIT_TEAM_SIZE) { $env:INIT_TEAM_SIZE } else { "solo" }
+        ARCHITECTURE    = if ($env:INIT_ARCHITECTURE) { $env:INIT_ARCHITECTURE } else { "monolith" }
+        DATABASE        = if ($env:INIT_DATABASE) { $env:INIT_DATABASE } else { "PostgreSQL" }
         DEPLOY_PLATFORM = if ($env:INIT_DEPLOY_PLATFORM) { $env:INIT_DEPLOY_PLATFORM } else { "Vercel" }
-        API_STYLE = if ($env:INIT_API_STYLE) { $env:INIT_API_STYLE } else { "REST" }
-        AUTH_PROVIDER = if ($env:INIT_AUTH_PROVIDER) { $env:INIT_AUTH_PROVIDER } else { "Clerk" }
-        BUDGET_MVP = if ($env:INIT_BUDGET_MVP) { $env:INIT_BUDGET_MVP } else { "50" }
-        PRIVACY = if ($env:INIT_PRIVACY) { $env:INIT_PRIVACY } else { "PII" }
-        GIT_WORKFLOW = if ($env:INIT_GIT_WORKFLOW) { $env:INIT_GIT_WORKFLOW } else { "GitHub Flow" }
-        DEPLOY_MODEL = if ($env:INIT_DEPLOY_MODEL) { $env:INIT_DEPLOY_MODEL } else { "staging-prod" }
-        FRONTEND = if ($env:INIT_FRONTEND) { $env:INIT_FRONTEND } else { "Next.js" }
-        DATE = Get-Date -Format "yyyy-MM-dd"
+        API_STYLE       = if ($env:INIT_API_STYLE) { $env:INIT_API_STYLE } else { "REST" }
+        AUTH_PROVIDER   = if ($env:INIT_AUTH_PROVIDER) { $env:INIT_AUTH_PROVIDER } else { "Clerk" }
+        BUDGET_MVP      = if ($env:INIT_BUDGET_MVP) { $env:INIT_BUDGET_MVP } else { "50" }
+        PRIVACY         = if ($env:INIT_PRIVACY) { $env:INIT_PRIVACY } else { "PII" }
+        GIT_WORKFLOW    = if ($env:INIT_GIT_WORKFLOW) { $env:INIT_GIT_WORKFLOW } else { "GitHub Flow" }
+        DEPLOY_MODEL    = if ($env:INIT_DEPLOY_MODEL) { $env:INIT_DEPLOY_MODEL } else { "staging-prod" }
+        FRONTEND        = if ($env:INIT_FRONTEND) { $env:INIT_FRONTEND } else { "Next.js" }
+        DATE            = Get-Date -Format "yyyy-MM-dd"
     }
 
     $answers | ConvertTo-Json | Set-Content $OutputPath
@@ -1193,3 +1193,4 @@ function Main {
 
 # Run main function
 Main
+

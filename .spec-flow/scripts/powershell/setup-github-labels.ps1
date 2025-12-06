@@ -154,13 +154,13 @@ function New-GitHubLabel {
         $ApiUrl = "https://api.github.com/repos/$Repository/labels"
         $Headers = @{
             "Authorization" = "token $env:GITHUB_TOKEN"
-            "Accept" = "application/vnd.github.v3+json"
+            "Accept"        = "application/vnd.github.v3+json"
         }
 
         $Body = @{
-            name = $Name
+            name        = $Name
             description = $Description
-            color = $Color
+            color       = $Color
         } | ConvertTo-Json
 
         try {
@@ -175,7 +175,7 @@ function New-GitHubLabel {
                 $UpdateUrl = "$ApiUrl/$([System.Uri]::EscapeDataString($Name))"
                 $UpdateBody = @{
                     description = $Description
-                    color = $Color
+                    color       = $Color
                 } | ConvertTo-Json
 
                 $Response = Invoke-RestMethod -Uri $UpdateUrl -Method Patch -Headers $Headers -Body $UpdateBody -ErrorAction Stop
@@ -274,3 +274,4 @@ else {
 }
 
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+

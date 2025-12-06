@@ -20,11 +20,13 @@ All workflow artifacts live in `specs/` (features) or `epics/` (complex work). T
 ### Quick Start
 
 **Feature** (single subsystem, <16h):
+
 ```
 /feature "desc" → /plan → /tasks → /implement → /optimize → /ship
 ```
 
 **Epic** (multiple subsystems, >16h):
+
 ```
 /epic "goal" → /plan → /tasks → /implement-epic → /optimize → /ship → /finalize
 ```
@@ -78,12 +80,14 @@ For development/debugging: Clone GitHub repo to access archived commands.
 ### Quality Gates
 
 **Blocking**:
+
 - Pre-flight: Build, env vars, CI config
 - Code review: No critical issues, security, WCAG 2.1 AA
 - E2E + Visual: Playwright tests, visual regression
 - Rollback: Verify capability (staging-prod only)
 
 **Manual** (pause for approval):
+
 - Mockup approval (UI-first only)
 - Staging validation (staging-prod only)
 
@@ -92,6 +96,7 @@ Resume: `/ship continue` or `/feature continue`
 ### Continuous Quality Features (v10.16)
 
 **Multi-Agent Voting** - Error decorrelation through diverse sampling:
+
 - Code reviews: 3 agents, k=2 voting (MAKER algorithm)
 - Security audits: Unanimous consensus required
 - Breaking changes: 3 agents, k=2 for API compatibility
@@ -100,6 +105,7 @@ Resume: `/ship continue` or `/feature continue`
 - Usage: `/review --voting` or automatic in `/optimize`
 
 **Continuous Checks** - Lightweight validation after each task batch:
+
 - Runs after 3-4 tasks during `/implement` phase
 - Checks: linting (auto-fix), type checking, unit tests, coverage delta, dead code, gap detection
 - Performance target: < 30 seconds total
@@ -107,6 +113,7 @@ Resume: `/ship continue` or `/feature continue`
 - Skipped in iteration 2+ (focus on gaps only)
 
 **Progressive Quality Gates** - Three levels throughout workflow:
+
 ```
 Level 1 (Continuous)    → After each batch    → < 30s   → Warn & continue
 Level 2 (Full)          → /optimize phase     → 10-15m  → Block deployment
@@ -114,12 +121,14 @@ Level 3 (Critical)      → /ship pre-flight    → < 2m    → Block production
 ```
 
 **On-Demand Review** - Code review anytime:
+
 - `/review` - Quick review of uncommitted changes
 - `/review --voting` - 3-agent voting for high confidence
 - `/review --scope all` - Review entire feature
 - Auto-fix linting, show file:line references, generate coverage gaps
 
 **Perpetual Learning** - Auto-apply proven patterns:
+
 - Performance patterns (≥0.90 confidence) - auto-applied at workflow start
 - Anti-patterns (≥0.85 confidence) - warnings issued
 - Custom abbreviations (≥0.95 confidence) - auto-expanded
@@ -127,6 +136,7 @@ Level 3 (Critical)      → /ship pre-flight    → < 2m    → Block production
 - Collected from past workflows, applied at `/feature` and `/epic` start
 
 **Early Gap Detection** - Find missing implementations before validation:
+
 - Scans changed files for TODO, FIXME, placeholders, edge cases
 - Runs during continuous checks (Check 6/6)
 - Non-blocking warnings, saved to `.potential-gaps.yaml`
@@ -175,6 +185,7 @@ Load briefs from `.claude/agents/` for context.
 **CRITICAL**: Never hardcode colors, spacing, or typography values.
 
 **Universal Rules**:
+
 1. **Colors**: Use OKLCH tokens from `design/systems/tokens.json`
    - Brand: `--brand-primary`, `--brand-secondary`
    - Semantic: `--semantic-success`, `--semantic-error`, `--semantic-warning`
@@ -197,6 +208,7 @@ Load briefs from `.claude/agents/` for context.
 ### Preference System
 
 Run `/init-preferences` once to configure defaults. Commands use 3-tier system:
+
 1. Config file (`.spec-flow/config/user-preferences.yaml`)
 2. Command history (learns from usage)
 3. Command flags (explicit overrides)
@@ -253,6 +265,7 @@ Location: `design/prototype/`. Coexists with per-feature mockups.
 ### Project Initialization
 
 `/init-project` generates 8 docs in `docs/project/`:
+
 - overview.md, system-architecture.md, tech-stack.md, data-architecture.md
 - api-strategy.md, capacity-planning.md, deployment-strategy.md, development-workflow.md
 

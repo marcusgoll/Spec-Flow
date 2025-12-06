@@ -54,18 +54,18 @@ if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
 # --- Configuration ----------------------------------------------------------
 $memoryFiles = @(
     @{
-        Name = 'constitution.md'
-        Template = 'constitution-template.md'
+        Name        = 'constitution.md'
+        Template    = 'constitution-template.md'
         Description = 'Engineering principles'
     },
     @{
-        Name = 'roadmap.md'
-        Template = 'roadmap-template.md'
+        Name        = 'roadmap.md'
+        Template    = 'roadmap-template.md'
         Description = 'Product roadmap'
     },
     @{
-        Name = 'design-inspirations.md'
-        Template = 'design-inspirations-template.md'
+        Name        = 'design-inspirations.md'
+        Template    = 'design-inspirations-template.md'
         Description = 'Design references'
     }
 )
@@ -75,18 +75,21 @@ $memoryFiles = @(
 if ($TargetDir) {
     $baseDir = if ([System.IO.Path]::IsPathRooted($TargetDir)) {
         $TargetDir
-    } else {
+    }
+    else {
         Join-Path -Path (Get-Location) -ChildPath $TargetDir | Resolve-Path -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Path
     }
     if (-not $baseDir) {
         if ($Json) {
             Write-Output '{"error": "Target directory not found", "success": false}'
-        } else {
+        }
+        else {
             Write-Error "Target directory not found: $TargetDir"
         }
         exit 1
     }
-} else {
+}
+else {
     $baseDir = Get-Location | Select-Object -ExpandProperty Path
 }
 
@@ -101,7 +104,7 @@ if (-not (Test-Path -LiteralPath $memoryDir -PathType Container)) {
 $results = @{
     created = @()
     skipped = @()
-    errors = @()
+    errors  = @()
 }
 
 # Process each memory file
@@ -113,7 +116,7 @@ foreach ($file in $memoryFiles) {
     if (-not (Test-Path -LiteralPath $templatePath -PathType Leaf)) {
         $errorMsg = "Template not found: .spec-flow/templates/$($file.Template)"
         $results.errors += @{
-            file = $file.Name
+            file  = $file.Name
             error = $errorMsg
         }
         if (-not $Json) {
@@ -127,8 +130,8 @@ foreach ($file in $memoryFiles) {
 
     if ($fileExists -and -not $Force) {
         $results.skipped += @{
-            file = $file.Name
-            path = ".spec-flow/memory/$($file.Name)"
+            file   = $file.Name
+            path   = ".spec-flow/memory/$($file.Name)"
             reason = 'already exists'
         }
         continue
@@ -147,15 +150,15 @@ foreach ($file in $memoryFiles) {
         Set-Content -LiteralPath $memoryPath -Value $content -NoNewline
 
         $results.created += @{
-            file = $file.Name
-            path = ".spec-flow/memory/$($file.Name)"
+            file        = $file.Name
+            path        = ".spec-flow/memory/$($file.Name)"
             description = $file.Description
-            action = if ($fileExists) { 'overwritten' } else { 'created' }
+            action      = if ($fileExists) { 'overwritten' } else { 'created' }
         }
     }
     catch {
         $results.errors += @{
-            file = $file.Name
+            file  = $file.Name
             error = $_.Exception.Message
         }
         if (-not $Json) {
@@ -170,7 +173,7 @@ if ($Json) {
         success = ($results.errors.Count -eq 0)
         created = $results.created
         skipped = $results.skipped
-        errors = $results.errors
+        errors  = $results.errors
     } | ConvertTo-Json -Depth 10 -Compress
     Write-Output $jsonOutput
 }
@@ -224,3 +227,4 @@ if ($results.errors.Count -gt 0) {
 }
 
 exit 0
+

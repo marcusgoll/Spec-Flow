@@ -71,7 +71,8 @@ switch ($Type) {
             $content = $content -replace "(### Requirements Fulfilled\r?\n)", "`$1`n$entry`n"
             Set-Content $specFile $content -NoNewline
             Write-Host "[spec-flow] Added requirement $reqId to spec.md" -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Warning "No 'Requirements Fulfilled' section found in spec.md"
         }
     }
@@ -97,7 +98,8 @@ switch ($Type) {
             $content = $content -replace "(\*\*Format\*\*: Document when implementation differs[^\n]*\r?\n)", "`$1`n$entry`n"
             Set-Content $specFile $content -NoNewline
             Write-Host "[spec-flow] Added deviation for $reqId to spec.md" -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Warning "No 'Deviations from Spec' section found in spec.md"
         }
     }
@@ -124,7 +126,8 @@ switch ($Type) {
             $content = $content -replace "(\| Metric \| Target \| Actual \| Status \| Notes \|\r?\n)", "`$1$row`n"
             Set-Content $specFile $content -NoNewline
             Write-Host "[spec-flow] Added performance metric $metric to spec.md" -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Warning "No 'Performance Actuals vs Targets' section found in spec.md"
         }
     }
@@ -136,3 +139,4 @@ $content = $content -replace "> \*\*Last Updated\*\*:.*", "> **Last Updated**: $
 Set-Content $specFile $content -NoNewline
 
 Write-Host "[spec-flow] Updated spec.md Implementation Status ($Type)" -ForegroundColor Cyan
+

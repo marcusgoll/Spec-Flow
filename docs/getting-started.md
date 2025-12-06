@@ -28,11 +28,13 @@ Before starting, ensure you have:
 ### Verify Prerequisites
 
 **Windows (PowerShell)**:
+
 ```powershell
 pwsh -File .spec-flow/scripts/powershell/check-prerequisites.ps1 -Json
 ```
 
 **Mac/Linux (Bash)**:
+
 ```bash
 .spec-flow/scripts/bash/check-prerequisites.sh --json
 ```
@@ -44,11 +46,13 @@ If all checks pass ✅, you're ready to go!
 Before Claude can work with Spec-Flow, configure access permissions:
 
 1. Copy the example settings:
+
    ```bash
    cp .claude/settings.example.json .claude/settings.local.json
    ```
 
 2. Edit `.claude/settings.local.json` and add your project path:
+
    ```json
    {
      "permissions": {
@@ -131,6 +135,7 @@ Before building features, establish your team's engineering principles:
 This creates `.spec-flow/memory/constitution.md` with principles that govern every feature. Review and customize it for your project.
 
 **Example principles** (from our AKTRACS project):
+
 - Specification first - every artifact traces to requirements
 - Do not overengineer - ship value, iterate later
 - Testing standards - ≥80% coverage required
@@ -146,12 +151,14 @@ Before implementing features, plan what you want to build:
 ```
 
 This will:
+
 1. Initialize or update `.spec-flow/memory/roadmap.md`
 2. Help you add new feature ideas
 3. Prioritize features using ICE scoring (Impact × Confidence / Effort)
 4. Organize features into: Backlog → Next → In Progress → Shipped
 
 **Add a feature to your roadmap**:
+
 - **Title**: "Dark Mode Toggle"
 - **Area**: app (marketing/app/api/infra)
 - **Role**: all (student/cfi/school/all)
@@ -174,6 +181,7 @@ Now select a feature from your roadmap and build it!
 ```
 
 Claude will:
+
 1. Look up the feature in `roadmap.md`
 2. Create `specs/001-dark-mode-toggle/` directory
 3. Generate `spec.md` with requirements and acceptance criteria (using roadmap context)
@@ -199,6 +207,7 @@ Look for `[NEEDS CLARIFICATION]` markers. If you find any, continue to Step 5.3.
 ```
 
 Claude will:
+
 1. Ask questions about ambiguous requirements
 2. Update the spec with clarifications
 3. Mark the spec as "clear for planning"
@@ -210,6 +219,7 @@ Claude will:
 ```
 
 Claude creates `artifacts/plan.md` with:
+
 - **Architecture decisions** (with rationale and alternatives considered)
 - **Implementation phases** (infrastructure, components, testing)
 - **Risk assessment** (identified risks and mitigation strategies)
@@ -217,6 +227,7 @@ Claude creates `artifacts/plan.md` with:
 - **Timeline estimate** (breakdown by phase)
 
 **What to review**:
+
 - Are the architecture decisions sound?
 - Do the risks make sense?
 - Is the timeline reasonable?
@@ -228,12 +239,14 @@ Claude creates `artifacts/plan.md` with:
 ```
 
 Claude generates `artifacts/tasks.md` with 20-30 specific tasks:
+
 - Each task has clear acceptance criteria
 - Dependencies are mapped
 - Effort estimates provided
 - Priority assigned (P0 = critical, P1 = high, P2 = medium)
 
 **Example tasks**:
+
 - T001: Create ThemeContext boilerplate (0.5 hours, P0)
 - T002: Implement theme state management (1 hour, P0)
 - T015: Create ThemeToggle component (0.5 hours, P0)
@@ -245,6 +258,7 @@ Claude generates `artifacts/tasks.md` with 20-30 specific tasks:
 ```
 
 Claude reviews:
+
 - **Spec ↔ Plan alignment**: Are all requirements covered?
 - **Plan ↔ Tasks alignment**: Do tasks match phases?
 - **Risk assessment**: Are risks adequately mitigated?
@@ -259,6 +273,7 @@ If **critical issues** are found, Claude pauses and asks you to fix them before 
 ```
 
 Claude will:
+
 1. Route tasks to appropriate specialist agents (frontend, backend, QA)
 2. Execute tasks in dependency order
 3. Write code, tests, and documentation
@@ -266,11 +281,13 @@ Claude will:
 5. Track progress (e.g., "28/28 tasks completed")
 
 **Your role**:
+
 - Review code as it's written
 - Run tests locally to verify
 - Provide feedback if something doesn't look right
 
 **Monitoring context budget**:
+
 ```powershell
 # Check current token usage
 pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 -FeatureDir specs/001-dark-mode-toggle
@@ -285,6 +302,7 @@ If you exceed the budget (75k/100k/125k depending on phase), Claude will auto-co
 ```
 
 Claude performs:
+
 - **Code review** (KISS, DRY, naming, test coverage)
 - **Performance analysis** (benchmarks vs targets)
 - **Accessibility audit** (WCAG 2.1 AA compliance)
@@ -299,10 +317,12 @@ If **blockers** are found, Claude may offer auto-fix or ask you to resolve manua
 ```
 
 Claude generates:
+
 - **Release notes** draft
 - **Preview checklist** for manual testing
 
 **Your action**:
+
 1. Run local dev server (`npm run dev`, `make dev`, etc.)
 2. Test the feature manually
 3. Verify it matches the spec
@@ -317,12 +337,14 @@ Once validated, continue to shipping.
 ```
 
 Claude will:
+
 1. Create a pull request to the `staging` branch
 2. Wait for CI checks to pass
 3. Auto-merge (if configured)
 4. Trigger deployment to staging environment
 
 **What happens**:
+
 - PR created with full context
 - Tests run automatically
 - Code review requested (if CODEOWNERS configured)
@@ -337,6 +359,7 @@ Claude will:
 Claude generates a validation checklist:
 
 **Your action**:
+
 1. Test the feature on staging environment
 2. Run E2E tests (if automated)
 3. Check Lighthouse scores (performance, accessibility)
@@ -351,6 +374,7 @@ If validation passes, approve for production.
 ```
 
 Claude will:
+
 1. Switch to the `staging` branch
 2. Create a pull request to `main`
 3. Wait for CI checks
@@ -361,6 +385,7 @@ Claude will:
 🎉 **Congratulations!** Your feature is now live in production.
 
 **Note**: The `/phase-2-ship` command automatically:
+
 - Moves your feature from "In Progress" to "Shipped" in the roadmap
 - Updates the roadmap with release version and date
 - Allows you to start building the next feature from your roadmap
@@ -377,21 +402,27 @@ Claude will:
 ### Advanced Workflows
 
 **Resume after interruption**:
+
 ```bash
 /feature continue
 ```
+
 Claude detects the last completed phase and resumes automatically.
 
 **Debug failures**:
+
 ```bash
 /debug
 ```
+
 Claude analyzes error logs and suggests fixes.
 
 **Fix CI failures**:
+
 ```bash
 /checks pr 123
 ```
+
 Claude identifies and fixes deployment blockers.
 
 ### Tips for Success
@@ -405,6 +436,7 @@ Claude identifies and fixes deployment blockers.
 ### Common Patterns
 
 **Create multiple features**:
+
 ```bash
 /spec-flow "User authentication"
 # Work through phases...
@@ -415,6 +447,7 @@ Claude identifies and fixes deployment blockers.
 ```
 
 **Batch operations**:
+
 ```bash
 # Create several specs, then bulk plan them
 /spec-flow "Feature A"
@@ -430,18 +463,23 @@ Claude identifies and fixes deployment blockers.
 ## Troubleshooting
 
 ### "No feature directory found"
+
 **Solution**: Run `/spec-flow "Feature name"` first to create the directory structure.
 
 ### "Context budget exceeded"
+
 **Solution**: Run the compact-context script:
+
 ```powershell
 pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 -FeatureDir specs/001-feature-name -Phase implementation
 ```
 
 ### "Permission denied" errors
+
 **Solution**: Check `.claude/settings.local.json` has the correct paths in the `allow` list.
 
 ### "Command not found: /spec-flow"
+
 **Solution**: Ensure slash commands are enabled in Claude Code. Check `.claude/commands/` exists.
 
 For more troubleshooting, see [docs/troubleshooting.md](troubleshooting.md).
@@ -455,6 +493,7 @@ For more troubleshooting, see [docs/troubleshooting.md](troubleshooting.md).
 ## Next Steps
 
 Now that you've completed your first feature, try:
+
 1. Building a more complex feature with backend + frontend changes
 2. Customizing the templates in `.spec-flow/templates/`
 3. Adding custom agent briefs in `.claude/agents/`

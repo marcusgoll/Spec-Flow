@@ -62,10 +62,10 @@ if (Test-Path $notesFile) {
 
     foreach ($match in $matches) {
         $completions += @{
-            taskId = $match.Groups[1].Value
+            taskId      = $match.Groups[1].Value
             description = $match.Groups[2].Value
-            duration = [int]$match.Groups[3].Value
-            timestamp = [datetime]::ParseExact($match.Groups[4].Value, "yyyy-MM-dd HH:mm", $null)
+            duration    = [int]$match.Groups[3].Value
+            timestamp   = [datetime]::ParseExact($match.Groups[4].Value, "yyyy-MM-dd HH:mm", $null)
         }
     }
 }
@@ -73,7 +73,8 @@ if (Test-Path $notesFile) {
 # Calculate velocity metrics
 $avgTimePerTask = if ($completions.Count -gt 0) {
     ($completions | Measure-Object -Property duration -Average).Average
-} else { 0 }
+}
+else { 0 }
 
 # Calculate completion rate (tasks/day) from last 2 days
 $twoDaysAgo = (Get-Date).AddDays(-2)
@@ -82,18 +83,22 @@ $completionRate = if ($recentCompletions.Count -gt 0) {
     $daySpan = ((Get-Date) - ($recentCompletions | Sort-Object timestamp | Select-Object -First 1).timestamp).TotalDays
     if ($daySpan -gt 0) {
         [math]::Round($recentCompletions.Count / $daySpan, 1)
-    } else { $recentCompletions.Count }
-} else { 0 }
+    }
+    else { $recentCompletions.Count }
+}
+else { 0 }
 
 # Estimate remaining time and ETA
 $estRemainingHours = if ($avgTimePerTask -gt 0 -and $remainingCount -gt 0) {
     [math]::Round(($remainingCount * $avgTimePerTask) / 60, 1)
-} else { 0 }
+}
+else { 0 }
 
 $eta = if ($completionRate -gt 0 -and $remainingCount -gt 0) {
     $daysRemaining = [math]::Ceiling($remainingCount / $completionRate)
     (Get-Date).AddDays($daysRemaining).ToString("yyyy-MM-dd HH:mm")
-} else { "N/A" }
+}
+else { "N/A" }
 
 # Get last 3 completions
 $recentCompletionsList = $completions | Sort-Object timestamp -Descending | Select-Object -First 3
@@ -104,11 +109,11 @@ if ($avgTimePerTask -gt 0) {
     $threshold = $avgTimePerTask * 1.5
     $bottlenecks = $completions | Where-Object { $_.duration -gt $threshold } | ForEach-Object {
         @{
-            taskId = $_.taskId
+            taskId      = $_.taskId
             description = $_.description
-            actual = $_.duration
-            average = [math]::Round($avgTimePerTask, 0)
-            impact = [math]::Round(($_.duration - $avgTimePerTask) / 60, 1)
+            actual      = $_.duration
+            average     = [math]::Round($avgTimePerTask, 0)
+            impact      = [math]::Round(($_.duration - $avgTimePerTask) / 60, 1)
         }
     }
 }
@@ -123,26 +128,28 @@ $onTrack = if ($completionRate -gt 0 -and $remainingCount -gt 0) {
     $daysToDeadline = 7 # Assume 1-week sprint
     $requiredRate = $remainingCount / $daysToDeadline
     $completionRate -ge $requiredRate
-} else { $true }
+}
+else { $true }
 
 # Generate output
 if ($Json) {
     @{
-        total = $totalTasks
-        completed = $completedCount
-        inProgress = $inProgressCount
-        remaining = $remainingCount
+        total              = $totalTasks
+        completed          = $completedCount
+        inProgress         = $inProgressCount
+        remaining          = $remainingCount
         percentageComplete = $percentageComplete
-        avgTimePerTask = [math]::Round($avgTimePerTask, 0)
-        completionRate = $completionRate
-        estRemainingHours = $estRemainingHours
-        eta = $eta
-        recentCompletions = $recentCompletionsList
-        bottlenecks = $bottlenecks
-        todayCount = $todayCount
-        onTrack = $onTrack
+        avgTimePerTask     = [math]::Round($avgTimePerTask, 0)
+        completionRate     = $completionRate
+        estRemainingHours  = $estRemainingHours
+        eta                = $eta
+        recentCompletions  = $recentCompletionsList
+        bottlenecks        = $bottlenecks
+        todayCount         = $todayCount
+        onTrack            = $onTrack
     } | ConvertTo-Json -Depth 3
-} else {
+}
+else {
     # Generate markdown for Progress Summary section
     $timestamp = Get-Date -Format "yyyy-MM-ddTHH:mm:ss"
 
@@ -182,7 +189,8 @@ if ($Json) {
             $summary += "`n- **$($bottleneck.taskId)**: Took $($bottleneck.actual)min vs average $($bottleneck.average)min"
             $summary += "`n  - **Impact**: +$($bottleneck.impact) hours overall delay"
         }
-    } else {
+    }
+    else {
         $summary += "`n`n### Bottlenecks`n`nNo significant bottlenecks detected."
     }
 
@@ -199,3 +207,4 @@ if ($Json) {
 
     Write-Output $summary
 }
+

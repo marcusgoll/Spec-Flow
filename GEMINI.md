@@ -16,13 +16,13 @@ You must help the user execute the Spec-Flow workflow by interpreting "Slash Com
 
 When the user provides a command (e.g., "/feature", "/plan"), you must:
 
-1.  **Identify the Command**: Look up the command in the "Command Map" below.
-2.  **Read the Definition**: Read the corresponding markdown file in `.claude/commands/`.
-3.  **Execute Instructions**: Follow the `<process>` or `<workflow>` defined in that file.
-    *   **`SlashCommand(/cmd)`**: If the file instructs you to use a SlashCommand (e.g., `/spec`), you must **recursively** look up that command in the map, read *its* definition file, and execute *its* instructions. Do not output the text "/spec" to the user; instead, *perform* the spec phase.
-    *   **`Bash(...)`**: Use the `run_shell_command` tool to execute the specified command.
-    *   **`Read(...)`**: Use the `read_file` tool.
-    *   **`TodoWrite(...)`**: Use the `write_todos` tool to track progress.
+1. **Identify the Command**: Look up the command in the "Command Map" below.
+2. **Read the Definition**: Read the corresponding markdown file in `.claude/commands/`.
+3. **Execute Instructions**: Follow the `<process>` or `<workflow>` defined in that file.
+    - **`SlashCommand(/cmd)`**: If the file instructs you to use a SlashCommand (e.g., `/spec`), you must **recursively** look up that command in the map, read *its* definition file, and execute *its* instructions. Do not output the text "/spec" to the user; instead, *perform* the spec phase.
+    - **`Bash(...)`**: Use the `run_shell_command` tool to execute the specified command.
+    - **`Read(...)`**: Use the `read_file` tool.
+    - **`TodoWrite(...)`**: Use the `write_todos` tool to track progress.
 
 ### Command Map
 
@@ -47,33 +47,35 @@ When the user provides a command (e.g., "/feature", "/plan"), you must:
 ### Essential Workflow
 
 **Feature** (single subsystem, <16h):
-1.  User types: `/feature "description"`
-2.  You run: `.claude/commands/core/feature.md` logic.
-    *   Initialize via `python .spec-flow/scripts/spec-cli.py feature "description"`.
-    *   Loop through phases: `/spec` -> `/plan` -> `/tasks` -> `/implement` -> `/optimize` -> `/ship`.
+
+1. User types: `/feature "description"`
+2. You run: `.claude/commands/core/feature.md` logic.
+    - Initialize via `python .spec-flow/scripts/spec-cli.py feature "description"`.
+    - Loop through phases: `/spec` -> `/plan` -> `/tasks` -> `/implement` -> `/optimize` -> `/ship`.
 
 **Resuming Work**:
-*   `/feature continue`: Resumes the workflow from the current state in `state.yaml`.
+- `/feature continue`: Resumes the workflow from the current state in `state.yaml`.
 
 ## Quality Gates & Agents
 
 Spec-Flow uses specialized "Agents" (personas). When a command file references an agent (e.g., `spec-phase-agent`), you should:
-1.  Read the agent definition in `.claude/agents/`.
-2.  Adopt that persona and follow its `<workflow>`.
+
+1. Read the agent definition in `.claude/agents/`.
+2. Adopt that persona and follow its `<workflow>`.
 
 ### Directory Structure
 
-*   `.claude/agents/`: Specialist briefs.
-*   `.claude/commands/`: Command definitions.
-*   `.spec-flow/scripts/`: Automation scripts (Python/Bash).
-*   `specs/`: Feature workspaces.
-*   `epics/`: Epic workspaces.
+- `.claude/agents/`: Specialist briefs.
+- `.claude/commands/`: Command definitions.
+- `.spec-flow/scripts/`: Automation scripts (Python/Bash).
+- `specs/`: Feature workspaces.
+- `epics/`: Epic workspaces.
 
 ## IMPORTANT: Python & Scripts
 
 The workflow relies heavily on Python scripts in `.spec-flow/scripts/`.
-*   Ensure `python` is installed and available in the shell.
-*   If a script fails, report the error to the user.
+- Ensure `python` is installed and available in the shell.
+- If a script fails, report the error to the user.
 
 ## Design Tokens
 
@@ -84,18 +86,18 @@ Never hardcode colors or spacing. Use the provided tokens.
 
 The workflow references "Skills" and "Agents".
 
-*   **Agents**: These are personas defined in `.claude/agents/`. When a command instructs you to "use the backend-dev agent", you must:
-    1.  **Read** the corresponding agent file (e.g., `.claude/agents/implementation/backend.md`).
-    2.  **Adopt** that persona's instructions, tools, and workflow for the duration of that task.
-    3.  **Execute** the task directly. **Do NOT** try to use a `Task(...)` tool to spawn a sub-process. You are the agent.
+- **Agents**: These are personas defined in `.claude/agents/`. When a command instructs you to "use the backend-dev agent", you must:
+    1. **Read** the corresponding agent file (e.g., `.claude/agents/implementation/backend.md`).
+    2. **Adopt** that persona's instructions, tools, and workflow for the duration of that task.
+    3. **Execute** the task directly. **Do NOT** try to use a `Task(...)` tool to spawn a sub-process. You are the agent.
 
-*   **Skills**: These are capability modules defined in `.claude/skills/`. They provide instructions for specific tasks (e.g., `git-workflow-enforcer` for committing code).
-    *   You should **read** the relevant skill file (e.g., `.claude/skills/git-workflow-enforcer/SKILL.md`) when the workflow implies that capability is needed (e.g., "Enforce git workflow").
+- **Skills**: These are capability modules defined in `.claude/skills/`. They provide instructions for specific tasks (e.g., `git-workflow-enforcer` for committing code).
+  - You should **read** the relevant skill file (e.g., `.claude/skills/git-workflow-enforcer/SKILL.md`) when the workflow implies that capability is needed (e.g., "Enforce git workflow").
 
 ### Legacy Tool Handling
 
 The original Claude commands may reference a `Task(...)` tool. **Gemini CLI does not support this tool.**
-*   **Instruction**: When you see an instruction to "use Task tool", instead **Read the Agent Persona** and **Execute the task yourself** as described above.
+- **Instruction**: When you see an instruction to "use Task tool", instead **Read the Agent Persona** and **Execute the task yourself** as described above.
 
 ---
 **Note to User**: To start, type `/init` (to setup) or `/feature "my feature"` (if setup).

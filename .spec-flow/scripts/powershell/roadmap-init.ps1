@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env pwsh
+#!/usr/bin/env pwsh
 <#
 Initialize Spec-Flow roadmap from template.
 Creates .spec-flow/memory/roadmap.md if it doesn't exist.
@@ -43,7 +43,8 @@ $roadmapExists = Test-Path -LiteralPath $roadmapPath -PathType Leaf
 if ($roadmapExists) {
     if ($Json) {
         Write-Output '{"exists": true, "path": ".spec-flow/memory/roadmap.md", "created": false}'
-    } else {
+    }
+    else {
         Write-Information " Roadmap already exists at: .spec-flow/memory/roadmap.md" -InformationAction Continue
     }
     exit 0
@@ -56,7 +57,8 @@ if (-not $templateExists) {
     if ($Json) {
         $errorJson = $errorMsg -replace '"', '\"'
         Write-Output "{`"error`": `"$errorJson`", `"created`": false}"
-    } else {
+    }
+    else {
         Write-Error $errorMsg
     }
     exit 1
@@ -73,10 +75,12 @@ Set-Content -LiteralPath $roadmapPath -Value $content -NoNewline
 
 if ($Json) {
     Write-Output '{"exists": false, "path": ".spec-flow/memory/roadmap.md", "created": true}'
-} else {
+}
+else {
     Write-Information " Created roadmap at: .spec-flow/memory/roadmap.md" -InformationAction Continue
     Write-Information "  Use /roadmap to add features" -InformationAction Continue
 }
 
 exit 0
+
 

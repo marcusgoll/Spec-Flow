@@ -15,6 +15,7 @@ npx spec-flow setup-roadmap
 ```
 
 This wizard will guide you through:
+
 1. GitHub authentication
 2. Label creation
 3. Optional migration from markdown roadmap
@@ -26,12 +27,14 @@ If you prefer manual setup or need to troubleshoot:
 ### Step 1: Authenticate with GitHub
 
 **Option A: GitHub CLI (Recommended)**
+
 ```bash
 gh auth login
 # Follow the prompts to authenticate
 ```
 
 **Option B: Personal Access Token**
+
 ```bash
 # Create token at: https://github.com/settings/tokens
 # Required scopes: repo, write:discussion
@@ -46,6 +49,7 @@ $env:GITHUB_TOKEN = "ghp_your_token_here"
 ### Step 2: Create Labels
 
 **Automatic (via npm script)**:
+
 ```bash
 npm run setup:roadmap:labels
 ```
@@ -53,16 +57,19 @@ npm run setup:roadmap:labels
 **Manual (if npm script fails)**:
 
 *On Linux/macOS:*
+
 ```bash
 bash node_modules/spec-flow/.spec-flow/scripts/bash/setup-github-labels.sh
 ```
 
 *On Windows PowerShell:*
+
 ```powershell
 pwsh -File node_modules\spec-flow\.spec-flow\scripts\powershell\setup-github-labels.ps1
 ```
 
 This creates 30+ labels:
+
 - **Priority**: `priority:high`, `priority:medium`, `priority:low`
 - **Type**: `type:feature`, `type:enhancement`, `type:bug`, `type:task`
 - **Area**: `area:backend`, `area:frontend`, `area:api`, `area:infra`, `area:design`, `area:marketing`
@@ -87,10 +94,12 @@ bash node_modules/spec-flow/.spec-flow/scripts/bash/migrate-roadmap-to-github.sh
 ### View Roadmap
 
 **Via GitHub Web:**
+
 - Browse: `https://github.com/YOUR_ORG/YOUR_REPO/issues`
 - Filter by labels (e.g., click `status:next`)
 
 **Via gh CLI:**
+
 ```bash
 # All features in backlog
 gh issue list --label status:backlog --label type:feature
@@ -108,6 +117,7 @@ gh issue list --label status:next
 ### Create Features
 
 **Via GitHub Web UI:**
+
 1. Go to Issues → New Issue
 2. Select "Feature Request" template
 3. Fill in:
@@ -119,11 +129,13 @@ gh issue list --label status:next
 4. Submit
 
 **ICE Score Calculation:**
+
 - Score = (Impact × Confidence) / Effort
 - Higher scores = higher priority
 - Labels automatically applied based on score
 
 **Example:**
+
 - Impact: 4 (high value)
 - Effort: 2 (1-3 days)
 - Confidence: 0.9 (high confidence)
@@ -199,6 +211,7 @@ When you start a feature, it automatically links to the GitHub issue:
 ### Priority Labels (Auto-Applied)
 
 Based on ICE score:
+
 - **High priority** (score >= 1.5): Quick wins, high value
 - **Medium priority** (0.8 <= score < 1.5): Normal queue
 - **Low priority** (score < 0.8): Nice to have
@@ -210,11 +223,13 @@ Based on ICE score:
 Edit the area and role labels to match your project:
 
 1. Delete default labels you don't need:
+
    ```bash
    gh label delete "role:student"
    ```
 
 2. Create labels for your domain:
+
    ```bash
    gh label create "role:admin" --description "Admin users" --color "d4c5f9"
    gh label create "area:payments" --description "Payment processing" --color "0e8a16"
@@ -263,6 +278,7 @@ For visual roadmap management, create a GitHub Project:
 ### "No GitHub authentication found"
 
 **Fix:**
+
 ```bash
 # Option 1: GitHub CLI
 gh auth login
@@ -278,6 +294,7 @@ This is normal on re-run. The script updates existing labels.
 ### "Command not found: gh"
 
 Install GitHub CLI:
+
 ```bash
 # macOS
 brew install gh
@@ -292,6 +309,7 @@ curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo 
 ### Migration creates duplicate issues
 
 Delete all issues and re-run:
+
 ```bash
 # WARNING: This deletes ALL issues
 gh issue list --limit 1000 --json number -q '.[].number' | \
@@ -304,6 +322,7 @@ bash node_modules/spec-flow/.spec-flow/scripts/bash/migrate-roadmap-to-github.sh
 ### npm script fails on Windows
 
 Use PowerShell scripts directly:
+
 ```powershell
 pwsh -File node_modules\spec-flow\.spec-flow\scripts\powershell\setup-github-labels.ps1
 ```

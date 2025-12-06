@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     Token-efficient CI waiting script for GitHub PRs.
@@ -64,7 +64,8 @@ function Test-GitHubCLI {
     try {
         $null = gh --version
         return $true
-    } catch {
+    }
+    catch {
         Write-Error "GitHub CLI (gh) not found. Install from: https://cli.github.com/"
         return $false
     }
@@ -76,7 +77,7 @@ function Get-PRStatus {
 
     try {
         # Get PR details (state, merged, mergeable)
-        $prJson = gh pr view $PrNumber --json state,merged,mergedAt,mergeable,statusCheckRollup 2>$null
+        $prJson = gh pr view $PrNumber --json state, merged, mergedAt, mergeable, statusCheckRollup 2>$null
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to fetch PR #$PrNumber"
         }
@@ -95,21 +96,24 @@ function Get-PRStatus {
                 # Map GitHub check states to our status
                 if ($context.state -eq "SUCCESS" -or $context.conclusion -eq "success") {
                     $status = "success"
-                } elseif ($context.state -eq "PENDING" -or $context.status -eq "in_progress" -or $context.status -eq "queued") {
+                }
+                elseif ($context.state -eq "PENDING" -or $context.status -eq "in_progress" -or $context.status -eq "queued") {
                     $status = "pending"
                     $anyPending = $true
                     $allSuccess = $false
-                } elseif ($context.state -eq "FAILURE" -or $context.conclusion -eq "failure") {
+                }
+                elseif ($context.state -eq "FAILURE" -or $context.conclusion -eq "failure") {
                     $status = "failure"
                     $allSuccess = $false
-                } elseif ($context.state -eq "ERROR" -or $context.conclusion -eq "cancelled") {
+                }
+                elseif ($context.state -eq "ERROR" -or $context.conclusion -eq "cancelled") {
                     $status = "error"
                     $allSuccess = $false
                 }
 
                 $checks += @{
-                    name = $context.name
-                    status = $status
+                    name    = $context.name
+                    status  = $status
                     context = $context.context
                 }
             }
@@ -119,25 +123,29 @@ function Get-PRStatus {
         $overallStatus = "pending"
         if ($pr.merged) {
             $overallStatus = "merged"
-        } elseif ($allSuccess -and $checks.Count -gt 0) {
+        }
+        elseif ($allSuccess -and $checks.Count -gt 0) {
             $overallStatus = "success"
-        } elseif ($anyPending) {
+        }
+        elseif ($anyPending) {
             $overallStatus = "pending"
-        } elseif (-not $allSuccess) {
+        }
+        elseif (-not $allSuccess) {
             $overallStatus = "failure"
         }
 
         return @{
-            status = $overallStatus
-            prState = $pr.state
-            merged = $pr.merged
-            mergedAt = $pr.mergedAt
+            status    = $overallStatus
+            prState   = $pr.state
+            merged    = $pr.merged
+            mergedAt  = $pr.mergedAt
             mergeable = $pr.mergeable
-            checks = $checks
-            prNumber = $PrNumber
+            checks    = $checks
+            prNumber  = $PrNumber
         }
 
-    } catch {
+    }
+    catch {
         Write-Error "Error fetching PR status: $_"
         return $null
     }
@@ -150,9 +158,9 @@ function Format-CheckStatus {
     switch ($Status) {
         "success" { return "" }
         "failure" { return "" }
-        "error"   { return "" }
+        "error" { return "" }
         "pending" { return "" }
-        default   { return "" }
+        default { return "" }
     }
 }
 
@@ -206,7 +214,8 @@ function Wait-ForCI {
                     $emoji = Format-CheckStatus -Status $check.status
                     Write-Host "   $emoji $($check.name)" -ForegroundColor Gray
                 }
-            } else {
+            }
+            else {
                 Write-Host "   (No status checks found)" -ForegroundColor Gray
             }
 
@@ -218,7 +227,8 @@ function Wait-ForCI {
             if ($Json) {
                 # JSON output for machine parsing
                 $result | ConvertTo-Json -Depth 10
-            } else {
+            }
+            else {
                 # Human-readable completion message
                 $elapsed = (Get-Date) - $startTime
                 $elapsedStr = "{0:mm}:{0:ss}" -f $elapsed
@@ -230,19 +240,23 @@ function Wait-ForCI {
 
                     if ($result.merged) {
                         Write-Host "   PR #$PrNumber automatically merged at $($result.mergedAt)" -ForegroundColor Green
-                    } else {
+                    }
+                    else {
                         Write-Host "   PR #$PrNumber ready to merge" -ForegroundColor Green
                     }
-                } elseif ($result.status -eq "merged") {
+                }
+                elseif ($result.status -eq "merged") {
                     Write-Host " PR #$PrNumber merged at $($result.mergedAt)" -ForegroundColor Green
-                } elseif ($result.status -eq "failure") {
+                }
+                elseif ($result.status -eq "failure") {
                     Write-Host " CI checks failed ($elapsedStr elapsed)" -ForegroundColor Red
                     Write-Host ""
                     Write-Host "Failed checks:" -ForegroundColor Red
                     foreach ($check in $result.checks | Where-Object { $_.status -eq "failure" }) {
                         Write-Host "    $($check.name)" -ForegroundColor Red
                     }
-                } elseif ($result.status -eq "error") {
+                }
+                elseif ($result.status -eq "error") {
                     Write-Host " CI checks encountered errors ($elapsedStr elapsed)" -ForegroundColor Red
                 }
 
@@ -257,12 +271,13 @@ function Wait-ForCI {
         if ((Get-Date) -gt $timeoutTime) {
             if ($Json) {
                 @{
-                    status = "timeout"
+                    status   = "timeout"
                     prNumber = $PrNumber
-                    checks = $result.checks
-                    error = "Timeout after $timeoutMinutes minutes"
+                    checks   = $result.checks
+                    error    = "Timeout after $timeoutMinutes minutes"
                 } | ConvertTo-Json -Depth 10
-            } else {
+            }
+            else {
                 Write-Host " Timeout: CI checks still pending after $timeoutMinutes minutes" -ForegroundColor Yellow
                 Write-Host ""
                 Write-Host "Current status:" -ForegroundColor Yellow
@@ -283,4 +298,5 @@ function Wait-ForCI {
 
 # Run main function
 Wait-ForCI
+
 

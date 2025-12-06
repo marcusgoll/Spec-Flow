@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env pwsh
+#!/usr/bin/env pwsh
 <#
 .SYNOPSIS
     Automated task tracking for Spec-Flow implementation workflow
@@ -125,13 +125,13 @@ function Parse-TasksFile {
             }
 
             $currentTask = @{
-                Id = $taskId
-                Description = $description
-                IsCompleted = $isCompleted
-                IsInProgress = $isInProgress
-                IsParallel = $isParallel
-                FilePaths = $filePaths
-                LineNumber = $i + 1
+                Id              = $taskId
+                Description     = $description
+                IsCompleted     = $isCompleted
+                IsInProgress    = $isInProgress
+                IsParallel      = $isParallel
+                FilePaths       = $filePaths
+                LineNumber      = $i + 1
                 CompletionNotes = @()
             }
         }
@@ -158,15 +158,15 @@ function Get-TaskStatus {
     $pending = $tasks | Where-Object { -not $_.IsCompleted -and -not $_.IsInProgress }
 
     $status = @{
-        FeatureDir = Get-FeatureDirectory
-        TasksFile = $tasksFile
-        TotalTasks = $tasks.Count
-        CompletedCount = $completed.Count
-        InProgressCount = $inProgress.Count
-        PendingCount = $pending.Count
-        CompletedTasks = $completed | ForEach-Object { @{ Id = $_.Id; Description = $_.Description; Notes = $_.CompletionNotes } }
-        InProgressTasks = $inProgress | ForEach-Object { @{ Id = $_.Id; Description = $_.Description; FilePaths = $_.FilePaths } }
-        NextAvailableTasks = Get-NextAvailableTasks $tasks
+        FeatureDir          = Get-FeatureDirectory
+        TasksFile           = $tasksFile
+        TotalTasks          = $tasks.Count
+        CompletedCount      = $completed.Count
+        InProgressCount     = $inProgress.Count
+        PendingCount        = $pending.Count
+        CompletedTasks      = $completed | ForEach-Object { @{ Id = $_.Id; Description = $_.Description; Notes = $_.CompletionNotes } }
+        InProgressTasks     = $inProgress | ForEach-Object { @{ Id = $_.Id; Description = $_.Description; FilePaths = $_.FilePaths } }
+        NextAvailableTasks  = Get-NextAvailableTasks $tasks
         ParallelSafetyCheck = Test-ParallelSafety $inProgress
     }
 
@@ -205,13 +205,13 @@ function Get-NextAvailableTasks {
             $mcpTools = Get-RecommendedMcpTools $task.Description $task.FilePaths
 
             $availableTasks += @{
-                Id = $task.Id
-                Description = $task.Description
-                IsParallel = $task.IsParallel
-                FilePaths = $task.FilePaths
-                Priority = if ($task.IsParallel) { "Low" } else { "High" }
+                Id               = $task.Id
+                Description      = $task.Description
+                IsParallel       = $task.IsParallel
+                FilePaths        = $task.FilePaths
+                Priority         = if ($task.IsParallel) { "Low" } else { "High" }
                 RecommendedAgent = $recommendedAgent
-                McpTools = $mcpTools
+                McpTools         = $mcpTools
             }
         }
     }
@@ -289,14 +289,14 @@ function Test-ParallelSafety {
     $duplicates = $allFiles | Group-Object | Where-Object { $_.Count -gt 1 }
     if ($duplicates) {
         return @{
-            Safe = $false
-            Message = "File conflicts detected: $($duplicates.Name -join ', ')"
+            Safe             = $false
+            Message          = "File conflicts detected: $($duplicates.Name -join ', ')"
             ConflictingFiles = $duplicates.Name
         }
     }
 
     return @{
-        Safe = $false
+        Safe    = $false
         Message = "Too many parallel tasks ($($InProgressTasks.Count)/$MAX_PARALLEL_TASKS)"
     }
 }
@@ -324,7 +324,7 @@ function Update-TaskStatus {
 
                 # Insert notes after the task line
                 for ($j = $noteLines.Count - 1; $j -ge 0; $j--) {
-                    $content = $content[0..($insertIndex-1)] + $noteLines[$j] + $content[$insertIndex..($content.Count-1)]
+                    $content = $content[0..($insertIndex - 1)] + $noteLines[$j] + $content[$insertIndex..($content.Count - 1)]
                 }
             }
 
@@ -341,11 +341,11 @@ function Update-TaskStatus {
     Set-Content $tasksFile $content -Encoding UTF8
 
     return @{
-        Success = $true
-        TaskId = $TaskId
+        Success   = $true
+        TaskId    = $TaskId
         NewStatus = $NewStatus
-        Message = "Task $TaskId marked as $(switch ($NewStatus) { 'X' {'completed'}; '~' {'in progress'}; ' ' {'pending'} })"
-        Notes = $Notes
+        Message   = "Task $TaskId marked as $(switch ($NewStatus) { 'X' {'completed'}; '~' {'in progress'}; ' ' {'pending'} })"
+        Notes     = $Notes
     }
 }
 
@@ -354,19 +354,19 @@ function Get-TaskSummary {
     $tasks = Parse-TasksFile $tasksFile
 
     $phases = @{
-        Setup = $tasks | Where-Object { $_.Description -match 'setup|configure|initialize' }
-        Tests = $tasks | Where-Object { $_.Description -match 'test|spec' }
+        Setup          = $tasks | Where-Object { $_.Description -match 'setup|configure|initialize' }
+        Tests          = $tasks | Where-Object { $_.Description -match 'test|spec' }
         Implementation = $tasks | Where-Object { $_.Description -match 'implement|create|build' -and $_.Description -notmatch 'test' }
-        Integration = $tasks | Where-Object { $_.Description -match 'integrate|connect|middleware' }
-        Polish = $tasks | Where-Object { $_.Description -match 'polish|performance|documentation|accessibility' }
+        Integration    = $tasks | Where-Object { $_.Description -match 'integrate|connect|middleware' }
+        Polish         = $tasks | Where-Object { $_.Description -match 'polish|performance|documentation|accessibility' }
     }
 
     $summary = @{
-        OverallProgress = [math]::Round(($tasks | Where-Object { $_.IsCompleted }).Count / $tasks.Count * 100, 1)
-        PhaseProgress = @{}
+        OverallProgress   = [math]::Round(($tasks | Where-Object { $_.IsCompleted }).Count / $tasks.Count * 100, 1)
+        PhaseProgress     = @{}
         RecentlyCompleted = ($tasks | Where-Object { $_.IsCompleted } | Select-Object -Last 5)
-        BlockedTasks = @()
-        Recommendations = @()
+        BlockedTasks      = @()
+        Recommendations   = @()
     }
 
     # Calculate phase progress
@@ -375,8 +375,8 @@ function Get-TaskSummary {
         if ($phaseTasks.Count -gt 0) {
             $completed = ($phaseTasks | Where-Object { $_.IsCompleted }).Count
             $summary.PhaseProgress[$phase] = @{
-                Completed = $completed
-                Total = $phaseTasks.Count
+                Completed  = $completed
+                Total      = $phaseTasks.Count
                 Percentage = [math]::Round($completed / $phaseTasks.Count * 100, 1)
             }
         }
@@ -506,7 +506,8 @@ function Update-TaskCompletionAtomic {
     # Append to NOTES.md (create if doesn't exist)
     if (-not (Test-Path $notesFile)) {
         $notesEntry | Set-Content $notesFile -Encoding UTF8
-    } else {
+    }
+    else {
         $notesEntry | Add-Content $notesFile -Encoding UTF8
     }
 
@@ -515,18 +516,19 @@ function Update-TaskCompletionAtomic {
     if (Test-Path $updateSummaryScript) {
         try {
             & $updateSummaryScript -FeatureDir $featureDir -ErrorAction SilentlyContinue | Out-Null
-        } catch {
+        }
+        catch {
             # Non-fatal: Continue even if summary update fails
             Write-Warning "Could not update Progress Summary: $_"
         }
     }
 
     return @{
-        Success = $true
-        TaskId = $TaskId
-        Message = "Task $TaskId marked complete in both tasks.md and NOTES.md"
-        TasksFile = $tasksFile
-        NotesFile = $notesFile
+        Success     = $true
+        TaskId      = $TaskId
+        Message     = "Task $TaskId marked complete in both tasks.md and NOTES.md"
+        TasksFile   = $tasksFile
+        NotesFile   = $notesFile
         PhaseMarker = $phaseMarker
     }
 }
@@ -578,11 +580,11 @@ function Mark-TaskFailed {
     $errorEntry | Add-Content $errorLogFile -Encoding UTF8
 
     return @{
-        Success = $true
-        TaskId = $TaskId
-        Message = "Task $TaskId marked as failed in error-log.md"
+        Success      = $true
+        TaskId       = $TaskId
+        Message      = "Task $TaskId marked as failed in error-log.md"
         ErrorLogFile = $errorLogFile
-        Timestamp = $timestamp
+        Timestamp    = $timestamp
     }
 }
 
@@ -619,8 +621,8 @@ function Sync-TaskStatus {
 
     if ($missingEntries.Count -eq 0) {
         return @{
-            Success = $true
-            Message = "All completed tasks already in NOTES.md"
+            Success     = $true
+            Message     = "All completed tasks already in NOTES.md"
             SyncedCount = 0
         }
     }
@@ -636,13 +638,14 @@ function Sync-TaskStatus {
     # Append to NOTES.md
     if (-not (Test-Path $notesFile)) {
         $newEntries | Set-Content $notesFile -Encoding UTF8
-    } else {
+    }
+    else {
         $newEntries | Add-Content $notesFile -Encoding UTF8
     }
 
     return @{
-        Success = $true
-        Message = "Synced $($missingEntries.Count) task(s) from tasks.md to NOTES.md"
+        Success     = $true
+        Message     = "Synced $($missingEntries.Count) task(s) from tasks.md to NOTES.md"
         SyncedCount = $missingEntries.Count
         SyncedTasks = $missingEntries | ForEach-Object { $_.Id }
     }
@@ -681,9 +684,9 @@ function Validate-TasksFile {
     }
 
     return @{
-        Valid = $issues.Count -eq 0
-        Issues = $issues
-        TaskCount = $tasks.Count
+        Valid           = $issues.Count -eq 0
+        Issues          = $issues
+        TaskCount       = $tasks.Count
         Recommendations = if ($issues.Count -eq 0) { @("Tasks file structure looks good") } else { @("Fix issues before implementation") }
     }
 }
@@ -723,11 +726,12 @@ try {
         "next" {
             $status = Get-TaskStatus
             $result = @{
-                NextTasks = $status.NextAvailableTasks
+                NextTasks         = $status.NextAvailableTasks
                 CurrentInProgress = $status.InProgressTasks
-                Recommendation = if ($status.NextAvailableTasks.Count -gt 0) {
+                Recommendation    = if ($status.NextAvailableTasks.Count -gt 0) {
                     "Start with: $($status.NextAvailableTasks[0].Id)"
-                } else {
+                }
+                else {
                     "No available tasks - check dependencies"
                 }
             }
@@ -742,23 +746,27 @@ try {
 
     if ($Json) {
         $result | ConvertTo-Json -Depth 10
-    } else {
+    }
+    else {
         $result | Format-Table -AutoSize
     }
 
-} catch {
+}
+catch {
     $errorDetails = @{
-        Success = $false
-        Error = $_.Exception.Message
-        Action = $Action
+        Success   = $false
+        Error     = $_.Exception.Message
+        Action    = $Action
         Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     }
 
     if ($Json) {
         $errorDetails | ConvertTo-Json
-    } else {
+    }
+    else {
         Write-Error $errorDetails.Error
     }
     exit 1
 }
+
 

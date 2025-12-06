@@ -11,6 +11,7 @@ Migrations are often forgotten during implementation, discovered only when tests
 ### Phase 1: /plan (Step 0.5) - Early Detection
 
 Pattern-based detection scans spec.md for schema-change keywords (store, persist, table, column, etc.). When 3+ keywords found:
+
 - `has_migrations: true` flag set in state.yaml
 - `migration-plan.md` artifact generated with:
   - Change classification (additive/breaking)
@@ -21,6 +22,7 @@ Pattern-based detection scans spec.md for schema-change keywords (store, persist
 ### Phase 2: /tasks (Step 1.5) - Task Generation
 
 When migrations detected, generates T001-T009 tasks with P0 BLOCKING priority:
+
 - Task ID convention: T001-T009 reserved for migrations
 - Assigned to `database-architect` agent
 - All downstream tasks (ORM, services, API) depend on migration tasks
@@ -29,6 +31,7 @@ When migrations detected, generates T001-T009 tasks with P0 BLOCKING priority:
 ### Phase 3: /implement (Step 0.6) - Runtime Enforcement
 
 Before executing any implementation tasks:
+
 - Runs `check-migration-status.sh` to detect pending migrations
 - Behavior controlled by `migrations.strictness` in user-preferences.yaml
 

@@ -18,6 +18,7 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 ### Primary Persona: Independent CFI
 
 **Who**: Independent certified flight instructor (CFI)
+
 - 25-55 years old
 - Teaches 5-20 students concurrently
 - Works at small flight schools or independently
@@ -25,6 +26,7 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 - Budget-conscious ($50-100/mo acceptable)
 
 **Goals**:
+
 - Track student progress toward certificates (Private, Instrument, Commercial)
 - Log lessons with FAA-compliant records
 - Identify weak areas requiring additional practice
@@ -32,6 +34,7 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 - Stay organized across multiple students
 
 **Pain Points**:
+
 - **Current tools too expensive**: ForeFlight Logbook ($99/year/student), MyFlightBook ($free but no CFI features), CloudAhoy ($200/year)
 - **No ACS mapping**: Hard to track which Airman Certification Standards (ACS) tasks are complete
 - **Manual progress reports**: Copy-paste student progress into emails/PDFs weekly
@@ -45,12 +48,14 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 ### Secondary Persona: Student Pilot
 
 **Who**: Aviation student working toward certificate
+
 - 18-65 years old
 - Training for Private Pilot, Instrument, or Commercial certificate
 - Flies 1-4 times/month (cost-dependent)
 - Wants to track own progress
 
 **Goals**:
+
 - View progress toward certificate completion
 - See weak areas requiring practice
 - Access lesson history and notes
@@ -58,6 +63,7 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 - Receive reminders (medical renewal, written test expiration)
 
 **Pain Points**:
+
 - **No visibility**: CFI has all records, student doesn't know where they stand
 - **Manual tracking**: Keep separate spreadsheet of hours by type (dual, PIC, night, XC)
 - **Lost logbooks**: Paper logbooks lost/damaged = lost records
@@ -78,6 +84,7 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 **Our product** costs <$50/mo, has ACS-mapped progress tracking, and auto-generates FAA-compliant reports
 
 **Key differentiators**:
+
 1. **ACS-Mapped Progress** — Industry-first visual tracking of Airman Certification Standards tasks
 2. **Affordable** — $10/mo per CFI (10x cheaper than competitors)
 3. **Auto Reports** — Generate student progress reports in 1 click (competitors require manual copy-paste)
@@ -88,6 +95,7 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 ## Success Metrics
 
 ### North Star Metric
+
 **Active CFIs logging lessons weekly**
 
 **Target**: 100 CFIs within 6 months of launch
@@ -99,21 +107,25 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 ### Key Performance Indicators (KPIs)
 
 **Acquisition** (How we grow):
+
 - Monthly new CFI sign-ups: Target 20/mo
 - Conversion rate (free trial → paid): Target 40%
 - CAC (Customer Acquisition Cost): Target <$50/CFI
 
 **Engagement** (How users use the product):
+
 - Weekly active CFIs: Target 80% of paid users
 - Average lessons logged per CFI per week: Target 5-10
 - Time to first lesson logged: Target <24 hours after sign-up
 
 **Retention** (How we keep users):
+
 - Monthly churn rate: Target <5%
 - NPS (Net Promoter Score): Target >50
 - Feature adoption rate (ACS progress tracking): Target >60%
 
 **Revenue** (How we make money):
+
 - MRR (Monthly Recurring Revenue): Target $1K within 6 months ($10/mo × 100 CFIs)
 - ARPU (Average Revenue Per User): $10/mo
 - LTV (Lifetime Value): Target $240 (24 months × $10/mo)
@@ -125,6 +137,7 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 ### In Scope (What we're building)
 
 **MVP (Phase 1 — First 3 months)**:
+
 - ✅ User authentication (CFI + student roles)
 - ✅ Student management (add/edit/archive students)
 - ✅ Lesson logging (date, hours, aircraft, notes)
@@ -133,12 +146,14 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 - ✅ Student dashboard (view own progress)
 
 **Post-MVP (Phase 2 — Months 4-6)**:
+
 - ⏭️ Automated progress reports (PDF generation)
 - ⏭️ Reminders (medical expiration, written test expiration)
 - ⏭️ Multi-certificate support (Instrument, Commercial)
 - ⏭️ Billing & subscriptions (Stripe integration)
 
 **Future (Phase 3 — Months 7+)**:
+
 - 💡 Flight school management (multi-CFI view, aircraft scheduling)
 - 💡 Mobile app (iOS/Android for in-flight logging)
 - 💡 Integrations (ForeFlight, Garmin Pilot, CloudAhoy import)
@@ -148,6 +163,7 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 ### Out of Scope (What we're NOT building)
 
 **Explicitly excluded**:
+
 - ❌ **Flight planning** (use ForeFlight, Garmin Pilot — we integrate, don't replace)
 - ❌ **Aircraft maintenance tracking** (different market, different buyer)
 - ❌ **Flight school ERP** (scheduling, billing, payroll — too complex for MVP)
@@ -163,18 +179,21 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 ### Direct Competitors
 
 **1. ForeFlight Logbook**
+
 - **Price**: $99/year per user
 - **Strengths**: Market leader, pilot trust, integrates with flight planning
 - **Weaknesses**: No CFI-specific features, no ACS mapping, no student view
 - **Our advantage**: 10x cheaper, CFI-first design, ACS progress tracking
 
 **2. MyFlightBook**
+
 - **Price**: Free (ad-supported)
 - **Strengths**: Free, comprehensive features, cloud-based
 - **Weaknesses**: Dated UI, no CFI dashboard, no progress tracking, ads
 - **Our advantage**: Modern UI, CFI-student dual access, ACS mapping
 
 **3. CloudAhoy**
+
 - **Price**: $200/year
 - **Strengths**: Flight debriefing, 3D playback, detailed analytics
 - **Weaknesses**: Expensive, complex, overkill for basic student tracking
@@ -185,12 +204,14 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 ### Indirect Competitors (Partial overlap)
 
 **4. Google Sheets / Excel**
+
 - **Price**: Free
 - **Strengths**: Flexible, familiar, free
 - **Weaknesses**: Manual, no reminders, error-prone, not FAA-compliant format
 - **Our advantage**: Automated, structured, FAA-compliant, progress visualizations
 
 **5. Paper Logbooks**
+
 - **Price**: $10-30 (one-time)
 - **Strengths**: Traditional, tactile, FAA-accepted
 - **Weaknesses**: Easily lost/damaged, no analytics, manual totaling, no digital backup
@@ -203,15 +224,18 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 **Market**: Flight training software (subset of aviation software market)
 
 **Total Addressable Market (TAM)**:
+
 - ~100K active CFIs in USA
 - ~500K student pilots annually in USA
 - Avg CFI teaches 10 students → 1M relationships
 
 **Serviceable Addressable Market (SAM)**:
+
 - Independent CFIs + small flight schools: ~50K CFIs
 - Tech-savvy, budget-conscious segment: ~20K CFIs
 
 **Serviceable Obtainable Market (SOM)** (realistic first year):
+
 - Target: 100-500 CFIs (0.5-2.5% of SAM)
 - Revenue: $1K-5K MRR
 
@@ -224,6 +248,7 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 ### MVP Development (Months 1-3)
 
 **Month 1**: Core Infrastructure
+
 - ✅ Next.js app setup (Vercel)
 - ✅ FastAPI backend (Railway)
 - ✅ PostgreSQL database + Alembic migrations
@@ -231,12 +256,14 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 - ✅ Basic student CRUD
 
 **Month 2**: Lesson Logging & Progress
+
 - ⏭️ Lesson logging form (date, aircraft, hours, notes)
 - ⏭️ ACS task checklist (Private Pilot)
 - ⏭️ Progress dashboard (total hours, completion %)
 - ⏭️ Student view (read-only progress)
 
 **Month 3**: Polish & Launch
+
 - ⏭️ UI/UX refinement (Tailwind CSS)
 - ⏭️ Performance optimization (lazy loading, caching)
 - ⏭️ Beta testing (5-10 CFIs)
@@ -247,17 +274,20 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 ### Post-MVP Roadmap (Months 4-12)
 
 **Q2 2025** (Months 4-6): Growth Features
+
 - Automated PDF progress reports
 - Email reminders (medical, written test expiration)
 - Instrument & Commercial certificate support
 - Stripe billing integration
 
 **Q3 2025** (Months 7-9): Retention Features
+
 - Flight school multi-CFI dashboard
 - Aircraft scheduling (basic)
 - Mobile-responsive improvements
 
 **Q4 2025** (Months 10-12): Enterprise Features
+
 - Flight school plan ($50/mo for 5+ CFIs)
 - ForeFlight import (CSV)
 - White-label options
@@ -267,16 +297,19 @@ FlightPro is a SaaS platform that helps certified flight instructors (CFIs) mana
 ## Constraints & Assumptions
 
 ### Technical Constraints
+
 - **Budget**: $50/mo for MVP hosting (Vercel Hobby + Railway Starter)
 - **Team**: Solo developer (20 hrs/week)
 - **Timeline**: 3 months to MVP (60 hrs/month × 3 = 180 hours total)
 
 ### Business Constraints
+
 - **Pricing**: Must be <$50/mo to compete with free tools (target $10/mo)
 - **Compliance**: Must maintain FAA-compliant records (backup, audit trail)
 - **Privacy**: Student data is PII (FERPA-adjacent, not HIPAA)
 
 ### Assumptions (Risks if wrong)
+
 - **Assumption 1**: CFIs will pay $10/mo for time savings
   - **Risk**: If not, revenue = 0
   - **Mitigation**: Beta test pricing with 5 CFIs before launch

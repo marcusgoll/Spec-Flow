@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env pwsh
+#!/usr/bin/env pwsh
 
 <#
 .SYNOPSIS
@@ -130,9 +130,11 @@ function Get-CurrentPhase {
     # Check last completed phase checkpoint
     if ($content -match "Phase 5.*Completed" -or $content -match "Phase 6.*Completed" -or $content -match "Phase 7.*Completed") {
         return "optimization"
-    } elseif ($content -match "Phase 3.*Completed" -or $content -match "Phase 4.*Completed") {
+    }
+    elseif ($content -match "Phase 3.*Completed" -or $content -match "Phase 4.*Completed") {
         return "implementation"
-    } else {
+    }
+    else {
         return "planning"
     }
 }
@@ -144,39 +146,39 @@ function Get-CompactionStrategy {
     switch ($Phase) {
         "planning" {
             return @{
-                ReductionTarget = 0.90      # Keep only 10% (aggressive)
-                CheckpointCount = 5         # Last 5 checkpoints only
+                ReductionTarget  = 0.90      # Keep only 10% (aggressive)
+                CheckpointCount  = 5         # Last 5 checkpoints only
                 KeepFullErrorLog = $true
-                KeepCodeReview = $false
-                Description = "Aggressive (keep decisions only)"
+                KeepCodeReview   = $false
+                Description      = "Aggressive (keep decisions only)"
             }
         }
         "implementation" {
             return @{
-                ReductionTarget = 0.60      # Keep 40% (moderate)
-                CheckpointCount = 20        # Last 20 tasks
+                ReductionTarget  = 0.60      # Keep 40% (moderate)
+                CheckpointCount  = 20        # Last 20 tasks
                 KeepFullErrorLog = $true
-                KeepCodeReview = $false
-                Description = "Moderate (keep 20 checkpoints)"
+                KeepCodeReview   = $false
+                Description      = "Moderate (keep 20 checkpoints)"
             }
         }
         "optimization" {
             return @{
-                ReductionTarget = 0.30      # Keep 70% (minimal compaction)
-                CheckpointCount = 999       # All checkpoints
+                ReductionTarget  = 0.30      # Keep 70% (minimal compaction)
+                CheckpointCount  = 999       # All checkpoints
                 KeepFullErrorLog = $true
-                KeepCodeReview = $true
-                Description = "Minimal (preserve review context)"
+                KeepCodeReview   = $true
+                Description      = "Minimal (preserve review context)"
             }
         }
         default {
             # Fallback to moderate strategy
             return @{
-                ReductionTarget = 0.60
-                CheckpointCount = 20
+                ReductionTarget  = 0.60
+                CheckpointCount  = 20
                 KeepFullErrorLog = $true
-                KeepCodeReview = $false
-                Description = "Moderate (default)"
+                KeepCodeReview   = $false
+                Description      = "Moderate (default)"
             }
         }
     }
@@ -300,16 +302,17 @@ $reductionPct = [math]::Round((1 - ($afterTokens / $beforeTokens)) * 100, 1)
 
 if ($Json) {
     $result = @{
-        success = $true
-        featureDir = $FeatureDir
-        outputFile = $OutputFile
-        tokensBefor = $beforeTokens
-        tokensAfter = $afterTokens
+        success          = $true
+        featureDir       = $FeatureDir
+        outputFile       = $OutputFile
+        tokensBefor      = $beforeTokens
+        tokensAfter      = $afterTokens
         reductionPercent = $reductionPct
-        timestamp = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+        timestamp        = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
     }
     $result | ConvertTo-Json -Compress | Write-Output
-} else {
+}
+else {
     Write-Output ""
     Write-Output " CONTEXT COMPACTION COMPLETE"
     Write-Output ""
@@ -326,4 +329,5 @@ if ($Json) {
 }
 
 exit 0
+
 

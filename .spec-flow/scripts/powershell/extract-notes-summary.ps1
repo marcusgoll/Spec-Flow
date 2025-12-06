@@ -58,10 +58,10 @@ $recentCompletions = $matches |
     Select-Object -Last $Count |
     ForEach-Object {
         @{
-            taskId = $_.Groups[1].Value
+            taskId      = $_.Groups[1].Value
             description = $_.Groups[2].Value
-            duration = $_.Groups[3].Value
-            timestamp = $_.Groups[4].Value
+            duration    = $_.Groups[3].Value
+            timestamp   = $_.Groups[4].Value
         }
     }
 
@@ -70,8 +70,10 @@ if ($Json) {
         tasks = $recentCompletions
         count = $recentCompletions.Count
     } | ConvertTo-Json -Compress
-} else {
+}
+else {
     foreach ($completion in $recentCompletions) {
         Write-Output "- ✅ $($completion.taskId): $($completion.description) - $($completion.duration) ($($completion.timestamp))"
     }
 }
+

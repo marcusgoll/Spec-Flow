@@ -63,6 +63,7 @@ Spec-Flow automatically detects your deployment model:
 ```
 
 The `/ship` command is the recommended entry point. It:
+
 1. Detects your deployment model
 2. Runs the appropriate command sequence
 3. Handles manual gates and resume logic
@@ -86,6 +87,7 @@ For projects with staging environments and production promotion:
 ```
 
 **Workflow:**
+
 ```
 /optimize → /ship-staging → [manual validation] → /ship-prod → /finalize
 ```
@@ -107,6 +109,7 @@ For projects that deploy directly to production without staging:
 ```
 
 **Workflow:**
+
 ```
 /optimize → /deploy-prod → /finalize
 ```
@@ -128,6 +131,7 @@ For projects without remote deployment (prototypes, experiments, local tools):
 ```
 
 **Workflow:**
+
 ```
 /optimize → /build-local → /finalize
 ```
@@ -237,6 +241,7 @@ Epics follow the same deployment models but with additional quality gates:
 ### "No deployment model detected"
 
 Ensure one of:
+
 - Git remote exists (`git remote -v`)
 - `.github/workflows/deploy-staging.yml` for staging-prod
 - No remote for local-only
@@ -248,6 +253,7 @@ Run `/validate-staging` to complete manual testing, then `/ship continue`.
 ### "CI failed during ship-staging"
 
 Check GitHub Actions, fix issues, then:
+
 ```bash
 /ship continue  # Retries from last checkpoint
 ```

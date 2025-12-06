@@ -155,9 +155,9 @@ try {
 
     # Initialize validation checks
     $checks = @{
-        ObjectiveMentioned = $false
-        NotExcluded = $true
-        SubsystemAlignment = $false
+        ObjectiveMentioned        = $false
+        NotExcluded               = $true
+        SubsystemAlignment        = $false
         AcceptanceCriteriaRelated = $false
     }
 
@@ -167,7 +167,8 @@ try {
     $checks.ObjectiveMentioned = Check-Mentioned -SectionContent $objective -Keywords $GapKeywords
     if ($checks.ObjectiveMentioned) {
         $evidence += "✅ Gap mentioned in objective/requirements section"
-    } else {
+    }
+    else {
         $evidence += "❌ Gap not explicitly mentioned in objective/requirements"
     }
 
@@ -178,10 +179,12 @@ try {
 
         if ($checks.NotExcluded) {
             $evidence += "✅ NOT listed in 'Out of Scope' section"
-        } else {
+        }
+        else {
             $evidence += "❌ Explicitly excluded in 'Out of Scope' section"
         }
-    } else {
+    }
+    else {
         $evidence += "✅ No 'Out of Scope' section found (default: not excluded)"
     }
 
@@ -191,10 +194,12 @@ try {
 
         if ($checks.SubsystemAlignment) {
             $evidence += "✅ Aligns with involved subsystems"
-        } else {
+        }
+        else {
             $evidence += "⚠️ May not align with documented subsystems"
         }
-    } else {
+    }
+    else {
         # If no subsystems section, assume alignment (default for features)
         $checks.SubsystemAlignment = $true
         $evidence += "✅ No subsystems section (assuming alignment)"
@@ -206,10 +211,12 @@ try {
 
         if ($checks.AcceptanceCriteriaRelated) {
             $evidence += "✅ Related to acceptance criteria"
-        } else {
+        }
+        else {
             $evidence += "⚠️ Not directly related to acceptance criteria"
         }
-    } else {
+    }
+    else {
         $evidence += "⚠️ No acceptance criteria section found"
     }
 
@@ -251,15 +258,15 @@ try {
 
     # Return validation result
     $result = [PSCustomObject]@{
-        Status = $status
-        Reason = $reason
-        Evidence = $evidence
+        Status         = $status
+        Reason         = $reason
+        Evidence       = $evidence
         Recommendation = $recommendation
-        Checks = $checks
-        SpecExcerpts = @{
-            Objective = if ($objective.Length -gt 500) { $objective.Substring(0, 500) + "..." } else { $objective }
-            OutOfScope = if ($outOfScope.Length -gt 500) { $outOfScope.Substring(0, 500) + "..." } else { $outOfScope }
-            Subsystems = if ($subsystems.Length -gt 500) { $subsystems.Substring(0, 500) + "..." } else { $subsystems }
+        Checks         = $checks
+        SpecExcerpts   = @{
+            Objective          = if ($objective.Length -gt 500) { $objective.Substring(0, 500) + "..." } else { $objective }
+            OutOfScope         = if ($outOfScope.Length -gt 500) { $outOfScope.Substring(0, 500) + "..." } else { $outOfScope }
+            Subsystems         = if ($subsystems.Length -gt 500) { $subsystems.Substring(0, 500) + "..." } else { $subsystems }
             AcceptanceCriteria = if ($acceptanceCriteria.Length -gt 500) { $acceptanceCriteria.Substring(0, 500) + "..." } else { $acceptanceCriteria }
         }
     }
@@ -285,3 +292,4 @@ catch {
     Write-Error "Scope validation failed: $_"
     throw
 }
+

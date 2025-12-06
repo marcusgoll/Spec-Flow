@@ -56,6 +56,7 @@ Integrated multi-agent voting, continuous quality checks, and perpetual learning
   - High-confidence gaps (≥0.8) likely need fixes
 
 **New Files Created (8)**:
+
 - `.claude/skills/multi-agent-voting/voting-engine.sh` - Voting orchestration
 - `.claude/skills/multi-agent-voting/vote-aggregator.py` - MAKER algorithm implementation
 - `.spec-flow/scripts/bash/continuous-checks.sh` - Continuous quality checks
@@ -66,6 +67,7 @@ Integrated multi-agent voting, continuous quality checks, and perpetual learning
 ### 🔧 Changed
 
 **Command Updates**:
+
 - Updated `/optimize` to initialize voting system (Step 0.8)
 - Updated `/implement` to run continuous checks after each batch (Step 1.7)
 - Updated `/feature` to auto-apply learned patterns at startup (Step 0.15)
@@ -317,6 +319,7 @@ Run multiple Claude Code instances in parallel, each working on different featur
 ### 📚 Philosophy
 
 Dev Studio treats git worktrees as persistent AI developer workstations. Each agent:
+
 1. Claims work from GitHub roadmap (labels prevent duplicate claims)
 2. Works through features: plan → tasks → implement → optimize → ship
 3. Creates PRs with CI gates + auto-merge (no manual review needed)
@@ -565,6 +568,7 @@ Major restructure of root CLAUDE.md following context engineering best practices
 ### 📚 Philosophy
 
 Based on context engineering research:
+
 - **LLMs are stateless** — CLAUDE.md onboards Claude consistently each conversation
 - **Less is more** — ~150-200 instruction limit before degradation
 - **Progressive disclosure** — Load context just-in-time, not upfront

@@ -28,12 +28,14 @@ npx spec-flow init --non-interactive
 ```
 
 **What happens:**
+
 - ✅ Detects your project type (Next.js, React, API, etc.)
 - ✅ Installs `.claude/`, `.spec-flow/`, and `CLAUDE.md`
 - ✅ Initializes memory files with default values
 - ✅ Validates prerequisites
 
 **Update existing installation:**
+
 ```bash
 npx spec-flow update
 ```
@@ -54,6 +56,7 @@ cd Spec-Flow
 #### Step 2: Run the Installation Wizard
 
 **Windows (PowerShell):**
+
 ```powershell
 # Interactive wizard
 powershell -File .spec-flow/scripts/powershell/install-wizard.ps1
@@ -63,6 +66,7 @@ powershell -File .spec-flow/scripts/powershell/install-wizard.ps1 -TargetDir ../
 ```
 
 **macOS/Linux (Bash):**
+
 ```bash
 # Interactive wizard
 ./.spec-flow/scripts/bash/install-wizard.sh
@@ -76,18 +80,21 @@ powershell -File .spec-flow/scripts/powershell/install-wizard.ps1 -TargetDir ../
 The installer runs checks automatically, but you can verify manually:
 
 **Windows:**
+
 ```powershell
 cd /path/to/your/project
 pwsh -File .spec-flow/scripts/powershell/check-prerequisites.ps1
 ```
 
 **macOS/Linux:**
+
 ```bash
 cd /path/to/your/project
 ./.spec-flow/scripts/bash/check-prerequisites.sh
 ```
 
 Expected output:
+
 ```
 ✅ Git 2.39+ installed
 ✅ PowerShell 7.3+ installed
@@ -114,6 +121,7 @@ Open Claude Code in your project directory and run these commands:
 ```
 
 Claude will interactively help you:
+
 - Set project type (Web App, API, Mobile, CLI, etc.)
 - Define test coverage requirements (50%, 70%, 80%, 90%)
 - Configure performance targets (API response times, page load speeds)
@@ -131,11 +139,13 @@ Claude will interactively help you:
 ```
 
 Claude will guide you through:
+
 - Adding feature ideas to your backlog
 - ICE scoring (Impact × Confidence ÷ Effort) for prioritization
 - Organizing features: Backlog → Next → In Progress → Shipped
 
 **Example interaction:**
+
 ```
 You: /roadmap
 Claude: Let's build your product roadmap. What feature would you like to add?
@@ -161,6 +171,7 @@ Claude: Great! Let me score this feature...
 ```
 
 Claude will guide you through 8 quick questions to customize command defaults:
+
 - `/epic` default mode (interactive vs auto)
 - `/tasks` default mode (standard vs UI-first)
 - `/init-project` defaults (interactive vs CI, include design system)
@@ -168,6 +179,7 @@ Claude will guide you through 8 quick questions to customize command defaults:
 - UI preferences (show usage stats, highlight last-used options)
 
 **Example interaction:**
+
 ```
 You: /init-preferences
 Claude: What default mode should /epic use?
@@ -183,6 +195,7 @@ Claude: ✓ /epic will default to interactive mode
 **Skip if:** You're fine with defaults (interactive mode, standard tasks, auto-detect strategy)
 
 **How it works:**
+
 - **Config file**: Set once, use forever (`.spec-flow/config/user-preferences.yaml`)
 - **Learning system**: Commands remember your choices and suggest them
 - **Override anytime**: Flags like `--auto` always override preferences
@@ -219,11 +232,13 @@ Open Claude Code in your project directory and run:
 ```
 
 Claude will help you:
+
 - Add feature ideas to `.spec-flow/memory/roadmap.md`
 - Prioritize using ICE scoring (Impact × Confidence ÷ Effort)
 - Organize features: Backlog → Next → In Progress → Shipped
 
 **Example interaction:**
+
 ```
 You: /roadmap
 Claude: Let's build your product roadmap. What feature would you like to add?
@@ -247,6 +262,7 @@ Once you have a prioritized feature, create its spec:
 ```
 
 This creates `specs/001-dark-mode-toggle/` with:
+
 - `spec.md` - Full specification (requirements, user stories, acceptance criteria)
 - `NOTES.md` - Decision log (tracks changes, blockers, pivots)
 - `visuals/README.md` - UI/UX references
@@ -267,9 +283,11 @@ The workflow progresses through phases:
 ```
 
 **Manual Gate**:
+
 - `/validate-staging` - You test on staging before production promotion
 
 Or run commands individually:
+
 ```
 /plan         # Phase 1: Create implementation plan
 /tasks        # Phase 2: Break into 20-30 tasks
@@ -282,18 +300,23 @@ Or run commands individually:
 ## What's Next?
 
 ### Learn the Full Workflow
+
 Read the [Getting Started Guide](docs/getting-started.md) for a detailed tutorial.
 
 ### Explore Commands
+
 See [Command Reference](docs/commands.md) for all available slash commands.
 
 ### Understand the Architecture
+
 Read [Architecture Overview](docs/architecture.md) to understand how Spec-Flow works.
 
 ### Customize Templates
+
 Edit templates in `.spec-flow/templates/` to match your project's needs.
 
 ### Join the Community
+
 - **Report issues**: [GitHub Issues](https://github.com/marcusgoll/Spec-Flow/issues)
 - **Ask questions**: [GitHub Discussions](https://github.com/marcusgoll/Spec-Flow/discussions)
 - **Contribute**: See [CONTRIBUTING.md](CONTRIBUTING.md)
@@ -303,23 +326,29 @@ Edit templates in `.spec-flow/templates/` to match your project's needs.
 ## Troubleshooting
 
 ### "PowerShell not found"
+
 Install PowerShell 7.3+: [PowerShell Installation Guide](https://docs.microsoft.com/powershell/scripting/install/installing-powershell)
 
 ### "Permission denied" (macOS/Linux)
+
 Make scripts executable:
+
 ```bash
 chmod +x .spec-flow/scripts/bash/*.sh
 ```
 
 ### "Claude Code not accessible"
+
 1. Verify Claude Code is running
 2. Check `.claude/settings.local.json` has correct paths
 3. Restart Claude Code
 
 ### Settings not taking effect
+
 Claude Code caches settings. After editing `.claude/settings.local.json`, restart Claude Code completely.
 
 ### More Help
+
 See the full [Troubleshooting Guide](docs/troubleshooting.md) or [file an issue](https://github.com/marcusgoll/Spec-Flow/issues).
 
 ---
@@ -347,24 +376,28 @@ See the full [Troubleshooting Guide](docs/troubleshooting.md) or [file an issue]
 Your preferences control default behavior. Set once with `/init-preferences`:
 
 **No preferences configured:**
+
 ```bash
 /epic "add auth"
 → Prompts: "Run in auto or interactive mode?"
 ```
 
 **With preferences configured:**
+
 ```bash
 /epic "add auth"
 → Runs in your preferred mode automatically
 ```
 
 **Override with flags:**
+
 ```bash
 /epic "add auth" --auto
 → Always uses auto mode regardless of preferences
 ```
 
 **Pro tips**:
+
 - Run `/init-preferences` once to set your workflow defaults
 - Commands learn from your choices (e.g., "You used auto mode 8/10 times")
 - Use flags (`--auto`, `--ui-first`, etc.) to override preferences
@@ -377,4 +410,3 @@ Your preferences control default behavior. Set once with `/init-preferences`:
 **Happy building!** 🚀
 
 For detailed documentation, visit [docs/getting-started.md](docs/getting-started.md).
-

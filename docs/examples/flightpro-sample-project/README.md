@@ -60,6 +60,7 @@ This example includes **2 complete files** (overview.md and tech-stack.md) to de
 ### 1. Review the Files
 
 Read `overview.md` and `tech-stack.md` to see:
+
 - How to fill in `[NEEDS CLARIFICATION]` sections
 - What realistic examples look like
 - How to structure content
@@ -67,6 +68,7 @@ Read `overview.md` and `tech-stack.md` to see:
 ### 2. Compare to Templates
 
 Compare these files to the templates in `.spec-flow/templates/project/`:
+
 - What changed? (placeholders → real content)
 - What was removed? (`[NEEDS CLARIFICATION]` markers filled in)
 - What was added? (realistic examples, Mermaid diagrams)
@@ -74,6 +76,7 @@ Compare these files to the templates in `.spec-flow/templates/project/`:
 ### 3. Use as Reference
 
 When you run `/init-project` for your own project:
+
 - Use this example to understand expectations
 - See how to document tech stack rationale
 - Learn how to write vision statements and user personas
@@ -82,7 +85,8 @@ When you run `/init-project` for your own project:
 
 ## Key Differences from Template
 
-### Template (before /init-project):
+### Template (before /init-project)
+
 ```markdown
 ## Vision Statement
 
@@ -91,7 +95,8 @@ When you run `/init-project` for your own project:
 **Example**: FlightPro is a SaaS platform...
 ```
 
-### Example (after /init-project):
+### Example (after /init-project)
+
 ```markdown
 ## Vision Statement
 

@@ -368,6 +368,7 @@ Specializes in:
    - CI/CD for auto-deployment
 
 3. **Content Structure**:
+
    ```
    docs/
    ├── getting-started/
@@ -525,6 +526,7 @@ Specializes in:
    ```
 
 2. **Update command definitions** to use custom templates:
+
    ```markdown
    # .claude/commands/spec-flow.md
 

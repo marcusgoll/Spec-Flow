@@ -137,6 +137,7 @@ See [all 46 commands](docs/commands.md) in the full reference.
 ```
 
 Generates `spec.md` with:
+
 - User scenarios in Gherkin format
 - Functional and non-functional requirements
 - Acceptance criteria
@@ -149,6 +150,7 @@ Generates `spec.md` with:
 ```
 
 Creates `plan.md` with:
+
 - Architecture decisions
 - Component breakdown
 - Code reuse opportunities
@@ -161,6 +163,7 @@ Creates `plan.md` with:
 ```
 
 Produces `tasks.md` with:
+
 - 20-30 concrete implementation tasks
 - TDD sequencing (Red → Green → Refactor)
 - Dependency ordering
@@ -173,6 +176,7 @@ Produces `tasks.md` with:
 ```
 
 Executes tasks with:
+
 - Test-first development
 - Specialist agents (backend, frontend, database)
 - Parallel batch execution
@@ -185,6 +189,7 @@ Executes tasks with:
 ```
 
 Runs parallel checks:
+
 - Performance benchmarks
 - Security scanning
 - Accessibility audits
@@ -198,6 +203,7 @@ Runs parallel checks:
 ```
 
 Handles:
+
 - Staging deployment
 - Validation checks
 - Production promotion
@@ -228,21 +234,23 @@ your-project/
 
 Spec-Flow can be installed as a Gemini CLI extension to bring the same structured workflow to Gemini.
 
-1.  **Install**:
+1. **Install**:
+
     ```bash
     # From within your project root
     npx spec-flow install-gemini-extension
     ```
+
     *Alternatively, run: `gemini extensions install .` inside your project.*
 
-2.  **Use**:
+2. **Use**:
     The extension provides the same slash commands (`/feature`, `/plan`, etc.) directly within your Gemini CLI session.
 
     ```
     /feature "add user authentication"
     ```
 
-3.  **Skills & Agents**:
+3. **Skills & Agents**:
     The Gemini extension automatically adapts Spec-Flow's agents and skills to work within the Gemini environment, allowing you to leverage specialized personas like `backend-dev` or `git-workflow-enforcer`.
 
 ## Requirements

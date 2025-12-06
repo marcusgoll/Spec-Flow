@@ -29,6 +29,7 @@ Core orchestration commands for feature development workflows.
 | `/route-agent [task description]` | Analyze task and route to specialist agent (backend, frontend, database, qa, debugger, or reviewer) using scoring algorithm and shared routing rules |
 
 **Usage Example:**
+
 ```bash
 # Start a new feature
 /feature "Add dark mode toggle to user settings"
@@ -62,6 +63,7 @@ Individual workflow phases - can be run standalone or via `/feature` orchestrati
 | `/finalize` | Finalize documentation (CHANGELOG, README, help docs), update GitHub milestones/releases, and cleanup branches after production deployment |
 
 **Usage Example:**
+
 ```bash
 # Create specification
 /spec "User authentication with OAuth 2.1"
@@ -100,6 +102,7 @@ Multi-sprint workflows for complex features (>16 hours, multiple subsystems).
 | `/implement-epic [epic-slug]` | Execute multiple sprints in parallel based on dependency graph from sprint-plan.xml for epic workflows |
 
 **Usage Example:**
+
 ```bash
 # Start an epic
 /epic "User authentication with OAuth 2.1"
@@ -112,6 +115,7 @@ Multi-sprint workflows for complex features (>16 hours, multiple subsystems).
 ```
 
 **When to use `/epic` vs `/feature`:**
+
 - Use `/epic` for: >16 hours, multiple subsystems, 2-5 sprints, >5 API endpoints, >3 database tables
 - Use `/feature` for: ≤16 hours, single subsystem, 1 sprint, ≤5 endpoints, ≤3 tables
 
@@ -133,6 +137,7 @@ Staging and production deployment workflows.
 | `/validate-deploy [staging\|production]` | Validate deployment readiness by simulating production builds, Docker images, and migrations locally to catch failures before consuming CI/CD quota |
 
 **Usage Example:**
+
 ```bash
 # Deploy to staging (staging-prod model)
 /ship-staging
@@ -165,6 +170,7 @@ Local builds and branch management.
 | `/branch-enforce [--fix] [--verbose] [--json] [--current-branch-only] [--max-hours N] [--warn-hours N] [--default-branch NAME] [--no-color]` | Audit branches for age violations and enforce trunk-based development (warn 18h, block 24h unless feature-flagged) |
 
 **Usage Example:**
+
 ```bash
 # Build locally (local-only model)
 /build-local
@@ -191,6 +197,7 @@ Project initialization, roadmap management, and configuration.
 | `/update-project-config <configuration change description>` | Update project configuration settings (deployment model, scale tier, quick changes policy) with atomic commits |
 
 **Usage Example:**
+
 ```bash
 # Initialize project docs
 /init-project
@@ -226,6 +233,7 @@ Quality gates and CI/CD integration.
 | `/gate-sec` | Run security quality gate (SAST, secrets detection, dependency scanning) to ensure no HIGH/CRITICAL security issues before deployment |
 
 **Usage Example:**
+
 ```bash
 # Fix CI failures
 /fix-ci 123
@@ -250,6 +258,7 @@ Workflow health monitoring and self-improvement.
 | `/workflow-health` | Display workflow health dashboard with velocity trends, quality metrics, and improvement tracking |
 
 **Usage Example:**
+
 ```bash
 # Audit workflow after epic
 /audit-workflow
@@ -296,6 +305,7 @@ Developer tools for creating commands, skills, agents, and prompts.
 | `/announce-release [optional: version number]` | Post release announcement to X (Twitter) with GitHub link reply |
 
 **Usage Example:**
+
 ```bash
 # Create development artifacts
 /create-slash-command "New command for XYZ"
@@ -333,6 +343,7 @@ Repository maintenance commands (not included in npm package).
 | `/repo-hygiene [check\|fix\|docs\|commands\|install\|all]` | Maintain public repository documentation, command inventory, installation guides, and file hygiene (internal use only - not in npm package) |
 
 **Usage Example:**
+
 ```bash
 # Release new version
 /release
@@ -366,15 +377,18 @@ Repository maintenance commands (not included in npm package).
 ## Getting Help
 
 **In Claude Code:**
+
 - Type `/help` to see context-aware guidance for your current workflow state
 - Type `/help verbose` for detailed state information
 
 **Documentation:**
+
 - [Getting Started Guide](getting-started.md)
 - [Architecture Overview](architecture.md)
 - [CLAUDE.md](../CLAUDE.md) - Complete workflow reference
 
 **Support:**
+
 - [GitHub Issues](https://github.com/marcusgoll/Spec-Flow/issues)
 - [README](../README.md)
 

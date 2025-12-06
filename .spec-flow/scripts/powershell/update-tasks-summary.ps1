@@ -42,9 +42,11 @@ if ($content -match $pattern) {
     $content = $content -replace $pattern, $newSummary
     Set-Content $tasksFile $content -NoNewline
     Write-Host "[spec-flow] Updated Progress Summary in tasks.md" -ForegroundColor Green
-} else {
+}
+else {
     # Section doesn't exist, prepend it
     $content = "$newSummary`n`n---`n`n$content"
     Set-Content $tasksFile $content -NoNewline
     Write-Host "[spec-flow] Added Progress Summary to tasks.md" -ForegroundColor Green
 }
+

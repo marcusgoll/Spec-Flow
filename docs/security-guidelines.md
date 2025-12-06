@@ -178,6 +178,7 @@ CLEAN=$(sanitize_secrets <<< "$DIRTY_CONTENT")
 ```
 
 **Patterns detected**:
+
 - API keys (`api_key`, `apikey`, `api-key`)
 - Tokens (`token`, `bearer`, `auth_token`)
 - Passwords (`password`, `pwd`, `passwd`)
@@ -232,6 +233,7 @@ bash .spec-flow/scripts/bash/test-secret-detection.sh
 ```
 
 **Exit codes**:
+
 - `0` - No secrets detected (safe)
 - `1` - Secrets detected (blocked)
 - `2` - Error running scan
@@ -275,18 +277,21 @@ Action required:
 ### When Writing Commands
 
 1. **Never echo secret values**:
+
    ```bash
    ❌ echo "Token: $VERCEL_TOKEN"
    ✅ echo "Token: [set in environment]"
    ```
 
 2. **Sanitize before writing to files**:
+
    ```bash
    ❌ echo "$OUTPUT" > report.md
    ✅ echo "$(sanitize_secrets <<< "$OUTPUT")" > report.md
    ```
 
 3. **Extract domains from URLs**:
+
    ```bash
    ❌ echo "API URL: $FULL_URL"
    ✅ URL_DOMAIN=$(echo "$FULL_URL" | sed -E 's|https?://([^/?]+).*|\1|')
@@ -294,6 +299,7 @@ Action required:
    ```
 
 4. **Use redirection carefully**:
+
    ```bash
    # Avoid redirecting sensitive command output
    ❌ doppler secrets get DATABASE_URL --plain >> report.md
@@ -307,18 +313,21 @@ Action required:
 ### When Creating Reports
 
 1. **Use templates with placeholders**:
+
    ```markdown
    ❌ Deployed to: https://abc123.vercel.app?token=xyz789
    ✅ Deployed to: [deployment-url]
    ```
 
 2. **Reference configuration locations**:
+
    ```markdown
    ❌ OPENAI_API_KEY=sk-abc123xyz789
    ✅ OPENAI_API_KEY=[configured in Doppler: cfipros/production_api]
    ```
 
 3. **Document commands, not values**:
+
    ```markdown
    ❌ export DATABASE_URL=postgresql://user:pass@host/db
    ✅ export DATABASE_URL=$(doppler secrets get DATABASE_URL --plain)
@@ -429,16 +438,19 @@ echo "Running: curl -H 'Authorization: Bearer [REDACTED]' $URL"
 ### Before Committing
 
 1. **Run secret detection**:
+
    ```bash
    bash .spec-flow/scripts/bash/test-secret-detection.sh
    ```
 
 2. **Review reports manually**:
+
    ```bash
    grep -r "api_key\|token\|password" specs/*/artifacts/
    ```
 
 3. **Test sanitization**:
+
    ```bash
    # Create test input with fake secrets
    echo "API_KEY=abc123" | .spec-flow/scripts/bash/sanitize-secrets.sh
@@ -465,6 +477,7 @@ echo "✅ No secrets detected - safe to commit"
 ```
 
 Make it executable:
+
 ```bash
 chmod +x .git/hooks/pre-commit
 ```
@@ -478,6 +491,7 @@ chmod +x .git/hooks/pre-commit
 **Immediate actions**:
 
 1. **Rotate compromised secrets**:
+
    ```bash
    # Revoke old token
    # Generate new token
@@ -486,12 +500,14 @@ chmod +x .git/hooks/pre-commit
    ```
 
 2. **Remove from git history**:
+
    ```bash
    # Use git-filter-repo or BFG Repo-Cleaner
    git filter-repo --path-glob '**/report.md' --invert-paths
    ```
 
 3. **Force push (if not public)**:
+
    ```bash
    git push --force origin main
    ```
@@ -515,20 +531,24 @@ chmod +x .git/hooks/pre-commit
 ## Resources
 
 **Scripts**:
+
 - Bash sanitization: `.spec-flow/scripts/bash/sanitize-secrets.sh`
 - PowerShell sanitization: `.spec-flow/scripts/powershell/Sanitize-Secrets.ps1`
 - Secret detection: `.spec-flow/scripts/bash/test-secret-detection.sh`
 
 **Templates**:
+
 - Report templates: `.spec-flow/templates/*-template.md`
 - Agent briefs: `.claude/agents/phase/*.md`
 
 **Documentation**:
+
 - Architecture: `docs/architecture.md`
 - Commands: `docs/commands.md`
 - Contributing: `CONTRIBUTING.md`
 
 **External Resources**:
+
 - [OWASP Secrets Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html)
 - [GitHub Secret Scanning](https://docs.github.com/en/code-security/secret-scanning/about-secret-scanning)
 - [Doppler Best Practices](https://docs.doppler.com/docs/best-practices)

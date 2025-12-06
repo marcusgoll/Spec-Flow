@@ -60,6 +60,7 @@ If all checks pass ✅, you're ready! Continue to [Getting Started](getting-star
 ### Windows
 
 #### 1. Install Git
+
 ```powershell
 # Using winget (recommended)
 winget install Git.Git
@@ -70,6 +71,7 @@ git --version
 ```
 
 #### 2. Install PowerShell 7.3+
+
 ```powershell
 # Using winget
 winget install Microsoft.PowerShell
@@ -82,6 +84,7 @@ pwsh --version
 **Important**: Use `pwsh` (PowerShell 7+), not `powershell` (Windows PowerShell 5.1).
 
 #### 3. Install Python 3.10+
+
 ```powershell
 # Using winget
 winget install Python.Python.3.12
@@ -92,15 +95,18 @@ python --version
 ```
 
 #### 4. Install Claude Code
+
 1. Download from [claude.com/code](https://claude.com/code)
 2. Run the installer
 3. Follow the setup wizard
 4. Verify installation:
+
    ```powershell
    claude --version
    ```
 
 #### 5. Clone Spec-Flow
+
 ```powershell
 # Navigate to your projects directory
 cd C:\Projects
@@ -111,6 +117,7 @@ cd spec-flow-workflow-kit
 ```
 
 #### 6. Optional: Install GitHub CLI
+
 ```powershell
 winget install GitHub.cli
 
@@ -121,11 +128,13 @@ gh --version
 ### macOS
 
 #### 1. Install Homebrew (if not installed)
+
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
 #### 2. Install Git
+
 ```bash
 # Usually pre-installed, but update to latest
 brew install git
@@ -136,6 +145,7 @@ git --version
 ```
 
 #### 3. Install PowerShell 7.3+ (Cross-Platform)
+
 ```bash
 brew install --cask powershell
 
@@ -147,6 +157,7 @@ pwsh --version
 **Note**: macOS includes Bash by default, but you can use PowerShell for cross-platform consistency.
 
 #### 4. Install Python 3.10+
+
 ```bash
 brew install python@3.12
 
@@ -156,15 +167,18 @@ python3 --version
 ```
 
 #### 5. Install Claude Code
+
 1. Download from [claude.com/code](https://claude.com/code)
 2. Open the `.dmg` file
 3. Drag Claude Code to Applications
 4. Verify installation:
+
    ```bash
    claude --version
    ```
 
 #### 6. Clone Spec-Flow
+
 ```bash
 # Navigate to your projects directory
 cd ~/Projects
@@ -175,6 +189,7 @@ cd spec-flow-workflow-kit
 ```
 
 #### 7. Optional: Install GitHub CLI
+
 ```bash
 brew install gh
 
@@ -295,6 +310,7 @@ Edit `.claude/settings.local.json` and add your project paths:
 ```
 
 **Platform-specific paths**:
+
 - **Windows**: `C:\\Users\\YourName\\Projects\\your-project`
 - **macOS/Linux**: `/Users/yourname/projects/your-project`
 
@@ -353,11 +369,13 @@ This creates `.spec-flow/memory/constitution.md` with your team's principles.
 Initialize your roadmap:
 
 **Windows**:
+
 ```powershell
 pwsh -File .spec-flow/scripts/powershell/roadmap-init.ps1
 ```
 
 **macOS/Linux**:
+
 ```bash
 .spec-flow/scripts/bash/roadmap-init.sh
 ```
@@ -369,11 +387,13 @@ This creates `.spec-flow/memory/roadmap.md` for tracking features.
 Run the prerequisite checker to verify everything is installed:
 
 **Windows (PowerShell)**:
+
 ```powershell
 pwsh -File .spec-flow/scripts/powershell/check-prerequisites.ps1 -Json
 ```
 
 **macOS/Linux (Bash)**:
+
 ```bash
 .spec-flow/scripts/bash/check-prerequisites.sh --json
 ```
@@ -407,6 +427,7 @@ If you see `"status": "ready"`, you're all set! ✅
 **Windows**: Set execution policy (see [Post-Installation Setup](#2-set-execution-policy-windows-powershell-only))
 
 **macOS/Linux**: Make scripts executable:
+
 ```bash
 chmod +x .spec-flow/scripts/bash/*.sh
 ```
@@ -418,6 +439,7 @@ chmod +x .spec-flow/scripts/bash/*.sh
 ### "Claude Code not accessible"
 
 **Solution**:
+
 1. Verify Claude Code is installed and running
 2. Check `.claude/settings.local.json` has correct project paths
 3. Restart Claude Code after updating settings
@@ -425,6 +447,7 @@ chmod +x .spec-flow/scripts/bash/*.sh
 ### "Git version too old"
 
 **Solution**: Update Git to 2.39+:
+
 - **Windows**: `winget upgrade Git.Git`
 - **macOS**: `brew upgrade git`
 - **Linux**: Update via package manager (`apt`, `dnf`, `pacman`)
@@ -432,11 +455,13 @@ chmod +x .spec-flow/scripts/bash/*.sh
 ### "check-prerequisites.ps1" fails
 
 **Common causes**:
+
 1. **PowerShell version**: Ensure you're using `pwsh` (7.3+), not `powershell` (5.1)
 2. **Missing dependencies**: Install Python, Git, or Claude Code
 3. **Path issues**: Verify tools are in your system PATH
 
 **Debug**:
+
 ```powershell
 # Check PowerShell version
 pwsh --version
