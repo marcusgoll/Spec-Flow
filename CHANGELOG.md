@@ -2,6 +2,22 @@
 
 ---
 
+## [11.0.1] - 2025-12-09
+
+### 🐛 Fixed
+
+**CLAUDE.md Update Mechanism**
+- Fixed `npx spec-flow update` not properly updating CLAUDE.md spec-flow section
+- Implemented marker-based update system (`<!-- SPEC-FLOW-START -->` / `<!-- SPEC-FLOW-END -->`)
+- Handles legacy format migration and full spec-flow CLAUDE.md files
+
+**Local-Only Workflow Support**
+- Fixed `/feature` command failing in repositories without GitHub integration
+- When GitHub is unavailable, gracefully falls back to local feature creation
+- Uses feature description as slug for local-only workflows
+
+---
+
 ## [11.0.0] - 2025-12-09
 
 ### 💥 Breaking Changes
