@@ -43,7 +43,7 @@ async function detectConflicts(targetDir, files) {
 
 /**
  * Smart merge CLAUDE.md files
- * Appends spec-flow content under "## Spec-Flow Workflow" section
+ * Replaces spec-flow content section if it exists, otherwise appends it
  * @param {string} existingPath - Path to existing CLAUDE.md
  * @param {string} newContent - New spec-flow CLAUDE.md content
  * @returns {Promise<string>} Merged content
@@ -51,16 +51,39 @@ async function detectConflicts(targetDir, files) {
 async function mergeCLAUDEmd(existingPath, newContent) {
   const existing = await fs.readFile(existingPath, 'utf8');
 
-  // Check if spec-flow section already exists
-  if (existing.includes('## Spec-Flow Workflow') || existing.includes('spec-flow')) {
-    // Already has spec-flow content, don't duplicate
-    return existing;
+  // Markers to identify spec-flow managed content
+  const startMarker = '<!-- SPEC-FLOW-START -->';
+  const endMarker = '<!-- SPEC-FLOW-END -->';
+
+  // Wrap new content with markers for future updates
+  const wrappedNewContent = `${startMarker}\n## Spec-Flow Workflow\n\n${newContent.trim()}\n${endMarker}`;
+
+  // Check if markers exist (clean update path)
+  if (existing.includes(startMarker) && existing.includes(endMarker)) {
+    // Replace content between markers
+    const regex = new RegExp(`${startMarker}[\\s\\S]*?${endMarker}`, 'g');
+    return existing.replace(regex, wrappedNewContent);
   }
 
-  // Append spec-flow content as new section
+  // Check for legacy spec-flow section (without markers)
+  // Look for "## Spec-Flow Workflow" section and replace it
+  const legacySectionRegex = /\n---\n\n## Spec-Flow Workflow\n\n[\s\S]*$/;
+  if (legacySectionRegex.test(existing)) {
+    // Replace legacy section with new marked content
+    return existing.replace(legacySectionRegex, `\n\n---\n\n${wrappedNewContent}\n`);
+  }
+
+  // Also check for inline spec-flow content (older format)
+  // This includes CLAUDE.md files that mention spec-flow but don't have the section header
+  if (existing.includes('Spec-Flow') && existing.includes('/feature') && existing.includes('/epic')) {
+    // This appears to be a full spec-flow CLAUDE.md (not a user file with spec-flow added)
+    // Replace entirely with new content, wrapped in markers
+    return wrappedNewContent;
+  }
+
+  // No existing spec-flow content, append as new section
   const separator = '\n\n---\n\n';
-  const sectionHeader = '## Spec-Flow Workflow\n\n';
-  const merged = existing.trimEnd() + separator + sectionHeader + newContent.trim() + '\n';
+  const merged = existing.trimEnd() + separator + wrappedNewContent + '\n';
 
   return merged;
 }
