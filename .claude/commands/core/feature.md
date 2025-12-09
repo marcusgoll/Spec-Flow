@@ -173,105 +173,314 @@ Auto-apply is skipped if:
 
 ---
 
-## Step 0.2: Autopilot Phase Orchestration
+## Step 0.16: Domain Memory Initialization (v11.0)
 
-**CRITICAL**: This is the autopilot loop that drives the entire workflow. After initialization, execute each phase in sequence until completion or error.
+**Initialize structured domain memory via isolated Initializer agent.**
+
+The Domain Memory pattern provides persistent, structured state that survives across sessions. Workers can pick up from any point without shared context.
+
+```bash
+FEATURE_DIR=$(ls -td specs/[0-9]*-* 2>/dev/null | head -1)
+DOMAIN_MEMORY_FILE="$FEATURE_DIR/domain-memory.yaml"
+
+# Check if domain memory already exists
+if [ ! -f "$DOMAIN_MEMORY_FILE" ]; then
+    echo ""
+    echo "🧠 Initializing Domain Memory..."
+    echo "   Spawning Initializer agent to expand goals into structured backlog"
+    echo ""
+fi
+```
+
+**Initializer Agent Spawn:**
+
+If domain-memory.yaml doesn't exist, spawn the Initializer agent:
+
+```javascript
+// Only run Initializer for NEW features (not continue)
+if (!domainMemoryExists && mode !== "continue") {
+  // Spawn isolated Initializer agent via Task tool
+  const initResult = await Task({
+    subagent_type: "initializer",  // Uses .claude/agents/domain/initializer.md
+    prompt: `
+      Initialize domain memory for this feature:
+
+      Feature directory: ${FEATURE_DIR}
+      Description: ${featureDescription}
+      Workflow type: feature
+
+      Create domain-memory.yaml with expanded goals and feature backlog.
+      EXIT immediately after initialization - do NOT implement anything.
+    `
+  });
+
+  console.log("✅ Domain Memory initialized");
+  console.log(`   Features created: ${initResult.features_created}`);
+  console.log(`   Next step: Workers will pick features during /implement`);
+}
+```
+
+**For /feature continue:**
+
+If continuing a feature without domain-memory.yaml, auto-generate from tasks.md:
+
+```bash
+if [ ! -f "$DOMAIN_MEMORY_FILE" ] && [ -f "$FEATURE_DIR/tasks.md" ]; then
+    echo ""
+    echo "🔄 Generating domain memory from existing tasks.md..."
+    .spec-flow/scripts/bash/domain-memory.sh generate-from-tasks "$FEATURE_DIR"
+    echo "✅ Domain memory generated"
+    echo ""
+fi
+```
+
+**Key Behaviors:**
+
+1. **New features**: Initializer expands description into structured feature list
+2. **Continue mode**: Auto-generates from tasks.md if domain-memory.yaml missing
+3. **Existing domain-memory**: Skips initialization (already has state)
+4. **Initializer is isolated**: Spawned via Task(), fresh context, exits after setup
+
+**Benefits:**
+
+- Workers can pick up from any point (read state from disk)
+- Progress is observable (log entries)
+- No context pollution between sessions
+- Tests become source of truth for feature status
+
+---
+
+## Step 0.2: Autopilot Phase Orchestration (v11.0 - Full Phase Isolation)
+
+**CRITICAL**: This is the autopilot loop that drives the entire workflow. ALL phases now run in isolated Task() contexts with question batching for user interaction.
+
+### Architecture: Ultra-Lightweight Orchestrator
+
+```
+Main Orchestrator (this file):
+  - Reads state from disk (state.yaml, interaction-state.yaml)
+  - Spawns isolated phase agents via Task()
+  - Handles user Q&A when agents return questions
+  - Updates state.yaml after each phase
+  - NEVER carries implementation details in context
+```
+
+**Benefits:**
+- Unlimited feature complexity (no context compacting)
+- Observable progress (all state on disk)
+- Resumable at any point (`/feature continue`)
+- Each phase gets fresh context
 
 ### Determine Starting Phase
-
-Read `state.yaml` to find current phase:
 
 ```bash
 FEATURE_DIR=$(ls -td specs/[0-9]*-* 2>/dev/null | head -1)
 STATE_FILE="$FEATURE_DIR/state.yaml"
+INTERACTION_FILE="$FEATURE_DIR/interaction-state.yaml"
+
+# Initialize interaction state if needed
+if [ ! -f "$INTERACTION_FILE" ]; then
+    bash .spec-flow/scripts/bash/interaction-manager.sh init "$FEATURE_DIR"
+fi
 
 # Read current phase status
 CURRENT_PHASE=$(yq eval '.phase' "$STATE_FILE" 2>/dev/null || echo "init")
 echo "Current phase: $CURRENT_PHASE"
+
+# Check for pending questions from previous session
+PENDING=$(bash .spec-flow/scripts/bash/interaction-manager.sh get-pending "$FEATURE_DIR" 2>/dev/null)
+if [ -n "$PENDING" ] && [ "$PENDING" != "null" ]; then
+    echo "📋 Pending questions from previous session detected"
+fi
 ```
 
-### Phase Execution Loop
+### Phase Agent Configuration
 
-**Execute phases in sequence using SlashCommand:**
+**Each phase runs as isolated Task() agent:**
 
 ```javascript
-const PHASES = [
-  { name: "spec", command: "/spec", next: "clarify" },
-  { name: "clarify", command: "/clarify", next: "plan", optional: true },
-  { name: "plan", command: "/plan", next: "tasks" },
-  { name: "tasks", command: "/tasks", next: "analyze" },
-  { name: "analyze", command: "/phases:validate", next: "implement" },
-  { name: "implement", command: "/implement", next: "optimize" },
-  { name: "optimize", command: "/optimize", next: "ship" },
-  { name: "ship", command: "/ship", next: "finalize" },
-  { name: "finalize", command: "/finalize", next: "complete" }
+const PHASE_AGENTS = [
+  { name: "spec", agent: "spec-phase-agent", next: "clarify" },
+  { name: "clarify", agent: "clarify-phase-agent", next: "plan", optional: true },
+  { name: "plan", agent: "plan-phase-agent", next: "tasks" },
+  { name: "tasks", agent: "tasks-phase-agent", next: "analyze" },
+  { name: "analyze", agent: "analyze-phase-agent", next: "implement" },
+  { name: "implement", agent: "worker", next: "optimize" }, // Uses domain-memory workers
+  { name: "optimize", agent: "optimize-phase-agent", next: "validate" },
+  { name: "validate", agent: "validate-phase-agent", next: "ship", skipInDirectProd: true },
+  { name: "ship", agent: "ship-phase-agent", next: "finalize" },
+  { name: "finalize", agent: "finalize-phase-agent", next: "complete" }
 ];
+```
 
+### Phase Execution Loop with Question Batching
+
+**Orchestrator spawns agents and handles Q&A:**
+
+```javascript
 // Find current phase index
-let currentIndex = PHASES.findIndex(p => p.name === currentPhase);
-if (currentIndex === -1) currentIndex = 0; // Start from beginning
+let currentIndex = PHASE_AGENTS.findIndex(p => p.name === currentPhase);
+if (currentIndex === -1) currentIndex = 0;
 
 // Execute phases in sequence
-while (currentIndex < PHASES.length) {
-  const phase = PHASES[currentIndex];
+while (currentIndex < PHASE_AGENTS.length) {
+  const phase = PHASE_AGENTS[currentIndex];
 
   console.log(`\n${"═".repeat(60)}`);
-  console.log(`🔄 Executing Phase: ${phase.name.toUpperCase()}`);
+  console.log(`🔄 Phase: ${phase.name.toUpperCase()} (isolated agent)`);
   console.log(`${"═".repeat(60)}\n`);
 
-  // Invoke phase command via SlashCommand
-  await SlashCommand(phase.command);
+  // Check for pending answers from previous Q&A
+  const pendingAnswers = readInteractionState(INTERACTION_FILE);
+  const hasAnswers = pendingAnswers?.pending?.phase === phase.name;
 
-  // Read state to check if phase succeeded
-  const state = readYAML(STATE_FILE);
-  const phaseStatus = state.phases?.[phase.name];
+  // Spawn isolated phase agent via Task()
+  const agentResult = await Task({
+    subagent_type: phase.agent,
+    prompt: `
+      Execute ${phase.name} phase for feature:
 
-  if (phaseStatus === "failed") {
+      Feature directory: ${FEATURE_DIR}
+      ${hasAnswers ? `
+      Resume from: ${pendingAnswers.pending.resume_instructions.entry_point}
+      Answers provided: ${JSON.stringify(pendingAnswers.pending.answers)}
+      ` : ''}
+
+      Read artifacts from disk, execute phase, return structured result.
+    `
+  });
+
+  // Handle agent result
+  const result = agentResult.phase_result;
+
+  // === CASE 1: Agent needs user input ===
+  if (result.status === "needs_input") {
+    console.log(`\n📋 Phase ${phase.name} needs user input`);
+
+    // Save questions to interaction-state.yaml
+    await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh save-questions "${FEATURE_DIR}" "${phase.name}" '${JSON.stringify(result)}'`);
+
+    // Ask user via AskUserQuestion (main context can do this)
+    const userAnswers = await AskUserQuestion({
+      questions: result.questions.map(q => ({
+        question: q.question,
+        header: q.header,
+        multiSelect: q.multi_select,
+        options: q.options
+      }))
+    });
+
+    // Save answers to interaction-state.yaml
+    await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh save-answers "${FEATURE_DIR}" '${JSON.stringify(userAnswers)}'`);
+
+    // Re-spawn agent with answers (loop continues same phase)
+    continue;
+  }
+
+  // === CASE 2: Agent completed successfully ===
+  if (result.status === "completed") {
+    console.log(`✅ Phase ${phase.name} completed`);
+
+    // Log artifacts created
+    if (result.artifacts_created) {
+      result.artifacts_created.forEach(a => console.log(`   📄 ${a.path}`));
+    }
+
+    // Mark phase complete in interaction-state.yaml
+    await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh mark-phase-complete "${FEATURE_DIR}" "${phase.name}"`);
+
+    // Update state.yaml
+    await Bash(`yq eval '.phases.${phase.name} = "completed"' -i "${STATE_FILE}"`);
+    await Bash(`yq eval '.phase = "${phase.next}"' -i "${STATE_FILE}"`);
+
+    // Advance to next phase
+    currentIndex++;
+    continue;
+  }
+
+  // === CASE 3: Agent failed ===
+  if (result.status === "failed") {
     console.log(`\n❌ Phase ${phase.name} FAILED`);
-    console.log(`   Check ${FEATURE_DIR}/error-log.md for details`);
-    console.log(`   Fix issues and run: /feature continue`);
+    console.log(`   Error: ${result.error?.message || 'Unknown error'}`);
+
+    // Update state.yaml
+    await Bash(`yq eval '.phases.${phase.name} = "failed"' -i "${STATE_FILE}"`);
+    await Bash(`yq eval '.status = "failed"' -i "${STATE_FILE}"`);
+
+    // Log to error-log.md
+    if (result.blocking_issues) {
+      console.log(`   Blocking issues:`);
+      result.blocking_issues.forEach(i => console.log(`   - ${i.message}`));
+    }
+
+    console.log(`\n   Fix issues and run: /feature continue`);
     break;
   }
-
-  if (phaseStatus === "skipped" && phase.optional) {
-    console.log(`⏭️  Phase ${phase.name} skipped (optional)`);
-  }
-
-  // Advance to next phase
-  currentIndex++;
-
-  if (currentIndex >= PHASES.length) {
-    console.log(`\n${"═".repeat(60)}`);
-    console.log(`✅ FEATURE COMPLETE`);
-    console.log(`${"═".repeat(60)}\n`);
-  }
 }
+
+// Check for completion
+if (currentIndex >= PHASE_AGENTS.length) {
+  console.log(`\n${"═".repeat(60)}`);
+  console.log(`✅ FEATURE COMPLETE`);
+  console.log(`${"═".repeat(60)}\n`);
+
+  // Update final state
+  await Bash(`yq eval '.status = "completed"' -i "${STATE_FILE}"`);
+  await Bash(`yq eval '.completed_at = "${new Date().toISOString()}"' -i "${STATE_FILE}"`);
+}
+```
+
+### Question Batching Protocol
+
+**How user interaction works with isolated agents:**
+
+1. **Agent returns questions** instead of calling AskUserQuestion directly
+2. **Main orchestrator** receives questions, saves to `interaction-state.yaml`
+3. **Main asks user** via AskUserQuestion (this works in main context)
+4. **Answers saved** to `interaction-state.yaml`
+5. **Agent re-spawned** with answers, continues from `resume_from` point
+
+**Agent return format:**
+```yaml
+phase_result:
+  status: "needs_input"
+  questions:
+    - id: "Q001"
+      question: "Who is the primary user?"
+      header: "User"
+      multi_select: false
+      options:
+        - label: "End users"
+          description: "Public-facing features"
+        - label: "Admin users"
+          description: "Internal tools"
+  resume_from: "requirements_gathering"
+  context_to_pass:
+    research_done: true
+    codebase_analyzed: true
 ```
 
 ### Manual Gate Detection
 
-**If a phase requires manual approval, pause the loop:**
+**Gates are now handled by validate-agent and ship-agent:**
 
 ```javascript
-// Check for manual gates after phase completion
-const manualGates = ["mockup_approval", "staging_validation"];
+// Validate agent returns approval question for staging validation
+// Ship agent returns approval question for production deployment
+// These are handled through the same Q&A loop above
 
-for (const gate of manualGates) {
-  const gateStatus = state.gates?.[gate];
+// Manual gates that pause workflow:
+const MANUAL_GATES = {
+  mockup_approval: "Mockups require approval before implementation",
+  staging_validation: "Staging needs manual verification"
+};
 
-  if (gateStatus === "pending") {
-    console.log(`\n⏸️  MANUAL GATE: ${gate.replace("_", " ")}`);
-    console.log(`   Workflow paused for approval`);
-    console.log(`   After approval, run: /feature continue`);
-
-    // Update state to reflect pause
-    state.status = "paused";
-    state.paused_at = new Date().toISOString();
-    state.paused_reason = gate;
-    writeYAML(STATE_FILE, state);
-
-    break; // Exit loop
-  }
+// Check if a gate was set by phase agent
+const state = readYAML(STATE_FILE);
+if (state.gates?.mockup_approval === "pending") {
+  console.log(`\n⏸️  MOCKUP APPROVAL REQUIRED`);
+  console.log(`   Review mockups in: ${FEATURE_DIR}/mockups/`);
+  console.log(`   Approve and run: /feature continue`);
 }
 ```
 

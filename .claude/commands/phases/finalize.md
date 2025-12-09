@@ -1,52 +1,54 @@
 ---
 description: Finalize documentation (CHANGELOG, README, help docs), update GitHub milestones/releases, and cleanup branches after production deployment
-allowed-tools:
-  [
-    Bash(git *),
-    Bash(gh *),
-    Bash(yq *),
-    Bash(jq *),
-    Bash(date *),
-    Bash(python *),
-    Bash(spec-cli.py *),
-    Read,
-    Write,
-    Edit,
-    Grep,
-    Glob,
-    AskUserQuestion,
-    SlashCommand,
-  ]
+allowed-tools: [Read, Bash, Task]
 internal: true
+version: 11.0
+updated: 2025-12-09
 ---
 
+# /finalize — Post-Deployment Finalization (Thin Wrapper)
+
+> **v11.0 Architecture**: This command spawns the isolated `finalize-phase-agent` via Task(). Documentation and archival runs in isolated context.
+
 <context>
+**Active Feature**: !`ls -td specs/[0-9]*-* 2>/dev/null | head -1 || echo "none"`
+
+**Interaction State**: !`cat specs/*/interaction-state.yaml 2>/dev/null | head -10 || echo "none"`
+</context>
+
+<objective>
+Spawn isolated finalize-phase-agent to complete post-deployment documentation and archival.
+
+**Architecture (v11.0 - Phase Isolation):**
+```
+/finalize → Task(finalize-phase-agent) → CHANGELOG, walkthrough, archive
+```
+
+**Agent responsibilities:**
+- Generate CHANGELOG.md entry
+- Update README.md if user-facing changes
+- Create walkthrough.md (comprehensive for epics)
+- Create GitHub release
+- Archive feature to completed/
+- Clean up feature branch
+
+**Execution model**:
+- **Idempotent**: Safe to re-run; completed tasks are skipped
+- **Deterministic**: No prompts, no editors
+- **Tracked**: Every step logged with clear progress indicators
+
+**Workflow position**: `implement → optimize → validate → ship → finalize`
+</objective>
+
+## Legacy Context (for agent reference)
+
+<legacy_context>
 Current workflow state: !`cat specs/*/state.yaml 2>/dev/null | grep -E '(feature\.|deployment\.production\.|version:)' | head -20`
 
 Recent production deployment: !`yq -r '.deployment.production | "URL: \(.url // "N/A"), Date: \(.completed_at // "N/A"), Status: \(.status // "unknown")"' specs/*/state.yaml 2>/dev/null`
 
 Required tools check: !`for c in gh jq yq git python; do command -v "$c" >/dev/null 2>&1 && echo "✅ $c" || echo "❌ $c"; done`
-</context>
-
-<objective>
-Finalize documentation, roadmap, and housekeeping after successful production deployment.
-
-This command updates CHANGELOG.md, README.md, help docs, GitHub milestones/releases, and cleans up merged branches. For epic workflows (v5.0+), generates comprehensive walkthrough with velocity metrics before standard finalization.
-
-**Dependencies**:
-
-- Completed production deployment with state.yaml containing:
-  - `feature.title`, `feature.slug`
-  - `deployment.production.url`
-  - `deployment.production.run_id`
-  - `version` (MAJOR.MINOR.PATCH)
-
-**Execution model**:
-
-- **Idempotent**: Safe to re-run; completed tasks are skipped
-- **Deterministic**: No prompts, no editors
-- **Tracked**: Every step logged with clear progress indicators
-  </objective>
+</legacy_context>
 
 <process>
 1. **Check prerequisites** - Verify gh, jq, yq, git, python are installed and gh is authenticated

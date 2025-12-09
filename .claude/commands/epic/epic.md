@@ -334,6 +334,263 @@ Auto-apply is skipped if:
 
 ---
 
+### Step 0.6: Domain Memory Initialization (v11.0)
+
+**Initialize hierarchical domain memory for epic sprints.**
+
+The Domain Memory pattern provides persistent, structured state for each sprint. Workers can pick up from any point without shared context.
+
+```bash
+# Create epic directory if not exists
+EPIC_DIR=$(ls -td epics/[0-9]*-* 2>/dev/null | head -1)
+
+if [ -n "$EPIC_DIR" ]; then
+    # Initialize epic-level domain memory
+    if [ ! -f "$EPIC_DIR/domain-memory.yaml" ]; then
+        echo ""
+        echo "🧠 Initializing Epic Domain Memory..."
+        .spec-flow/scripts/bash/domain-memory.sh init "$EPIC_DIR"
+    fi
+fi
+```
+
+**Initializer Agent Spawn for Epic:**
+
+For new epics, spawn the Initializer agent to expand the description into sprint-level domain memory:
+
+```javascript
+// Spawn isolated Initializer for epic
+if (!epicDomainMemoryExists && mode !== "continue") {
+  const initResult = await Task({
+    subagent_type: "initializer",  // Uses .claude/agents/domain/initializer.md
+    prompt: `
+      Initialize domain memory for this EPIC:
+
+      Epic directory: ${EPIC_DIR}
+      Description: ${epicDescription}
+      Workflow type: epic
+
+      Create:
+      1. Epic-level domain-memory.yaml with high-level goals
+      2. After sprint planning, create sprint-level files:
+         - epics/{slug}/sprints/S01/domain-memory.yaml
+         - epics/{slug}/sprints/S02/domain-memory.yaml
+         - etc.
+
+      Each sprint gets its own domain-memory.yaml with features scoped to that sprint.
+      EXIT immediately after initialization - do NOT implement anything.
+    `
+  });
+
+  console.log("✅ Epic Domain Memory initialized");
+  console.log(`   Sprint memory files will be created during /plan phase`);
+}
+```
+
+**Sprint-Level Domain Memory:**
+
+After `/plan` phase creates sprints, each sprint directory gets its own domain-memory.yaml:
+
+```
+epics/001-ecom/
+├── domain-memory.yaml          # Epic-level overview (goals, constraints)
+└── sprints/
+    ├── S01/
+    │   └── domain-memory.yaml  # Sprint 1 features and status
+    ├── S02/
+    │   └── domain-memory.yaml  # Sprint 2 features and status
+    └── S03/
+        └── domain-memory.yaml  # Sprint 3 features and status
+```
+
+**Benefits for Epics:**
+
+- **Parallel sprint execution**: Workers for S01 and S02 can run simultaneously
+- **Isolated state per sprint**: No cross-contamination between sprint Workers
+- **Observable progress**: Each sprint's domain-memory.yaml shows current status
+- **Resumable at any level**: Can resume epic, sprint, or individual feature
+
+---
+
+### Step 0.7: Phase Agent Orchestration (v11.0 - Full Phase Isolation)
+
+**CRITICAL**: ALL epic phases now run in isolated Task() contexts with question batching for user interaction.
+
+**Architecture: Ultra-Lightweight Epic Orchestrator**
+
+```
+Main Orchestrator (this file):
+  - Reads state from disk (state.yaml, interaction-state.yaml)
+  - Spawns isolated phase agents via Task()
+  - Handles user Q&A when agents return questions
+  - Updates state.yaml after each phase
+  - NEVER carries implementation details in context
+```
+
+**Benefits for Large Epics:**
+- Unlimited epic complexity (no context compacting)
+- Observable progress (all state on disk)
+- Resumable at any point (`/epic continue`)
+- Each phase gets fresh context
+- Parallel sprint execution without context pollution
+
+**Initialize Interaction State:**
+
+```bash
+EPIC_DIR=$(ls -td epics/[0-9]*-* 2>/dev/null | head -1)
+STATE_FILE="$EPIC_DIR/state.yaml"
+INTERACTION_FILE="$EPIC_DIR/interaction-state.yaml"
+
+# Initialize interaction state if needed
+if [ ! -f "$INTERACTION_FILE" ]; then
+    bash .spec-flow/scripts/bash/interaction-manager.sh init "$EPIC_DIR"
+fi
+
+# Check for pending questions from previous session
+PENDING=$(bash .spec-flow/scripts/bash/interaction-manager.sh get-pending "$EPIC_DIR" 2>/dev/null)
+if [ -n "$PENDING" ] && [ "$PENDING" != "null" ]; then
+    echo "📋 Pending questions from previous session detected"
+fi
+```
+
+**Phase Agent Configuration (Epic):**
+
+```javascript
+const EPIC_PHASE_AGENTS = [
+  { name: "spec", agent: "spec-phase-agent", next: "clarify" },
+  { name: "clarify", agent: "clarify-phase-agent", next: "plan", optional: true },
+  { name: "plan", agent: "plan-phase-agent", next: "tasks" },
+  { name: "tasks", agent: "tasks-phase-agent", next: "analyze" },
+  { name: "analyze", agent: "analyze-phase-agent", next: "implement" },
+  { name: "implement", agent: "epic", next: "optimize" }, // Uses /implement-epic for parallel sprints
+  { name: "optimize", agent: "optimize-phase-agent", next: "validate" },
+  { name: "validate", agent: "validate-phase-agent", next: "ship", skipInDirectProd: true },
+  { name: "ship", agent: "ship-phase-agent", next: "finalize" },
+  { name: "finalize", agent: "finalize-phase-agent", next: "complete" }
+];
+```
+
+**Phase Execution Loop with Question Batching:**
+
+```javascript
+// Read current phase from state
+const currentPhase = readYAML(STATE_FILE).phase || "spec";
+let currentIndex = EPIC_PHASE_AGENTS.findIndex(p => p.name === currentPhase);
+if (currentIndex === -1) currentIndex = 0;
+
+// Execute phases in sequence
+while (currentIndex < EPIC_PHASE_AGENTS.length) {
+  const phase = EPIC_PHASE_AGENTS[currentIndex];
+
+  console.log(`\n${"═".repeat(60)}`);
+  console.log(`🔄 Epic Phase: ${phase.name.toUpperCase()} (isolated agent)`);
+  console.log(`${"═".repeat(60)}\n`);
+
+  // Check for pending answers from previous Q&A
+  const pendingAnswers = readInteractionState(INTERACTION_FILE);
+  const hasAnswers = pendingAnswers?.pending?.phase === phase.name;
+
+  // Spawn isolated phase agent via Task()
+  const agentResult = await Task({
+    subagent_type: phase.agent,
+    prompt: `
+      Execute ${phase.name} phase for EPIC:
+
+      Epic directory: ${EPIC_DIR}
+      Workflow type: epic
+      ${hasAnswers ? `
+      Resume from: ${pendingAnswers.pending.resume_instructions.entry_point}
+      Answers provided: ${JSON.stringify(pendingAnswers.pending.answers)}
+      ` : ''}
+
+      Read artifacts from disk, execute phase, return structured result.
+    `
+  });
+
+  // Handle agent result
+  const result = agentResult.phase_result;
+
+  // === CASE 1: Agent needs user input ===
+  if (result.status === "needs_input") {
+    console.log(`\n📋 Epic phase ${phase.name} needs user input`);
+
+    // Save questions to interaction-state.yaml
+    await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh save-questions "${EPIC_DIR}" "${phase.name}" '${JSON.stringify(result)}'`);
+
+    // Ask user via AskUserQuestion (main context can do this)
+    const userAnswers = await AskUserQuestion({
+      questions: result.questions.map(q => ({
+        question: q.question,
+        header: q.header,
+        multiSelect: q.multi_select,
+        options: q.options
+      }))
+    });
+
+    // Save answers to interaction-state.yaml
+    await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh save-answers "${EPIC_DIR}" '${JSON.stringify(userAnswers)}'`);
+
+    // Re-spawn agent with answers (loop continues same phase)
+    continue;
+  }
+
+  // === CASE 2: Agent completed successfully ===
+  if (result.status === "completed") {
+    console.log(`✅ Epic phase ${phase.name} completed`);
+
+    // Log artifacts created
+    if (result.artifacts_created) {
+      result.artifacts_created.forEach(a => console.log(`   📄 ${a.path}`));
+    }
+
+    // Mark phase complete
+    await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh mark-phase-complete "${EPIC_DIR}" "${phase.name}"`);
+    await Bash(`yq eval '.phases.${phase.name} = "completed"' -i "${STATE_FILE}"`);
+    await Bash(`yq eval '.phase = "${phase.next}"' -i "${STATE_FILE}"`);
+
+    currentIndex++;
+    continue;
+  }
+
+  // === CASE 3: Agent failed ===
+  if (result.status === "failed") {
+    console.log(`\n❌ Epic phase ${phase.name} FAILED`);
+    console.log(`   Error: ${result.error?.message || 'Unknown error'}`);
+
+    await Bash(`yq eval '.phases.${phase.name} = "failed"' -i "${STATE_FILE}"`);
+    await Bash(`yq eval '.status = "failed"' -i "${STATE_FILE}"`);
+
+    if (result.blocking_issues) {
+      console.log(`   Blocking issues:`);
+      result.blocking_issues.forEach(i => console.log(`   - ${i.message}`));
+    }
+
+    console.log(`\n   Fix issues and run: /epic continue`);
+    break;
+  }
+}
+
+// Check for completion
+if (currentIndex >= EPIC_PHASE_AGENTS.length) {
+  console.log(`\n${"═".repeat(60)}`);
+  console.log(`✅ EPIC COMPLETE`);
+  console.log(`${"═".repeat(60)}\n`);
+
+  await Bash(`yq eval '.status = "completed"' -i "${STATE_FILE}"`);
+  await Bash(`yq eval '.completed_at = "${new Date().toISOString()}"' -i "${STATE_FILE}"`);
+}
+```
+
+**Question Batching Protocol (Same as /feature):**
+
+1. **Agent returns questions** instead of calling AskUserQuestion directly
+2. **Main orchestrator** receives questions, saves to `interaction-state.yaml`
+3. **Main asks user** via AskUserQuestion (this works in main context)
+4. **Answers saved** to `interaction-state.yaml`
+5. **Agent re-spawned** with answers, continues from `resume_from` point
+
+---
+
 ### Step 1: Create Epic Specification
 
 **Parse user input and detect complexity:**

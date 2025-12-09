@@ -558,6 +558,154 @@ if (hasMockups) {
 
 ---
 
+### Step 2.8: Domain Memory Worker Pattern (v11.0)
+
+**Initialize and use Domain Memory for atomic feature execution within sprints.**
+
+When sprint-level domain-memory.yaml files exist, use the Worker pattern for isolated feature execution:
+
+```javascript
+// Check for sprint-level domain memory files
+for (const sprint of sprints) {
+  const sprintDir = `${EPIC_DIR}/sprints/${sprint.id}`;
+  const domainMemoryFile = `${sprintDir}/domain-memory.yaml`;
+
+  if (!fs.existsSync(domainMemoryFile)) {
+    log(`📝 Initializing domain memory for Sprint ${sprint.id}...`);
+
+    // Generate from tasks.md if it exists
+    const tasksFile = `${sprintDir}/tasks.md`;
+    if (fs.existsSync(tasksFile)) {
+      await Bash({
+        command: `.spec-flow/scripts/bash/domain-memory.sh generate-from-tasks ${sprintDir}`,
+        description: `Generate domain memory for Sprint ${sprint.id}`
+      });
+    } else {
+      await Bash({
+        command: `.spec-flow/scripts/bash/domain-memory.sh init ${sprintDir}`,
+        description: `Initialize domain memory for Sprint ${sprint.id}`
+      });
+    }
+  }
+}
+
+log("✅ Sprint domain memory files ready");
+```
+
+**Worker-Based Sprint Execution:**
+
+When domain memory is available, sprints use the Worker loop pattern:
+
+```javascript
+async function executeSprintWithWorkers(sprintDir, sprintId) {
+  const domainMemoryFile = `${sprintDir}/domain-memory.yaml`;
+
+  // Read domain memory to check remaining features
+  let remaining = getUntestedOrFailingFeatures(domainMemoryFile);
+
+  log(`📋 Sprint ${sprintId}: ${remaining.length} features to implement`);
+
+  while (remaining.length > 0) {
+    log(`\n── Spawning Worker for Sprint ${sprintId} ──\n`);
+
+    // Spawn isolated Worker via Task tool
+    // CRITICAL: Each Worker gets fresh context, no memory of previous runs
+    const workerResult = await Task({
+      subagent_type: "worker",  // Uses .claude/agents/domain/worker.md
+      prompt: `
+        Execute ONE feature from sprint domain memory:
+
+        Sprint directory: ${sprintDir}
+        Sprint ID: ${sprintId}
+        Domain memory: ${domainMemoryFile}
+
+        Boot-up ritual:
+        1. READ domain-memory.yaml from disk
+        2. RUN baseline tests (verify no regressions)
+        3. PICK one failing/untested feature (highest priority)
+        4. LOCK the feature
+        5. IMPLEMENT that ONE feature
+        6. RUN tests
+        7. UPDATE domain-memory.yaml status
+        8. COMMIT changes
+        9. EXIT (even if more work remains)
+
+        CRITICAL: Work on exactly ONE feature, then EXIT.
+      `
+    });
+
+    log(`✅ Worker completed: ${workerResult.status}`);
+    log(`   Feature: ${workerResult.feature_id}`);
+
+    // Re-read domain memory to get updated state
+    remaining = getUntestedOrFailingFeatures(domainMemoryFile);
+    log(`   Remaining features: ${remaining.length}`);
+  }
+
+  log(`\n✅ Sprint ${sprintId} complete - all features passing`);
+}
+```
+
+**Parallel Sprint Workers:**
+
+For parallel layers, spawn Workers for multiple sprints in SINGLE message:
+
+```javascript
+async function executeParallelSprintsWithWorkers(layerSprints) {
+  // CRITICAL: Single message with multiple Task calls for true parallelism
+  const workerPromises = layerSprints.map(sprint => {
+    const sprintDir = `${EPIC_DIR}/sprints/${sprint.id}`;
+
+    return Task({
+      subagent_type: "worker",
+      run_in_background: true,  // Run in parallel
+      prompt: `
+        Execute ONE feature from sprint domain memory:
+        Sprint directory: ${sprintDir}
+        Sprint ID: ${sprint.id}
+        Domain memory: ${sprintDir}/domain-memory.yaml
+
+        [Same boot-up ritual as above]
+      `
+    });
+  });
+
+  // Wait for all Workers to complete
+  const results = await Promise.all(workerPromises);
+
+  // Check if any Workers found remaining work
+  const sprintsWithRemainingWork = [];
+  for (const sprint of layerSprints) {
+    const remaining = getUntestedOrFailingFeatures(
+      `${EPIC_DIR}/sprints/${sprint.id}/domain-memory.yaml`
+    );
+    if (remaining.length > 0) {
+      sprintsWithRemainingWork.push(sprint.id);
+    }
+  }
+
+  // If work remains, spawn more Workers
+  if (sprintsWithRemainingWork.length > 0) {
+    log(`🔄 ${sprintsWithRemainingWork.length} sprints have remaining work`);
+    // Recursive call to continue Workers
+  }
+}
+```
+
+**Benefits of Worker Pattern for Epics:**
+
+1. **True isolation**: Each Worker has fresh context, no cross-contamination
+2. **Parallel sprint execution**: Workers for different sprints run simultaneously
+3. **Observable progress**: domain-memory.yaml shows exact status at any point
+4. **Automatic retry**: Failed features retried up to 3 times before blocking
+5. **Resumable**: `/epic continue` picks up from last domain memory state
+
+**Fallback to Agent Pattern:**
+
+If domain-memory.yaml doesn't exist for a sprint, fall back to the traditional agent execution pattern (Step 3 below).
+
+---
+
 ### Step 3: Execute Layers Sequentially
 
 **For each layer, execute all sprints in parallel (if layer.parallelizable):**

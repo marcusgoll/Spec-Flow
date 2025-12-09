@@ -1,50 +1,62 @@
 ---
 description: Generate TDD task breakdown from plan.md with test-first sequencing and mockup-first mode (--ui-first)
-allowed-tools: [Read, Grep, Glob, Bash(python .spec-flow/scripts/spec-cli.py tasks:*), Bash(git add:*), Bash(git commit:*), Bash(git status:*), Bash(git branch:*), Bash(jq:*), Bash(ls:*), Bash(wc:*)]
+allowed-tools: [Read, Bash, Task, AskUserQuestion]
 argument-hint: [--ui-first | --standard | --no-input] (optional flags for mode selection)
-version: 2.0
-updated: 2025-11-20
+version: 11.0
+updated: 2025-12-09
 ---
 
+# /tasks — Task Breakdown Generator (Thin Wrapper)
+
+> **v11.0 Architecture**: This command spawns the isolated `tasks-phase-agent` via Task(). All task breakdown logic runs in isolated context.
+
 <context>
+**User Input**: $ARGUMENTS
+
+**Active Feature**: !`ls -td specs/[0-9]*-* 2>/dev/null | head -1 || echo "none"`
+
+**Interaction State**: !`cat specs/*/interaction-state.yaml 2>/dev/null | head -10 || echo "none"`
+</context>
+
+<objective>
+Spawn isolated tasks-phase-agent to generate TDD task breakdown from plan.md.
+
+**Architecture (v11.0 - Phase Isolation):**
+```
+/tasks → Task(tasks-phase-agent) → tasks.md with TDD structure
+```
+
+**Agent responsibilities:**
+- Read plan.md and spec.md
+- Generate 20-30 tasks with acceptance criteria
+- Follow TDD Red-Green-Refactor pattern
+- Calculate task sizes (XS/S/M/L)
+- Identify dependencies and parallel-safe tasks
+
+**Mode detection:**
+- **Epic workflows**: Sprint breakdown with dependency graph
+- **Feature workflows**: Tasks organized by user story priority
+- **UI-first mode** (--ui-first): Mockup tasks before implementation
+
+**Flags**:
+- `--ui-first`: Generate HTML mockup tasks first
+- `--standard`: Standard TDD task generation
+- `--no-input`: Non-interactive mode for CI/CD
+
+**Workflow position**: `spec → clarify → plan → tasks → implement → optimize → ship`
+</objective>
+
+## Legacy Context (for agent reference)
+
+<legacy_context>
 Current git status: !`git status --short | head -10`
 
 Current branch: !`git branch --show-current`
 
-Workflow Detection: Auto-detected via workspace files, branch pattern, or state.yaml
-
 Feature spec exists: Auto-detected (epics/_/epic-spec.md OR specs/_/spec.md)
 
 Plan exists: Auto-detected (epics/_/plan.md OR specs/_/plan.md)
-
-Feature workspace: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>/dev/null | jq -r '.FEATURE_DIR // "Not initialized"'`
-
-Workspace type: Auto-detected via detection utility
-</context>
-
-<objective>
-Generate concrete TDD tasks from design artifacts with test-first sequencing.
-
-**Mode detection:**
-
-- **Epic workflows**: Auto-generates sprint breakdown with dependency graph and contract locking (multiple sprints for >16h work or 2+ subsystems)
-- **Feature workflows**: Generates 20-30 tasks organized by user story priority
-- **UI-first mode** (--ui-first flag): Generates HTML mockup tasks first, then auto-proceeds to implementation
-
-This ensures traceable, deterministic task generation that prevents hallucinated tasks referencing non-existent code.
-
-**Dependencies**:
-
-- Git repository initialized
-- Feature spec (spec.md) and plan (plan.md) completed
-- Required tools: git, jq
-
-**Flags**:
-
-- `--ui-first`: Generate HTML mockup tasks before implementation
-- `--standard`: Standard TDD task generation (no mockups) - explicit override of config/history
-- `--no-input`: Non-interactive mode for CI/CD - uses default (standard) mode
-  </objective>
+</legacy_context>
 
 <process>
 

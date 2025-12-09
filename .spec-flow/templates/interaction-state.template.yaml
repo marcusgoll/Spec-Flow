@@ -1,0 +1,114 @@
+# Interaction State v1.0
+# Tracks question/answer sessions for isolated phase agents
+# Location: specs/NNN-slug/interaction-state.yaml or epics/NNN-slug/interaction-state.yaml
+
+version: "1.0"
+created: ${TIMESTAMP}
+last_updated: ${TIMESTAMP}
+
+# === CURRENT PHASE ===
+# Which phase is currently executing or waiting for input
+current_phase: null  # spec | clarify | plan | tasks | implement | optimize | validate | ship | finalize
+
+# === PENDING INTERACTION ===
+# Questions waiting for user response (only populated when status=needs_input)
+pending:
+  phase: null
+  session_id: null
+  questions: []
+  # questions format:
+  #   - id: "Q001"
+  #     question: "What authentication method should we use?"
+  #     header: "Auth Method"
+  #     multi_select: false
+  #     options:
+  #       - label: "OAuth 2.1"
+  #         description: "External providers (Google, GitHub)"
+  #       - label: "JWT tokens"
+  #         description: "Self-managed token auth"
+  #     context: "Referenced in spec.md:45-50"
+  #     default: "OAuth 2.1"
+  resume_instructions:
+    agent: null        # Which agent to re-spawn
+    entry_point: null  # Where agent should resume from
+    context_to_pass: {}
+
+# === SESSION HISTORY ===
+# Complete audit trail of all Q&A sessions
+sessions: []
+# Each session:
+#   - session_id: "2025-01-15T10:30:00Z"
+#     phase: "spec"
+#     round: 1
+#     started_at: "2025-01-15T10:30:00Z"
+#     completed_at: "2025-01-15T10:32:00Z"
+#     questions_asked:
+#       - id: "Q001"
+#         question: "What authentication method?"
+#         asked_at: "2025-01-15T10:30:00Z"
+#         answered_at: "2025-01-15T10:31:00Z"
+#         answer: "OAuth 2.1"
+#         answer_source: "user_selection"  # user_selection | default | inferred | other
+#         user_comment: null  # If user selected "Other" and typed custom answer
+#     status: "completed"  # pending | completed | skipped
+
+# === PHASE COMPLETION STATUS ===
+# Quick lookup for which phases have completed
+phases_completed:
+  spec: false
+  clarify: false
+  plan: false
+  tasks: false
+  implement: false
+  optimize: false
+  validate: false
+  ship: false
+  finalize: false
+
+# === AGENT ARTIFACTS ===
+# Track what each phase agent produced
+artifacts:
+  spec:
+    created: []
+    modified: []
+    summary: null
+  clarify:
+    created: []
+    modified: []
+    summary: null
+  plan:
+    created: []
+    modified: []
+    summary: null
+  tasks:
+    created: []
+    modified: []
+    summary: null
+  implement:
+    created: []
+    modified: []
+    summary: null
+  optimize:
+    created: []
+    modified: []
+    summary: null
+  validate:
+    created: []
+    modified: []
+    summary: null
+  ship:
+    created: []
+    modified: []
+    summary: null
+  finalize:
+    created: []
+    modified: []
+    summary: null
+
+# === WORKFLOW METADATA ===
+workflow:
+  type: null  # feature | epic
+  slug: null
+  started_at: null
+  total_questions_asked: 0
+  total_sessions: 0

@@ -2,138 +2,228 @@
 name: spec
 description: Generate complete feature specification with research, requirements analysis, and quality validation
 argument-hint: <feature-description> [--skip-clarify]
-allowed-tools:
-  [
-    Read,
-    Write,
-    Edit,
-    Grep,
-    Glob,
-    Bash(git *),
-    Bash(python .spec-flow/scripts/*),
-    AskUserQuestion,
-    SlashCommand,
-  ]
+allowed-tools: [Read, Bash, Task, AskUserQuestion]
+version: 11.0
+updated: 2025-12-09
 ---
 
-# /spec — Feature Specification Generator
+# /spec — Feature Specification Generator (Thin Wrapper)
+
+> **v11.0 Architecture**: This command is now a thin wrapper that spawns the isolated `spec-phase-agent` via Task(). All specification logic runs in an isolated context with question batching for user interaction.
 
 <context>
 **User Input**: $ARGUMENTS
 
-**Feature Classification**: !`bash .spec-flow/scripts/bash/classify-feature.sh "$ARGUMENTS" 2>/dev/null || echo '{"error": "classification unavailable"}'`
+**Active Feature**: !`ls -td specs/[0-9]*-* 2>/dev/null | head -1 || echo "none"`
 
-**Current Git Status**: !`git status --short 2>$null || echo "clean"`
-
-**Current Branch**: !`git branch --show-current 2>$null || echo "none"`
-
-**Existing Specs**: !`dir /b /ad specs 2>$null | head -10 || echo "none"`
-
-**Project Documentation**: !`dir /b docs\project\*.md 2>$null | head -5 || echo "none"`
-
-**Tech Stack Context** (if available):
-!`head -50 docs/project/tech-stack.md 2>/dev/null || echo "No tech-stack.md found"`
-
-**API Strategy Context** (if available):
-!`head -30 docs/project/api-strategy.md 2>/dev/null || echo "No api-strategy.md found"`
-
-**Data Architecture Context** (if available):
-!`head -30 docs/project/data-architecture.md 2>/dev/null || echo "No data-architecture.md found"`
-
-**Roadmap (Similar Features)**: !`gh issue list --label roadmap --limit 5 2>$null || echo "none"`
-
-**Specification Artifacts** (after execution):
-
-- @specs/NNN-slug/spec.md
-- @specs/NNN-slug/NOTES.md
-- @specs/NNN-slug/checklists/requirements.md
-- @specs/NNN-slug/state.yaml
+**Interaction State**: !`cat specs/*/interaction-state.yaml 2>/dev/null | head -10 || echo "none"`
 </context>
 
 <objective>
-Generate a production-grade feature specification from natural language input.
+Spawn isolated spec-phase-agent to generate production-grade feature specification.
 
-Specification workflow:
-
-1. Analyze user input for ambiguity (clarification if needed)
-2. Invoke Python CLI for deterministic slug generation and artifact creation
-3. Classify feature type and research mode
-4. Generate requirements (functional + non-functional) with FR-XXX/NFR-XXX identifiers
-5. Create user scenarios using Gherkin format (Given/When/Then)
-6. Validate quality with automated checklist
-7. Auto-commit to git with detailed summary
-8. Auto-proceed to next phase
-
-**Mental Model - Autopilot Pipeline**:
+**Architecture (v11.0 - Full Phase Isolation):**
 
 ```
-[clarify if needed] → spec-flow → classify → research → artifacts → commit → [auto-proceed]
+/spec command (this file)
+    │
+    ▼
+┌──────────────────────────────────────────────────────┐
+│ 1. Detect feature directory                          │
+│ 2. Initialize interaction-state.yaml if needed       │
+│ 3. Check for pending answers from previous session   │
+│ 4. Spawn Task(spec-phase-agent)                      │
+│ 5. Handle agent result:                              │
+│    - needs_input → AskUserQuestion → re-spawn        │
+│    - completed → update state.yaml                   │
+│    - failed → log error, pause workflow              │
+└──────────────────────────────────────────────────────┘
 ```
 
-**Key principles**:
-
-- **Deterministic**: Slug generation and directory structure are predictable
-- **Guardrails**: Prevent speculation, cite sources, validate quality automatically
-- **User-value**: Success criteria are measurable and tech-agnostic
-- **Conditional**: UI/metrics/deployment sections enabled by classification flags
-- **Autopilot**: Auto-proceeds through phases, only blocks on errors
-
-**Clarification Behavior**:
-
-- Use `[NEEDS CLARIFICATION]` **only for blocking questions** in spec.md (max 3)
-- Blocking = questions that make it unsafe to define requirements or acceptance criteria
-- Additional or non-blocking questions go into `clarify.md`
-- If blocking questions remain, auto-runs /clarify before proceeding
-
-**References**:
-
-- Gherkin for scenarios (Given/When/Then)
-- HEART metrics (Happiness, Engagement, Adoption, Retention, Task success)
-- Conventional Commits for commit messages
+**Benefits:**
+- Main context stays lightweight (no spec details in memory)
+- Unlimited specification complexity
+- Resumable at any point
+- Observable Q&A history in interaction-state.yaml
 
 **Workflow position**: `spec → clarify? → plan → tasks → implement → optimize → ship`
 </objective>
 
-## Anti-Hallucination Rules
-
-**CRITICAL**: Follow these rules to prevent making up information when creating specifications.
-
-1. **Never speculate about existing code you have not read**
-
-   - ❌ BAD: "The app probably uses React Router for navigation"
-   - ✅ GOOD: "Let me check package.json and src/ to see what's currently used"
-   - Use Glob to find files, Read to examine them before making assumptions
-
-2. **Cite sources for technical constraints**
-
-   - When referencing existing architecture, cite files: `package.json:12`, `tsconfig.json:5-8`
-   - When referencing similar features, cite: `specs/002-auth-flow/spec.md:45`
-   - Don't invent APIs, libraries, or frameworks that might not exist
-
-3. **Admit when research is needed**
-
-   - If uncertain about tech stack, say: "I need to read package.json and check existing code"
-   - If unsure about design patterns, say: "Let me search for similar implementations"
-   - Never make up database schemas, API endpoints, or component hierarchies
-
-4. **Verify roadmap entries before referencing**
-
-   - Before saying "This builds on feature X", search GitHub Issues or `docs/roadmap.md` for X
-   - Use exact issue slugs and titles, don't paraphrase
-   - If feature not in roadmap, say: "This is a new feature, not extending existing work"
-
-5. **Quote user requirements exactly & handle clarifications correctly**
-   - When documenting user needs, quote $ARGUMENTS directly
-   - Don't add unstated requirements or assumptions
-   - Use `[NEEDS CLARIFICATION]` **only for blocking questions** in spec.md (max 3)
-   - All additional or non-blocking questions go into `clarify.md`
-   - If blocking clarifications remain, the spec should **not** be treated as fully ready for planning or implementation until they are resolved
-
-**Why this matters**: Hallucinated technical constraints lead to specs that can't be implemented. Specs based on non-existent code create impossible plans. Accurate specifications save 50–60% of implementation time and prevent wasting cycles on bad assumptions.
-
----
-
 <process>
+
+## Step 1: Detect Feature Directory
+
+```bash
+FEATURE_DIR=$(ls -td specs/[0-9]*-* 2>/dev/null | head -1)
+STATE_FILE="$FEATURE_DIR/state.yaml"
+INTERACTION_FILE="$FEATURE_DIR/interaction-state.yaml"
+
+# For new features, FEATURE_DIR may not exist yet
+# The spec-phase-agent will create it
+if [ -z "$FEATURE_DIR" ]; then
+    echo "📋 Creating new feature specification..."
+    FEATURE_DIR="specs/NEW"  # Placeholder, agent will create actual directory
+fi
+```
+
+## Step 2: Initialize Interaction State
+
+```bash
+# Initialize interaction state if feature exists but no interaction file
+if [ -d "$FEATURE_DIR" ] && [ ! -f "$INTERACTION_FILE" ]; then
+    bash .spec-flow/scripts/bash/interaction-manager.sh init "$FEATURE_DIR"
+fi
+```
+
+## Step 3: Check for Pending Answers
+
+```bash
+# Check for pending questions from previous session
+PENDING=$(bash .spec-flow/scripts/bash/interaction-manager.sh get-pending "$FEATURE_DIR" 2>/dev/null)
+if [ -n "$PENDING" ] && [ "$PENDING" != "null" ]; then
+    echo "📋 Resuming with pending answers from previous session"
+    HAS_ANSWERS=true
+else
+    HAS_ANSWERS=false
+fi
+```
+
+## Step 4: Spawn Spec Phase Agent
+
+```javascript
+// Spawn isolated spec-phase-agent via Task()
+const agentResult = await Task({
+  subagent_type: "spec-phase-agent",
+  prompt: `
+    Execute SPEC phase for feature:
+
+    User input: $ARGUMENTS
+    Feature directory: ${FEATURE_DIR}
+    ${HAS_ANSWERS ? `
+    Resume from: ${pendingAnswers.resume_from}
+    Answers provided: ${JSON.stringify(pendingAnswers.answers)}
+    ` : ''}
+
+    Generate complete feature specification with requirements and quality validation.
+    Return structured phase_result with status, artifacts, and any questions.
+  `
+});
+
+const result = agentResult.phase_result;
+```
+
+## Step 5: Handle Agent Result
+
+```javascript
+// === CASE 1: Agent needs user input ===
+if (result.status === "needs_input") {
+  console.log(`\n📋 Specification needs user input`);
+
+  // Save questions to interaction-state.yaml
+  await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh save-questions "${FEATURE_DIR}" "spec" '${JSON.stringify(result)}'`);
+
+  // Ask user via AskUserQuestion
+  const userAnswers = await AskUserQuestion({
+    questions: result.questions.map(q => ({
+      question: q.question,
+      header: q.header,
+      multiSelect: q.multi_select,
+      options: q.options
+    }))
+  });
+
+  // Save answers
+  await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh save-answers "${FEATURE_DIR}" '${JSON.stringify(userAnswers)}'`);
+
+  // Re-spawn agent with answers
+  // (In practice, user runs /spec again or /feature continue)
+  console.log(`\n✅ Answers saved. Run /spec again to continue.`);
+}
+
+// === CASE 2: Agent completed successfully ===
+if (result.status === "completed") {
+  console.log(`✅ Specification phase completed`);
+
+  // Log artifacts created
+  if (result.artifacts_created) {
+    result.artifacts_created.forEach(a => console.log(`   📄 ${a.path}`));
+  }
+
+  // Display summary
+  if (result.summary) {
+    console.log(`\n${result.summary}`);
+  }
+
+  // Mark phase complete
+  await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh mark-phase-complete "${FEATURE_DIR}" "spec"`);
+  await Bash(`yq eval '.phases.spec = "completed"' -i "${STATE_FILE}"`);
+  await Bash(`yq eval '.phase = "clarify"' -i "${STATE_FILE}"`);
+
+  // Auto-proceed based on blocking clarifications
+  if (result.blocking_clarifications > 0) {
+    console.log(`\n🔄 Auto-proceeding to /clarify (${result.blocking_clarifications} blocking questions)`);
+    // Orchestrator will handle this
+  } else {
+    console.log(`\n🔄 Auto-proceeding to /plan`);
+  }
+}
+
+// === CASE 3: Agent failed ===
+if (result.status === "failed") {
+  console.log(`\n❌ Specification phase FAILED`);
+  console.log(`   Error: ${result.error?.message || 'Unknown error'}`);
+
+  await Bash(`yq eval '.phases.spec = "failed"' -i "${STATE_FILE}"`);
+  await Bash(`yq eval '.status = "failed"' -i "${STATE_FILE}"`);
+
+  console.log(`\n   Fix issues and run: /spec again or /feature continue`);
+}
+```
+
+</process>
+
+<agent_reference>
+
+## Spec Phase Agent
+
+The actual specification logic lives in `.claude/agents/phase/spec-agent.md`.
+
+**Agent responsibilities:**
+- Parse user input for ambiguity
+- Create feature directory structure
+- Generate spec.md with FR/NFR identifiers
+- Create user scenarios (Gherkin format)
+- Validate quality with checklist
+- Return questions if clarification needed
+
+**Agent return format:**
+```yaml
+phase_result:
+  status: "completed" | "needs_input" | "failed"
+  artifacts_created:
+    - path: "specs/001-slug/spec.md"
+    - path: "specs/001-slug/state.yaml"
+  summary: "Created spec with 8 FRs, 4 NFRs, 3 scenarios"
+  metrics:
+    fr_count: 8
+    nfr_count: 4
+    scenario_count: 3
+    blocking_clarifications: 0
+  # If needs_input:
+  questions:
+    - id: "Q001"
+      question: "Who is the primary user?"
+      header: "User"
+      options: [...]
+  resume_from: "requirements_gathering"
+```
+
+</agent_reference>
+
+## Legacy Reference
+
+The full specification logic (for reference) is documented in the spec-phase-agent.
+Key patterns preserved:
 
 ### Step 0: Clarification Gate (Upfront HITL)
 

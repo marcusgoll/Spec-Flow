@@ -173,6 +173,55 @@ docs/references/          — Deep-dive documentation
 
 Load briefs from `.claude/agents/` for context.
 
+### Domain Memory v2 Agents
+
+For implementation isolation (prevents context overflow):
+
+- `.claude/agents/domain/initializer.md` — Initialize feature/epic domain memory
+- `.claude/agents/domain/worker.md` — Implement ONE feature atomically, exit
+- Skill: `.claude/skills/domain-memory/SKILL.md` — Boot-up ritual protocol
+
+Pattern: Main orchestrator spawns isolated workers via Task(). Each worker reads `domain-memory.yaml`, picks ONE task, implements, updates disk, exits. No shared context between workers.
+
+### Project Setup Agents (Hybrid Pattern)
+
+For project initialization (questionnaire inline, generation isolated):
+
+- `.claude/agents/project/init-project-agent.md` — Generate 8 project docs from cached answers
+- `.claude/agents/project/prototype-discover-agent.md` — Create prototype screens from selections
+- `.claude/agents/project/roadmap-brainstorm-agent.md` — Research feature ideas via web search
+
+Pattern: Main runs questionnaire → saves to temp config → spawns agent → agent generates artifacts → main shows results.
+
+### Phase Isolation Pattern
+
+All workflow phases spawn isolated agents via Task():
+
+- **Pre-implementation**: spec-agent, clarify-agent, plan-agent, tasks-agent
+- **Implementation**: worker (Domain Memory v2 pattern, ONE task per spawn)
+- **Post-implementation**: optimize-agent, validate-agent, ship-agent, finalize-agent
+
+Benefits: Unlimited iterations without context overflow, deterministic behavior, resumable at any point.
+
+### Semantic Search with mgrep
+
+For code exploration and pattern discovery, prefer mgrep over Grep/Glob:
+
+- **mgrep**: Semantic search — finds similar code by meaning, not exact text
+- **Grep**: Literal/regex search — finds exact text patterns
+- **Glob**: File pattern matching — finds files by name patterns
+
+**When to use mgrep**:
+
+- Finding similar implementations across domains
+- Discovering patterns without knowing exact naming
+- Understanding "how is X done" questions
+- Anti-duplication checks before implementing new code
+
+Example: `mgrep "components that display user details"` finds UserCard, ProfileView, AccountInfo, etc.
+
+**Anti-duplication workflow**: Before implementing new code, always run mgrep to find existing patterns.
+
 ### Coding Standards
 
 - **Commits**: Conventional Commits (feat/fix/docs/chore), <75 chars, imperative

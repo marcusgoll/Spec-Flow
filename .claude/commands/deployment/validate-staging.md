@@ -1,52 +1,56 @@
 ---
 description: Validate staging deployment before production through automated test review, rollback capability testing, guided manual validation, and optional gap capture for feedback loops
-allowed-tools: [Read, Write, Bash(gh *), Bash(git *), Bash(curl *), Bash(yq *), Bash(grep *), Bash(vercel *), Bash(date *), Bash(ls *), Bash(cat *), Bash(sleep *), Bash(test *), Bash(jq *), Bash(pwsh *), AskUserQuestion]
+allowed-tools: [Read, Bash, Task, AskUserQuestion]
 argument-hint: [--capture-gaps] (optional flag to launch gap capture wizard)
+version: 11.0
+updated: 2025-12-09
 ---
 
+# /validate-staging — Staging Validation (Thin Wrapper)
+
+> **v11.0 Architecture**: This command spawns the isolated `validate-phase-agent` via Task(). Validation checks run in isolated context with question batching for manual verification.
+
 <context>
+**User Input**: $ARGUMENTS
+
+**Active Feature**: !`ls -td specs/[0-9]*-* 2>/dev/null | head -1 || echo "none"`
+
+**Interaction State**: !`cat specs/*/interaction-state.yaml 2>/dev/null | head -10 || echo "none"`
+</context>
+
+<objective>
+Spawn isolated validate-phase-agent to validate staging deployment before production.
+
+**Architecture (v11.0 - Phase Isolation):**
+```
+/validate-staging → Task(validate-phase-agent) → Q&A for manual checks → validation-report.md
+```
+
+**Agent responsibilities:**
+- Review E2E test results from GitHub Actions
+- Review Lighthouse CI performance results
+- Test rollback capability
+- Generate manual testing checklist from spec.md
+- Return questions for user to manually verify in browser
+- Create staging-validation-report.md
+
+**Operating constraints:**
+- **Manual Gate** — Agent returns questions for human validation
+- **Staging Environment** — Validates staging URLs
+- **Blocking Conditions** — E2E failures or manual failures block production
+
+**Workflow position**: `implement → optimize → validate → ship → finalize`
+</objective>
+
+## Legacy Context (for agent reference)
+
+<legacy_context>
 Latest staging deployment: !`gh run list --workflow=deploy-staging.yml --branch=main --limit=1 --json databaseId,headSha,conclusion,status,createdAt,displayTitle 2>/dev/null || echo "[]"`
-
-Current branch: !`git branch --show-current`
-
-Recent feature directories: !`ls -td specs/*/ 2>/dev/null | head -5 | tr '\n' ' ' || echo "none"`
 
 Vercel CLI installed: !`command -v vercel >/dev/null 2>&1 && echo "✅ Yes" || echo "❌ No"`
 
 GitHub CLI authenticated: !`gh auth status >/dev/null 2>&1 && echo "✅ Yes" || echo "❌ No"`
-</context>
-
-<objective>
-Validate staging deployment before production by reviewing automated tests, testing rollback capability, guiding manual validation, and generating a comprehensive validation report.
-
-**What it does:**
-
-1. Detects feature from recent staging deployment
-2. Verifies deployment succeeded (checks workflow status)
-3. Validates staging health endpoints (marketing, app, API)
-4. Reviews E2E test results from GitHub Actions
-5. Reviews Lighthouse CI performance results
-6. Tests rollback capability (critical for production incident recovery)
-7. Generates manual testing checklist from spec.md
-8. Guides user through interactive manual testing
-9. Creates staging-validation-report.md with all results
-10. Updates state.yaml with validation status
-
-**Operating constraints:**
-
-- **Manual Gate** — Pauses workflow for human validation
-- **Staging Environment** — Validates staging URLs (not branch)
-- **Blocking Conditions** — E2E failures or manual failures block production
-- **Warning Conditions** — Lighthouse failures warn but don't block
-- **Rollback Testing** — Critical safety check before production
-
-**Dependencies:**
-
-- GitHub CLI authenticated
-- Recent staging deployment exists (deploy-staging.yml workflow)
-- Feature directory with spec.md
-- Vercel CLI for rollback testing (optional for first deployment)
-  </objective>
+</legacy_context>
 
 <process>
 1. **Detect feature from recent deployment**:

@@ -2,13 +2,15 @@
 name: prototype
 description: Discovery-first prototyping - explore app ideas with zero-risk iteration before committing to roadmap/features
 argument-hint: [discover|explore|create|update|status|extract|outcome|lock-theme|unlock-theme|sync-tokens] [exploration-name] [--with-tokens|--skip-tokens] [--to-epic "Epic Name"] [--exploration name] [--adopt|--defer|--scrap]
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash(git:*), Bash(test:*), Bash(node:*), AskUserQuestion, TodoWrite]
-version: 2.1
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash(git:*), Bash(test:*), Bash(node:*), AskUserQuestion, Task, TodoWrite]
+version: 11.0
 created: 2025-11-27
-updated: 2025-12-03
+updated: 2025-12-09
 ---
 
-# /prototype - Discovery-First Prototyping
+# /prototype - Discovery-First Prototyping (Hybrid Pattern)
+
+> **v11.0 Architecture**: Uses hybrid pattern for `discover` and `explore` modes - interactive questions in main context (good UX), prototype generation isolated via Task() (saves ~4-6k tokens).
 
 <context>
 **Check these files before proceeding:**
@@ -17,6 +19,57 @@ updated: 2025-12-03
 - Project docs: `docs/project/overview.md`
 - User preferences: `.spec-flow/config/user-preferences.yaml`
 </context>
+
+<architecture>
+## Hybrid Pattern (v11.0)
+
+**For `discover` and `explore` modes:**
+
+```
+User: /prototype discover
+         │
+         ▼
+┌──────────────────────────────────────────────────────┐
+│ MAIN CONTEXT (interactive selection - good UX)       │
+│                                                      │
+│ 1. Check for existing tokens                         │
+│ 2. Palette selection (vibe picker)                   │
+│ 3. Vision brainstorm question                        │
+│ 4. Screen selection (multiselect)                    │
+│ 5. Save selections to temp config                    │
+│    → .spec-flow/temp/prototype-selections.yaml       │
+└──────────────────────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────────────────┐
+│ Task(prototype-discover-agent) ← ISOLATED            │
+│                                                      │
+│ 1. Read selections from temp config                  │
+│ 2. Generate theme.yaml from palette                  │
+│ 3. Generate theme.css with CSS variables             │
+│ 4. Create discovery artifacts (ideas.md, etc)        │
+│ 5. Generate HTML for all selected screens            │
+│ 6. Generate navigation hub (index.html)              │
+│ 7. Update state.yaml                                 │
+│ 8. Return summary                                    │
+│ 9. EXIT                                              │
+└──────────────────────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────────────────┐
+│ MAIN CONTEXT (results - minimal tokens)              │
+│                                                      │
+│ 1. Display success summary                           │
+│ 2. Show generated screens                            │
+│ 3. Display keyboard shortcuts                        │
+│ 4. Suggest next steps                                │
+└──────────────────────────────────────────────────────┘
+```
+
+**For lightweight modes (`status`, `extract`, `outcome`, `lock-theme`, etc.):**
+- Run directly in main context (no Task spawning needed)
+- These modes are read-heavy with minimal generation
+</architecture>
 
 <objective>
 **Discovery-first prototyping** - explore app ideas visually before committing to roadmap or features.
@@ -235,49 +288,86 @@ theme:
 }
 ```
 
-### Step 5: Generate Discovery Prototype
+### Step 5: Save Selections and Spawn Generation Agent (v11.0 Hybrid)
 
-**Create directory structure:**
-```
-design/prototype/
-  index.html              # Navigation hub
-  theme.yaml              # Palette from quick picker
-  theme.css               # Generated CSS variables
-  shared.css              # Component styles
-  state.yaml              # Discovery state
-  screens/                # Generated screens
-    dashboard.html
-    list.html
-    ...
-  _discovery/             # NEW: Discovery artifacts
-      ideas.md            # Captured ideas (press 'I')
-      questions.md        # Open questions (press 'Q')
-      scrapped/           # Screens you tried and scrapped
-      iterations/         # Version snapshots
-```
+**Save all selections to temp config for isolated agent:**
 
-**Generate `_discovery/ideas.md`:**
-```markdown
-# Ideas Log
+```yaml
+# .spec-flow/temp/prototype-selections.yaml
+created: "${TIMESTAMP}"
+mode: "discover"
 
-> Press 'I' on any prototype screen to add ideas here.
-> These may become features on your roadmap.
+palette:
+  source: "${PALETTE_SOURCE}"  # quick-picker | existing-tokens | skip
+  vibe: "${SELECTED_VIBE}"     # Professional | Modern SaaS | Friendly | Bold | Minimal | Custom
+  custom_primary: null         # Only if Custom selected
 
-## Ideas
+vision:
+  category: "${VISION_CATEGORY}"
+  custom_text: "${CUSTOM_VISION}"
 
-<!-- Ideas will be appended here -->
+screens:
+  selected: ${SELECTED_SCREENS}  # Array from multiselect
+  additional: "${ADDITIONAL_SCREENS}"  # User-typed custom screens
 ```
 
-**Generate `_discovery/questions.md`:**
-```markdown
-# Open Questions
+**Spawn isolated agent for prototype generation:**
 
-> Press 'Q' on any prototype screen to log questions.
-> Resolve these before finalizing your roadmap.
+```javascript
+// Save selections to temp config (done above)
+const selectionsFile = ".spec-flow/temp/prototype-selections.yaml";
 
-## Questions
+// Spawn isolated agent for heavy HTML generation
+const agentResult = await Task({
+  subagent_type: "prototype-discover-agent",
+  prompt: `
+    Generate discovery prototype from user selections:
 
-<!-- Questions will be appended here -->
+    Selections file: ${selectionsFile}
+    Mode: discover
+
+    Read selections from temp config, generate all prototype files:
+    - theme.yaml and theme.css from palette
+    - index.html navigation hub
+    - HTML screens for all selected screens
+    - Discovery artifacts (ideas.md, questions.md)
+    - state.yaml registry
+
+    Return structured phase_result with artifacts created.
+  `
+});
+
+const result = agentResult.phase_result;
+```
+
+**Handle agent result:**
+
+```javascript
+// Agent completed successfully
+if (result.status === "completed") {
+  console.log(`✅ Discovery prototype generated`);
+
+  // Display metrics
+  if (result.metrics) {
+    console.log(`\n📊 Metrics:`);
+    console.log(`   Screens: ${result.metrics.screens_created}`);
+    console.log(`   Theme: ${result.metrics.vibe} (${result.metrics.theme_source})`);
+  }
+
+  // Display artifacts
+  if (result.artifacts_created) {
+    console.log(`\n📄 Files created:`);
+    result.artifacts_created
+      .filter(a => a.type === "screen")
+      .forEach(a => console.log(`   - ${a.path}`));
+  }
+}
+
+// Agent had warnings
+if (result.warnings) {
+  console.log(`\n⚠️ Warnings:`);
+  result.warnings.forEach(w => console.log(`   - ${w.message}`));
+}
 ```
 
 ### Step 6: Display Discovery Summary

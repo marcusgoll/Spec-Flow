@@ -2,59 +2,40 @@
 name: ship
 description: Deploy feature through automated staging validation to production with rollback testing
 argument-hint: [continue|status|budget|rollback|recover|--staging|--prod|--validate]
-allowed-tools:
-  [
-    Read,
-    Write,
-    Edit,
-    Grep,
-    Glob,
-    Bash(python .spec-flow/*),
-    Bash(git *),
-    Bash(gh *),
-    SlashCommand,
-    TodoWrite,
-    AskUserQuestion,
-  ]
+allowed-tools: [Read, Bash, Task, AskUserQuestion, SlashCommand, TodoWrite]
+version: 11.0
+updated: 2025-12-09
 ---
 
-# /ship — Unified Deployment Orchestrator
+# /ship — Unified Deployment Orchestrator (Thin Wrapper)
+
+> **v11.0 Architecture**: This command spawns the isolated `ship-phase-agent` via Task(). Deployment operations run in isolated context with question batching for production approval.
 
 <context>
 **Arguments**: $ARGUMENTS
 
-**Current Feature Directory**: !`find specs/ -maxdepth 1 -type d -name "[0-9]*" | sort -n | tail -1 2>$null || echo "none"`
+**Active Feature**: !`ls -td specs/[0-9]*-* 2>/dev/null | head -1 || echo "none"`
 
-**Workflow State**: @specs/\*/state.yaml
+**Interaction State**: !`cat specs/*/interaction-state.yaml 2>/dev/null | head -10 || echo "none"`
 
-**Current Git Branch**: !`git branch --show-current 2>$null || echo "none"`
-
-**Git Status**: !`git status --short 2>$null || echo "clean"`
-
-**Deployment Detection**:
-
-- Git Remote: !`git remote get-url origin 2>$null || echo "no-remote"`
-- Staging Branch Exists: !`git branch -r | grep -q "origin/staging" && echo "yes" || echo "no"`
-- Deploy Workflow Exists: !`test -f .github/workflows/deploy-staging.yml && echo "staging-prod" || (git remote 2>$null && echo "direct-prod" || echo "local-only")`
-
-**GitHub CLI Status**: !`gh auth status 2>$null | head -1 || echo "not authenticated"`
-
-**Platform Detection**:
-
-- Vercel Project: !`test -f vercel.json && echo "yes" || test -f .vercel && echo "yes" || echo "no"`
-- Netlify Project: !`test -f netlify.toml && echo "yes" || echo "no"`
-- Docker Project: !`test -f Dockerfile && echo "yes" || echo "no"`
-
-**Previous Phases Completed**:
-
-- Implement: !`grep -A1 "implement:" specs/*/state.yaml 2>$null | grep "status:" | awk '{print $2}' || echo "unknown"`
-- Optimize: !`grep -A1 "optimize:" specs/*/state.yaml 2>$null | grep "status:" | awk '{print $2}' || echo "not run"`
-  </context>
+**Deployment Model**: !`test -f .github/workflows/deploy-staging.yml && echo "staging-prod" || (git remote 2>$null && echo "direct-prod" || echo "local-only")`
+</context>
 
 <objective>
-Orchestrate complete post-implementation deployment workflow from pre-flight validation through production deployment to finalization.
+Spawn isolated ship-phase-agent to orchestrate deployment workflow.
 
-**Purpose**: Fully automated deployment with zero manual gates, replacing the previous 65-165 minute workflow (with 3 manual gates) with a 25-35 minute automated workflow.
+**Architecture (v11.0 - Phase Isolation):**
+```
+/ship → Task(ship-phase-agent) → Q&A for prod approval → deployment
+```
+
+**Agent responsibilities:**
+- Auto-detect deployment model (staging-prod, direct-prod, local-only)
+- Execute pre-flight validation
+- Deploy to staging (auto-proceed)
+- Request approval for production deployment (returns question)
+- Create GitHub release
+- Record deployment metadata
 
 **Deployment Models** (auto-detected):
 

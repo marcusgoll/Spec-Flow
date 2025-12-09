@@ -1,7 +1,9 @@
 ---
 description: Manage product roadmap via GitHub Issues (brainstorm, prioritize, track). Auto-validates features against project vision (from overview.md) before adding to roadmap.
-allowed-tools: [Read, Bash(.spec-flow/scripts/bash/github-roadmap-manager.sh:*), Bash(.spec-flow/scripts/powershell/github-roadmap-manager.ps1:*), Bash(gh issue:*), Bash(gh api:*), Bash(gh label:*), Bash(gh milestone:*), Bash(git remote:*), Bash(test:*), Bash(ls:*), Bash(jq:*), WebSearch, AskUserQuestion]
+allowed-tools: [Read, Bash(.spec-flow/scripts/bash/github-roadmap-manager.sh:*), Bash(.spec-flow/scripts/powershell/github-roadmap-manager.ps1:*), Bash(gh issue:*), Bash(gh api:*), Bash(gh label:*), Bash(gh milestone:*), Bash(git remote:*), Bash(test:*), Bash(ls:*), Bash(jq:*), WebSearch, AskUserQuestion, Task]
 argument-hint: [add|brainstorm|move|delete|search|list|milestone|epic] [additional args]
+version: 11.0
+updated: 2025-12-09
 ---
 
 <context>
@@ -15,6 +17,55 @@ Roadmap issue count: !`gh issue list --label status:backlog,status:next,status:i
 
 Open issues by status: !`gh issue list --json labels --jq '[.[] | .labels[] | select(.name | startswith("status:")) | .name] | group_by(.) | map({(.[0]): length}) | add' 2>/dev/null || echo "{}"`
 </context>
+
+<architecture>
+## Hybrid Pattern (v11.0)
+
+**For `brainstorm` action (heavy web research):**
+
+```
+User: /roadmap brainstorm "user onboarding"
+         │
+         ▼
+┌──────────────────────────────────────────────────────┐
+│ MAIN CONTEXT (context gathering - lightweight)       │
+│                                                      │
+│ 1. Verify GitHub authentication                      │
+│ 2. Load project vision from overview.md              │
+│ 3. Get existing roadmap items (avoid duplicates)     │
+│ 4. Save context to temp config                       │
+│    → .spec-flow/temp/brainstorm-context.yaml         │
+└──────────────────────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────────────────┐
+│ Task(roadmap-brainstorm-agent) ← ISOLATED            │
+│                                                      │
+│ 1. Read context from temp config                     │
+│ 2. Web search for similar products                   │
+│ 3. Research best practices                           │
+│ 4. Generate feature ideas (up to 15)                 │
+│ 5. Validate against project vision                   │
+│ 6. Deduplicate against existing features             │
+│ 7. Return ranked list of ideas                       │
+│ 8. EXIT                                              │
+└──────────────────────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────────────────┐
+│ MAIN CONTEXT (user selection - interactive)          │
+│                                                      │
+│ 1. Display generated ideas with alignment status     │
+│ 2. AskUserQuestion: which ideas to add to roadmap?   │
+│ 3. Create GitHub Issues for selected ideas           │
+│ 4. Display roadmap summary                           │
+└──────────────────────────────────────────────────────┘
+```
+
+**For lightweight actions (`add`, `move`, `delete`, `list`, etc.):**
+- Run directly in main context (no Task spawning needed)
+- These are simple GitHub CLI operations
+</architecture>
 
 <objective>
 Manage product roadmap via GitHub Issues with vision alignment validation.
@@ -90,7 +141,76 @@ Manage product roadmap via GitHub Issues with vision alignment validation.
    # - show_roadmap_summary for "list"
    ```
 
-4. **For ADD/BRAINSTORM actions only** — Perform vision alignment validation:
+4. **For BRAINSTORM action — Spawn Research Agent (v11.0 Hybrid)**:
+
+   **Step 4a: Gather context for agent:**
+   ```javascript
+   // Get existing roadmap items to avoid duplicates
+   const existingFeatures = await exec(
+     `gh issue list --label status:backlog,status:next --json number,title,labels --jq '.[] | {slug: .number, title: .title}'`
+   );
+
+   // Save context for agent
+   const context = {
+     created: new Date().toISOString(),
+     topic: parsedTopic,  // from $ARGUMENTS
+     overview_path: "docs/project/overview.md",
+     existing_features: existingFeatures
+   };
+   await writeYaml(".spec-flow/temp/brainstorm-context.yaml", context);
+   ```
+
+   **Step 4b: Spawn isolated brainstorm agent:**
+   ```javascript
+   const agentResult = await Task({
+     subagent_type: "roadmap-brainstorm-agent",
+     prompt: `
+       Research and generate feature ideas for: "${parsedTopic}"
+
+       Context file: .spec-flow/temp/brainstorm-context.yaml
+
+       Read project context, perform web research, generate feature ideas,
+       validate against vision, and return ranked list of ideas.
+     `
+   });
+
+   const result = agentResult.phase_result;
+   ```
+
+   **Step 4c: Present ideas for user selection:**
+   ```javascript
+   if (result.status === "completed" && result.ideas.length > 0) {
+     // Display ideas grouped by alignment status
+     console.log(`\n🧠 Brainstorm Results: ${result.ideas.length} ideas generated`);
+
+     // Group and display
+     const inScope = result.ideas.filter(i => i.alignment.status === "in_scope");
+     const ambiguous = result.ideas.filter(i => i.alignment.status === "ambiguous");
+     const outOfScope = result.ideas.filter(i => i.alignment.status === "out_of_scope");
+
+     // Use AskUserQuestion for selection
+     const selectedIdeas = await AskUserQuestion({
+       question: "Which ideas should we add to the roadmap?",
+       header: "Select Ideas",
+       multiSelect: true,
+       options: inScope.concat(ambiguous).map(idea => ({
+         label: idea.name,
+         description: `${idea.complexity} • ${idea.priority_hint} priority • ${idea.alignment.reason}`
+       }))
+     });
+
+     // Create GitHub Issues for selected ideas
+     for (const idea of selectedIdeas) {
+       await exec(`gh issue create --title "${idea.name}" --body "..." --label "status:backlog"`);
+     }
+   }
+   ```
+
+   **If agent returns warnings:**
+   - Display warnings to user
+   - Suggest alternative approaches if no ideas found
+
+5. **For ADD action only** — Perform vision alignment validation:
 
    If docs/project/overview.md exists:
    a. Read overview.md and extract:
@@ -115,21 +235,21 @@ Manage product roadmap via GitHub Issues with vision alignment validation.
    - Display warning: "Run /init-project for vision-aligned roadmap"
    - Skip validation, create issue in Backlog
 
-5. **For MOVE action** — Enforce state machine rules:
+6. **For MOVE action** — Enforce state machine rules:
    - If moving to status:in-progress AND no milestone assigned:
      → Script prompts to assign milestone (REQUIRED)
 
    - If moving to status:shipped:
      → Script closes issue and adds status:shipped label
 
-6. **For MILESTONE/EPIC actions** — Manage labels and groupings:
+7. **For MILESTONE/EPIC actions** — Manage labels and groupings:
    - milestone list: Display all milestones with due dates
    - milestone create: Create new milestone
    - milestone plan: Interactively assign backlog issues
    - epic list: Display all epic:* labels
    - epic create: Create new epic label (purple, auto-namespaced)
 
-7. **Present results** to user:
+8. **Present results** to user:
    - Show created/updated issue with metadata
    - Display roadmap summary (count by status)
    - Suggest next action based on context

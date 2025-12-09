@@ -38,6 +38,12 @@ When user says "create", "implement", "add", or "build" new functionality, **IMM
 - Keywords: "API endpoint", "fetch", "user", "profile", "GET"
 
 **Step 2**: Search codebase for similar patterns
+
+**PRIMARY: Semantic search (mgrep)**
+- mgrep for: "API endpoints that fetch user data", "profile retrieval handlers"
+- Finds similar implementations by meaning, not exact text
+
+**SECONDARY: Literal search (Grep/Glob)**
 - Grep for: "router.get", "app.get", "/api/user", "profile"
 - Glob for: "**/*user*.ts", "**/*profile*.ts", "**/routes/**"
 
@@ -94,6 +100,17 @@ Parsed:
 
 Create multiple search approaches to maximize coverage:
 
+**PRIMARY: Semantic search (mgrep)**
+Use mgrep FIRST for pattern discovery - finds similar code by meaning:
+- "components that display product information"
+- "services that handle email sending"
+- "validation logic for user input"
+- "error handling patterns in API routes"
+
+mgrep finds UserCard, ProductCard, ProfileView when searching for "display user details" even if names don't match.
+
+**SECONDARY: Literal searches (when mgrep insufficient)**
+
 **A. Keyword-based searches** (Grep):
 - Core domain terms: "product", "Product", "PRODUCT"
 - Operation terms: "display", "render", "show", "view"
@@ -117,14 +134,21 @@ See [references/search-strategies.md](references/search-strategies.md) for detai
 
 Run multiple searches concurrently for speed:
 
-**Search batch**:
+**Phase 1: Semantic search (mgrep)**
+```
+mgrep "components that display product details"
+mgrep "detail card patterns for entities"
+```
+Reviews results - if sufficient matches found, skip to Step 4.
+
+**Phase 2: Literal searches (if needed)**
 1. Grep: "product" in **/*.tsx (find all product-related components)
 2. Grep: "ProductDetail" (find similar detail components)
 3. Glob: "**/components/**/Product*.tsx" (find product component files)
 4. Grep: "interface.*Product" (find product type definitions)
 5. Grep: "display.*product.*props" (find rendering logic)
 
-All 5 searches run in parallel (see parallel-execution-optimizer skill).
+All searches run in parallel (see parallel-execution-optimizer skill).
 
 **Time**: ~5-10 seconds for comprehensive search across large codebase.
 </step>
@@ -235,6 +259,27 @@ import { ProductDetailCard } from '@/components/products/ProductDetailCard';
 </workflow>
 
 <search_strategies>
+<semantic_search_first>
+**Always start with mgrep for semantic discovery:**
+
+mgrep finds code by meaning, not exact text. This catches similar implementations even when naming conventions differ.
+
+**mgrep query patterns by artifact type:**
+
+| Artifact | mgrep Query Examples |
+|----------|---------------------|
+| API Endpoint | "endpoints that handle user authentication", "API routes for data retrieval" |
+| Component | "components that display lists", "form components with validation" |
+| Service | "services that send emails", "business logic for order processing" |
+| Model | "database models for user data", "entities with timestamps" |
+| Utility | "helper functions for date formatting", "validation utilities" |
+
+**When to fall back to Grep/Glob:**
+- mgrep returns no results (niche terminology)
+- Need exact text match (specific function name)
+- File pattern search (find all *.test.ts files)
+</semantic_search_first>
+
 <by_artifact_type>
 Different artifact types require different search strategies.
 

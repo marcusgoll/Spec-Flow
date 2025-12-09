@@ -2,51 +2,42 @@
 name: clarify
 description: Reduce spec ambiguity via targeted questions with adaptive auto-invocation (planning is 80% of success)
 argument-hint: [spec-identifier or empty for auto-detect]
-allowed-tools: [Read, Edit, Write, Grep, Glob, Bash, AskUserQuestion]
-version: 5.0
-updated: 2025-11-19
+allowed-tools: [Read, Bash, Task, AskUserQuestion]
+version: 11.0
+updated: 2025-12-09
 ---
 
-# /clarify — Specification Clarifier
+# /clarify — Specification Clarifier (Thin Wrapper)
+
+> **v11.0 Architecture**: This command spawns the isolated `clarify-phase-agent` via Task(). All clarification logic runs in isolated context with question batching.
 
 <context>
 **User Input**: $ARGUMENTS
 
-**Workflow Detection**: Auto-detected via workspace files, branch pattern, or state.yaml
+**Active Feature**: !`ls -td specs/[0-9]*-* 2>/dev/null | head -1 || echo "none"`
 
-**Feature Directory**: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>$null | jq -r '.FEATURE_DIR'`
-
-**Current Spec**: Auto-detected (epics/_/epic-spec.md OR specs/_/spec.md)
-
-**Question Bank**: @.claude/skills/clarify/references/question-bank.md
-
-**Coverage Analysis**: !`python .spec-flow/scripts/spec-cli.py clarify "$ARGUMENTS" 2>&1 | grep -A 20 "Coverage analysis" || echo "Run script to analyze"`
-
-**Remaining Ambiguities**: Auto-detected based on workflow type
-
-**Git Status**: Auto-detected based on workflow type
+**Interaction State**: !`cat specs/*/interaction-state.yaml 2>/dev/null | head -10 || echo "none"`
 </context>
 
 <objective>
-Reduce specification ambiguity through targeted, interactive questions with adaptive auto-invocation.
+Spawn isolated clarify-phase-agent to reduce specification ambiguity through targeted questions.
 
-Transform ambiguous specifications into clear, implementable requirements by:
+**Architecture (v11.0 - Phase Isolation):**
+```
+/clarify → Task(clarify-phase-agent) → Q&A loop if needed → updated spec.md
+```
 
-1. Analyzing spec.md across 10 coverage categories
-2. Mapping ambiguities to centralized question bank templates
-3. Using interactive AskUserQuestion for structured clarification (batches of 3)
-4. Applying each answer atomically with git safety checkpoints
-5. Providing repo precedents to inform technical decisions
+**Agent responsibilities:**
+- Scan spec.md for `[NEEDS CLARIFICATION]` markers
+- Map ambiguities to question bank templates
+- Return batched questions (max 3 at a time)
+- Apply answers atomically to spec.md
+- Cite repo precedents for recommendations
 
-**Key principle**: Planning is 80% of success — thorough clarification prevents costly rework during implementation.
+**Key principle**: Planning is 80% of success — thorough clarification prevents costly rework.
 
-**Operating Constraints**:
-
-- Question cap: max 10 per session; show 3-5 at a time
-- Recommended answers backed by repo precedents when available
-- Incremental saves: atomic update after each answer
-- Git safety: checkpoint before each file write; rollback on failure
-  </objective>
+**Workflow position**: `spec → clarify → plan → tasks → implement → optimize → ship`
+</objective>
 
 ## Anti-Hallucination Rules
 

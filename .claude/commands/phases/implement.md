@@ -63,7 +63,7 @@ Implementation workflow:
 
 - **Test-Driven Development**: Red (failing test) → Green (passing) → Refactor (improve)
 - **Parallel execution**: Group independent tasks by domain, speedup bounded by dependencies
-- **Anti-duplication**: Search existing code before creating new implementations
+- **Anti-duplication**: Use mgrep for semantic search before creating new implementations
 - **Pattern following**: Apply plan.md recommended patterns consistently
 - **Atomic commits**: One commit per task with descriptive message
 
@@ -97,6 +97,11 @@ Implementation workflow:
 5. **Verify file existence before importing/referencing**
    - Use Glob to find files: `**/*.ts`, `**/*.tsx`
    - Use Grep to find existing patterns: `import.*Component`
+
+6. **Anti-duplication with semantic search**
+   - Use mgrep FIRST to find similar implementations by meaning
+   - Example: `mgrep "components that display user profiles"` finds ProfileCard, UserView, AccountInfo
+   - Only create new code if no suitable existing code is found
 
 **Why**: Hallucinated code references cause compile errors, broken imports, and failed tests. Reading files before referencing prevents 60-70% of implementation errors.
 
@@ -517,6 +522,112 @@ fi
 - Provides consistent component props across screens
 - Maps mockup styling directly to production Tailwind classes
 - Creates component inventory for tasks.md extraction tasks
+
+---
+
+### Step 0.8: DOMAIN MEMORY WORKER PATTERN (v11.0)
+
+**NEW**: If domain-memory.yaml exists, use Worker pattern for isolated task execution.
+
+```bash
+DOMAIN_MEMORY_FILE="${BASE_DIR}/${SLUG}/domain-memory.yaml"
+
+if [ -f "$DOMAIN_MEMORY_FILE" ]; then
+    echo ""
+    echo "🧠 Domain Memory Pattern Active"
+    echo "   Using isolated Workers for atomic task execution"
+    echo ""
+
+    # Get current status
+    .spec-flow/scripts/bash/domain-memory.sh status "${BASE_DIR}/${SLUG}"
+fi
+```
+
+**Worker Loop Orchestration:**
+
+When domain-memory.yaml exists, the orchestrator spawns isolated Workers instead of batching tasks:
+
+```javascript
+// Read domain memory to check for remaining work
+const memoryFile = `${FEATURE_DIR}/domain-memory.yaml`;
+let remaining = getUntestedOrFailingFeatures(memoryFile);
+
+console.log(`📋 Features remaining: ${remaining.length}`);
+
+while (remaining.length > 0) {
+  console.log(`\n${"─".repeat(60)}`);
+  console.log(`🔧 Spawning Worker for next feature...`);
+  console.log(`${"─".repeat(60)}\n`);
+
+  // Spawn isolated Worker via Task tool
+  // CRITICAL: Each Worker gets fresh context, no memory of previous runs
+  const workerResult = await Task({
+    subagent_type: "worker",  // Uses .claude/agents/domain/worker.md
+    prompt: `
+      Execute ONE feature from domain memory:
+
+      Feature directory: ${FEATURE_DIR}
+      Domain memory: ${memoryFile}
+
+      Boot-up ritual:
+      1. READ domain-memory.yaml from disk
+      2. RUN baseline tests (verify no regressions)
+      3. PICK one failing/untested feature (highest priority)
+      4. LOCK the feature
+      5. IMPLEMENT that ONE feature
+      6. RUN tests
+      7. UPDATE domain-memory.yaml status
+      8. COMMIT changes
+      9. EXIT (even if more work remains)
+
+      CRITICAL: Work on exactly ONE feature, then EXIT.
+    `
+  });
+
+  // Worker has exited - read updated state from disk
+  console.log(`\n✅ Worker completed: ${workerResult.status}`);
+  console.log(`   Feature: ${workerResult.feature_id}`);
+  console.log(`   Tests: ${workerResult.tests_passed ? "PASSED" : "FAILED"}`);
+
+  // Re-read domain memory to get updated state
+  remaining = getUntestedOrFailingFeatures(memoryFile);
+  console.log(`   Remaining features: ${remaining.length}`);
+
+  // If Worker failed, check if we should continue
+  if (workerResult.status === "failed") {
+    const feature = workerResult.feature_id;
+    const attempts = getAttemptCount(memoryFile, feature);
+
+    if (attempts >= 3) {
+      console.log(`\n⚠️  Feature ${feature} failed 3 times - marking as blocked`);
+      // Update status to blocked, continue with other features
+    }
+  }
+}
+
+console.log(`\n${"═".repeat(60)}`);
+console.log(`✅ All features completed!`);
+console.log(`${"═".repeat(60)}\n`);
+```
+
+**Key Behaviors:**
+
+1. **Orchestrator is lightweight**: Only reads disk, spawns Task(), checks completion
+2. **Workers are isolated**: Fresh context each spawn, no memory of previous Workers
+3. **Disk is source of truth**: domain-memory.yaml is the only shared state
+4. **One task per Worker**: Strict atomic progress, observable after each task
+5. **Automatic retry**: Failed features get retried up to 3 times before blocking
+
+**Fallback to Batch Mode:**
+
+If domain-memory.yaml doesn't exist, fall back to traditional batch execution (Step 1 below).
+
+```bash
+if [ ! -f "$DOMAIN_MEMORY_FILE" ]; then
+    echo "   Domain memory not found - using batch mode"
+    echo "   (Generate with: .spec-flow/scripts/bash/domain-memory.sh generate-from-tasks ${BASE_DIR}/${SLUG})"
+fi
+```
 
 ---
 

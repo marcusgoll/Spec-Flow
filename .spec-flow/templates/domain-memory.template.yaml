@@ -1,0 +1,93 @@
+# Domain Memory v1.0
+# Persistent structured state for agent workflows
+# Location: specs/NNN-slug/domain-memory.yaml or epics/NNN-slug/domain-memory.yaml
+#
+# CRITICAL: This file lives ON DISK, not in agent context.
+# Workers read/write to this file. No shared context between Workers.
+# Tests are the SOURCE OF TRUTH for feature status.
+
+version: "1.0"
+created: ${TIMESTAMP}
+last_updated: ${TIMESTAMP}
+
+# === PROJECT GOAL ===
+# Expanded from user's original prompt into machine-readable requirements
+goal:
+  original_prompt: ""
+  expanded_description: ""
+  success_criteria: []
+  constraints: []
+
+# === FEATURE BACKLOG ===
+# Machine-readable list with explicit pass/fail status
+# Test results are the SOURCE OF TRUTH for status
+features: []
+# Each feature entry:
+#   - id: "F001"                    # Unique identifier
+#     name: ""                      # Short descriptive name
+#     description: ""               # Detailed description
+#     status: "untested"            # untested | passing | failing | in_progress | blocked
+#     test_file: ""                 # Path to test file (source of truth)
+#     impl_file: ""                 # Path to implementation file
+#     priority: 1                   # Lower = higher priority (1 = highest)
+#     dependencies: []              # Feature IDs this depends on (e.g., ["F001", "F002"])
+#     domain: "backend"             # backend | frontend | database | api | general
+#     last_attempt:
+#       timestamp: null             # ISO8601 timestamp of last attempt
+#       agent: null                 # "initializer" | "worker"
+#       result: null                # "success" | "failed" | "blocked"
+#       error: null                 # Error message if failed
+#     attempts: []                  # History of what's been tried
+
+# === PROGRESS LOG ===
+# Observable audit trail of all agent actions
+# Every agent action gets logged here for debugging and analysis
+log: []
+# Each entry:
+#   - timestamp: ISO8601
+#   - agent: "initializer" | "worker"
+#   - action: "expanded_goal" | "picked_feature" | "ran_tests" | "updated_status" | "completed_feature" | "failed_feature"
+#   - feature_id: "F001" (if applicable)
+#   - result: "Description of what happened"
+#   - duration_ms: 12345
+
+# === TRIED APPROACHES ===
+# Prevent infinite loops by tracking what's been attempted
+# Key = feature ID, value = list of approaches tried
+tried: {}
+# Example:
+#   F001:
+#     - approach: "Used async/await pattern"
+#       result: "Failed: race condition in test"
+#       timestamp: ISO8601
+#     - approach: "Switched to callback pattern"
+#       result: "Success"
+#       timestamp: ISO8601
+
+# === CURRENT FOCUS ===
+# What the worker is currently working on (only ONE at a time)
+# This is a lock mechanism to prevent concurrent work on same feature
+current:
+  feature_id: null
+  started_at: null
+  status: "idle"  # idle | working | blocked
+
+# === TEST SUMMARY ===
+# Aggregated test results (updated after each test run)
+tests:
+  total: 0
+  passing: 0
+  failing: 0
+  skipped: 0
+  last_run: null
+  command: ""           # e.g., "pytest", "npm test", "cargo test"
+  coverage: null        # Coverage percentage if available
+
+# === METADATA ===
+# Additional tracking information
+metadata:
+  workflow_type: "feature"  # feature | epic | sprint
+  parent_epic: null         # Epic slug if this is a sprint
+  sprint_id: null           # Sprint ID if this is a sprint (e.g., "S01")
+  source: "initializer"     # initializer | migrated_from_tasks | manual
+  migration_date: null      # If migrated from tasks.md

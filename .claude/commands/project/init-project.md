@@ -1,24 +1,68 @@
 ---
 description: Generate 8 project design documents (overview, architecture, tech-stack, data, API, capacity, deployment, workflow) via interactive questionnaire or config file
-allowed-tools: [Bash(.spec-flow/scripts/powershell/init-project.ps1:*), Bash(.spec-flow/scripts/bash/init-project.sh:*), Bash(git status:*), Bash(ls:*), Bash(cat:*), Bash(wc:*), Bash(test:*), Bash(jq:*), Bash(yq:*), Bash(gh:*), Read, AskUserQuestion]
+allowed-tools: [Bash, Read, Write, Task, AskUserQuestion]
 argument-hint: ["project-name"] [--with-design] [--update|--force|--write-missing-only] [--config FILE] [--ci | --no-input | --interactive]
-version: 2.0
-updated: 2025-11-20
+version: 11.0
+updated: 2025-12-09
 ---
 
+# /init-project — Project Documentation Generator (Hybrid Pattern)
+
+> **v11.0 Architecture**: Uses hybrid pattern - questionnaire in main context (good UX), document generation isolated via Task() (saves ~5-10k tokens).
+
 <context>
+**User Input**: $ARGUMENTS
+
 Existing project docs: !`ls -1 docs/project/*.md 2>/dev/null | wc -l` file(s)
 
 Package manager detected: !`test -f package.json && echo "npm/pnpm" || test -f pyproject.toml && echo "python" || test -f Cargo.toml && echo "rust" || test -f go.mod && echo "go" || echo "unknown"`
 
-Git status: !`git status --short | head -10`
-
 Brownfield indicators: !`ls package.json requirements.txt Cargo.toml go.mod docker-compose.yml 2>/dev/null | tr '\n' ', ' || echo "greenfield"`
-
-Design system exists: !`test -d docs/design && echo "yes" || echo "no"`
-
-Foundation issue: !`gh issue list --label project-foundation --json number,state 2>/dev/null | jq -r '.[0] | "Issue #\(.number) - \(.state)"' || echo "not created"`
 </context>
+
+<architecture>
+## Hybrid Pattern (v11.0)
+
+```
+User: /init-project "My App"
+         │
+         ▼
+┌──────────────────────────────────────────────────────┐
+│ MAIN CONTEXT (questionnaire - good UX)               │
+│                                                      │
+│ 1. Detect brownfield/greenfield                      │
+│ 2. Run 15-48 questions via AskUserQuestion           │
+│ 3. Save answers to temp config                       │
+│    → .spec-flow/temp/init-answers.yaml               │
+└──────────────────────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────────────────┐
+│ Task(init-project-agent) ← ISOLATED                  │
+│                                                      │
+│ 1. Read answers from temp config                     │
+│ 2. Generate 8 project docs                           │
+│ 3. Run quality gates                                 │
+│ 4. Create ADR                                        │
+│ 5. Return summary                                    │
+│ 6. EXIT                                              │
+└──────────────────────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────────────────┐
+│ MAIN CONTEXT (results - minimal tokens)              │
+│                                                      │
+│ 1. Display success summary                           │
+│ 2. Show generated files                              │
+│ 3. Suggest next steps                                │
+└──────────────────────────────────────────────────────┘
+```
+
+**Benefits:**
+- Questionnaire has natural interactive UX
+- Document generation isolated (saves 5-10k tokens)
+- Can re-run generation if session ends mid-way (answers cached)
+</architecture>
 
 <objective>
 Generate comprehensive project design documentation (8 core files, 4 optional design files) through interactive questionnaire or config file mode.
@@ -147,6 +191,65 @@ The command uses 3-tier preferences to determine mode:
    - Load config file if --config flag provided
    - Run questionnaire (interactive) or read environment variables (--ci mode)
    - Auto-detect tech stack for brownfield projects (20-30% fewer clarifications)
+   - **Save answers to** `.spec-flow/temp/init-answers.yaml` **(v11.0 hybrid)**
+
+3. **Spawn Document Generation Agent (v11.0 Hybrid Pattern)**:
+
+   After questionnaire completes, spawn isolated agent for document generation:
+
+   ```javascript
+   // Save answers to temp config (done by script or main context)
+   const answersFile = ".spec-flow/temp/init-answers.yaml";
+
+   // Spawn isolated agent for document generation
+   const agentResult = await Task({
+     subagent_type: "project-architect",  // or custom init-project-agent
+     prompt: `
+       Generate 8 project documentation files from questionnaire answers:
+
+       Answers file: ${answersFile}
+       Project name: ${projectName}
+       Flags:
+         with_design: ${withDesign}
+         update: ${updateMode}
+         force: ${forceMode}
+
+       Read answers from temp config, generate all project docs, run quality gates.
+       Return structured phase_result with artifacts created.
+     `
+   });
+
+   const result = agentResult.phase_result;
+   ```
+
+4. **Handle Agent Result**:
+
+   ```javascript
+   // Agent completed successfully
+   if (result.status === "completed") {
+     console.log(`✅ Project documentation generated`);
+
+     // Display artifacts created
+     if (result.artifacts_created) {
+       console.log(`\n📄 Files created:`);
+       result.artifacts_created.forEach(a => console.log(`   - ${a.path}`));
+     }
+
+     // Show next steps
+     console.log(`\n🚀 Next steps:`);
+     result.next_steps?.forEach(s => console.log(`   - ${s}`));
+   }
+
+   // Agent had warnings
+   if (result.warnings) {
+     console.log(`\n⚠️ Warnings:`);
+     result.warnings.forEach(w => console.log(`   - ${w.message}`));
+   }
+   ```
+
+5. **Legacy: Direct Script Execution** (fallback for CI/config mode):
+
+   For `--ci`, `--no-input`, or `--config FILE` modes, the scripts still handle everything directly:
    - Generate 8 core project docs
    - Generate 4 design docs + tokens (if --with-design)
    - Create ADR-0001 baseline

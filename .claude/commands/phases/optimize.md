@@ -1,19 +1,54 @@
 ---
 description: Run 15 parallel quality gates (core checks, E2E/visual, pre-CI validation, plus contracts/load/integrity for epics) with auto-retry for transient failures
-allowed-tools:
-  [
-    Bash(python .spec-flow/scripts/spec-cli.py optimize:*),
-    Bash(cat *),
-    Bash(grep *),
-    Bash(jq *),
-    Read,
-    Grep,
-    Glob,
-  ]
+allowed-tools: [Read, Bash, Task]
 argument-hint: [feature-slug or empty for auto-detection]
+version: 11.0
+updated: 2025-12-09
 ---
 
+# /optimize — Quality Gates Runner (Thin Wrapper)
+
+> **v11.0 Architecture**: This command spawns the isolated `optimize-phase-agent` via Task(). All quality gate logic runs in isolated context.
+
 <context>
+**User Input**: $ARGUMENTS
+
+**Active Feature**: !`ls -td specs/[0-9]*-* 2>/dev/null | head -1 || echo "none"`
+
+**Interaction State**: !`cat specs/*/interaction-state.yaml 2>/dev/null | head -10 || echo "none"`
+</context>
+
+<objective>
+Spawn isolated optimize-phase-agent to run production-readiness quality gates.
+
+**Architecture (v11.0 - Phase Isolation):**
+```
+/optimize → Task(optimize-phase-agent) → optimization-report.md
+```
+
+**Agent responsibilities:**
+- Run 15 parallel quality checks
+- Auto-retry transient failures (2-3 times)
+- Generate optimization-report.md
+- Return blocking issues or completion status
+
+**Quality Gates** (15 checks, expandable to 18 for epics):
+1-7: Core (performance, security, a11y, code review, migrations, docker, E2E)
+8-15: Pre-CI (licenses, env vars, circular deps, dead code, dockerfile, deps, bundle, health)
+16-18: Epic-only (contracts, load testing, migration integrity)
+
+**Auto-Retry Logic**:
+- Transient failures auto-retry with progressive delays
+- Critical failures (security, breaking changes) block immediately
+
+**Prerequisites**: `/implement` phase complete
+
+**Workflow position**: `spec → clarify → plan → tasks → implement → optimize → ship`
+</objective>
+
+## Legacy Context (for agent reference)
+
+<legacy_context>
 Workflow Detection: Auto-detected via workspace files, branch pattern, or state.yaml
 
 Current phase: Auto-detected from ${BASE_DIR}/\*/state.yaml
@@ -21,55 +56,7 @@ Current phase: Auto-detected from ${BASE_DIR}/\*/state.yaml
 Implementation status: Auto-detected from ${BASE_DIR}/\*/state.yaml
 
 Quality targets: Auto-detected from ${BASE_DIR}/\*/plan.md
-
-WCAG requirements: Auto-detected from ${BASE_DIR}/\*/plan.md
-</context>
-
-<objective>
-Run fast, parallel production-readiness checks with auto-retry logic for transient failures, and block deployment if any hard blockers are found.
-
-This command validates features meet production quality standards across 15 parallel checks:
-
-**Core Quality Gates** (Checks 1-7 - All workflows):
-
-1. **Performance** - Backend benchmarks, frontend Lighthouse, bundle size
-2. **Security** - Static analysis (Bandit/Ruff), dependency audit (Safety/pnpm), security tests
-3. **Accessibility** - WCAG compliance via jest-axe and Lighthouse A11y
-4. **Code Review** - Lints, type checks, test coverage
-5. **Migrations** - Reversibility and drift-free validation
-6. **Docker Build** - Validates Dockerfile builds successfully (skipped if no Dockerfile)
-7. **E2E + Visual Testing** - Playwright E2E tests with visual regression (toHaveScreenshot), auto-starts dev server, skipped if no playwright.config found or `e2e_visual.enabled=false`. Failure mode controlled by `e2e_visual.failure_mode` preference (blocking/warning)
-
-**Pre-CI Validation Gates** (Checks 8-15 - All workflows, tech-stack agnostic):
-
-8. **License Compliance** - Detects GPL/AGPL/Unlicensed dependencies that break distribution (BLOCKING)
-9. **Environment Validation** - Compares .env.example vs .env for missing required vars (BLOCKING)
-10. **Circular Dependencies** - Detects import cycles using madge (Node) or pydeps (Python) (BLOCKING)
-11. **Dead Code Detection** - Finds unused exports via ts-prune (TypeScript) or vulture (Python) (BLOCKS if >10 items)
-12. **Dockerfile Best Practices** - Lints Dockerfile with hadolint, validates docker-compose syntax (BLOCKING)
-13. **Dependency Freshness** - Reports outdated dependencies (WARNING only, non-blocking)
-14. **Bundle Size Analysis** - Checks frontend bundle size against 500KB threshold (WARNING only)
-15. **Health Check Validation** - Verifies health endpoint exists in code (WARNING if missing)
-
-**Enhanced Validation Gates** (Checks 16-18 - Epic workflows only):
-16. **Contract Validation** - API contract compliance (OpenAPI schemas), contract tests (Pact CDC)
-17. **Load Testing** - Performance under production-like load (100 VUs, 30s duration)
-18. **Migration Integrity** - Data integrity validation during up/down migrations, no data corruption
-
-**Auto-Retry Logic**:
-
-- Transient failures (flaky tests, timing issues) auto-retry 2-3 times
-- Critical failures (security, breaking changes) block immediately
-- Progressive delays: 5s, 10s, 15s between retries
-
-**Prerequisites**:
-
-- `/implement` or `/implement-epic` phase complete
-- Feature directory exists with plan.md
-- Epic workflows: e2e-tests.md generated (from /tasks phase)
-
-**Risk Level**: 🟡 MEDIUM - Blocks deployment if quality gates fail (after auto-retry attempts)
-</objective>
+</legacy_context>
 
 <process>
 

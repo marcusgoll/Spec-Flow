@@ -1,32 +1,44 @@
 ---
 description: Generate implementation plan from spec using research-driven design (meta-prompting for epics)
-allowed-tools:
-  [
-    Read,
-    Grep,
-    Glob,
-    Bash(python *spec-cli.py*),
-    Bash(git *),
-    Task,
-    AskUserQuestion,
-    SlashCommand,
-  ]
+allowed-tools: [Read, Bash, Task, AskUserQuestion]
 argument-hint: [feature-name or epic-slug]
+version: 11.0
+updated: 2025-12-09
 ---
 
+# /plan — Implementation Plan Generator (Thin Wrapper)
+
+> **v11.0 Architecture**: This command spawns the isolated `plan-phase-agent` via Task(). All planning logic runs in isolated context with question batching.
+
 <context>
-Current git status: !`git status --short | head -10`
+**User Input**: $ARGUMENTS
 
-Current branch: !`git branch --show-current`
+**Active Feature**: !`ls -td specs/[0-9]*-* 2>/dev/null | head -1 || echo "none"`
 
-Workflow Detection: Auto-detected via workspace files, branch pattern, or state.yaml
+**Interaction State**: !`cat specs/*/interaction-state.yaml 2>/dev/null | head -10 || echo "none"`
+</context>
 
-Feature workspace: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>/dev/null | jq -r '.FEATURE_DIR // "Not initialized"'`
+<objective>
+Spawn isolated plan-phase-agent to generate implementation plan from spec.
 
-Project docs: !`ls -1 docs/project/*.md 2>/dev/null | wc -l` files available
+**Architecture (v11.0 - Phase Isolation):**
+```
+/plan → Task(plan-phase-agent) → Q&A loop if needed → plan.md + research.md
+```
 
-Spec exists: Auto-detected (epics/_/epic-spec.md OR specs/_/spec.md)
+**Agent responsibilities:**
+- Read spec.md and project documentation
+- Search codebase for reuse opportunities
+- Generate architectural decisions
+- Return questions for major design choices
+- Create plan.md with components and estimates
 
+**Workflow position**: `spec → clarify → plan → tasks → implement → optimize → ship`
+</objective>
+
+## Legacy Context (for agent reference)
+
+<legacy_context>
 **Feature Classification** (from state.yaml if exists):
 !`cat specs/*/state.yaml 2>/dev/null | grep -E "HAS_UI|IS_IMPROVEMENT|recommended_workflow" | head -5 || echo "No classification available"`
 
@@ -35,7 +47,7 @@ Spec exists: Auto-detected (epics/_/epic-spec.md OR specs/_/spec.md)
 
 **Data Architecture Context** (prevents duplicate entities):
 !`head -20 docs/project/data-architecture.md 2>/dev/null || echo "Not available - will analyze codebase"`
-</context>
+</legacy_context>
 
 <research_instructions>
 ## REQUIRED RESEARCH STEPS (Claude Code Must Execute)
@@ -52,6 +64,19 @@ Read the spec.md file completely. Extract:
 ```
 
 ### Step R2: Search for Reusable Components
+
+**PRIMARY: Semantic search (mgrep) for pattern discovery:**
+```bash
+# Use mgrep to find similar implementations by meaning
+mgrep "services that handle user authentication"
+mgrep "API endpoints for data retrieval"
+mgrep "form components with validation"
+mgrep "database models with timestamps"
+```
+
+mgrep finds similar code even when naming conventions differ (e.g., finds UserService, AuthenticationHandler, LoginManager when searching for "authentication services").
+
+**SECONDARY: Literal searches (when mgrep insufficient):**
 
 **Backend patterns** (execute these Grep/Glob searches):
 ```bash
