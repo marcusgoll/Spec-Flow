@@ -1,25 +1,26 @@
 ---
 description: Execute feature development workflow from specification through production deployment with automated quality gates
 argument-hint: [description|slug|continue|next|epic:<name>|epic:<name>:sprint:<num>|sprint:<num>]
-allowed-tools: Bash(python .spec-flow/scripts/spec-cli.py:*), Bash(git:*), Read(specs/**), Read(state.yaml), Read(.github/**), SlashCommand(/spec), SlashCommand(/clarify), SlashCommand(/plan), SlashCommand(/tasks), SlashCommand(/phases:validate), SlashCommand(/implement), SlashCommand(/optimize), SlashCommand(/deployment:ship-staging), SlashCommand(/deployment:ship-prod), SlashCommand(/ship), SlashCommand(/finalize), TodoWrite
-version: 4.0
-updated: 2025-12-04
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, AskUserQuestion, TodoWrite, SlashCommand
+version: 5.0
+updated: 2025-12-09
 ---
 
 <objective>
-Orchestrate complete feature delivery through isolated phase agents with strict state tracking and true autopilot execution.
+Orchestrate complete feature delivery through **isolated phase agents spawned via Task()** with strict state tracking and true autopilot execution.
 
 **Command**: `/feature [feature description | slug | continue | next | epic:<name> | epic:<name>:sprint:<num> | sprint:<num>]`
 
-**When to use**: From idea selection through production deployment. Executes automatically until completion, only pausing on critical failures.
+**CRITICAL ARCHITECTURE** (v5.0 - Domain Memory v2):
 
-**Architecture**:
+This orchestrator is **ultra-lightweight**. You MUST:
+1. Read state from disk (state.yaml, interaction-state.yaml, domain-memory.yaml)
+2. Spawn isolated phase agents via **Task tool** - NEVER execute phases inline
+3. Handle user Q&A when agents return questions
+4. Update state.yaml after each phase
+5. NEVER carry implementation details in your context
 
-- **Orchestrator** (`/feature`): Moves one phase at a time, updates `state.yaml`, never invents state
-- **Phase Commands**: `/spec`, `/plan`, `/tasks`, `/implement`, `/optimize`, `/ship` execute isolated phases
-- **Specialist Agents**: Implementation directly launches backend-dev, frontend-dev, database-architect in parallel
-
-**Benefits**: True autopilot execution, smaller token budgets per phase, faster execution, quality preserved by automated gates
+**Benefits**: Unlimited feature complexity, observable progress, resumable at any point, each phase gets fresh context.
 </objective>
 
 <context>
@@ -42,971 +43,399 @@ Deployment model detection:
 </context>
 
 <process>
-## Step 0.1: Initialize Feature State
 
-**Parse user input and initialize feature workspace via spec-cli.py.**
+## PHASE 1: Initialize Feature Workspace
 
-**Display autopilot mode:**
-
-```
-🤖 Autopilot enabled - executing automatically until completion or error
-```
-
----
-
-## User Input Handling
-
+**User Input:**
 ```text
 $ARGUMENTS
 ```
 
-You **MUST** consider the user input before proceeding (if not empty). Strip any mode flags (--auto, --interactive, --no-input) before processing.
+### Step 1.1: Parse Arguments and Initialize
 
-## Execute Feature Workflow
-
-Run the centralized spec-cli tool:
+Run the spec-cli tool to initialize the feature workspace:
 
 ```bash
 python .spec-flow/scripts/spec-cli.py feature "$ARGUMENTS"
 ```
 
-**What the script does:**
-
-1. **Parse arguments** — Determines mode: next, continue, lookup, epic, sprint
-2. **GitHub issue selection** (if applicable):
-   - `next` mode: Selects highest-priority issue from status:next or status:backlog
-   - `epic:name` mode: Auto-detects incomplete sprint and selects next issue
-   - `epic:name:sprint:num` mode: Selects next issue from specific epic+sprint
-   - `sprint:num` mode: Selects next issue from any sprint
-   - `lookup` mode: Searches by slug or title
-3. **Feature slug generation** — Auto-generates from issue title or description
-4. **Project type detection** — Identifies project technology (fullstack, backend, frontend, etc.)
-5. **Branch management** — Creates feature branch or uses existing branch
-6. **Initialize workflow state** — Creates `specs/NNN-slug/` directory and `state.yaml`
-7. **Generate feature CLAUDE.md** — Creates AI context navigation file
-
-**After script completes:**
-
-1. Verify feature initialization (number, slug, branch, directory, GitHub issue)
-2. **Mark roadmap issue as in-progress (if exists)**:
-   ```bash
-   # Search for roadmap issue by feature slug
-   ROADMAP_ISSUE=$(gh issue list --label "roadmap" --search "$FEATURE_SLUG in:body" --json number --jq '.[0].number' 2>/dev/null)
-
-   if [ -n "$ROADMAP_ISSUE" ] && [ "$ROADMAP_ISSUE" != "null" ]; then
-       # Mark issue in-progress via roadmap manager
-       source .spec-flow/scripts/bash/github-roadmap-manager.sh
-       mark_issue_in_progress "$FEATURE_SLUG"
-
-       # Store issue number in state.yaml for /ship integration
-       yq eval '.roadmap.issue_number = "'$ROADMAP_ISSUE'"' -i "specs/$FEATURE_SLUG/state.yaml"
-       echo "✅ Linked to roadmap issue #$ROADMAP_ISSUE"
-   fi
-   ```
-3. **Execute autopilot phase loop** (see below)
-
----
-
-## Step 0.15: Apply Learned Patterns (NEW - v10.16)
-
-**Auto-apply performance optimizations and patterns from perpetual learning system.**
-
-```bash
-# Check if auto-apply learnings is available
-if [ -f ".spec-flow/scripts/bash/auto-apply-learnings.sh" ]; then
-    echo ""
-    echo "🧠 Checking for learned patterns to apply..."
-    echo ""
-
-    # Run pattern auto-apply
-    bash .spec-flow/scripts/bash/auto-apply-learnings.sh before-tool "feature" "workflow_start" || true
-
-    # Note: The script will:
-    # - Apply performance patterns (confidence ≥0.90)
-    # - Warn about anti-patterns (confidence ≥0.85)
-    # - Expand custom abbreviations (confidence ≥0.95)
-    # - Queue CLAUDE.md tweaks for approval (confidence ≥0.95)
-
-    echo ""
-fi
-```
-
-**Displays applied patterns:**
-
-If patterns are auto-applied, you'll see output like:
-```
-🧠 Checking for learned patterns to apply...
-
-💡 Performance patterns applied: 3
-  - Use Glob instead of find for file search
-  - Batch git commits (3-4 files)
-  - Prefer Edit over Write for existing files
-
-⚠️  Anti-patterns to avoid: 2
-  - Don't edit schema files without migration
-  - Avoid nested Task calls (use sequential execution)
-
-🎯 Custom abbreviations available: 5
-  - "auth" → "authentication"
-  - "db" → "database"
-  - "feat" → "feature"
-
-✅ Learned patterns active in workflow
-```
-
-**Pending approvals:**
-
-If CLAUDE.md tweaks need approval:
-```
-📝 CLAUDE.md tweaks pending approval: 1
-  Review: .spec-flow/learnings/pending-approvals.yaml
-  Apply: /heal-workflow
-```
-
-**Skip conditions:**
-
-Auto-apply is skipped if:
-- No learnings collected yet (first few workflows)
-- Learning system disabled in preferences
-- CI/non-interactive mode
-- `.spec-flow/learnings/` directory doesn't exist
-
----
-
-## Step 0.16: Domain Memory Initialization (v11.0)
-
-**Initialize structured domain memory via isolated Initializer agent.**
-
-The Domain Memory pattern provides persistent, structured state that survives across sessions. Workers can pick up from any point without shared context.
+After the script completes, read the created state file to get the feature directory:
 
 ```bash
 FEATURE_DIR=$(ls -td specs/[0-9]*-* 2>/dev/null | head -1)
-DOMAIN_MEMORY_FILE="$FEATURE_DIR/domain-memory.yaml"
-
-# Check if domain memory already exists
-if [ ! -f "$DOMAIN_MEMORY_FILE" ]; then
-    echo ""
-    echo "🧠 Initializing Domain Memory..."
-    echo "   Spawning Initializer agent to expand goals into structured backlog"
-    echo ""
-fi
+echo "Feature directory: $FEATURE_DIR"
+cat "$FEATURE_DIR/state.yaml"
 ```
 
-**Initializer Agent Spawn:**
-
-If domain-memory.yaml doesn't exist, spawn the Initializer agent:
-
-```javascript
-// Only run Initializer for NEW features (not continue)
-if (!domainMemoryExists && mode !== "continue") {
-  // Spawn isolated Initializer agent via Task tool
-  const initResult = await Task({
-    subagent_type: "initializer",  // Uses .claude/agents/domain/initializer.md
-    prompt: `
-      Initialize domain memory for this feature:
-
-      Feature directory: ${FEATURE_DIR}
-      Description: ${featureDescription}
-      Workflow type: feature
-
-      Create domain-memory.yaml with expanded goals and feature backlog.
-      EXIT immediately after initialization - do NOT implement anything.
-    `
-  });
-
-  console.log("✅ Domain Memory initialized");
-  console.log(`   Features created: ${initResult.features_created}`);
-  console.log(`   Next step: Workers will pick features during /implement`);
-}
-```
-
-**For /feature continue:**
-
-If continuing a feature without domain-memory.yaml, auto-generate from tasks.md:
+### Step 1.2: Initialize Interaction State
 
 ```bash
-if [ ! -f "$DOMAIN_MEMORY_FILE" ] && [ -f "$FEATURE_DIR/tasks.md" ]; then
-    echo ""
-    echo "🔄 Generating domain memory from existing tasks.md..."
-    .spec-flow/scripts/bash/domain-memory.sh generate-from-tasks "$FEATURE_DIR"
-    echo "✅ Domain memory generated"
-    echo ""
-fi
+bash .spec-flow/scripts/bash/interaction-manager.sh init "$FEATURE_DIR"
 ```
 
-**Key Behaviors:**
+### Step 1.3: Display Autopilot Banner
 
-1. **New features**: Initializer expands description into structured feature list
-2. **Continue mode**: Auto-generates from tasks.md if domain-memory.yaml missing
-3. **Existing domain-memory**: Skips initialization (already has state)
-4. **Initializer is isolated**: Spawned via Task(), fresh context, exits after setup
-
-**Benefits:**
-
-- Workers can pick up from any point (read state from disk)
-- Progress is observable (log entries)
-- No context pollution between sessions
-- Tests become source of truth for feature status
+Output this to the user:
+```
+════════════════════════════════════════════════════════════════════════════════
+🤖 AUTOPILOT MODE - Domain Memory v2
+════════════════════════════════════════════════════════════════════════════════
+All phases execute via isolated Task() agents
+Progress tracked in: $FEATURE_DIR/state.yaml
+Questions batched and asked in main context
+Resume anytime with: /feature continue
+════════════════════════════════════════════════════════════════════════════════
+```
 
 ---
 
-## Step 0.2: Autopilot Phase Orchestration (v11.0 - Full Phase Isolation)
+## PHASE 2: Domain Memory Initialization
 
-**CRITICAL**: This is the autopilot loop that drives the entire workflow. ALL phases now run in isolated Task() contexts with question batching for user interaction.
+**YOU MUST spawn the Initializer agent via Task tool.**
 
-### Architecture: Ultra-Lightweight Orchestrator
-
-```
-Main Orchestrator (this file):
-  - Reads state from disk (state.yaml, interaction-state.yaml)
-  - Spawns isolated phase agents via Task()
-  - Handles user Q&A when agents return questions
-  - Updates state.yaml after each phase
-  - NEVER carries implementation details in context
+Check if domain-memory.yaml exists:
+```bash
+FEATURE_DIR=$(ls -td specs/[0-9]*-* 2>/dev/null | head -1)
+test -f "$FEATURE_DIR/domain-memory.yaml" && echo "EXISTS" || echo "MISSING"
 ```
 
-**Benefits:**
-- Unlimited feature complexity (no context compacting)
-- Observable progress (all state on disk)
-- Resumable at any point (`/feature continue`)
-- Each phase gets fresh context
+**If MISSING, use the Task tool with these EXACT parameters:**
 
-### Determine Starting Phase
+```
+Task tool call:
+  subagent_type: "initializer"
+  description: "Initialize domain memory"
+  prompt: |
+    Initialize domain memory for this feature.
+
+    Feature directory: [insert FEATURE_DIR value]
+    Description: [insert feature description from state.yaml]
+    Workflow type: feature
+
+    Your task:
+    1. Read the feature description from state.yaml
+    2. Expand it into 3-8 concrete sub-features
+    3. Create domain-memory.yaml with structured backlog
+    4. EXIT immediately after creating the file - do NOT implement anything
+
+    Return a summary of features created.
+```
+
+After the Task completes, verify domain-memory.yaml was created:
+```bash
+cat "$FEATURE_DIR/domain-memory.yaml"
+```
+
+---
+
+## PHASE 3: Execute Phase Loop
+
+**CRITICAL: You MUST spawn each phase as an isolated Task() agent. NEVER execute phase logic inline.**
+
+### Phase Sequence
+
+Execute these phases in order. For each phase:
+1. Check current phase from state.yaml
+2. Spawn the appropriate agent via Task tool
+3. Handle the result (completed, needs_input, or failed)
+4. Update state.yaml
+5. Proceed to next phase or handle error
+
+### Phase Configuration
+
+| Phase | Agent Type | Next Phase |
+|-------|------------|------------|
+| spec | spec-phase-agent | clarify |
+| clarify | clarify-phase-agent | plan |
+| plan | plan-phase-agent | tasks |
+| tasks | tasks-phase-agent | analyze |
+| analyze | analyze-phase-agent | implement |
+| implement | worker | optimize |
+| optimize | optimize-phase-agent | ship |
+| ship | ship-staging-phase-agent | finalize |
+| finalize | finalize-phase-agent | complete |
+
+### For Each Phase, Follow This Exact Pattern:
+
+#### Step 3.1: Read Current State
 
 ```bash
 FEATURE_DIR=$(ls -td specs/[0-9]*-* 2>/dev/null | head -1)
-STATE_FILE="$FEATURE_DIR/state.yaml"
-INTERACTION_FILE="$FEATURE_DIR/interaction-state.yaml"
-
-# Initialize interaction state if needed
-if [ ! -f "$INTERACTION_FILE" ]; then
-    bash .spec-flow/scripts/bash/interaction-manager.sh init "$FEATURE_DIR"
-fi
-
-# Read current phase status
-CURRENT_PHASE=$(yq eval '.phase' "$STATE_FILE" 2>/dev/null || echo "init")
+CURRENT_PHASE=$(yq eval '.phase' "$FEATURE_DIR/state.yaml")
 echo "Current phase: $CURRENT_PHASE"
-
-# Check for pending questions from previous session
-PENDING=$(bash .spec-flow/scripts/bash/interaction-manager.sh get-pending "$FEATURE_DIR" 2>/dev/null)
-if [ -n "$PENDING" ] && [ "$PENDING" != "null" ]; then
-    echo "📋 Pending questions from previous session detected"
-fi
 ```
 
-### Phase Agent Configuration
-
-**Each phase runs as isolated Task() agent:**
-
-```javascript
-const PHASE_AGENTS = [
-  { name: "spec", agent: "spec-phase-agent", next: "clarify" },
-  { name: "clarify", agent: "clarify-phase-agent", next: "plan", optional: true },
-  { name: "plan", agent: "plan-phase-agent", next: "tasks" },
-  { name: "tasks", agent: "tasks-phase-agent", next: "analyze" },
-  { name: "analyze", agent: "analyze-phase-agent", next: "implement" },
-  { name: "implement", agent: "worker", next: "optimize" }, // Uses domain-memory workers
-  { name: "optimize", agent: "optimize-phase-agent", next: "validate" },
-  { name: "validate", agent: "validate-phase-agent", next: "ship", skipInDirectProd: true },
-  { name: "ship", agent: "ship-phase-agent", next: "finalize" },
-  { name: "finalize", agent: "finalize-phase-agent", next: "complete" }
-];
-```
-
-### Phase Execution Loop with Question Batching
-
-**Orchestrator spawns agents and handles Q&A:**
-
-```javascript
-// Find current phase index
-let currentIndex = PHASE_AGENTS.findIndex(p => p.name === currentPhase);
-if (currentIndex === -1) currentIndex = 0;
-
-// Execute phases in sequence
-while (currentIndex < PHASE_AGENTS.length) {
-  const phase = PHASE_AGENTS[currentIndex];
-
-  console.log(`\n${"═".repeat(60)}`);
-  console.log(`🔄 Phase: ${phase.name.toUpperCase()} (isolated agent)`);
-  console.log(`${"═".repeat(60)}\n`);
-
-  // Check for pending answers from previous Q&A
-  const pendingAnswers = readInteractionState(INTERACTION_FILE);
-  const hasAnswers = pendingAnswers?.pending?.phase === phase.name;
-
-  // Spawn isolated phase agent via Task()
-  const agentResult = await Task({
-    subagent_type: phase.agent,
-    prompt: `
-      Execute ${phase.name} phase for feature:
-
-      Feature directory: ${FEATURE_DIR}
-      ${hasAnswers ? `
-      Resume from: ${pendingAnswers.pending.resume_instructions.entry_point}
-      Answers provided: ${JSON.stringify(pendingAnswers.pending.answers)}
-      ` : ''}
-
-      Read artifacts from disk, execute phase, return structured result.
-    `
-  });
-
-  // Handle agent result
-  const result = agentResult.phase_result;
-
-  // === CASE 1: Agent needs user input ===
-  if (result.status === "needs_input") {
-    console.log(`\n📋 Phase ${phase.name} needs user input`);
-
-    // Save questions to interaction-state.yaml
-    await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh save-questions "${FEATURE_DIR}" "${phase.name}" '${JSON.stringify(result)}'`);
-
-    // Ask user via AskUserQuestion (main context can do this)
-    const userAnswers = await AskUserQuestion({
-      questions: result.questions.map(q => ({
-        question: q.question,
-        header: q.header,
-        multiSelect: q.multi_select,
-        options: q.options
-      }))
-    });
-
-    // Save answers to interaction-state.yaml
-    await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh save-answers "${FEATURE_DIR}" '${JSON.stringify(userAnswers)}'`);
-
-    // Re-spawn agent with answers (loop continues same phase)
-    continue;
-  }
-
-  // === CASE 2: Agent completed successfully ===
-  if (result.status === "completed") {
-    console.log(`✅ Phase ${phase.name} completed`);
-
-    // Log artifacts created
-    if (result.artifacts_created) {
-      result.artifacts_created.forEach(a => console.log(`   📄 ${a.path}`));
-    }
-
-    // Mark phase complete in interaction-state.yaml
-    await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh mark-phase-complete "${FEATURE_DIR}" "${phase.name}"`);
-
-    // Update state.yaml
-    await Bash(`yq eval '.phases.${phase.name} = "completed"' -i "${STATE_FILE}"`);
-    await Bash(`yq eval '.phase = "${phase.next}"' -i "${STATE_FILE}"`);
-
-    // Advance to next phase
-    currentIndex++;
-    continue;
-  }
-
-  // === CASE 3: Agent failed ===
-  if (result.status === "failed") {
-    console.log(`\n❌ Phase ${phase.name} FAILED`);
-    console.log(`   Error: ${result.error?.message || 'Unknown error'}`);
-
-    // Update state.yaml
-    await Bash(`yq eval '.phases.${phase.name} = "failed"' -i "${STATE_FILE}"`);
-    await Bash(`yq eval '.status = "failed"' -i "${STATE_FILE}"`);
-
-    // Log to error-log.md
-    if (result.blocking_issues) {
-      console.log(`   Blocking issues:`);
-      result.blocking_issues.forEach(i => console.log(`   - ${i.message}`));
-    }
-
-    console.log(`\n   Fix issues and run: /feature continue`);
-    break;
-  }
-}
-
-// Check for completion
-if (currentIndex >= PHASE_AGENTS.length) {
-  console.log(`\n${"═".repeat(60)}`);
-  console.log(`✅ FEATURE COMPLETE`);
-  console.log(`${"═".repeat(60)}\n`);
-
-  // Update final state
-  await Bash(`yq eval '.status = "completed"' -i "${STATE_FILE}"`);
-  await Bash(`yq eval '.completed_at = "${new Date().toISOString()}"' -i "${STATE_FILE}"`);
-}
-```
-
-### Question Batching Protocol
-
-**How user interaction works with isolated agents:**
-
-1. **Agent returns questions** instead of calling AskUserQuestion directly
-2. **Main orchestrator** receives questions, saves to `interaction-state.yaml`
-3. **Main asks user** via AskUserQuestion (this works in main context)
-4. **Answers saved** to `interaction-state.yaml`
-5. **Agent re-spawned** with answers, continues from `resume_from` point
-
-**Agent return format:**
-```yaml
-phase_result:
-  status: "needs_input"
-  questions:
-    - id: "Q001"
-      question: "Who is the primary user?"
-      header: "User"
-      multi_select: false
-      options:
-        - label: "End users"
-          description: "Public-facing features"
-        - label: "Admin users"
-          description: "Internal tools"
-  resume_from: "requirements_gathering"
-  context_to_pass:
-    research_done: true
-    codebase_analyzed: true
-```
-
-### Manual Gate Detection
-
-**Gates are now handled by validate-agent and ship-agent:**
-
-```javascript
-// Validate agent returns approval question for staging validation
-// Ship agent returns approval question for production deployment
-// These are handled through the same Q&A loop above
-
-// Manual gates that pause workflow:
-const MANUAL_GATES = {
-  mockup_approval: "Mockups require approval before implementation",
-  staging_validation: "Staging needs manual verification"
-};
-
-// Check if a gate was set by phase agent
-const state = readYAML(STATE_FILE);
-if (state.gates?.mockup_approval === "pending") {
-  console.log(`\n⏸️  MOCKUP APPROVAL REQUIRED`);
-  console.log(`   Review mockups in: ${FEATURE_DIR}/mockups/`);
-  console.log(`   Approve and run: /feature continue`);
-}
-```
-
-### Error Recovery
-
-**On any phase failure:**
-
-1. State is automatically saved by the phase command
-2. Error details logged to `error-log.md`
-3. User fixes issues manually
-4. Resume with `/feature continue` which reads state and continues from failed phase
-
-**Key principle**: The loop reads state after EVERY phase invocation. Never assume success - always verify from state.yaml.
-   </process>
-
-<workflow>
-## Phase Sequence
-
-### Step 0.5: Prototype Detection (Non-Blocking)
-
-**Check for project prototype before starting specification:**
+#### Step 3.2: Check for Pending Answers
 
 ```bash
-# Check if prototype exists
-PROTOTYPE_EXISTS=$(test -f design/prototype/state.yaml && echo "true" || echo "false")
+PENDING=$(bash .spec-flow/scripts/bash/interaction-manager.sh get-pending "$FEATURE_DIR" 2>/dev/null)
+echo "Pending questions: $PENDING"
 ```
 
-**If prototype exists:**
+#### Step 3.3: Spawn Phase Agent via Task Tool
 
-1. Analyze feature description for UI keywords:
-   ```javascript
-   const uiKeywords = [
-     'screen', 'page', 'view', 'dashboard', 'modal', 'dialog',
-     'form', 'list', 'table', 'settings', 'profile', 'wizard'
-   ];
-   const description = "$ARGUMENTS".toLowerCase();
-   const hasUIIntent = uiKeywords.some(kw => description.includes(kw));
-   ```
+**YOU MUST use the Task tool. Example for spec phase:**
 
-2. If UI intent detected, compare against prototype screen registry:
+```
+Task tool call:
+  subagent_type: "spec-phase-agent"
+  description: "Execute spec phase"
+  prompt: |
+    Execute the SPEC phase for this feature.
+
+    Feature directory: [FEATURE_DIR]
+
+    Instructions:
+    1. Read state.yaml to understand the feature
+    2. Research the codebase for existing patterns
+    3. Generate spec.md with requirements and acceptance criteria
+    4. If you need user input, return a structured response (see below)
+    5. If complete, return success status
+
+    IMPORTANT: If you need to ask the user questions, DO NOT use AskUserQuestion.
+    Instead, return this structured response and EXIT:
+
+    ---NEEDS_INPUT---
+    questions:
+      - id: Q001
+        question: "Your question here?"
+        header: "Short Label"
+        multi_select: false
+        options:
+          - label: "Option 1"
+            description: "Description of option 1"
+          - label: "Option 2"
+            description: "Description of option 2"
+    resume_from: "after_research"
+    ---END_NEEDS_INPUT---
+
+    If complete, return:
+    ---COMPLETED---
+    artifacts_created:
+      - path: spec.md
+        type: specification
+    summary: "Brief summary of what was created"
+    ---END_COMPLETED---
+```
+
+#### Step 3.4: Handle Agent Result
+
+**If agent returned NEEDS_INPUT:**
+
+1. Parse the questions from the agent's response
+2. Use AskUserQuestion tool to ask the user (you CAN use this in main context)
+3. Save answers:
    ```bash
-   # Read existing screens from prototype
-   cat design/prototype/state.yaml
+   bash .spec-flow/scripts/bash/interaction-manager.sh save-answers "$FEATURE_DIR" '[answers JSON]'
    ```
+4. Re-spawn the SAME phase agent with answers included in prompt
 
-3. If new screen might be needed, soft prompt user via AskUserQuestion:
-   ```json
-   {
-     "question": "This feature may introduce new UI screens. Update prototype first?",
-     "header": "Prototype",
-     "multiSelect": false,
-     "options": [
-       {"label": "Yes, update prototype", "description": "Add placeholder screens to prototype now (recommended for cohesive design)"},
-       {"label": "Later", "description": "Skip for now, update prototype manually later"},
-       {"label": "Not needed", "description": "This feature doesn't require new screens"}
-     ]
-   }
+**If agent returned COMPLETED:**
+
+1. Update state.yaml:
+   ```bash
+   yq eval '.phases.[PHASE_NAME] = "completed"' -i "$FEATURE_DIR/state.yaml"
+   yq eval '.phase = "[NEXT_PHASE]"' -i "$FEATURE_DIR/state.yaml"
    ```
+2. Mark phase complete:
+   ```bash
+   bash .spec-flow/scripts/bash/interaction-manager.sh mark-phase-complete "$FEATURE_DIR" "[PHASE_NAME]"
+   ```
+3. Proceed to next phase
 
-4. **If "Yes"**: Pause and suggest running `/prototype update`
-5. **If "Later" or "Not needed"**: Continue to specification phase
+**If agent returned FAILED:**
 
-**If no prototype exists**: Skip silently (backward compatible)
-
-**Note**: This is a soft prompt, not a blocking gate. Features can proceed without prototype.
+1. Update state.yaml:
+   ```bash
+   yq eval '.phases.[PHASE_NAME] = "failed"' -i "$FEATURE_DIR/state.yaml"
+   yq eval '.status = "failed"' -i "$FEATURE_DIR/state.yaml"
+   ```
+2. Output error message to user
+3. Instruct user to fix and run `/feature continue`
+4. STOP the workflow
 
 ---
 
-### Phase 0: Specification
+## PHASE 4: Implementation Phase (Special Handling)
 
-```bash
-/spec
-```
+**The implement phase uses Domain Memory workers - one task at a time.**
 
-Generates `spec.md` with requirements and acceptance criteria.
+When current phase is "implement":
 
-**If ambiguity detected**, auto-runs clarification phase:
-
-```bash
-/clarify
-```
-
-### Phase 1: Planning
-
-```bash
-/plan
-```
-
-Generates `plan.md` with architecture decisions and implementation approach.
-
-**Auto-proceeds to task breakdown after completion.**
-
-### Subsequent Phases (Automatic)
-
-**Phase 2: Task Breakdown**:
-
-```bash
-/tasks
-```
-
-**Phase 3: Cross-Artifact Analysis** (automatic):
-
-```bash
-/phases:validate
-```
-
-**Phase 4: Implementation** (automatic):
-
-```bash
-/implement
-```
-
-**Phase 5: Optimization** (automatic):
-
-```bash
-/optimize
-```
-
-**Phase 6: Deploy to Staging** (automatic):
-
-```bash
-/ship-staging
-```
-
-**Automated Staging Validation**: Auto-generates validation report with E2E tests, Lighthouse scores, rollback test, and health checks. All testing happens in staging environment.
-
-**Phase 7: Deploy to Production** (automatic after validation):
-
-```bash
-/ship-prod
-```
-
-**Phase 8: Finalization** (automatic):
-
-```bash
-/finalize
-```
-
-</workflow>
-
-<automatic_flow>
-
-## Automatic Workflow Flow
-
-**All phases execute automatically without manual review gates.**
-
-The workflow flows continuously from specification through deployment:
+1. Read domain-memory.yaml to find next incomplete feature
+2. Spawn a worker agent for ONE feature only:
 
 ```
-/spec → /clarify (if needed) → /plan → /tasks → /implement → /optimize → /ship → /finalize
+Task tool call:
+  subagent_type: "worker"
+  description: "Implement one feature"
+  prompt: |
+    Implement ONE feature from the domain memory.
+
+    Feature directory: [FEATURE_DIR]
+
+    Instructions:
+    1. Read domain-memory.yaml
+    2. Find the first feature with status "pending" or "in_progress"
+    3. Implement ONLY that one feature using TDD
+    4. Update domain-memory.yaml with your progress
+    5. EXIT immediately after completing the feature
+
+    Return:
+    ---WORKER_COMPLETED---
+    feature_id: F001
+    status: completed
+    files_changed:
+      - path/to/file.py
+    tests_added:
+      - test_file.py
+    ---END_WORKER_COMPLETED---
 ```
 
-**Only blocks on critical errors:**
-- CI failures
-- Security issues
-- Quality gate failures (tests, performance, accessibility)
-- Deployment errors
+3. After worker completes, check if more features remain:
+   ```bash
+   REMAINING=$(yq eval '.features[] | select(.status != "completed") | .id' "$FEATURE_DIR/domain-memory.yaml" | wc -l)
+   ```
 
-**Staging Validation** (after /ship-staging):
-- Runs automated validation (E2E tests, Lighthouse, health checks)
-- Proceeds automatically after automated checks pass
-- Only blocks on validation failures
+4. If REMAINING > 0, spawn another worker (loop)
+5. If REMAINING = 0, proceed to optimize phase
 
-**Resume after errors:** `/feature continue`
-</automatic_flow>
+---
+
+## PHASE 5: Completion
+
+When all phases complete:
+
+1. Update final state:
+   ```bash
+   yq eval '.status = "completed"' -i "$FEATURE_DIR/state.yaml"
+   yq eval '.completed_at = "'$(date -Iseconds)'"' -i "$FEATURE_DIR/state.yaml"
+   ```
+
+2. Output completion banner:
+   ```
+   ════════════════════════════════════════════════════════════════════════════════
+   ✅ FEATURE COMPLETE
+   ════════════════════════════════════════════════════════════════════════════════
+   Feature: [slug]
+   Duration: [calculated from started_at]
+   Phases completed: spec → plan → tasks → implement → optimize → ship → finalize
+   ════════════════════════════════════════════════════════════════════════════════
+   ```
+
+</process>
 
 <continue_mode>
 
 ## Resuming Interrupted Features
 
-When running `/feature continue`:
+When argument is "continue":
 
-### Step 0: Session Context Restoration
-
-**Check for handoff documents and session state:**
+### Step 1: Detect Active Workflow
 
 ```bash
-# Detect active workflow
 WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null)
-SLUG=$(echo "$WORKFLOW_INFO" | grep -o '"slug":"[^"]*"' | cut -d'"' -f4)
-FEATURE_DIR="specs/$SLUG"
-
-# Display session status
-bash .spec-flow/scripts/bash/session-manager.sh status 2>/dev/null || true
-
-# Check for handoff document
-if [ -f "$FEATURE_DIR/sessions/latest-handoff.md" ]; then
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "📋 Handoff Available"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    # Show handoff summary (first 20 lines)
-    head -20 "$FEATURE_DIR/sessions/latest-handoff.md"
-    echo ""
-    echo "Full handoff: $FEATURE_DIR/sessions/latest-handoff.md"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-fi
-
-# Start new session
-bash .spec-flow/scripts/bash/session-manager.sh start 2>/dev/null || true
+FEATURE_DIR=$(echo "$WORKFLOW_INFO" | jq -r '.base_dir + "/" + .slug')
+echo "Resuming: $FEATURE_DIR"
 ```
 
-### Step 1: Detect feature workspace and branch
+### Step 2: Read Current State
 
 ```bash
-# Run detection utility to find feature workspace
-WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null || pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
-
-   if [ $? -eq 0 ]; then
-       WORKFLOW_TYPE=$(echo "$WORKFLOW_INFO" | jq -r '.type')
-       BASE_DIR=$(echo "$WORKFLOW_INFO" | jq -r '.base_dir')
-       SLUG=$(echo "$WORKFLOW_INFO" | jq -r '.slug')
-       CURRENT_BRANCH=$(echo "$WORKFLOW_INFO" | jq -r '.branch')
-
-       # Verify this is a feature workflow
-       if [ "$WORKFLOW_TYPE" != "feature" ]; then
-           echo "❌ Error: This is an $WORKFLOW_TYPE workflow, not a feature"
-           echo "   Use /epic continue for epic workflows"
-           exit 1
-       fi
-
-       # Check if on correct feature branch
-       if [[ "$CURRENT_BRANCH" =~ ^feature/ ]]; then
-           echo "✓ Detected feature branch: $CURRENT_BRANCH"
-       else
-           echo "⚠️  Warning: Not on a feature branch (current: $CURRENT_BRANCH)"
-           echo "   Feature workspace detected at: specs/$SLUG"
-       fi
-
-       WORKFLOW_STATE_FILE="${BASE_DIR}/${SLUG}/state.yaml"
-   else
-       echo "❌ Error: Could not detect feature workspace"
-       echo "   Run from project root with an active feature in specs/"
-       exit 1
-   fi
-   ```
-
-2. **Read state.yaml** to find current phase
-3. Locate first phase with status `in_progress` or `failed`
-4. Resume from that phase
-5. If manual gate was pending, proceed past it
-6. Continue workflow execution
-
-7. **Check for iteration mode** (v3.0 - Feedback Loop Support):
-
-   ```bash
-   # Read iteration state
-   CURRENT_ITERATION=$(yq eval '.iteration.current' "$WORKFLOW_STATE_FILE" 2>/dev/null || echo "1")
-
-   if [ "$CURRENT_ITERATION" -gt 1 ]; then
-       echo "🔄 Resuming Iteration $CURRENT_ITERATION"
-       echo "   Gaps discovered during validation"
-       echo "   Executing supplemental tasks only"
-       echo ""
-
-       # Show gap summary
-       if [ -f "specs/$SLUG/gaps.md" ]; then
-           IN_SCOPE_COUNT=$(yq eval '.gaps.in_scope_count' "$WORKFLOW_STATE_FILE" 2>/dev/null || echo "0")
-           echo "   In-scope gaps: $IN_SCOPE_COUNT"
-           echo "   Tasks generated: Check tasks.md (Iteration $CURRENT_ITERATION section)"
-           echo ""
-       fi
-
-       # Resume from current phase in iteration workflow
-       # Typically this will be "implement" phase after gap capture
-       CURRENT_PHASE=$(yq eval '.phase' "$WORKFLOW_STATE_FILE" 2>/dev/null || echo "unknown")
-       echo "   Resuming from: /$CURRENT_PHASE phase"
-   fi
-   ```
-
-   **Iteration workflow resume logic:**
-
-   - If iteration > 1 and phase = "implement": Execute supplemental tasks only
-   - If iteration > 1 and phase = "optimize": Run iteration-specific quality gates
-   - If iteration > 1 and phase = "ship-staging": Deploy iteration N to staging
-   - After successful deployment: Loop back to validate-staging for convergence check
-
-**State verification required:**
-
-```bash
-# Always read and quote actual state
-cat $WORKFLOW_STATE_FILE
+cat "$FEATURE_DIR/state.yaml"
+CURRENT_PHASE=$(yq eval '.phase' "$FEATURE_DIR/state.yaml")
+echo "Current phase: $CURRENT_PHASE"
 ```
 
-Never assume or fabricate phase status — always read the actual recorded state.
+### Step 3: Check for Pending Questions
+
+```bash
+PENDING=$(bash .spec-flow/scripts/bash/interaction-manager.sh get-pending "$FEATURE_DIR" 2>/dev/null)
+```
+
+If pending questions exist, ask user via AskUserQuestion and save answers.
+
+### Step 4: Resume Phase Loop
+
+Continue from CURRENT_PHASE using the same Task() spawning pattern described above.
+
 </continue_mode>
 
 <error_handling>
 
 ## Failure Handling
 
-**If any phase fails:**
+**On any phase failure:**
 
-1. Read error details from `state.yaml`
-2. Check relevant log files in `specs/NNN-slug/`
-3. Present clear error message with file paths
-4. Suggest fixes based on error type
-5. Instruct user to fix and run `/feature continue`
+1. The phase agent will return FAILED status
+2. Update state.yaml with failure status
+3. Output clear error message with:
+   - Which phase failed
+   - Error details from agent
+   - File paths to check
+   - Command to resume: `/feature continue`
 
-**Common failure modes:**
+**Never fabricate success. Always read actual state from disk.**
 
-- **Spec ambiguity** → Run `/clarify` to resolve
-- **Planning failures** → Check `plan.md` for missing context, review research findings
-- **Implementation errors** → Check `error-log.md`, review task status in `tasks.md`
-- **Quality gate failures** → Review `optimization-*.md` reports for specific issues
-- **Deployment failures** → Check deployment logs, verify environment configuration
-
-**Anti-Hallucination Rules:**
-
-1. **Never claim phase completion without quoting `state.yaml`**
-
-   - Always `Read` the file and print the actual recorded status
-
-2. **Cite agent outputs**
-
-   - When a phase finishes, paste the returned `{status, summary, stats}` keys
-
-3. **Do not skip phases unless state marks them disabled**
-
-   - Follow the recorded sequence; if required, run it
-
-4. **Detect deployment model from repo**
-
-   - Show evidence: `git branch -a`, presence of staging workflow files
-
-5. **No fabricated summaries**
-   - If an agent errors, show the error; don't invent success
-
-**Why**: This prevents silent quality gaps and makes the workflow auditable against real artifacts.
 </error_handling>
 
-<workflow_tracking>
+<anti_hallucination>
 
-## State Management
+## CRITICAL: Anti-Hallucination Rules
 
-All phases read/write `specs/<NNN-slug>/state.yaml`.
+1. **NEVER execute phase logic inline** - Always spawn via Task tool
+2. **NEVER claim completion without reading state.yaml**
+3. **NEVER skip phases** - Follow the sequence from state.yaml
+4. **NEVER guess agent results** - Parse actual returned content
+5. **ALWAYS verify artifacts exist** after agent claims creation
 
-**Todo list example (staging-prod model):**
-
-```javascript
-TodoWrite({
-  todos: [
-    {
-      content: "Parse args, initialize state",
-      status: "completed",
-      activeForm: "Initialized",
-    },
-    {
-      content: "Phase 0: Specification",
-      status: "pending",
-      activeForm: "Creating spec",
-    },
-    {
-      content: "Phase 0.5: Clarification (if needed)",
-      status: "pending",
-      activeForm: "Resolving clarifications",
-    },
-    {
-      content: "Phase 1: Planning",
-      status: "pending",
-      activeForm: "Creating plan",
-    },
-    {
-      content: "Phase 2: Task breakdown",
-      status: "pending",
-      activeForm: "Generating tasks",
-    },
-    {
-      content: "Phase 3: Cross-artifact analysis",
-      status: "pending",
-      activeForm: "Validating artifacts",
-    },
-    {
-      content: "Phase 4: Implementation",
-      status: "pending",
-      activeForm: "Implementing tasks",
-    },
-    {
-      content: "Phase 5: Optimization",
-      status: "pending",
-      activeForm: "Optimizing code",
-    },
-    {
-      content: "Phase 6: Ship to staging",
-      status: "pending",
-      activeForm: "Deploying to staging",
-    },
-    {
-      content: "Phase 7: Ship to production",
-      status: "pending",
-      activeForm: "Deploying to production",
-    },
-    {
-      content: "Phase 8: Finalize documentation",
-      status: "pending",
-      activeForm: "Finalizing documentation",
-    },
-  ],
-});
-```
-
-**Rules**:
-
-- Exactly one phase is `in_progress` at a time
-- All phases execute automatically (true autopilot)
-- Only blocks on critical failures: CI failures, security issues, quality gate failures, deployment errors
-- Deployment phases adapt to model: `staging-prod`, `direct-prod`, or `local-only`
-- Any blocker (test failure, build error, quality gate, CI failure) pauses workflow for user review
-- Resume with `/feature continue` after fixing issues
-
-**State.yaml tracking:**
-
-```yaml
-feature:
-  number: NNN
-  slug: feature-slug
-  started_at: ISO_TIMESTAMP
-
-phases:
-  spec: completed|in_progress|failed
-  plan: completed|in_progress|failed
-  tasks: completed|in_progress|failed
-  implement: completed|in_progress|failed
-  optimize: completed|in_progress|failed
-  ship: completed|in_progress|failed
-  finalize: completed|in_progress|failed
-```
-  </workflow_tracking>
-
-<success_criteria>
-Feature workflow is complete when:
-
-- ✅ Feature initialized with unique slug and directory structure
-- ✅ All required phases executed in sequence
-- ✅ All quality gates passed (tests, optimization, security, accessibility)
-- ✅ Staging validation passed (automated checks)
-- ✅ Feature deployed to production successfully
-- ✅ Documentation finalized and merged
-- ✅ `state.yaml` shows all phases with status `completed`
-- ✅ No blocking failures or errors in state file
-- ✅ GitHub issue updated to shipped status (if applicable)
-</success_criteria>
+</anti_hallucination>
 
 <examples>
-## Usage Examples
 
-**Start next priority feature:**
+## Correct Usage Examples
 
-```bash
-/feature next
-```
+### Starting a New Feature
 
-**Start feature from description:**
+User: `/feature "Add user authentication"`
 
-```bash
-/feature "Add dark mode toggle to settings"
-```
+You do:
+1. Run spec-cli.py to initialize
+2. Initialize interaction state
+3. Check domain-memory.yaml (MISSING)
+4. **Task(initializer)** to create domain-memory.yaml
+5. Read state.yaml → phase is "spec"
+6. **Task(spec-phase-agent)** to create spec.md
+7. Handle result (needs_input or completed)
+8. Continue with **Task(plan-phase-agent)**, etc.
 
-**Start feature from epic:**
+### Resuming a Feature
 
-```bash
-/feature epic:aktr
-```
+User: `/feature continue`
 
-**Start specific sprint in epic:**
-
-```bash
-/feature epic:aktr:sprint:S02
-```
-
-**Resume interrupted feature:**
-
-```bash
-/feature continue
-```
-
-**Lookup specific feature:**
-
-```bash
-/feature "user authentication"
-```
+You do:
+1. Detect workflow via detect-workflow-paths.sh
+2. Read state.yaml → phase is "implement"
+3. Check pending questions
+4. Read domain-memory.yaml → find next incomplete feature
+5. **Task(worker)** to implement one feature
+6. Loop until all features complete
+7. **Task(optimize-phase-agent)**, etc.
 
 </examples>
 
 <philosophy>
+
 ## Design Principles
 
-**State truth lives in `state.yaml`**
+**Orchestrator is stateless** - All knowledge comes from disk files
 
-- Never guess; always read, quote, and update atomically
-- State file is single source of truth for workflow status
+**Task() is mandatory** - Every phase runs in isolated agent context
 
-**Phases are isolated**
+**Questions batch to main** - Agents return questions, main asks user
 
-- Each agent reads context from disk (NOTES.md, tasks.md, spec.md)
-- Returns structured JSON with no hidden handoffs
-- Clear boundaries prevent state drift
+**Workers are atomic** - One feature per spawn, exit immediately
 
-**True autopilot execution**
+**State is observable** - All progress visible in YAML files
 
-- All phases execute automatically without manual intervention
-- Only blocks on critical failures: CI failures, security issues, quality gate failures
-- Optimized for 3-person teams that trust the workflow
-
-**Automatic quality gates**
-
-- Automated validation at each phase transition
-- No manual review gates - quality ensured by automated checks
-- Staging validation runs automated E2E tests, Lighthouse, health checks
-
-**Test in staging, not locally**
-
-- All UI/UX, accessibility, performance, and integration testing in staging
-- No local preview gate required
-- Automated validation determines pass/fail
-
-**Deployment model adapts**
-
-- Detect `staging-prod`, `direct-prod`, or `local-only` from repo structure
-- Adjust phases accordingly based on detected model
-
-**Fail fast, fail loud**
-
-- Record failures in state immediately
-- Never pretend success
-- Any blocker (CI failure, security issue, quality gate) pauses workflow
-- Resume with `/feature continue` after fix
 </philosophy>

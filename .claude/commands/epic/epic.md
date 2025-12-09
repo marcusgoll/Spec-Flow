@@ -1,35 +1,32 @@
 ---
 description: Execute multi-sprint epic workflow from interactive scoping through deployment with parallel sprint execution and self-improvement
 argument-hint: [epic description | slug | continue | next]
-allowed-tools: [Read, Write, Edit, Grep, Glob, Bash, Task, AskUserQuestion, TodoWrite, SlashCommand, Skill]
-version: 6.0
-updated: 2025-12-04
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, AskUserQuestion, TodoWrite, SlashCommand
+version: 7.0
+updated: 2025-12-09
 ---
 
-# /epic — Epic-Level Workflow Orchestration
-
-**Purpose**: Transform high-level product goals into coordinated multi-sprint implementations with parallel execution, self-adaptation, and comprehensive walkthrough documentation.
+<objective>
+Orchestrate multi-sprint epic delivery through **isolated phase agents spawned via Task()** with parallel sprint execution and comprehensive quality gates.
 
 **Command**: `/epic [epic description | slug | continue | next]`
 
-**When to use**: For complex features requiring multiple sprints (>2 sprints), cross-cutting concerns, or when automatic sprint decomposition and parallel execution would accelerate delivery.
+**CRITICAL ARCHITECTURE** (v7.0 - Domain Memory v2):
 
-**Autopilot**: Executes automatically until completion, only pausing on critical failures.
+This orchestrator is **ultra-lightweight**. You MUST:
+1. Read state from disk (state.yaml, interaction-state.yaml, domain-memory.yaml)
+2. Spawn isolated phase agents via **Task tool** - NEVER execute phases inline
+3. Handle user Q&A when agents return questions
+4. Update state.yaml after each phase
+5. NEVER carry implementation details in your context
 
----
+**Key Difference from /feature**:
+- Epic creates sprint-level domain-memory.yaml files for parallel execution
+- Implementation spawns multiple workers across sprints simultaneously
+- More sophisticated dependency tracking between sprints
 
-## Mental Model
-
-**Architecture: Epic Orchestrator + Meta-Prompting + Parallel Sprint Execution**
-
-- **Orchestrator** (`/epic`): Manages epic lifecycle, auto-triggers /init-project if needed, coordinates sprint dependencies
-- **Meta-Prompting**: Research → Plan → Implement pipeline with isolated sub-agent execution
-- **Parallel Sprints**: Dependency graph analysis enables simultaneous sprint execution
-- **Adaptive**: Analyzes patterns across epics, generates project-specific tooling
-
-**Benefits**: 3-5x faster delivery, LLM-optimized XML documentation, self-improving workflow, project-aware tooling generation.
-
----
+**Benefits**: Unlimited epic complexity, 3-5x faster delivery via parallelism, observable progress, resumable at any point.
+</objective>
 
 <context>
 **User Input**: $ARGUMENTS
@@ -37,1498 +34,597 @@ updated: 2025-12-04
 **Project State**: !`test -d docs/project && echo "initialized" || echo "missing"`
 
 **Git Configuration**:
-
-- Remote: !`git remote -v 2>$null | Select-String -Pattern "origin" -Quiet && echo "configured" || echo "none"`
-- Current branch: !`git branch --show-current 2>$null || echo "none"`
+- Remote: !`git remote -v 2>/dev/null | head -1 | grep -q origin && echo "configured" || echo "none"`
+- Current branch: !`git branch --show-current 2>/dev/null || echo "none"`
 - Staging workflow: !`test -f .github/workflows/deploy-staging.yml && echo "present" || echo "missing"`
 
-**Epic Workspace**: !`dir /b /ad epics 2>$null || echo "none"`
+**Epic Workspace**: !`ls -d epics/*/ 2>/dev/null | head -3 || echo "none"`
 
-**Workflow State**: @epics/\*/state.yaml
+**Workflow State**: @epics/*/state.yaml
 </context>
 
-<objective>
-Execute multi-sprint epic workflow for: $ARGUMENTS
-
-Transform high-level product goals into coordinated multi-sprint implementations through:
-
-1. Interactive scoping with question bank (8-9 structured questions)
-2. Meta-prompted research and planning (isolated sub-agents)
-3. Parallel sprint execution (dependency graph-driven)
-4. Adaptive quality gates and deployment (model auto-detection)
-5. Comprehensive walkthrough generation and self-improvement
-
-**Deployment model** auto-detected from git configuration:
-
-- staging-prod: Git remote + staging branch + staging workflow
-- direct-prod: Git remote without staging infrastructure
-- local-only: No git remote configured
-
-**Autopilot behavior**: All phases execute automatically. Only stops for critical blockers: CI failures, security issues, deployment errors.
-</objective>
-
 <process>
-### Step 0.1: Initialize Epic State
 
-**Parse user input and initialize epic workspace:**
+## PHASE 1: Initialize Epic Workspace
 
-```javascript
-const args = "$ARGUMENTS".trim();
-const epicDescription = args;
+**User Input:**
+```text
+$ARGUMENTS
 ```
 
-**Display autopilot mode:**
+### Step 1.1: Parse Arguments and Detect Mode
 
-```
-🤖 Autopilot enabled - executing automatically until completion or error
-```
+Determine the mode from arguments:
+- If argument is "continue" → Resume mode (skip to PHASE 1.5)
+- If argument is "next" → Select from backlog
+- If argument starts with slug/number → Lookup mode
+- Otherwise → New epic creation
 
-**Create/update state.yaml:**
+### Step 1.2: Create Epic Workspace (New Epic)
 
-```yaml
-# epics/{EPIC_SLUG}/state.yaml
-epic:
-  number: { EPIC_NUMBER }
-  slug: { EPIC_SLUG }
-  title: { EPIC_TITLE }
-  started_at: { ISO_TIMESTAMP }
-  current_phase: specification
-
-phases:
-  specification: pending
-  research: pending
-  planning: pending
-  implementation: pending
-  optimization: pending
-  deployment: pending
-  finalization: pending
-
-sprints:
-  total: 0 # Updated after planning
-  completed: 0
-  failed: 0
-
-layers:
-  total: 0 # Updated after planning
-  completed: 0
-```
-
-**Autopilot behavior**: All phases execute automatically. Only stops for critical blockers: CI failures, security issues, deployment errors.
-
-### Step 0.2: Auto-Initialize Project (If Needed)
-
-**Check for project initialization:**
+For new epics, run the epic creation script:
 
 ```bash
-test -d docs/project && echo "initialized" || echo "missing"
+bash .spec-flow/scripts/bash/create-new-epic.sh --json "$ARGUMENTS"
 ```
 
-**If missing, auto-trigger project setup:**
-
-1. Use AskUserQuestion tool:
-
-   - **Question**: "No project documentation found. Initialize project now?"
-   - **Options**:
-     - "Yes, full setup" → Run /init-project + optional /init-brand-tokens
-     - "Quick setup" → Run /init-project with minimal questions
-     - "Skip" → Continue without project docs (not recommended)
-
-2. If user selects initialization:
-   - Run `/init-project` command
-   - Detect project type: Check for `package.json`, `requirements.txt`, etc.
-   - Ask: "Is this a UI project?" → If yes, run `/init-brand-tokens`
-   - Ask: "Use default engineering principles?" → If no, run `/constitution`
-
-**Once project initialized, proceed to epic creation.**
-
-### Step 0.3: Prototype Detection (Non-Blocking)
-
-**Check for project prototype before starting specification:**
-
-```bash
-# Check if prototype exists
-PROTOTYPE_EXISTS=$(test -f design/prototype/state.yaml && echo "true" || echo "false")
-```
-
-**If prototype exists:**
-
-1. Analyze epic description for UI keywords:
-   ```javascript
-   const uiKeywords = [
-     'screen', 'page', 'view', 'dashboard', 'modal', 'dialog',
-     'form', 'list', 'table', 'settings', 'profile', 'wizard',
-     'UI', 'frontend', 'interface'
-   ];
-   const description = "$ARGUMENTS".toLowerCase();
-   const hasUIIntent = uiKeywords.some(kw => description.includes(kw));
-   ```
-
-2. If UI intent detected, compare against prototype screen registry:
-   ```bash
-   # Read existing screens from prototype
-   cat design/prototype/state.yaml
-   ```
-
-3. If new screens might be needed for this epic, soft prompt user via AskUserQuestion:
-   ```json
-   {
-     "question": "This epic may require new UI screens. Update prototype first?",
-     "header": "Prototype",
-     "multiSelect": false,
-     "options": [
-       {"label": "Yes, update prototype", "description": "Add screens for this epic to prototype now (recommended for cohesive design)"},
-       {"label": "Later", "description": "Skip for now, can update prototype during sprint planning"},
-       {"label": "Not needed", "description": "This epic doesn't require new screens"}
-     ]
-   }
-   ```
-
-4. **If "Yes"**: Pause and suggest running `/project:prototype update`
-5. **If "Later" or "Not needed"**: Continue to specification phase
-
-**If no prototype exists**: Skip silently (backward compatible)
-
-**Note**: This is a soft prompt, not a blocking gate. Epics can proceed without prototype.
-
----
-
-### Step 0.4: Prototype Source Detection (Auto-Population)
-
-**Check if epic was created from prototype extraction (`/prototype extract --to-epic`):**
-
-```bash
-# Check for prototype source indicator in state.yaml
-EPIC_SOURCE=$(yq eval '.source // "manual"' "$EPIC_DIR/state.yaml" 2>/dev/null)
-```
-
-**If `source: prototype` detected:**
-
-1. **Load pre-populated epic-spec.md:**
-   ```bash
-   # Epic spec already populated from prototype discovery
-   cat "$EPIC_DIR/epic-spec.md"
-   ```
-
-2. **Load discovered features as backlog:**
-   ```bash
-   # Features extracted from prototype
-   cat "$EPIC_DIR/discovered-features.md"
-   ```
-
-3. **Load component requirements:**
-   ```bash
-   # Components identified during extraction
-   cat "$EPIC_DIR/component-inventory.md"
-   ```
-
-4. **Display prototype source summary:**
-   ```
-   ═══════════════════════════════════════════════════════════════════════════════
-     Epic Pre-Populated from Prototype
-   ═══════════════════════════════════════════════════════════════════════════════
-
-     Source: design/prototype/
-     Features Discovered: [N]
-     Suggested Sprints: [M]
-     Components Required: [K]
-     Open Questions: [Q]
-
-     Artifacts Pre-Loaded:
-       ✓ epic-spec.md (from discovered features)
-       ✓ discovered-features.md
-       ✓ component-inventory.md
-
-   ═══════════════════════════════════════════════════════════════════════════════
-   ```
-
-5. **Skip redundant scoping questions:**
-   - Skip "What type of epic is this?" → Already inferred from prototype
-   - Skip "What subsystems are involved?" → Already identified from screens
-   - Skip "Estimated complexity?" → Already calculated from features
-
-   **Instead, ask only:**
-   ```json
-   {
-     "question": "Review the pre-populated epic spec. Ready to proceed to planning?",
-     "header": "Prototype Epic",
-     "multiSelect": false,
-     "options": [
-       {"label": "Yes, proceed to planning", "description": "Spec looks good, start /plan phase"},
-       {"label": "Modify spec first", "description": "Edit epic-spec.md before planning"},
-       {"label": "Add more features", "description": "Return to prototype to discover more"}
-     ]
-   }
-   ```
-
-6. **If "Yes"**: Skip to Step 2 (Planning Phase)
-7. **If "Modify spec"**: Open epic-spec.md for editing, then proceed
-8. **If "Add more features"**: Pause and suggest `/project:prototype explore`
-
-**If `source: manual` or not set**: Proceed with normal Step 1 scoping questions.
-
----
-
-### Step 0.5: Apply Learned Patterns (NEW - v10.16)
-
-**Auto-apply performance optimizations and patterns from perpetual learning system.**
-
-```bash
-# Check if auto-apply learnings is available
-if [ -f ".spec-flow/scripts/bash/auto-apply-learnings.sh" ]; then
-    echo ""
-    echo "🧠 Checking for learned patterns to apply..."
-    echo ""
-
-    # Run pattern auto-apply
-    bash .spec-flow/scripts/bash/auto-apply-learnings.sh before-tool "epic" "workflow_start" || true
-
-    # Note: The script will:
-    # - Apply performance patterns (confidence ≥0.90)
-    # - Warn about anti-patterns (confidence ≥0.85)
-    # - Expand custom abbreviations (confidence ≥0.95)
-    # - Queue CLAUDE.md tweaks for approval (confidence ≥0.95)
-
-    echo ""
-fi
-```
-
-**Displays applied patterns:**
-
-If patterns are auto-applied, you'll see output like:
-```
-🧠 Checking for learned patterns to apply...
-
-💡 Performance patterns applied: 3
-  - Use parallel Task() calls for independent operations
-  - Batch git commits for related changes
-  - Prefer meta-prompting for complex research
-
-⚠️  Anti-patterns to avoid: 2
-  - Don't modify contracts after locking
-  - Avoid circular dependencies between sprints
-
-🎯 Custom abbreviations available: 5
-  - "auth" → "authentication"
-  - "db" → "database"
-  - "API" → "Application Programming Interface"
-
-✅ Learned patterns active in epic workflow
-```
-
-**Pending approvals:**
-
-If CLAUDE.md tweaks need approval:
-```
-📝 CLAUDE.md tweaks pending approval: 1
-  Review: .spec-flow/learnings/pending-approvals.yaml
-  Apply: /heal-workflow
-```
-
-**Skip conditions:**
-
-Auto-apply is skipped if:
-- No learnings collected yet (first few workflows)
-- Learning system disabled in preferences
-- CI/non-interactive mode
-- `.spec-flow/learnings/` directory doesn't exist
-
----
-
-### Step 0.6: Domain Memory Initialization (v11.0)
-
-**Initialize hierarchical domain memory for epic sprints.**
-
-The Domain Memory pattern provides persistent, structured state for each sprint. Workers can pick up from any point without shared context.
-
-```bash
-# Create epic directory if not exists
-EPIC_DIR=$(ls -td epics/[0-9]*-* 2>/dev/null | head -1)
-
-if [ -n "$EPIC_DIR" ]; then
-    # Initialize epic-level domain memory
-    if [ ! -f "$EPIC_DIR/domain-memory.yaml" ]; then
-        echo ""
-        echo "🧠 Initializing Epic Domain Memory..."
-        .spec-flow/scripts/bash/domain-memory.sh init "$EPIC_DIR"
-    fi
-fi
-```
-
-**Initializer Agent Spawn for Epic:**
-
-For new epics, spawn the Initializer agent to expand the description into sprint-level domain memory:
-
-```javascript
-// Spawn isolated Initializer for epic
-if (!epicDomainMemoryExists && mode !== "continue") {
-  const initResult = await Task({
-    subagent_type: "initializer",  // Uses .claude/agents/domain/initializer.md
-    prompt: `
-      Initialize domain memory for this EPIC:
-
-      Epic directory: ${EPIC_DIR}
-      Description: ${epicDescription}
-      Workflow type: epic
-
-      Create:
-      1. Epic-level domain-memory.yaml with high-level goals
-      2. After sprint planning, create sprint-level files:
-         - epics/{slug}/sprints/S01/domain-memory.yaml
-         - epics/{slug}/sprints/S02/domain-memory.yaml
-         - etc.
-
-      Each sprint gets its own domain-memory.yaml with features scoped to that sprint.
-      EXIT immediately after initialization - do NOT implement anything.
-    `
-  });
-
-  console.log("✅ Epic Domain Memory initialized");
-  console.log(`   Sprint memory files will be created during /plan phase`);
-}
-```
-
-**Sprint-Level Domain Memory:**
-
-After `/plan` phase creates sprints, each sprint directory gets its own domain-memory.yaml:
-
-```
-epics/001-ecom/
-├── domain-memory.yaml          # Epic-level overview (goals, constraints)
-└── sprints/
-    ├── S01/
-    │   └── domain-memory.yaml  # Sprint 1 features and status
-    ├── S02/
-    │   └── domain-memory.yaml  # Sprint 2 features and status
-    └── S03/
-        └── domain-memory.yaml  # Sprint 3 features and status
-```
-
-**Benefits for Epics:**
-
-- **Parallel sprint execution**: Workers for S01 and S02 can run simultaneously
-- **Isolated state per sprint**: No cross-contamination between sprint Workers
-- **Observable progress**: Each sprint's domain-memory.yaml shows current status
-- **Resumable at any level**: Can resume epic, sprint, or individual feature
-
----
-
-### Step 0.7: Phase Agent Orchestration (v11.0 - Full Phase Isolation)
-
-**CRITICAL**: ALL epic phases now run in isolated Task() contexts with question batching for user interaction.
-
-**Architecture: Ultra-Lightweight Epic Orchestrator**
-
-```
-Main Orchestrator (this file):
-  - Reads state from disk (state.yaml, interaction-state.yaml)
-  - Spawns isolated phase agents via Task()
-  - Handles user Q&A when agents return questions
-  - Updates state.yaml after each phase
-  - NEVER carries implementation details in context
-```
-
-**Benefits for Large Epics:**
-- Unlimited epic complexity (no context compacting)
-- Observable progress (all state on disk)
-- Resumable at any point (`/epic continue`)
-- Each phase gets fresh context
-- Parallel sprint execution without context pollution
-
-**Initialize Interaction State:**
+After the script completes, read the created state file:
 
 ```bash
 EPIC_DIR=$(ls -td epics/[0-9]*-* 2>/dev/null | head -1)
-STATE_FILE="$EPIC_DIR/state.yaml"
-INTERACTION_FILE="$EPIC_DIR/interaction-state.yaml"
-
-# Initialize interaction state if needed
-if [ ! -f "$INTERACTION_FILE" ]; then
-    bash .spec-flow/scripts/bash/interaction-manager.sh init "$EPIC_DIR"
-fi
-
-# Check for pending questions from previous session
-PENDING=$(bash .spec-flow/scripts/bash/interaction-manager.sh get-pending "$EPIC_DIR" 2>/dev/null)
-if [ -n "$PENDING" ] && [ "$PENDING" != "null" ]; then
-    echo "📋 Pending questions from previous session detected"
-fi
+echo "Epic directory: $EPIC_DIR"
+cat "$EPIC_DIR/state.yaml"
 ```
 
-**Phase Agent Configuration (Epic):**
-
-```javascript
-const EPIC_PHASE_AGENTS = [
-  { name: "spec", agent: "spec-phase-agent", next: "clarify" },
-  { name: "clarify", agent: "clarify-phase-agent", next: "plan", optional: true },
-  { name: "plan", agent: "plan-phase-agent", next: "tasks" },
-  { name: "tasks", agent: "tasks-phase-agent", next: "analyze" },
-  { name: "analyze", agent: "analyze-phase-agent", next: "implement" },
-  { name: "implement", agent: "epic", next: "optimize" }, // Uses /implement-epic for parallel sprints
-  { name: "optimize", agent: "optimize-phase-agent", next: "validate" },
-  { name: "validate", agent: "validate-phase-agent", next: "ship", skipInDirectProd: true },
-  { name: "ship", agent: "ship-phase-agent", next: "finalize" },
-  { name: "finalize", agent: "finalize-phase-agent", next: "complete" }
-];
-```
-
-**Phase Execution Loop with Question Batching:**
-
-```javascript
-// Read current phase from state
-const currentPhase = readYAML(STATE_FILE).phase || "spec";
-let currentIndex = EPIC_PHASE_AGENTS.findIndex(p => p.name === currentPhase);
-if (currentIndex === -1) currentIndex = 0;
-
-// Execute phases in sequence
-while (currentIndex < EPIC_PHASE_AGENTS.length) {
-  const phase = EPIC_PHASE_AGENTS[currentIndex];
-
-  console.log(`\n${"═".repeat(60)}`);
-  console.log(`🔄 Epic Phase: ${phase.name.toUpperCase()} (isolated agent)`);
-  console.log(`${"═".repeat(60)}\n`);
-
-  // Check for pending answers from previous Q&A
-  const pendingAnswers = readInteractionState(INTERACTION_FILE);
-  const hasAnswers = pendingAnswers?.pending?.phase === phase.name;
-
-  // Spawn isolated phase agent via Task()
-  const agentResult = await Task({
-    subagent_type: phase.agent,
-    prompt: `
-      Execute ${phase.name} phase for EPIC:
-
-      Epic directory: ${EPIC_DIR}
-      Workflow type: epic
-      ${hasAnswers ? `
-      Resume from: ${pendingAnswers.pending.resume_instructions.entry_point}
-      Answers provided: ${JSON.stringify(pendingAnswers.pending.answers)}
-      ` : ''}
-
-      Read artifacts from disk, execute phase, return structured result.
-    `
-  });
-
-  // Handle agent result
-  const result = agentResult.phase_result;
-
-  // === CASE 1: Agent needs user input ===
-  if (result.status === "needs_input") {
-    console.log(`\n📋 Epic phase ${phase.name} needs user input`);
-
-    // Save questions to interaction-state.yaml
-    await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh save-questions "${EPIC_DIR}" "${phase.name}" '${JSON.stringify(result)}'`);
-
-    // Ask user via AskUserQuestion (main context can do this)
-    const userAnswers = await AskUserQuestion({
-      questions: result.questions.map(q => ({
-        question: q.question,
-        header: q.header,
-        multiSelect: q.multi_select,
-        options: q.options
-      }))
-    });
-
-    // Save answers to interaction-state.yaml
-    await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh save-answers "${EPIC_DIR}" '${JSON.stringify(userAnswers)}'`);
-
-    // Re-spawn agent with answers (loop continues same phase)
-    continue;
-  }
-
-  // === CASE 2: Agent completed successfully ===
-  if (result.status === "completed") {
-    console.log(`✅ Epic phase ${phase.name} completed`);
-
-    // Log artifacts created
-    if (result.artifacts_created) {
-      result.artifacts_created.forEach(a => console.log(`   📄 ${a.path}`));
-    }
-
-    // Mark phase complete
-    await Bash(`bash .spec-flow/scripts/bash/interaction-manager.sh mark-phase-complete "${EPIC_DIR}" "${phase.name}"`);
-    await Bash(`yq eval '.phases.${phase.name} = "completed"' -i "${STATE_FILE}"`);
-    await Bash(`yq eval '.phase = "${phase.next}"' -i "${STATE_FILE}"`);
-
-    currentIndex++;
-    continue;
-  }
-
-  // === CASE 3: Agent failed ===
-  if (result.status === "failed") {
-    console.log(`\n❌ Epic phase ${phase.name} FAILED`);
-    console.log(`   Error: ${result.error?.message || 'Unknown error'}`);
-
-    await Bash(`yq eval '.phases.${phase.name} = "failed"' -i "${STATE_FILE}"`);
-    await Bash(`yq eval '.status = "failed"' -i "${STATE_FILE}"`);
-
-    if (result.blocking_issues) {
-      console.log(`   Blocking issues:`);
-      result.blocking_issues.forEach(i => console.log(`   - ${i.message}`));
-    }
-
-    console.log(`\n   Fix issues and run: /epic continue`);
-    break;
-  }
-}
-
-// Check for completion
-if (currentIndex >= EPIC_PHASE_AGENTS.length) {
-  console.log(`\n${"═".repeat(60)}`);
-  console.log(`✅ EPIC COMPLETE`);
-  console.log(`${"═".repeat(60)}\n`);
-
-  await Bash(`yq eval '.status = "completed"' -i "${STATE_FILE}"`);
-  await Bash(`yq eval '.completed_at = "${new Date().toISOString()}"' -i "${STATE_FILE}"`);
-}
-```
-
-**Question Batching Protocol (Same as /feature):**
-
-1. **Agent returns questions** instead of calling AskUserQuestion directly
-2. **Main orchestrator** receives questions, saves to `interaction-state.yaml`
-3. **Main asks user** via AskUserQuestion (this works in main context)
-4. **Answers saved** to `interaction-state.yaml`
-5. **Agent re-spawned** with answers, continues from `resume_from` point
-
----
-
-### Step 1: Create Epic Specification
-
-**Parse user input and detect complexity:**
-
-- If description < 50 words → Likely simple feature, suggest `/feature` instead
-- If description mentions multiple subsystems/phases → Epic candidate
-- If unclear → Use AskUserQuestion to clarify scope
-
-**Use AskUserQuestion extensively for clarification:**
-
-```javascript
-// Example questions (adaptive based on description analysis)
-AskUserQuestion({
-  questions: [
-    {
-      question: "What type of epic is this?",
-      header: "Epic Type",
-      multiSelect: false,
-      options: [
-        { label: "New feature", description: "Brand new functionality" },
-        { label: "Enhancement", description: "Improve existing features" },
-        {
-          label: "Refactoring",
-          description: "Improve code without changing behavior",
-        },
-        {
-          label: "Infrastructure",
-          description: "Dev tools, CI/CD, monitoring",
-        },
-      ],
-    },
-    {
-      question: "What subsystems are involved?",
-      header: "Subsystems",
-      multiSelect: true,
-      options: [
-        {
-          label: "Backend API",
-          description: "Server-side logic and endpoints",
-        },
-        { label: "Frontend UI", description: "User interface components" },
-        { label: "Database", description: "Schema changes or data migrations" },
-        {
-          label: "Infrastructure",
-          description: "Deployment, monitoring, CI/CD",
-        },
-      ],
-    },
-    {
-      question: "What's the complexity level?",
-      header: "Complexity",
-      multiSelect: false,
-      options: [
-        {
-          label: "Small (2-3 sprints)",
-          description: "~1 week, clear requirements",
-        },
-        {
-          label: "Medium (4-6 sprints)",
-          description: "2-3 weeks, some unknowns",
-        },
-        {
-          label: "Large (7+ sprints)",
-          description: "1+ month, significant research needed",
-        },
-      ],
-    },
-  ],
-});
-```
-
-**Generate epic specification (Markdown format):**
+### Step 1.3: Initialize Interaction State
 
 ```bash
-# Step 1: Branch, Worktree, and Epic Workspace Creation
-# Uses create-new-epic.sh script which handles:
-# - Worktree creation (if worktrees.auto_create is true in user-preferences.yaml)
-# - Git branch creation (fallback if worktrees disabled)
-# - Epic directory structure (epics/NNN-slug/)
-# - Initial files: epic-spec.md, state.yaml, NOTES.md
-# - Subdirectories: visuals/, artifacts/, mockups/
-
-# Execute the script with JSON output for parsing
-EPIC_RESULT=$(bash .spec-flow/scripts/bash/create-new-epic.sh --json "$EPIC_DESCRIPTION")
-
-# Parse results
-EPIC_DIR=$(echo "$EPIC_RESULT" | grep -o '"EPIC_DIR": *"[^"]*"' | sed 's/"EPIC_DIR": *"//' | sed 's/"$//')
-BRANCH_NAME=$(echo "$EPIC_RESULT" | grep -o '"BRANCH_NAME": *"[^"]*"' | sed 's/"BRANCH_NAME": *"//' | sed 's/"$//')
-WORKTREE_ENABLED=$(echo "$EPIC_RESULT" | grep -o '"WORKTREE_ENABLED": *[^,}]*' | sed 's/"WORKTREE_ENABLED": *//')
-WORKTREE_PATH=$(echo "$EPIC_RESULT" | grep -o '"WORKTREE_PATH": *"[^"]*"' | sed 's/"WORKTREE_PATH": *"//' | sed 's/"$//')
-SLUG=$(echo "$EPIC_RESULT" | grep -o '"SLUG": *"[^"]*"' | sed 's/"SLUG": *"//' | sed 's/"$//')
-
-echo ""
-echo "Epic workspace created:"
-echo "   Directory: $EPIC_DIR"
-echo "   Branch: $BRANCH_NAME"
-echo "   Worktree: $([[ "$WORKTREE_ENABLED" == "true" ]] && echo "Yes ($WORKTREE_PATH)" || echo "No")"
-echo ""
-
-# If worktree was created, switch to that directory for subsequent work
-if [[ "$WORKTREE_ENABLED" == "true" && -n "$WORKTREE_PATH" ]]; then
-    cd "$WORKTREE_PATH"
-fi
-
-# Script already created:
-# - epic-spec.md (template with placeholders)
-# - state.yaml (workflow state tracking)
-# - NOTES.md (session notes)
-# - visuals/, artifacts/, mockups/ directories
-
-# Now proceed to populate epic-spec.md with structured scoping questions (Step 1.5)
+bash .spec-flow/scripts/bash/interaction-manager.sh init "$EPIC_DIR"
 ```
 
-**Epic specification structure:**
+### Step 1.4: Display Autopilot Banner
 
-```markdown
----
-number: NNN
-slug: epic-slug
-title: Epic Title
-type: new-feature|enhancement|refactoring|infrastructure
-complexity: small|medium|large
-created: 2025-11-19
----
-
-# Epic NNN: Epic Title
-
-## Objective
-
-### Business Value
-
-What this delivers to users/business
-
-### Success Metrics
-
-How we measure success
-
-### Constraints
-
-Technical, time, or resource constraints
-
-## Subsystems
-
-### Backend
-
-**Involved**: Yes/No
-Changes needed
-
-### Frontend
-
-**Involved**: Yes/No
-Changes needed
-
-### Database
-
-**Involved**: Yes/No
-Changes needed
-
-## Clarifications
-
-<!-- Filled by /clarify phase -->
+Output this to the user:
+```
+════════════════════════════════════════════════════════════════════════════════
+🤖 EPIC AUTOPILOT - Domain Memory v2 with Parallel Sprints
+════════════════════════════════════════════════════════════════════════════════
+All phases execute via isolated Task() agents
+Sprint execution parallelized via dependency graph
+Progress tracked in: $EPIC_DIR/state.yaml
+Questions batched and asked in main context
+Resume anytime with: /epic continue
+════════════════════════════════════════════════════════════════════════════════
 ```
 
-**Commit epic specification (atomic commit #1):**
+### Step 1.5: Continue Mode (Resume)
+
+If argument was "continue":
 
 ```bash
-# Auto-invoke git-workflow-enforcer skill for atomic commit
-# Or manually commit if skill unavailable:
-
-EPIC_SLUG=$(yq -r '.slug' epics/*/state.yaml)
-EPIC_TYPE=$(yq -r '.epic.type // "epic"' epics/*/epic-spec.md)
-COMPLEXITY=$(yq -r '.epic.complexity // "unknown"' epics/*/epic-spec.md)
-SUBSYSTEMS=$(yq -r '.epic.subsystems | length // 0' epics/*/epic-spec.md)
-
-git add epics/${EPIC_SLUG}/
-git commit -m "docs(epic-spec): create specification for ${EPIC_SLUG}
-
-Type: ${EPIC_TYPE}
-Complexity: ${COMPLEXITY}
-Subsystems: ${SUBSYSTEMS}
-
-Next: /clarify (if needed) or research phase
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-```
-
-**Alternative (recommended): Use git-workflow-enforcer skill:**
-
-```bash
-# Invoke skill to auto-generate commit
-/meta:enforce-git-commits --phase "epic-specification"
-```
-
-**Auto-proceed**: Specification complete, continuing to scoping questions.
-
-### Step 1.5: Interactive Epic Scoping (Question Bank-Driven)
-
-**Purpose**: Systematically scope the epic with 5 rounds of structured questions (8-9 total), eliminating ambiguity before planning.
-
-**When to invoke**: Always for new epics. Skip if resuming with `/epic continue`.
-
-**Skill reference**: See `.claude/skills/epic-scoping/SKILL.md` for detailed implementation.
-
-**Quick summary**:
-
-1. **Round 1**: Business goal + subsystem selection (2 questions)
-2. **Round 2**: Scope refinement per subsystem (0-4 conditional)
-3. **Round 3**: Success metrics (2 questions)
-4. **Round 4**: Dependencies & constraints (2 questions)
-5. **Round 5**: Complexity assessment (2 questions)
-
-**Output**: Fully populated epic-spec.md with zero ambiguities, ready for /plan.
-
-**Velocity benefit**: 5-10 minutes vs 30+ minutes unstructured (3-6x faster)
-
-### Step 2: Auto-Invoke Clarification (If Needed)
-
-**NEW in v5.0**: With interactive scoping (Step 1.5), /clarify should **rarely** be needed for epics.
-
-**Ambiguity Score Algorithm:**
-
-```javascript
-function calculateAmbiguityScore(epicSpecPath) {
-  const spec = readFile(epicSpecPath);
-  let score = 0;
-
-  // Factor 1: Explicit placeholders (10 points each, max 50)
-  const placeholders = (spec.match(/\[NEEDS CLARIFICATION\]/g) || []).length;
-  score += Math.min(placeholders * 10, 50);
-
-  // Factor 2: Missing required sections (15 points each)
-  const requiredSections = [
-    'Business Value',     // Why this matters
-    'Success Metrics',    // How we measure success
-    'Constraints',        // Technical/time/resource limits
-    'Subsystems'          // What systems are involved
-  ];
-  for (const section of requiredSections) {
-    if (!spec.includes(`## ${section}`) && !spec.includes(`### ${section}`)) {
-      score += 15;
-    }
-  }
-
-  // Factor 3: Vague language indicators (5 points each, max 25)
-  const vaguePatterns = [
-    /\bsomehow\b/i, /\bmaybe\b/i, /\bpossibly\b/i,
-    /\bTBD\b/, /\bTBC\b/, /\?\?\?/,
-    /\bsomething like\b/i, /\betc\.?\b/i
-  ];
-  let vagueCount = 0;
-  for (const pattern of vaguePatterns) {
-    if (pattern.test(spec)) vagueCount++;
-  }
-  score += Math.min(vagueCount * 5, 25);
-
-  // Factor 4: Missing subsystem details (10 points each)
-  const subsystemPatterns = [
-    { name: 'Backend', marker: /Backend.*Involved.*:\s*(Yes|No)/i },
-    { name: 'Frontend', marker: /Frontend.*Involved.*:\s*(Yes|No)/i },
-    { name: 'Database', marker: /Database.*Involved.*:\s*(Yes|No)/i }
-  ];
-  for (const sub of subsystemPatterns) {
-    if (!sub.marker.test(spec)) {
-      score += 10;
-    }
-  }
-
-  return {
-    score: score,
-    threshold: 30,
-    needsClarification: score > 30,
-    breakdown: {
-      placeholders: Math.min(placeholders * 10, 50),
-      missingSections: requiredSections.filter(s =>
-        !spec.includes(`## ${s}`) && !spec.includes(`### ${s}`)
-      ).length * 15,
-      vagueLanguage: Math.min(vagueCount * 5, 25),
-      missingSubsystems: subsystemPatterns.filter(s => !s.marker.test(spec)).length * 10
-    }
-  };
-}
-```
-
-**Ambiguity check** (after interactive scoping):
-
-```bash
-# Count explicit placeholders
-PLACEHOLDER_COUNT=$(grep -c "\[NEEDS CLARIFICATION\]" epics/${EPIC_SLUG}/epic-spec.md 2>/dev/null || echo "0")
-
-# Check for required sections
-MISSING_SECTIONS=0
-for section in "Business Value" "Success Metrics" "Constraints" "Subsystems"; do
-  grep -q "## $section\|### $section" epics/${EPIC_SLUG}/epic-spec.md || ((MISSING_SECTIONS++))
-done
-
-# Calculate score
-AMBIGUITY_SCORE=$((PLACEHOLDER_COUNT * 10 + MISSING_SECTIONS * 15))
-echo "Ambiguity Score: $AMBIGUITY_SCORE (threshold: 30)"
-```
-
-**Score interpretation:**
-- **0-15**: Excellent clarity, proceed directly to planning
-- **16-30**: Minor gaps, acceptable to proceed
-- **31-50**: Moderate ambiguity, /clarify recommended
-- **51+**: High ambiguity, /clarify required
-
-**If ambiguities detected** (ambiguity score > 30):
-
-```bash
-/clarify
-```
-
-**The /clarify command will:**
-
-- Use AskUserQuestion for 2-6 targeted questions
-- Validate answers against project docs (tech-stack.md, architecture.md)
-- Update epic-spec.md with clarifications
-- Mark clarification phase complete in state.yaml
-
-**Expected outcome**: With 5-round interactive scoping (Step 1.5), most epics have ambiguity score < 30 and skip /clarify entirely.
-
-**If clear** (score ≤ 30), skip /clarify and proceed to planning.
-
-### Step 3: Meta-Prompting for Research & Planning
-
-**Purpose**: Use isolated sub-agents via `/create-prompt` and `/run-prompt` to generate research and planning artifacts.
-
-**Skill reference**: See `.claude/skills/epic-meta-prompting/SKILL.md` for detailed implementation.
-
-**Process summary**:
-
-1. `/internal:create-prompt "Research technical approach for: [epic objective]"` → generates research prompt
-2. `/meta:run-prompt 001-[epic-slug]-research` → executes research, outputs research.md
-3. `/internal:create-prompt "Create implementation plan based on research"` → generates plan prompt
-4. `/meta:run-prompt 002-[epic-slug]-plan` → executes planning, outputs plan.md
-5. Commit both artifacts with `/meta:enforce-git-commits`
-
-**Outputs**: `research.md` (findings, confidence, open questions) and `plan.md` (architecture, phases, risks)
-
-**Auto-proceed**: Research and planning complete, continuing to sprint breakdown.
-
-### Step 4: Sprint Breakdown with Dependency Graph
-
-**Purpose**: Generate sprint-plan.md with dependency graph and execution layers for parallel implementation.
-
-**Skill reference**: See `.claude/skills/epic-sprints/SKILL.md` for detailed implementation.
-
-**Invoke**: `/tasks` (reads plan.md, generates sprint breakdown)
-
-**Process**:
-
-1. Analyze complexity and identify sprint boundaries
-2. Build dependency graph between sprints
-3. Lock API contracts for parallel work
-4. Generate execution layers for parallelization
-
-**Outputs**:
-
-- `sprint-plan.md` - Sprints with dependencies, hours, subsystems, locked contracts
-- `tasks.md` - All tasks across sprints with acceptance criteria
-- `contracts/api/*.yaml` - Locked API contracts
-
-**Commit**: `/meta:enforce-git-commits --phase "epic-sprint-breakdown"`
-
-### Step 5: Parallel Sprint Implementation
-
-**Invoke /implement-epic for parallel sprint execution:**
-
-```bash
-# Read auto_mode from state.yaml
-AUTO_MODE=$(yq -r '.epic.auto_mode // "false"' epics/*/state.yaml)
-
-# Pass auto_mode flag to implement-epic
-if [ "$AUTO_MODE" = "true" ]; then
-    /implement-epic --auto-mode
-else
-    /implement-epic
-fi
-```
-
-**The /implement-epic phase will:**
-
-1. Read sprint-plan.md to get execution layers
-2. For each layer:
-   - Launch parallel Task agents (one per sprint in layer)
-   - Each agent reads:
-     - epic-spec.md (requirements)
-     - research.md (findings)
-     - plan.md (architecture)
-     - tasks.md (filtered to sprint)
-     - Locked API contracts
-   - Wait for all agents in layer to complete
-   - Validate outputs:
-     - Tests passing
-     - Types checking
-     - Contracts respected
-     - No breaking changes
-3. Continuous validation during implementation:
-   - TDD enforcement (tests first)
-   - Type safety (no implicit any)
-   - Anti-duplication (reuse existing)
-   - Spec compliance (requirements met)
-4. Consolidate results after each layer
-5. Auto-audit workflow effectiveness
-
-**Progress monitoring:**
-
-```
-Layer 1/3: S01 (auth-backend) ✓ Complete
-Layer 2/3: S02 (auth-frontend) → In progress (65%)
-Layer 3/3: S03 (auth-integration) → Pending
-```
-
-**After implementation complete, auto-run workflow audit:**
-
-```bash
-/audit-workflow
-```
-
-**Outputs:**
-
-- Implementation across `epics/NNN-slug/sprints/S01/`, `S02/`, `S03/`
-- Consolidated test results
-- audit-report.xml with effectiveness metrics
-
-### Step 6: Optimization & Quality Gates
-
-**Invoke /optimize:**
-
-```bash
-/optimize
-```
-
-**The /optimize phase will:**
-
-1. Run quality checks across all sprints:
-   - Performance benchmarking
-   - Accessibility audit (WCAG 2.1 AA)
-   - Security scan (dependencies, secrets)
-   - Code quality review (KISS, DRY)
-   - Integration testing (cross-sprint validation)
-2. Run workflow audit (effectiveness metrics)
-3. Generate optimization-report.xml
-
-**Quality gates (blocking):**
-
-- All tests passing
-- No critical security issues
-- Performance benchmarks met
-- Accessibility standards met
-- No breaking API changes
-
-**If gates fail, workflow pauses. User must fix and run `/epic continue`.**
-
-**Commit optimization results (atomic commit #5):**
-
-```bash
-# Extract metadata for commit message
-PERF_SCORE=$(yq -r '.performance.score // "N/A"' epics/${EPIC_SLUG}/optimization-report.md)
-SEC_SCORE=$(yq -r '.security.score // "N/A"' epics/${EPIC_SLUG}/optimization-report.md)
-A11Y_SCORE=$(yq -r '.accessibility.score // "N/A"' epics/${EPIC_SLUG}/optimization-report.md)
-QUALITY_SCORE=$(yq -r '.code_quality.score // "N/A"' epics/${EPIC_SLUG}/optimization-report.md)
-
-# Commit optimization results
-git add epics/${EPIC_SLUG}/optimization-report.md
-git commit -m "docs(epic-optimize): complete optimization for ${EPIC_SLUG}
-
-Performance: ${PERF_SCORE}/100
-Security: ${SEC_SCORE}/100
-Accessibility: ${A11Y_SCORE}/100
-Code quality: ${QUALITY_SCORE}/100
-
-All quality gates passed
-
-Next: /ship
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-```
-
-**Alternative (recommended): Use git-workflow-enforcer skill:**
-
-```bash
-/meta:enforce-git-commits --phase "epic-optimize"
-```
-
-### Step 7: Unified Deployment
-
-**Invoke /ship:**
-
-```bash
-/ship
-```
-
-**The /ship command will:**
-
-1. Auto-detect deployment model from repo:
-   - staging-prod: Has staging branch + .github/workflows/deploy-staging.yml
-   - direct-prod: Has git remote, no staging
-   - local-only: No git remote
-2. Execute appropriate deployment workflow
-3. Track deployment metadata
-4. Create GitHub release (if staging-prod or direct-prod)
-
-**No changes to /ship logic - it already handles all models.**
-
-### Step 8: Walkthrough Generation & Self-Improvement
-
-**Purpose**: Generate comprehensive walkthrough documentation and trigger workflow self-improvement.
-
-**Skill reference**: See `.claude/skills/epic-walkthrough/SKILL.md` for detailed implementation.
-
-**Invoke**: `/finalize`
-
-**Process**:
-
-1. Generate `walkthrough.md` with phases, quality gates, key files, lessons learned
-2. Run `/audit-workflow` for post-mortem analysis
-3. Pattern detection (after 2-3 epics) for code generation opportunities
-4. Run `/heal-workflow` to apply approved improvements
-5. Update documentation (CHANGELOG, README, CLAUDE.md)
-6. Archive artifacts to `completed/`
-
-**Outputs**:
-
-- `walkthrough.md` - Comprehensive epic summary with velocity metrics
-- `workflow-improvements.xml` - Self-improvement suggestions
-- Updated project documentation
-
-## Handle Continue Mode
-
-**When resuming with `/epic continue`:**
-
-### Step 1: Session Context Restoration
-
-**Check for handoff documents and session state:**
-
-```bash
-# Detect active workflow
 WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null)
-SLUG=$(echo "$WORKFLOW_INFO" | grep -o '"slug":"[^"]*"' | cut -d'"' -f4)
-EPIC_DIR="epics/$SLUG"
-
-# Display session status
-bash .spec-flow/scripts/bash/session-manager.sh status 2>/dev/null || true
-
-# Check for handoff document
-if [ -f "$EPIC_DIR/sessions/latest-handoff.md" ]; then
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "📋 Handoff Available"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    # Show handoff summary (first 20 lines)
-    head -20 "$EPIC_DIR/sessions/latest-handoff.md"
-    echo ""
-    echo "Full handoff: $EPIC_DIR/sessions/latest-handoff.md"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-fi
-
-# Start new session
-bash .spec-flow/scripts/bash/session-manager.sh start 2>/dev/null || true
+EPIC_DIR=$(echo "$WORKFLOW_INFO" | jq -r '"\(.base_dir)/\(.slug)"')
+echo "Resuming epic: $EPIC_DIR"
+cat "$EPIC_DIR/state.yaml"
 ```
 
-### Step 2: Detect epic workspace and branch
+Check for pending questions and resume from current phase.
+
+---
+
+## PHASE 2: Domain Memory Initialization
+
+**YOU MUST spawn the Initializer agent via Task tool.**
+
+Check if domain-memory.yaml exists:
+```bash
+EPIC_DIR=$(ls -td epics/[0-9]*-* 2>/dev/null | head -1)
+test -f "$EPIC_DIR/domain-memory.yaml" && echo "EXISTS" || echo "MISSING"
+```
+
+**If MISSING, use the Task tool with these EXACT parameters:**
+
+```
+Task tool call:
+  subagent_type: "initializer"
+  description: "Initialize epic domain memory"
+  prompt: |
+    Initialize domain memory for this EPIC.
+
+    Epic directory: [insert EPIC_DIR value]
+    Description: [insert epic description from state.yaml]
+    Workflow type: epic
+
+    Your task:
+    1. Read the epic description from state.yaml
+    2. Expand it into high-level goals (epic-level domain-memory.yaml)
+    3. Create placeholder structure for sprint-level domain memory
+    4. EXIT immediately after creating the file - do NOT implement anything
+
+    Note: Sprint-level domain-memory.yaml files will be created after /plan phase
+    determines the actual sprints.
+
+    Return a summary of what was initialized.
+```
+
+After the Task completes, verify domain-memory.yaml was created:
+```bash
+cat "$EPIC_DIR/domain-memory.yaml"
+```
+
+---
+
+## PHASE 3: Execute Phase Loop
+
+**CRITICAL: You MUST spawn each phase as an isolated Task() agent. NEVER execute phase logic inline.**
+
+### Epic Phase Configuration
+
+| Phase | Agent Type | Next Phase | Notes |
+|-------|------------|------------|-------|
+| spec | spec-phase-agent | clarify | Creates epic-spec.md |
+| clarify | clarify-phase-agent | plan | Optional, if ambiguity detected |
+| plan | plan-phase-agent | tasks | Creates plan.md + sprint-plan.md |
+| tasks | tasks-phase-agent | analyze | Creates tasks.md for all sprints |
+| analyze | analyze-phase-agent | implement | Validates artifacts |
+| implement | epic | optimize | **Special: parallel sprint execution** |
+| optimize | optimize-phase-agent | ship | Runs quality gates |
+| ship | ship-staging-phase-agent | finalize | Deploys to staging/prod |
+| finalize | finalize-phase-agent | complete | Generates walkthrough.md |
+
+### For Each Phase, Follow This Exact Pattern:
+
+#### Step 3.1: Read Current State
 
 ```bash
-# Run detection utility to find epic workspace
-WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null || pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
+EPIC_DIR=$(ls -td epics/[0-9]*-* 2>/dev/null | head -1)
+CURRENT_PHASE=$(yq eval '.phase' "$EPIC_DIR/state.yaml")
+echo "Current phase: $CURRENT_PHASE"
+```
 
-   if [ $? -eq 0 ]; then
-       WORKFLOW_TYPE=$(echo "$WORKFLOW_INFO" | jq -r '.type')
-       BASE_DIR=$(echo "$WORKFLOW_INFO" | jq -r '.base_dir')
-       SLUG=$(echo "$WORKFLOW_INFO" | jq -r '.slug')
-       CURRENT_BRANCH=$(echo "$WORKFLOW_INFO" | jq -r '.branch')
+#### Step 3.2: Check for Pending Answers
 
-       # Verify this is an epic workflow
-       if [ "$WORKFLOW_TYPE" != "epic" ]; then
-           echo "❌ Error: This is a $WORKFLOW_TYPE workflow, not an epic"
-           echo "   Use /feature continue for feature workflows"
-           exit 1
-       fi
+```bash
+PENDING=$(bash .spec-flow/scripts/bash/interaction-manager.sh get-pending "$EPIC_DIR" 2>/dev/null)
+echo "Pending questions: $PENDING"
+```
 
-       # Check if on correct epic branch
-       if [[ "$CURRENT_BRANCH" =~ ^epic/ ]]; then
-           echo "✓ Detected epic branch: $CURRENT_BRANCH"
-       else
-           echo "⚠️  Warning: Not on an epic branch (current: $CURRENT_BRANCH)"
-           echo "   Epic workspace detected at: epics/$SLUG"
+#### Step 3.3: Spawn Phase Agent via Task Tool
 
-           # Ask if user wants to switch branches
-           AskUserQuestion({
-             questions: [{
-               question: "Switch to epic branch?",
-               header: "Branch Switch",
-               multiSelect: false,
-               options: [
-                 {label: "Yes", description: "Switch to epic/$SLUG branch"},
-                 {label: "No", description: "Continue on current branch (not recommended)"}
-               ]
-             }]
-           });
+**YOU MUST use the Task tool. Example for spec phase:**
 
-           if (userChoice === "Yes") {
-               git checkout -b epic/$SLUG 2>/dev/null || git checkout epic/$SLUG
-               echo "✓ Switched to epic/$SLUG"
-           }
-       fi
-   else
-       echo "❌ Error: Could not detect epic workspace"
-       echo "   Run from project root with an active epic in epics/"
-       exit 1
-   fi
-   ```
+```
+Task tool call:
+  subagent_type: "spec-phase-agent"
+  description: "Execute epic spec phase"
+  prompt: |
+    Execute the SPEC phase for this EPIC.
 
-2. **Read workflow state:**
+    Epic directory: [EPIC_DIR]
+    Workflow type: epic
 
-   - Read `epics/$SLUG/state.yaml` to find current phase
-   - Find first phase with status `in_progress` or `failed`
-   - Resume from that phase
-   - If manual gate was pending, proceed past it
+    Instructions:
+    1. Read state.yaml to understand the epic
+    2. Research the codebase for existing patterns
+    3. Generate epic-spec.md with requirements and sprint breakdown hints
+    4. If you need user input, return a structured response (see below)
+    5. If complete, return success status
 
-3. **Check for iteration mode** (v3.0 - Feedback Loop Support):
+    IMPORTANT: If you need to ask the user questions, DO NOT use AskUserQuestion.
+    Instead, return this structured response and EXIT:
 
+    ---NEEDS_INPUT---
+    questions:
+      - id: Q001
+        question: "What type of epic is this?"
+        header: "Epic Type"
+        multi_select: false
+        options:
+          - label: "New feature"
+            description: "Brand new functionality"
+          - label: "Enhancement"
+            description: "Improve existing features"
+          - label: "Refactoring"
+            description: "Improve code structure"
+    resume_from: "after_scoping"
+    ---END_NEEDS_INPUT---
+
+    If complete, return:
+    ---COMPLETED---
+    artifacts_created:
+      - path: epic-spec.md
+        type: specification
+    summary: "Created epic specification with N subsystems identified"
+    next_phase: plan
+    ---END_COMPLETED---
+```
+
+#### Step 3.4: Handle Agent Result
+
+**If agent returned NEEDS_INPUT:**
+
+1. Parse the questions from the agent's response
+2. Use AskUserQuestion tool to ask the user (you CAN use this in main context)
+3. Save answers:
    ```bash
-   # Read iteration state
-   CURRENT_ITERATION=$(yq eval '.iteration.current' "epics/$SLUG/state.yaml" 2>/dev/null || echo "1")
+   bash .spec-flow/scripts/bash/interaction-manager.sh save-answers "$EPIC_DIR" '[answers JSON]'
+   ```
+4. Re-spawn the SAME phase agent with answers included in prompt
 
-   if [ "$CURRENT_ITERATION" -gt 1 ]; then
-       echo "🔄 Resuming Iteration $CURRENT_ITERATION"
-       echo "   Gaps discovered during validation"
-       echo "   Executing supplemental tasks only"
-       echo ""
+**If agent returned COMPLETED:**
 
-       # Show gap summary
-       if [ -f "epics/$SLUG/gaps.md" ]; then
-           IN_SCOPE_COUNT=$(yq eval '.gaps.in_scope_count' "epics/$SLUG/state.yaml" 2>/dev/null || echo "0")
-           echo "   In-scope gaps: $IN_SCOPE_COUNT"
-           echo "   Tasks generated: Check tasks.md (Iteration $CURRENT_ITERATION section)"
-           echo ""
-       fi
+1. Update state.yaml:
+   ```bash
+   yq eval '.phases.[PHASE_NAME] = "completed"' -i "$EPIC_DIR/state.yaml"
+   yq eval '.phase = "[NEXT_PHASE]"' -i "$EPIC_DIR/state.yaml"
+   ```
+2. Mark phase complete:
+   ```bash
+   bash .spec-flow/scripts/bash/interaction-manager.sh mark-phase-complete "$EPIC_DIR" "[PHASE_NAME]"
+   ```
+3. Proceed to next phase
 
-       # Resume from current phase in iteration workflow
-       # Typically this will be "implement" phase after gap capture
-       CURRENT_PHASE=$(yq eval '.phase' "epics/$SLUG/state.yaml" 2>/dev/null || echo "unknown")
-       echo "   Resuming from: /$CURRENT_PHASE phase"
-   fi
+**If agent returned FAILED:**
+
+1. Update state.yaml:
+   ```bash
+   yq eval '.phases.[PHASE_NAME] = "failed"' -i "$EPIC_DIR/state.yaml"
+   yq eval '.status = "failed"' -i "$EPIC_DIR/state.yaml"
+   ```
+2. Output error message to user
+3. Instruct user to fix and run `/epic continue`
+4. STOP the workflow
+
+---
+
+## PHASE 4: Planning Phase (Sprint Breakdown)
+
+When the plan phase completes, it should create:
+- `plan.md` - Architecture and approach
+- `sprint-plan.md` - Sprint breakdown with dependency graph
+
+**After plan phase, create sprint-level domain memory:**
+
+```bash
+# Read sprint count from sprint-plan.md
+SPRINT_COUNT=$(grep -c "^## Sprint S" "$EPIC_DIR/sprint-plan.md" || echo "0")
+
+# Create sprint directories with domain-memory.yaml
+for i in $(seq -w 1 $SPRINT_COUNT); do
+    SPRINT_DIR="$EPIC_DIR/sprints/S$i"
+    mkdir -p "$SPRINT_DIR"
+
+    if [ ! -f "$SPRINT_DIR/domain-memory.yaml" ]; then
+        # Spawn initializer for each sprint
+        echo "Creating domain-memory for Sprint S$i..."
+    fi
+done
+```
+
+For each sprint without domain-memory.yaml, spawn initializer:
+
+```
+Task tool call:
+  subagent_type: "initializer"
+  description: "Initialize sprint domain memory"
+  prompt: |
+    Initialize domain memory for Sprint S[N] of this epic.
+
+    Epic directory: [EPIC_DIR]
+    Sprint directory: [EPIC_DIR]/sprints/S[N]
+    Sprint plan: Read from [EPIC_DIR]/sprint-plan.md
+
+    Extract features for Sprint S[N] and create sprint-level domain-memory.yaml.
+    EXIT immediately after creating the file.
+```
+
+---
+
+## PHASE 5: Implementation Phase (Parallel Sprint Execution)
+
+**The implement phase for epics uses parallel workers across sprints.**
+
+When current phase is "implement":
+
+### Step 5.1: Read Sprint Dependencies
+
+```bash
+# Parse execution layers from sprint-plan.md
+# Layer 1: Independent sprints (can run in parallel)
+# Layer 2: Sprints depending on Layer 1
+# etc.
+
+cat "$EPIC_DIR/sprint-plan.md" | grep -A 20 "## Execution Layers"
+```
+
+### Step 5.2: Execute Sprints by Layer
+
+For each execution layer:
+
+1. Identify sprints in this layer (can run in parallel)
+2. Spawn worker agents for ALL sprints in the layer SIMULTANEOUSLY
+
+**Example: Layer with S01 and S02 (parallel):**
+
+```
+Task tool call #1:
+  subagent_type: "worker"
+  description: "Implement Sprint S01"
+  run_in_background: true
+  prompt: |
+    Implement Sprint S01 for this epic.
+
+    Epic directory: [EPIC_DIR]
+    Sprint directory: [EPIC_DIR]/sprints/S01
+    Domain memory: [EPIC_DIR]/sprints/S01/domain-memory.yaml
+
+    Instructions:
+    1. Read sprint domain-memory.yaml for features to implement
+    2. Implement features using TDD
+    3. Update domain-memory.yaml with progress
+    4. EXIT when sprint is complete
+
+    Return:
+    ---SPRINT_COMPLETED---
+    sprint_id: S01
+    features_completed: N
+    files_changed: [list]
+    tests_added: [list]
+    ---END_SPRINT_COMPLETED---
+
+Task tool call #2 (parallel):
+  subagent_type: "worker"
+  description: "Implement Sprint S02"
+  run_in_background: true
+  prompt: |
+    Implement Sprint S02 for this epic.
+    [same structure as above]
+```
+
+### Step 5.3: Wait for Layer Completion
+
+Use AgentOutputTool to wait for all parallel workers:
+
+```
+AgentOutputTool:
+  agentId: [worker-S01-id]
+  block: true
+
+AgentOutputTool:
+  agentId: [worker-S02-id]
+  block: true
+```
+
+### Step 5.4: Validate Layer Results
+
+After all workers in a layer complete:
+- Check that all sprints completed successfully
+- Verify tests pass
+- Check for contract violations
+- If any sprint failed, stop and report
+
+### Step 5.5: Proceed to Next Layer
+
+If more layers remain, repeat steps 5.2-5.4 for the next layer.
+
+When all layers complete, update state and proceed to optimize phase.
+
+---
+
+## PHASE 6: Completion
+
+When all phases complete:
+
+1. Update final state:
+   ```bash
+   yq eval '.status = "completed"' -i "$EPIC_DIR/state.yaml"
+   yq eval '.completed_at = "'$(date -Iseconds)'"' -i "$EPIC_DIR/state.yaml"
    ```
 
-   **Iteration workflow resume logic:**
+2. Output completion banner:
+   ```
+   ════════════════════════════════════════════════════════════════════════════════
+   ✅ EPIC COMPLETE
+   ════════════════════════════════════════════════════════════════════════════════
+   Epic: [slug]
+   Sprints: [N] completed
+   Duration: [calculated from started_at]
+   Phases: spec → plan → tasks → implement → optimize → ship → finalize
+   ════════════════════════════════════════════════════════════════════════════════
 
-   - If iteration > 1 and phase = "implement": Execute supplemental tasks only
-   - If iteration > 1 and phase = "optimize": Run iteration-specific quality gates
-   - If iteration > 1 and phase = "ship-staging": Deploy iteration N to staging
-   - After successful deployment: Loop back to validate-staging for convergence check
-
-## Error Handling
-
-**If any phase fails:**
-
-- Read error details from state.yaml
-- Check relevant log files in epics/NNN-slug/
-- Present clear error message with file paths
-- Suggest fixes based on error type
-- Tell user to fix and run `/epic continue`
-
-**Common failure modes:**
-
-- Epic ambiguity → auto-runs `/clarify`
-- Planning failures → check plan.md for missing context
-- Sprint dependency violations → check sprint-plan.md
-- Implementation errors → check per-sprint error logs
-- Quality gate failures → check optimization-report.xml
-- Deployment failures → check deployment logs
+   Walkthrough: [EPIC_DIR]/walkthrough.md
+   ════════════════════════════════════════════════════════════════════════════════
+   ```
 
 </process>
 
+<continue_mode>
+
+## Resuming Interrupted Epics
+
+When argument is "continue":
+
+### Step 1: Detect Active Workflow
+
+```bash
+WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null)
+EPIC_DIR=$(echo "$WORKFLOW_INFO" | jq -r '"\(.base_dir)/\(.slug)"')
+WORKFLOW_TYPE=$(echo "$WORKFLOW_INFO" | jq -r '.type')
+
+# Verify this is an epic
+if [ "$WORKFLOW_TYPE" != "epic" ]; then
+    echo "Error: This is a $WORKFLOW_TYPE workflow, not an epic"
+    echo "Use /feature continue for features"
+    exit 1
+fi
+
+echo "Resuming: $EPIC_DIR"
+```
+
+### Step 2: Read Current State
+
+```bash
+cat "$EPIC_DIR/state.yaml"
+CURRENT_PHASE=$(yq eval '.phase' "$EPIC_DIR/state.yaml")
+echo "Current phase: $CURRENT_PHASE"
+```
+
+### Step 3: Check for Pending Questions
+
+```bash
+PENDING=$(bash .spec-flow/scripts/bash/interaction-manager.sh get-pending "$EPIC_DIR" 2>/dev/null)
+```
+
+If pending questions exist, ask user via AskUserQuestion and save answers.
+
+### Step 4: Check Sprint Progress (if in implement phase)
+
+```bash
+# Check which sprints are complete/in-progress
+for sprint_dir in "$EPIC_DIR/sprints/"*/; do
+    SPRINT=$(basename "$sprint_dir")
+    STATUS=$(yq eval '.status' "$sprint_dir/domain-memory.yaml" 2>/dev/null || echo "pending")
+    echo "$SPRINT: $STATUS"
+done
+```
+
+### Step 5: Resume Phase Loop
+
+Continue from CURRENT_PHASE using the same Task() spawning pattern.
+
+</continue_mode>
+
+<error_handling>
+
+## Failure Handling
+
+**On any phase failure:**
+
+1. The phase agent will return FAILED status
+2. Update state.yaml with failure status
+3. Output clear error message with:
+   - Which phase failed
+   - Which sprint (if during implementation)
+   - Error details from agent
+   - File paths to check
+   - Command to resume: `/epic continue`
+
+**Sprint-specific failures:**
+
+If a sprint worker fails:
+1. Mark that sprint as failed in its domain-memory.yaml
+2. Continue with other sprints in the same layer if they're independent
+3. Block dependent sprints in subsequent layers
+4. Report all failures at end of layer
+
+**Never fabricate success. Always read actual state from disk.**
+
+</error_handling>
+
+<anti_hallucination>
+
+## CRITICAL: Anti-Hallucination Rules
+
+1. **NEVER execute phase logic inline** - Always spawn via Task tool
+2. **NEVER claim completion without reading state.yaml**
+3. **NEVER skip phases** - Follow the sequence from state.yaml
+4. **NEVER guess agent results** - Parse actual returned content
+5. **ALWAYS verify artifacts exist** after agent claims creation
+6. **ALWAYS check sprint dependencies** before parallel execution
+7. **NEVER run dependent sprints before their prerequisites complete**
+
+</anti_hallucination>
+
+<examples>
+
+## Correct Usage Examples
+
+### Starting a New Epic
+
+User: `/epic "User authentication with OAuth 2.1 and MFA"`
+
+You do:
+1. Run create-new-epic.sh to initialize
+2. Initialize interaction state
+3. Check domain-memory.yaml (MISSING)
+4. **Task(initializer)** to create epic domain-memory.yaml
+5. Read state.yaml → phase is "spec"
+6. **Task(spec-phase-agent)** to create epic-spec.md
+7. Handle result (needs_input or completed)
+8. Continue with **Task(plan-phase-agent)** which creates sprint-plan.md
+9. Create sprint directories with domain-memory.yaml for each
+10. **Task(tasks-phase-agent)** to create tasks.md
+11. **Task(analyze-phase-agent)** to validate
+12. For implementation:
+    - Layer 1: **Task(worker)** for S01 and S02 in parallel
+    - Wait for both
+    - Layer 2: **Task(worker)** for S03 (depends on S01+S02)
+    - etc.
+13. **Task(optimize-phase-agent)** for quality gates
+14. **Task(ship-phase-agent)** for deployment
+15. **Task(finalize-phase-agent)** for walkthrough.md
+
+### Resuming an Epic
+
+User: `/epic continue`
+
+You do:
+1. Detect workflow via detect-workflow-paths.sh
+2. Verify it's an epic workflow
+3. Read state.yaml → phase is "implement"
+4. Check sprint progress in domain-memory.yaml files
+5. Find which layer/sprint was in progress
+6. Resume from that point with **Task(worker)** calls
+7. Continue through remaining phases
+
+</examples>
+
+<philosophy>
+
+## Design Principles
+
+**Orchestrator is stateless** - All knowledge comes from disk files
+
+**Task() is mandatory** - Every phase runs in isolated agent context
+
+**Parallel sprints via layers** - Dependency graph enables simultaneous execution
+
+**Questions batch to main** - Agents return questions, main asks user
+
+**Workers are atomic** - One sprint (or feature) per spawn, exit immediately
+
+**State is observable** - All progress visible in YAML files at epic and sprint level
+
+</philosophy>
+
 <success_criteria>
-**Epic successfully completed when:**
+
+## Epic Successfully Completed When:
 
 1. **All artifacts generated**:
+   - epic-spec.md (zero placeholders)
+   - plan.md (architecture decisions)
+   - sprint-plan.md (dependency graph)
+   - tasks.md (all sprint tasks)
+   - walkthrough.md (post-mortem)
 
-   - epic-spec.md (fully populated, zero placeholders)
-   - research.md (findings with confidence levels)
-   - plan.md (architecture decisions and phases)
-   - sprint-plan.md (dependency graph and execution layers)
-   - walkthrough.md (comprehensive post-mortem)
+2. **All sprints complete**:
+   - Each sprint's domain-memory.yaml shows status: completed
+   - All features within sprints completed
 
-2. **Quality gates passed**:
-
-   - All tests passing (>95% coverage)
+3. **Quality gates passed**:
+   - All tests passing
    - No critical security issues
    - Performance benchmarks met
-   - Accessibility WCAG 2.1 AA compliant
-   - No breaking API changes
+   - Accessibility compliant
 
-3. **Deployment successful**:
-
-   - Code deployed to target environment (staging/prod/local)
-   - Deployment metadata recorded in state.yaml
-   - GitHub release created (if applicable)
-
-4. **Self-improvement completed**:
-
-   - Workflow audit executed (/audit-workflow)
-   - Patterns analyzed and documented
-   - Workflow improvements identified
-   - Project documentation updated
+4. **Deployment successful**:
+   - Code deployed to target environment
+   - Deployment metadata recorded
 
 5. **State correctly recorded**:
-   - state.yaml marks epic as completed
-   - All phase statuses show `completed`
-   - No blocking failures or errors in state file
+   - state.yaml shows status: completed
+   - All phase statuses show completed
+   - No blocking failures
+
 </success_criteria>
-
-<verification>
-**Before marking epic complete, verify:**
-
-1. **Read state.yaml**: Confirm all phases show `status: completed`
-2. **Check artifact existence**:
-   ```powershell
-   Test-Path epics/NNN-slug/epic-spec.md
-   Test-Path epics/NNN-slug/research.md
-   Test-Path epics/NNN-slug/plan.md
-   Test-Path epics/NNN-slug/sprint-plan.md
-   Test-Path epics/NNN-slug/walkthrough.md
-   ```
-3. **Validate quality gates**: Read optimization-report.xml, confirm no blocking issues
-4. **Confirm deployment**: Check deployment-metadata.json for successful deployment timestamp
-5. **Verify git state**: Run `git log -1` to confirm final commit exists
-6. **Check audit completion**: Verify audit-report.xml exists with effectiveness metrics
-
-**Never claim completion without quoting these verification results.**
-</verification>
-
-<output>
-**Files created/modified by this command:**
-
-**Epic workspace** (epics/NNN-slug/):
-
-- epic-spec.md — Epic requirements and scoping
-- research.md — Technical research findings
-- plan.md — Architecture decisions and implementation plan
-- sprint-plan.md — Dependency graph and execution layers
-- tasks.md — All tasks across sprints with acceptance criteria
-- walkthrough.md — Comprehensive post-mortem and lessons learned
-- state.yaml — Current phase, gates, deployment metadata
-- optimization-report.xml — Quality gate results
-- audit-report.xml — Workflow effectiveness metrics
-- deployment-metadata.json — Deployment URLs, IDs, timestamps
-
-**Sprint directories** (epics/NNN-slug/sprints/S01/, S02/, ...):
-
-- Implementation code for each sprint
-- Sprint-specific test results
-- Sprint error logs (if failures occurred)
-
-**Prompts** (.prompts/NNN-epic-slug-research/, NNN-epic-slug-plan/):
-
-- Prompt files for meta-prompting system
-- research.md and plan.md outputs
-
-**API contracts** (contracts/api/):
-
-- OpenAPI schemas for locked contracts (if applicable)
-
-**Project documentation** (updated):
-
-- CHANGELOG.md — Epic summary added
-- README.md — Updated with new features
-- CLAUDE.md (project) — Active epic status updated
-
-**GitHub** (if git remote configured):
-
-- New branch: epic/NNN-slug
-- Pull request or direct commits
-- GitHub release (if staging-prod or direct-prod)
-  </output>
-
----
-
-## Workflow Tracking
-
-All steps read/write `epics/<NNN-slug>/state.yaml`.
-
-**Todo list example:**
-
-```javascript
-TodoWrite({
-  todos: [
-    {
-      content: "Initialize epic state",
-      status: "completed",
-      activeForm: "Initialized",
-    },
-    {
-      content: "Phase 0: Epic specification",
-      status: "completed",
-      activeForm: "Created epic-spec.md",
-    },
-    {
-      content: "Phase 0.5: Clarification (if needed)",
-      status: "completed",
-      activeForm: "Resolved ambiguities",
-    },
-    {
-      content: "Phase 1: Research",
-      status: "completed",
-      activeForm: "Research complete",
-    },
-    {
-      content: "Phase 1: Planning",
-      status: "completed",
-      activeForm: "Plan complete",
-    },
-    {
-      content: "Phase 2: Sprint breakdown",
-      status: "completed",
-      activeForm: "Sprint plan generated",
-    },
-    {
-      content: "Phase 3: Implementation Layer 1",
-      status: "completed",
-      activeForm: "S01 complete",
-    },
-    {
-      content: "Phase 3: Implementation Layer 2",
-      status: "in_progress",
-      activeForm: "S02 implementing",
-    },
-    {
-      content: "Phase 3: Implementation Layer 3",
-      status: "pending",
-      activeForm: "S03 pending",
-    },
-    {
-      content: "Phase 4: Optimization",
-      status: "pending",
-      activeForm: "Running quality gates",
-    },
-    {
-      content: "Phase 5: Deployment",
-      status: "pending",
-      activeForm: "Deploying",
-    },
-    {
-      content: "Phase 6: Finalization",
-      status: "pending",
-      activeForm: "Finalizing epic",
-    },
-  ],
-});
-```
-
-**Rules**:
-
-- Exactly one phase is `in_progress` at a time
-- All phases execute automatically (true autopilot)
-- Only blocks on critical failures: CI failures, security issues, quality gate failures, deployment errors
-- Deployment phases adapt to model: `staging-prod`, `direct-prod`, or `local-only`
-
----
-
-## Anti-Hallucination Rules
-
-1. **Never claim phase completion without quoting `state.yaml`**
-   Always `Read` the file and print the actual recorded status.
-
-2. **Cite agent outputs**
-   When a phase finishes, paste the returned `{status, summary, stats}` keys.
-
-3. **Do not skip phases unless state marks them disabled**
-   Follow the recorded sequence; if required, run it.
-
-4. **Detect the deployment model from the repo**
-   Show evidence: `git branch -a`, presence of staging workflow files.
-
-5. **No fabricated summaries**
-   If an agent errors, show the error; don't invent success.
-
-6. **Always use AskUserQuestion for clarification**
-   Never assume answers - ask user explicitly with options.
-
----
-
-## Usage Examples
-
-**Start new epic:**
-
-```bash
-/epic "User authentication with OAuth 2.1"
-```
-
-**Resume interrupted epic:**
-
-```bash
-/epic continue
-```
-
-**Start next priority epic from backlog:**
-
-```bash
-/epic next
-```
-
----
-
-## Philosophy
-
-**Epics orchestrate multiple sprints**
-Unlike `/feature` (single sprint), `/epic` coordinates 2+ sprints with dependencies.
-
-**True autopilot execution**
-All phases execute automatically without manual intervention. Only blocks on critical failures.
-
-**State truth lives in `state.yaml`**
-Never guess; always read, quote, and update atomically.
-
-**Meta-prompting for research & planning**
-Isolated sub-agents with XML outputs prevent context pollution.
-
-**Parallel sprint execution**
-Dependency graph enables 3-5x velocity improvement.
-
-**Self-improving workflow**
-Audits after each epic, generates project-specific tooling.
-
-**Comprehensive walkthrough**
-walkthrough.md captures what worked, what struggled, lessons learned.
-
----
-
-## References
-
-- [Tâches Meta-Prompting System](https://github.com/taches-ai/claude-workflows)
-- [OpenTelemetry Signals](https://opentelemetry.io/docs/concepts/signals)
-- [DORA Metrics](https://dora.dev)
-- [Trunk-Based Development](https://trunkbaseddevelopment.com)

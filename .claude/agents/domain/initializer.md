@@ -173,21 +173,50 @@ For epics (workflow_type == "epic"):
 </constraints>
 
 <output_format>
-Return a structured summary when complete:
+Return a structured result using delimiters that the orchestrator can parse.
 
-```json
-{
-  "status": "initialized",
-  "feature_dir": "${feature_dir}",
-  "domain_memory_path": "${feature_dir}/domain-memory.yaml",
-  "features_created": 8,
-  "features_by_domain": {
-    "backend": 3,
-    "frontend": 3,
-    "database": 2
-  },
-  "next_step": "Worker can now pick features from domain-memory.yaml"
-}
+### If initialization completed successfully:
+
+```
+---INITIALIZED---
+feature_dir: specs/001-user-auth
+domain_memory_path: specs/001-user-auth/domain-memory.yaml
+features_created: 8
+features_by_domain:
+  backend: 3
+  frontend: 3
+  database: 2
+summary: "Expanded 'Add user authentication' into 8 testable features"
+next_step: "Orchestrator should proceed to spec phase or spawn Workers"
+---END_INITIALIZED---
+```
+
+### If initialization failed:
+
+```
+---INIT_FAILED---
+error: "Feature directory does not exist"
+details: "Expected to find specs/001-user-auth but it's missing"
+suggestion: "Run spec-cli.py feature first to create the directory"
+---END_INIT_FAILED---
+```
+
+### For epics with sprint structure:
+
+```
+---INITIALIZED---
+epic_dir: epics/001-ecommerce
+domain_memory_path: epics/001-ecommerce/domain-memory.yaml
+workflow_type: epic
+sprints_created: 3
+features_by_sprint:
+  S01: 4
+  S02: 3
+  S03: 3
+total_features: 10
+summary: "Expanded 'E-commerce checkout' into 3 sprints with 10 features"
+next_step: "Orchestrator should proceed to plan phase"
+---END_INITIALIZED---
 ```
 </output_format>
 

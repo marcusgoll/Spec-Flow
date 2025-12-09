@@ -32,45 +32,52 @@ answers:
 
 ## Return Format
 
-### If questions needed:
+You MUST return a structured result using delimiters that the orchestrator can parse.
 
-```yaml
-phase_result:
-  status: "needs_input"
-  questions:
-    - id: "Q001"
-      question: "How should authentication be architected?"
-      header: "Architecture"
-      multi_select: false
-      options:
-        - label: "Integrated"
-          description: "Auth logic in main application"
-        - label: "Separate service"
-          description: "Dedicated auth microservice"
-        - label: "Third-party"
-          description: "Use Auth0, Clerk, or similar"
-      context: "This affects data flow and deployment complexity"
-  resume_from: "complete_plan"
-  partial_work_saved: true
-  summary: "Completed research, need 1 architectural decision"
+### If questions needed (orchestrator will ask user and re-spawn you):
+
+```
+---NEEDS_INPUT---
+questions:
+  - id: Q001
+    question: "How should authentication be architected?"
+    header: "Architecture"
+    multi_select: false
+    options:
+      - label: "Integrated"
+        description: "Auth logic in main application"
+      - label: "Separate service"
+        description: "Dedicated auth microservice"
+      - label: "Third-party"
+        description: "Use Auth0, Clerk, or similar"
+resume_from: "complete_plan"
+summary: "Completed research, need 1 architectural decision"
+---END_NEEDS_INPUT---
 ```
 
-### If completed:
+### If completed (orchestrator will update state and proceed):
 
-```yaml
-phase_result:
-  status: "completed"
-  artifacts_created:
-    - path: "specs/001-user-auth/plan.md"
-    - path: "specs/001-user-auth/research.md"
-  summary: "Created implementation plan with 3 phases, 12 components"
-  metrics:
-    phases: 3
-    components_new: 8
-    components_reused: 4
-    estimated_complexity: "medium"
-    reuse_percentage: 33
-  next_phase: "tasks"
+```
+---COMPLETED---
+artifacts_created:
+  - path: specs/001-user-auth/plan.md
+    type: plan
+  - path: specs/001-user-auth/research.md
+    type: research
+summary: "Created implementation plan with 3 phases, 12 components"
+reuse_percentage: 33
+next_phase: tasks
+---END_COMPLETED---
+```
+
+### If failed (orchestrator will stop workflow):
+
+```
+---FAILED---
+error: "Could not find spec.md"
+details: "Specification file missing from feature directory"
+suggestion: "Run /spec phase first"
+---END_FAILED---
 ```
 
 ## Planning Process

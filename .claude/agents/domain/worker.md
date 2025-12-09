@@ -266,33 +266,58 @@ Do NOT keep trying. EXIT and let orchestrator decide next steps.
 </failure_handling>
 
 <output_format>
-Return a structured summary when complete:
+Return a structured result using delimiters that the orchestrator can parse.
 
-```json
-{
-  "status": "completed" | "failed" | "blocked" | "all_done",
-  "feature_id": "F001",
-  "feature_name": "User registration endpoint",
-  "tests_passed": true,
-  "files_changed": [
-    "src/app/api/auth/register/route.ts",
-    "tests/test_F001_registration.py"
-  ],
-  "commit_hash": "abc1234",
-  "approach_used": "TDD with async handlers",
-  "duration_ms": 45000,
-  "next_action": "Orchestrator should spawn new Worker for remaining features"
-}
+### If feature completed successfully:
+
+```
+---WORKER_COMPLETED---
+feature_id: F001
+feature_name: "User registration endpoint"
+status: completed
+tests_passed: true
+files_changed:
+  - src/app/api/auth/register/route.ts
+  - tests/test_F001_registration.py
+commit_hash: abc1234
+approach_used: "TDD with async handlers"
+---END_WORKER_COMPLETED---
 ```
 
-For "all_done" status (no features remaining):
-```json
-{
-  "status": "all_done",
-  "message": "All features are passing",
-  "total_features": 8,
-  "passing_features": 8
-}
+### If feature failed:
+
+```
+---WORKER_FAILED---
+feature_id: F001
+feature_name: "User registration endpoint"
+status: failed
+error: "Test assertion failed"
+approach_tried: "synchronous validation"
+files_changed:
+  - src/app/api/auth/register/route.ts
+---END_WORKER_FAILED---
+```
+
+### If all features are done:
+
+```
+---ALL_DONE---
+message: "All features are passing"
+total_features: 8
+passing_features: 8
+---END_ALL_DONE---
+```
+
+### If blocked (no workable features):
+
+```
+---BLOCKED---
+message: "No features available to work on"
+reason: "All remaining features have dependencies that are failing"
+blocked_features:
+  - F003: depends on F001 (failing)
+  - F004: depends on F002 (failing)
+---END_BLOCKED---
 ```
 </output_format>
 

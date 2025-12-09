@@ -36,60 +36,64 @@ answers:
 
 ## Return Format
 
-You MUST return a structured result. Use this exact format in your final message:
+You MUST return a structured result using delimiters that the orchestrator can parse. Use this exact format in your final message:
 
-### If questions needed:
+### If questions needed (orchestrator will ask user and re-spawn you):
 
-```yaml
-phase_result:
-  status: "needs_input"
-  questions:
-    - id: "Q001"
-      question: "Who is the primary user for this feature?"
-      header: "User"
-      multi_select: false
-      options:
-        - label: "End user"
-          description: "Direct application user"
-        - label: "Admin"
-          description: "System administrator"
-        - label: "Developer"
-          description: "API consumer or integrator"
-      context: "Feature description doesn't specify target user"
-    - id: "Q002"
-      question: "What's the expected scale?"
-      header: "Scale"
-      multi_select: false
-      options:
-        - label: "< 1K users"
-          description: "Small scale"
-        - label: "1K-10K users"
-          description: "Medium scale"
-        - label: "10K+ users"
-          description: "Large scale"
-  resume_from: "step_2"
-  partial_work_saved: true
-  summary: "Analyzed feature description, detected 2 ambiguity signals"
+```
+---NEEDS_INPUT---
+questions:
+  - id: Q001
+    question: "Who is the primary user for this feature?"
+    header: "User"
+    multi_select: false
+    options:
+      - label: "End user"
+        description: "Direct application user"
+      - label: "Admin"
+        description: "System administrator"
+      - label: "Developer"
+        description: "API consumer or integrator"
+  - id: Q002
+    question: "What's the expected scale?"
+    header: "Scale"
+    multi_select: false
+    options:
+      - label: "< 1K users"
+        description: "Small scale"
+      - label: "1K-10K users"
+        description: "Medium scale"
+      - label: "10K+ users"
+        description: "Large scale"
+resume_from: "after_analysis"
+summary: "Analyzed feature description, detected 2 ambiguity signals"
+---END_NEEDS_INPUT---
 ```
 
-### If completed:
+### If completed (orchestrator will update state and proceed):
 
-```yaml
-phase_result:
-  status: "completed"
-  artifacts_created:
-    - path: "specs/001-user-auth/spec.md"
-    - path: "specs/001-user-auth/NOTES.md"
-    - path: "specs/001-user-auth/checklists/requirements.md"
-    - path: "specs/001-user-auth/state.yaml"
-  summary: "Created specification with 8 FRs, 5 NFRs, 4 scenarios"
-  metrics:
-    functional_requirements: 8
-    non_functional_requirements: 5
-    user_scenarios: 4
-    blocking_clarifications: 0
-    checklist_completion: 85
-  next_phase: "clarify"  # or "plan" if no clarifications needed
+```
+---COMPLETED---
+artifacts_created:
+  - path: specs/001-user-auth/spec.md
+    type: specification
+  - path: specs/001-user-auth/NOTES.md
+    type: notes
+  - path: specs/001-user-auth/checklists/requirements.md
+    type: checklist
+summary: "Created specification with 8 FRs, 5 NFRs, 4 scenarios"
+next_phase: plan
+---END_COMPLETED---
+```
+
+### If failed (orchestrator will stop workflow):
+
+```
+---FAILED---
+error: "Could not access feature directory"
+details: "Directory specs/001-auth does not exist"
+suggestion: "Run spec-cli.py feature first to initialize"
+---END_FAILED---
 ```
 
 ## Ambiguity Detection
