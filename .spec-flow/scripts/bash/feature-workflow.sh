@@ -129,24 +129,38 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 if [ "$MODE" = "lookup" ] && [ -n "$SEARCH_TERM" ]; then
-  gh auth status >/dev/null || { echo "❌ gh not authenticated"; exit 1; }
-  REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner) || { echo "❌ Not in a GitHub repo"; exit 1; }
+  # Check if GitHub is available (optional for local-only workflows)
+  GH_AVAILABLE=false
+  if gh auth status >/dev/null 2>&1; then
+    if gh repo view --json nameWithOwner --jq .nameWithOwner >/dev/null 2>&1; then
+      GH_AVAILABLE=true
+      REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
+    fi
+  fi
 
-  MATCH=$(gh issue list --repo "$REPO" --label "type:feature" --json number,title,body,labels --limit 100 |
-    jq -r --arg term "$SEARCH_TERM" '
-      map(select((.body | test("slug:\\s*\"" + $term + "\"")) or (.title | ascii_downcase | contains($term | ascii_downcase)))) | first')
+  if [ "$GH_AVAILABLE" = true ]; then
+    # Try to find matching GitHub issue
+    MATCH=$(gh issue list --repo "$REPO" --label "type:feature" --json number,title,body,labels --limit 100 |
+      jq -r --arg term "$SEARCH_TERM" '
+        map(select((.body | test("slug:\\s*\"" + $term + "\"")) or (.title | ascii_downcase | contains($term | ascii_downcase)))) | first')
 
-  if [ -n "$MATCH" ] && [ "$MATCH" != "null" ]; then
-    ISSUE_NUMBER=$(echo "$MATCH" | jq -r .number)
-    ISSUE_TITLE=$(echo "$MATCH" | jq -r .title)
-    ISSUE_BODY=$(echo "$MATCH" | jq -r '.body // ""')
-    gh issue edit "$ISSUE_NUMBER" --remove-label "status:next" --remove-label "status:backlog" --add-label "status:in-progress" --repo "$REPO" >/dev/null || true
-    SLUG=$(echo "$ISSUE_BODY" | grep -oP '^slug:\s*"\K[^"]+' | head -1)
-    [ -z "$SLUG" ] && SLUG=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g;s/--*/-/g;s/^-//;s/-$//' | cut -c1-30)
-    FEATURE_DESCRIPTION="$ISSUE_TITLE"
+    if [ -n "$MATCH" ] && [ "$MATCH" != "null" ]; then
+      ISSUE_NUMBER=$(echo "$MATCH" | jq -r .number)
+      ISSUE_TITLE=$(echo "$MATCH" | jq -r .title)
+      ISSUE_BODY=$(echo "$MATCH" | jq -r '.body // ""')
+      gh issue edit "$ISSUE_NUMBER" --remove-label "status:next" --remove-label "status:backlog" --add-label "status:in-progress" --repo "$REPO" >/dev/null || true
+      SLUG=$(echo "$ISSUE_BODY" | grep -oP '^slug:\s*"\K[^"]+' | head -1)
+      [ -z "$SLUG" ] && SLUG=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g;s/--*/-/g;s/^-//;s/-$//' | cut -c1-30)
+      FEATURE_DESCRIPTION="$ISSUE_TITLE"
+    else
+      # No matching issue found - use search term as description (local-only mode)
+      echo "ℹ️  No matching roadmap item found. Creating local feature..."
+      FEATURE_DESCRIPTION="$SEARCH_TERM"
+    fi
   else
-    echo "No roadmap item found for: \"$SEARCH_TERM\". Create now or add to roadmap first."
-    exit 1
+    # GitHub not available - local-only workflow
+    echo "ℹ️  GitHub not available. Creating local feature..."
+    FEATURE_DESCRIPTION="$SEARCH_TERM"
   fi
 fi
 
