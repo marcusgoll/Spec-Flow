@@ -283,6 +283,25 @@ See a complete feature workflow in [`specs/001-example-feature/`](specs/001-exam
 
 ## 🆕 Recent Updates
 
+### v10.17.0 (December 2025)
+
+**Domain Memory v2 - Full Phase Isolation** - Revolutionary architecture preventing context overflow
+
+- **Domain Memory System** - Persistent disk-based state for unlimited iterations
+  - Workers pick ONE task, implement, test, update disk, exit
+  - Zero shared context between workers (prevents overflow)
+  - 13-command CLI for state management
+- **Phase Isolation Pattern** - All phases spawn isolated agents via Task()
+  - Question batching: agents return questions, main asks user, agents resume
+  - Resumable at any point via interaction-state.yaml
+- **Project Setup Agents** - Hybrid pattern for /init-project, /prototype, /roadmap
+  - Questionnaire inline, heavy generation isolated
+- **mgrep Semantic Search** - Find code by meaning, not exact text
+  - Integrated as PRIMARY search in anti-duplication skill
+  - Added to agent boot-up rituals
+
+---
+
 ### v10.16.0 (December 2025)
 
 **Quality Feedback Loop System** - Multi-agent voting, continuous checks, and perpetual learning

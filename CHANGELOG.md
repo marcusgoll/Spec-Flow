@@ -2,6 +2,73 @@
 
 ---
 
+## [10.17.0] - 2025-12-09
+
+### ✨ Added
+
+**Domain Memory v2 - Full Phase Isolation**
+
+Revolutionary architecture that isolates ALL workflow phases via Task() agents, enabling unlimited context and preventing overflow.
+
+- **Domain Memory System** - Persistent disk-based state for implementation
+  - `domain-memory.yaml` as single source of truth
+  - Initializer agent: Expands prompts, creates test scaffolding
+  - Worker agent: Picks ONE task, implements, tests, updates, exits
+  - 13-command CLI (`domain-memory.sh`) for state management
+  - Zero shared context between workers (prevents overflow)
+
+- **Phase Isolation Pattern** - All phases now spawn isolated agents
+  - Pre-implementation: spec-agent, clarify-agent, plan-agent, tasks-agent
+  - Implementation: worker (Domain Memory pattern, ONE task per spawn)
+  - Post-implementation: optimize-agent, validate-agent, ship-agent, finalize-agent
+  - Question batching: agents return questions, main asks user, agents resume
+  - 14-command CLI (`interaction-manager.sh`) for Q&A tracking
+
+- **Project Setup Agents** - Hybrid pattern for initialization commands
+  - `init-project-agent`: Generates 8 project docs from questionnaire answers
+  - `prototype-discover-agent`: Creates prototype screens from selections
+  - `roadmap-brainstorm-agent`: Web research for feature idea generation
+  - Questionnaire runs inline, heavy generation isolated
+
+- **mgrep Semantic Search Integration** - Find code by meaning, not text
+  - Added to CLAUDE.md as primary search guidance
+  - Integrated into anti-duplication skill as PRIMARY search method
+  - Added to phase commands (plan.md, implement.md)
+  - Included in agent boot-up rituals (spec-agent, plan-agent, worker)
+
+- **Gemini CLI Extension** - Cross-platform AI tool integration
+  - Automatic extension file management
+  - Enhanced update mechanism for extension files
+
+**New Files Created (22)**:
+
+- `.claude/agents/domain/initializer.md` - Stage manager agent
+- `.claude/agents/domain/worker.md` - Implementation actor agent
+- `.claude/agents/phase/spec-agent.md` - Isolated specification generation
+- `.claude/agents/phase/clarify-agent.md` - Isolated clarification
+- `.claude/agents/phase/plan-agent.md` - Isolated planning
+- `.claude/agents/phase/tasks-agent.md` - Isolated task breakdown
+- `.claude/agents/phase/optimize-agent.md` - Isolated quality gates
+- `.claude/agents/phase/validate-agent.md` - Isolated staging validation
+- `.claude/agents/phase/ship-agent.md` - Isolated deployment
+- `.claude/agents/phase/finalize-agent.md` - Isolated documentation
+- `.claude/agents/project/init-project-agent.md` - Project doc generation
+- `.claude/agents/project/prototype-discover-agent.md` - Prototype screen generation
+- `.claude/agents/project/roadmap-brainstorm-agent.md` - Feature idea research
+- `.claude/skills/domain-memory/SKILL.md` - Boot-up ritual documentation
+- `.spec-flow/scripts/bash/domain-memory.sh` - Domain memory CLI (13 commands)
+- `.spec-flow/scripts/bash/interaction-manager.sh` - Interaction CLI (14 commands)
+- `.spec-flow/templates/domain-memory.template.yaml` - State template
+- `.spec-flow/templates/interaction-state.template.yaml` - Q&A tracking template
+
+### 🔧 Changed
+
+- All phase commands updated to v11.0 (thin wrappers spawning isolated agents)
+- Anti-duplication skill now uses mgrep as PRIMARY search method
+- Agent boot-up rituals include mgrep for code discovery
+
+---
+
 ## [10.16.0] - 2025-12-05
 
 ### ✨ Added
