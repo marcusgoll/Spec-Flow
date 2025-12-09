@@ -2,22 +2,32 @@
 name: quick
 description: Implement small bug fixes and features (<100 LOC) without full workflow. Use for single-file changes, bug fixes, refactors, and minor enhancements that can be completed in under 30 minutes.
 argument-hint: <description>
+version: 2.0
+updated: 2025-12-09
 allowed-tools:
   [
     Read,
     Grep,
     Glob,
     Bash(git *),
-    Bash(pytest *),
-    Bash(npm *),
-    Bash(npx *),
     Task,
     AskUserQuestion,
   ]
 ---
 
 <objective>
-Execute quick implementations for small changes (bug fixes, refactors, minor enhancements) bypassing the full spec/plan/tasks workflow. Maintain quality standards (tests, commits) while prioritizing speed and simplicity. Target completion time: <30 minutes.
+Execute quick implementations for small changes (bug fixes, refactors, minor enhancements) bypassing the full spec/plan/tasks workflow. Uses Task() isolation for implementation with full Q&A support.
+
+**CRITICAL ARCHITECTURE** (v2.0 - Task() Orchestrator Pattern):
+
+This orchestrator is **lightweight**. You MUST:
+1. Parse arguments and validate scope (inline)
+2. Create branch (inline)
+3. Spawn isolated quick-worker agent via **Task tool**
+4. Handle Q&A when agent returns `---NEEDS_INPUT---`
+5. Display summary from agent result
+
+**Benefits**: Implementation is isolated, Q&A flows naturally, consistent with /feature and /epic patterns.
 </objective>
 
 <context>
@@ -33,7 +43,7 @@ Recent commits (last 3):
 
 <when_to_use>
 
-## ✅ Good Candidates (Use /quick)
+## Good Candidates (Use /quick)
 
 - **Bug fixes**: UI glitches, logic errors, null checks
 - **Small refactors**: Rename variables, extract functions, simplify logic
@@ -44,7 +54,7 @@ Recent commits (last 3):
 
 **Characteristics**: <100 LOC, <5 files, single concern, no breaking changes, can implement in one sitting
 
-## ❌ Do NOT Use (Use /feature Instead)
+## Do NOT Use (Use /feature Instead)
 
 - **New features with UI components** - Needs design review and mockup approval
 - **Database schema changes** - Requires migration planning and zero-downtime strategy
@@ -57,378 +67,239 @@ Recent commits (last 3):
 </when_to_use>
 
 <process>
-## 1. Validate Scope and Get Description
+
+## PHASE 1: Parse Arguments and Validate Scope (INLINE)
+
+**User Input:**
+```text
+$ARGUMENTS
+```
+
+### Step 1.1: Get Description
 
 **If $ARGUMENTS is empty:**
 
-- Use AskUserQuestion to request:
-  - **Question**: "What change would you like to implement?"
-  - **Options**: Provide examples (bug fix, refactor, doc update, config change)
-  - **Header**: "Quick Change"
+Use AskUserQuestion to request:
+```
+Question: "What change would you like to implement?"
+Header: "Quick Change"
+Options:
+  - label: "Bug fix"
+    description: "Fix an existing bug or issue"
+  - label: "Refactor"
+    description: "Improve code structure without changing behavior"
+  - label: "Documentation"
+    description: "Update README, comments, or docstrings"
+  - label: "Config change"
+    description: "Update environment variables or settings"
+```
 
-**Store description in DESCRIPTION variable.**
+**Store the description in DESCRIPTION variable.**
 
-**Verify scope is appropriate:**
+### Step 1.2: Validate Scope
 
-- Check if description mentions database, schema, migration, API contract, auth, security
-- If YES: Recommend using `/feature` instead and explain why
-- If NO: Proceed with implementation
+**Check if DESCRIPTION mentions complex keywords:**
+- database, schema, migration
+- API contract, breaking change
+- auth, authentication, authorization, security, permissions
+- crypto, encryption
 
-## 2. Detect UI Changes and Load Style Guide (Conditional)
+**If complex keywords detected:**
+
+Output:
+```
+⚠️  This change appears to require full workflow planning.
+
+Detected scope indicators: [list keywords found]
+
+Recommendation: Use /feature instead for proper planning and review.
+
+Command: /feature "{DESCRIPTION}"
+```
+
+Then EXIT - do not proceed.
+
+**If scope is appropriate:** Proceed to Phase 2.
+
+---
+
+## PHASE 2: Detect UI Mode and Setup Branch (INLINE)
+
+### Step 2.1: Detect UI Changes
 
 **Check if DESCRIPTION contains UI-related keywords:**
-
-- Keywords: UI, component, button, form, card, layout, design, style, CSS, Tailwind, color, spacing, font, typography, gradient, shadow, border
+- UI, component, button, form, card, layout, design
+- style, CSS, Tailwind, color, spacing, font, typography
+- gradient, shadow, border
 
 **If UI change detected:**
-
-1. Read `docs/project/style-guide.md` (if exists)
-2. Read `design/systems/tokens.json` (if exists)
-3. Note: "UI change detected - enforcing style guide compliance"
-4. Set STYLE_GUIDE_MODE = true
-
-**If files not found:**
-
-- Warn: "Style guide not found. Consider running `/init-project --with-design` for UI consistency rules."
-- Continue without style guide (note this in output)
+- Set STYLE_GUIDE_MODE = true
+- Output: "UI change detected - style guide compliance will be enforced"
 
 **If non-UI change:**
-
 - Set STYLE_GUIDE_MODE = false
-- Skip style guide loading
 
-## 3. Create Lightweight Branch
+### Step 2.2: Create Branch
 
 **Generate branch name:**
-
-- Slugify DESCRIPTION to create branch name: `quick/[slug]`
-- Use only lowercase, numbers, hyphens
+- Slugify DESCRIPTION: lowercase, replace spaces with hyphens, remove special chars
+- Prefix with `quick/`
 - Truncate to 50 characters
 
-**Create or checkout branch:**
-
-- Run: `git checkout -b quick/[slug]`
-- If branch already exists: `git checkout quick/[slug]` and note "Using existing branch"
-
-## 4. Implement Changes
-
-**Determine implementation agent using detection algorithm:**
-
-```javascript
-function detectAgent(description, modifiedFiles = []) {
-  const desc = description.toLowerCase();
-  const files = modifiedFiles.map(f => f.toLowerCase());
-
-  // 1. Check file extensions first (highest confidence)
-  const filePatterns = {
-    backend: ['.py', '.go', '.rs', '.java', '.rb', '.php'],
-    frontend: ['.tsx', '.jsx', '.vue', '.svelte', '.css', '.scss'],
-    test: ['test.', 'spec.', '_test.', '.test.', '.spec.']
-  };
-
-  for (const file of files) {
-    if (filePatterns.test.some(p => file.includes(p))) return 'qa-test';
-    if (filePatterns.frontend.some(p => file.endsWith(p))) return 'frontend-dev';
-    if (filePatterns.backend.some(p => file.endsWith(p))) return 'backend-dev';
-  }
-
-  // 2. Check keywords in description (medium confidence)
-  const keywords = {
-    'qa-test': ['test', 'spec', 'coverage', 'fixture', 'mock', 'assert'],
-    'frontend-dev': ['component', 'ui', 'button', 'form', 'style', 'css',
-                     'react', 'vue', 'svelte', 'tailwind', 'layout', 'page'],
-    'backend-dev': ['api', 'endpoint', 'model', 'service', 'database', 'query',
-                    'migration', 'route', 'controller', 'repository', 'fastapi']
-  };
-
-  for (const [agent, words] of Object.entries(keywords)) {
-    if (words.some(w => desc.includes(w))) return agent;
-  }
-
-  // 3. Check for documentation-only (no agent needed)
-  const docKeywords = ['readme', 'documentation', 'comment', 'docstring', 'changelog'];
-  if (docKeywords.some(w => desc.includes(w))) return null; // Direct implementation
-
-  // 4. Fallback: Ask user
-  return 'ask_user';
-}
+**Create branch:**
+```bash
+git checkout -b quick/[slug]
 ```
 
-**Agent routing rules:**
-
-| Detection | Agent | Reason |
-|-----------|-------|--------|
-| `.py`, `.go`, `.rs`, `.java`, `.rb` files | `backend-dev` | Backend language detected |
-| `.tsx`, `.jsx`, `.vue`, `.svelte` files | `frontend-dev` | Frontend framework detected |
-| `test.`, `spec.`, `_test.` in filename | `qa-test` | Test file pattern detected |
-| Keywords: api, endpoint, model, service | `backend-dev` | Backend concept mentioned |
-| Keywords: component, ui, button, style | `frontend-dev` | UI concept mentioned |
-| Keywords: test, coverage, mock, assert | `qa-test` | Testing concept mentioned |
-| Keywords: readme, documentation, comment | None | Direct implementation |
-| No match | Ask user | Ambiguous - clarify before proceeding |
-
-**If agent detection returns 'ask_user':**
-
-Use AskUserQuestion:
+**If branch exists:**
+```bash
+git checkout quick/[slug]
 ```
-Question: "What type of change is this?"
-Header: "Domain"
-Options:
-  - Backend (API, database, services)
-  - Frontend (UI, components, styles)
-  - Tests (test coverage, specs)
-  - Documentation (README, comments)
-```
+Output: "Using existing branch quick/[slug]"
 
-**Agent prompt format:**
+---
+
+## PHASE 3: Execute Quick Worker (ISOLATED via Task)
+
+**YOU MUST spawn an isolated agent via Task tool.**
+
+Use the Task tool with these EXACT parameters:
 
 ```
-Implement quick change without full workflow (no spec required).
+Task tool call:
+  subagent_type: "general-purpose"
+  description: "Execute quick change: {first 50 chars of DESCRIPTION}"
+  prompt: |
+    Execute quick change atomically. You are a quick-worker agent.
 
-## Description
-{DESCRIPTION}
+    Read the quick-worker agent brief at: .claude/agents/quick/quick-worker.md
 
-{IF STYLE_GUIDE_MODE = true:}
-## Style Guide Requirements (UI CHANGE)
+    ## Context
+    Description: {DESCRIPTION}
+    Style Guide Mode: {STYLE_GUIDE_MODE}
+    Branch: quick/{slug}
 
-Read and enforce ALL rules from docs/project/style-guide.md:
+    ## Your Task
+    1. Read the agent brief for detailed instructions
+    2. Detect implementation domain (backend/frontend/test/docs)
+    3. Implement changes following KISS principle (<100 LOC)
+    4. Run tests if test framework detected
+    5. Validate style guide if Style Guide Mode is true
+    6. Commit changes with conventional message
+    7. Return structured result
 
-**Core 9 Rules** (non-negotiable):
-1. Text line length: 50-75 chars (max-w-[600px] or max-w-[700px])
-2. Use bullet points with icons for lists
-3. 8pt grid spacing (all values divisible by 4/8 - no arbitrary px values)
-4. Layout spacing: baseline value + double between groups
-5. Letter-spacing: Display -1px, Body 0px, CTAs +1px
-6. Font superfamilies (matching character sizes)
-7. OKLCH colors only (never hex/rgb/hsl)
-8. Subtle design (gradients <20% opacity, soft shadows)
-9. Squint test hierarchy (CTAs and headlines must stand out)
+    ## Output Format (CRITICAL - follow exactly)
 
-**Token Usage:**
-- CTAs/interactive → bg-brand-primary
-- Headings → text-neutral-900
-- Body text → text-neutral-700
-- Feedback → semantic-success/error/warning/info
-- Backgrounds → neutral-50/100
+    If successful, return:
+    ---COMPLETED---
+    files_changed: N
+    commit_sha: abc123
+    summary: "Brief description of changes made"
+    tests: "passed|failed|skipped|no_framework"
+    style_guide: "compliant|warnings|N/A"
 
-**Component Strategy:**
-1. Check design/systems/ui-inventory.md first (reuse existing)
-2. Use shadcn/ui components (no custom primitives)
-3. Compose from existing patterns
+    If blocked and need user input, return:
+    ---NEEDS_INPUT---
+    questions:
+      - id: "Q001"
+        question: "The question to ask"
+        header: "Short header"
+        multi_select: false
+        options:
+          - label: "Option 1"
+            description: "What this option does"
+          - label: "Option 2"
+            description: "What this option does"
 
-**Validation Checklist:**
-- [ ] All colors from tokens.json (no hardcoded hex/rgb/hsl)
-- [ ] All spacing on 8pt grid (space-4, space-8, etc.)
-- [ ] Components from ui-inventory.md (no new custom components)
-- [ ] Shadows for depth (avoid borders except dividers)
-- [ ] Typography hierarchy with correct letter-spacing
-- [ ] Text line length 50-75 chars
-- [ ] Keyboard navigation (focus:ring-2)
-- [ ] WCAG AA contrast (4.5:1 minimum)
-
-{END IF}
-
-## Implementation Rules
-1. **KISS Principle**: Minimal changes to achieve goal
-2. **Follow Existing Patterns**: Match surrounding code style
-3. **Add/Update Tests**: If logic changes, update tests
-4. **No Breaking Changes**: Maintain backward compatibility
-5. **Single Concern**: Only implement what's described
-6. **Quality Standards**: Maintain existing code quality
-
-## Process
-1. Identify files to modify (read existing code first)
-2. Make targeted changes following existing patterns
-3. Run relevant tests to verify changes
-4. Ensure no regressions introduced
-
-## Output Required
-After implementation, provide:
-- **Files changed**: List of modified files with line counts
-- **Summary**: 2-3 sentences describing changes
-- **Test results**: Pass/fail status with command output
-{IF STYLE_GUIDE_MODE: - **Style guide compliance**: Rules followed, any violations}
-
-## Constraints
-- No new dependencies unless absolutely necessary
-- No architectural changes
-- Keep diff small and focused (<100 LOC)
-{IF STYLE_GUIDE_MODE: - Style guide rules are non-negotiable}
+    If failed, return:
+    ---FAILED---
+    reason: "Description of what went wrong"
+    recovery: "Suggested next steps"
 ```
 
-**Execute agent delegation** via Task tool with appropriate subagent_type.
+---
 
-## 5. Run Tests (If Applicable)
+## PHASE 4: Handle Agent Result (INLINE)
 
-**Detect test framework using project indicators:**
+**Parse the delimiter from agent response:**
 
-```javascript
-function detectTestFramework(projectRoot) {
-  // Python
-  if (exists('pytest.ini') || exists('conftest.py') || exists('pyproject.toml')) {
-    return { framework: 'pytest', command: 'pytest -v --tb=short' };
-  }
+### If `---COMPLETED---`
 
-  // Node (check package.json for specific runner)
-  if (exists('package.json')) {
-    const pkg = readJSON('package.json');
-    if (pkg.devDependencies?.vitest || pkg.dependencies?.vitest) {
-      return { framework: 'vitest', command: 'npm test -- --run' };
-    }
-    if (pkg.devDependencies?.jest || pkg.dependencies?.jest) {
-      return { framework: 'jest', command: 'npm test' };
-    }
-    if (pkg.scripts?.test) {
-      return { framework: 'npm', command: 'npm test' };
-    }
-  }
-
-  // Go
-  if (exists('go.mod')) {
-    return { framework: 'go', command: 'go test ./... -v' };
-  }
-
-  // Rust
-  if (exists('Cargo.toml')) {
-    return { framework: 'cargo', command: 'cargo test' };
-  }
-
-  // Java (Maven)
-  if (exists('pom.xml')) {
-    return { framework: 'maven', command: 'mvn test -B' };
-  }
-
-  // Java/Kotlin (Gradle)
-  if (exists('build.gradle') || exists('build.gradle.kts')) {
-    return { framework: 'gradle', command: 'gradle test' };
-  }
-
-  // Ruby (RSpec)
-  if (exists('Gemfile') && readFile('Gemfile').includes('rspec')) {
-    return { framework: 'rspec', command: 'bundle exec rspec' };
-  }
-
-  // Ruby (Minitest)
-  if (exists('Gemfile') && exists('test/')) {
-    return { framework: 'minitest', command: 'bundle exec rake test' };
-  }
-
-  return { framework: null, command: null };
-}
-```
-
-**Test framework reference:**
-
-| Indicator | Framework | Command |
-|-----------|-----------|---------|
-| `pytest.ini`, `conftest.py` | pytest (Python) | `pytest -v --tb=short` |
-| `package.json` + vitest | Vitest (Node) | `npm test -- --run` |
-| `package.json` + jest | Jest (Node) | `npm test` |
-| `go.mod` | Go testing | `go test ./... -v` |
-| `Cargo.toml` | Cargo (Rust) | `cargo test` |
-| `pom.xml` | Maven (Java) | `mvn test -B` |
-| `build.gradle` | Gradle (Java/Kotlin) | `gradle test` |
-| `Gemfile` + rspec | RSpec (Ruby) | `bundle exec rspec` |
-| `Gemfile` + test/ | Minitest (Ruby) | `bundle exec rake test` |
-| None detected | Skip tests | Warn user |
-
-**Execute test command based on detected framework.**
-
-**Handle test failures:**
-
-- If tests fail: Display output, ask user if they want to:
-  1. Fix failing tests before committing
-  2. Skip tests (document why in commit message)
-  3. Abort and investigate failures
-
-**If no test framework detected:**
-
-- Warn: "No test framework detected - consider adding tests"
-- Skip test execution (don't fail)
-
-## 6. Validate Style Guide Compliance (UI Changes Only)
-
-**If STYLE_GUIDE_MODE = true:**
-
-Run automated validation checks:
-
-**1. Check for hardcoded colors:**
-
-- Grep for: `#[0-9a-fA-F]{3,6}`, `rgb(`, `hsl(` in modified files
-- Exclude: node_modules, .next, build directories
-- Exclude: oklch() declarations (these are valid)
-- If found: List violations with file:line references
-
-**2. Check for arbitrary spacing:**
-
-- Grep for: `[Npx]` patterns in modified files (e.g., `[17px]`, `[23px]`)
-- Exclude: max-w-[600px] and max-w-[700px] (these are allowed for text line length)
-- If found: List violations, suggest 8pt grid alternatives
-
-**3. Check for focus states:**
-
-- Grep for: `onClick`, `onPress`, `button`, `Button` without `focus:` in same file
-- If many missing: Warn about potential accessibility issues
-
-**Report validation results:**
-
-- ✅ All checks passed
-- ⚠️ N warning(s) found (non-blocking but should be addressed)
-- List specific violations with remediation steps
-
-## 7. Commit Changes
-
-**Stage all changes:**
-
-- Run: `git add .`
-
-**Check if there are changes to commit:**
-
-- Run: `git diff --staged --quiet`
-- If no changes: Display "No changes to commit" and exit
-- If changes exist: Proceed with commit
-
-**Generate commit message:**
+Extract the result fields and display completion banner:
 
 ```
-quick: {DESCRIPTION}
-
-Implemented via /quick command.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
-```
-
-**Create commit:**
-
-- Run: `git commit -m "[commit message]"`
-- Display commit SHA and summary
-
-## 8. Show Summary
-
-**Display completion information:**
-
-- Branch name: `quick/[slug]`
-- Files changed: Count from `git diff --name-only HEAD~1`
-- Commit SHA: Short SHA from `git rev-parse --short HEAD`
-- Changes summary: `git diff --stat HEAD~1`
-
-**Next steps:**
-
-```
+════════════════════════════════════════════════════════════════════════════════
 ✅ Quick change complete!
+════════════════════════════════════════════════════════════════════════════════
 
-Branch: quick/[slug]
-Files changed: N
-Commit: [sha]
+Branch: quick/{slug}
+Files changed: {files_changed}
+Commit: {commit_sha}
+Tests: {tests}
+Style guide: {style_guide}
+
+Summary: {summary}
 
 Next steps:
   • Review changes: git show
   • Run app locally: npm run dev (or pytest)
-  • Merge to main: git checkout main && git merge quick/[slug]
+  • Merge to main: git checkout main && git merge quick/{slug}
   • Push (if remote): git push origin main
-  • Delete branch: git branch -d quick/[slug]
+  • Delete branch: git branch -d quick/{slug}
+```
+
+### If `---NEEDS_INPUT---`
+
+**LOOP: Handle Q&A until COMPLETED or FAILED**
+
+1. Parse questions from the response
+2. Use AskUserQuestion to ask the user
+3. Re-spawn agent with the answers:
+
+```
+Task tool call:
+  subagent_type: "general-purpose"
+  description: "Continue quick change with user answers"
+  prompt: |
+    Continue executing quick change with user's answers. You are a quick-worker agent.
+
+    Read the quick-worker agent brief at: .claude/agents/quick/quick-worker.md
+
+    ## Original Context
+    Description: {DESCRIPTION}
+    Style Guide Mode: {STYLE_GUIDE_MODE}
+    Branch: quick/{slug}
+
+    ## User Answers
+    {FOR EACH QUESTION}
+    Q: {question}
+    A: {user's answer}
+    {END FOR}
+
+    ## Resume Task
+    Continue from where you left off using the user's answers.
+    Return structured result using the same delimiter format (---COMPLETED---, ---NEEDS_INPUT---, or ---FAILED---).
+```
+
+4. Parse new response and repeat loop if still `---NEEDS_INPUT---`
+
+### If `---FAILED---`
+
+Display error and recovery:
+
+```
+════════════════════════════════════════════════════════════════════════════════
+❌ Quick change failed
+════════════════════════════════════════════════════════════════════════════════
+
+Reason: {reason}
+
+Recovery: {recovery}
+
+Options:
+  • Try again with modified scope
+  • Use /feature for complex changes
+  • Checkout main and delete branch: git checkout main && git branch -D quick/{slug}
 ```
 
 </process>
@@ -436,21 +307,17 @@ Next steps:
 <success_criteria>
 Quick implementation is complete when:
 
-- Changes implemented in <30 minutes
-- All relevant tests pass (or failures documented)
+- Agent returns `---COMPLETED---` with valid fields
 - Changes committed to `quick/[slug]` branch
 - Summary displayed with files changed and next steps
-- If UI change: Style guide validation results shown
+- If UI change: Style guide compliance reported
 - No breaking changes introduced
-- Code follows existing patterns and conventions
 - Single concern addressed (no scope creep)
-  </success_criteria>
+</success_criteria>
 
 <comparison_table>
 
 ## /quick vs /feature
-
-Use this table to decide which command to use:
 
 | Aspect            | /quick                       | /feature                                             |
 | ----------------- | ---------------------------- | ---------------------------------------------------- |
@@ -470,82 +337,57 @@ Use this table to decide which command to use:
 <examples>
 **Example 1: Bug Fix**
 ```
-/quick "Fix login button alignment on mobile - button is cut off on screens <375px width"
+/quick "Fix login button alignment on mobile"
 ```
-- Agent identifies CSS issue in login component
-- Adds responsive media query or Flexbox fix
-- Tests on mobile viewport sizes
-- Commits to `quick/fix-login-button-alignment-on-mobile`
+- Orchestrator creates branch `quick/fix-login-button-alignment`
+- Task(quick-worker) identifies CSS issue, fixes, tests, commits
+- Returns `---COMPLETED---` with summary
+- User sees completion banner with next steps
 
-**Example 2: Refactor**
-
+**Example 2: Test Failure Handling**
 ```
-/quick "Refactor user service to use async/await instead of promises"
+/quick "Update error message text in signup form"
 ```
+- Task(quick-worker) makes change, runs tests, tests fail
+- Returns `---NEEDS_INPUT---` asking how to proceed
+- Orchestrator asks user via AskUserQuestion
+- User chooses "Update snapshots"
+- Task(quick-worker) continues with answer, commits
+- Returns `---COMPLETED---`
 
-- Agent converts `.then()` chains to `async/await`
-- Updates error handling to use try/catch
-- Runs existing tests to verify behavior unchanged
-- Commits to `quick/refactor-user-service-to-use-async-await`
-
-**Example 3: Documentation**
-
+**Example 3: Scope Escalation**
 ```
-/quick "Update README with new /quick command usage and examples"
+/quick "Add user authentication with OAuth"
 ```
-
-- No agent needed (direct implementation)
-- Adds section to README with command syntax
-- Includes examples and comparison table
-- Commits to `quick/update-readme-with-new-quick-command`
+- Task(quick-worker) analyzes scope, detects complexity
+- Returns `---FAILED---` with recovery suggesting /feature
+- Orchestrator displays error and recovery steps
 
 **Example 4: UI Change with Style Guide**
-
 ```
-/quick "Add success message toast after user signup with proper design tokens"
+/quick "Add success toast after user signup"
 ```
-
-- UI change detected → loads style guide
-- Agent uses semantic-success color from tokens.json
-- Ensures 8pt grid spacing and proper typography
-- Validates WCAG AA contrast
-- Style guide validation checks pass
-- Commits to `quick/add-success-message-toast-after-user-signup`
-  </examples>
+- Orchestrator detects UI keywords, sets STYLE_GUIDE_MODE=true
+- Task(quick-worker) implements with token compliance
+- Validates style guide, reports compliance status
+- Returns `---COMPLETED---` with style_guide: "compliant"
+</examples>
 
 <error_handling>
-**If description is too complex for /quick:**
-
-- Recommend using `/feature` instead
-- Explain why (e.g., "Database migrations require full workflow for zero-downtime planning")
-- Provide command to start: `/feature "[description]"`
-
-**If tests fail:**
-
-- Display test output with failures highlighted
-- Ask user: Fix now, skip with justification, or abort?
-- If skip: Require justification in commit message
-
-**If style guide files missing (UI change):**
-
-- Warn user: "Style guide not found - consider running `/init-project --with-design`"
-- Continue without style guide enforcement
-- Note in summary: "Style guide validation skipped (files not found)"
-
-**If no changes to commit:**
-
-- Display: "No changes detected - verify implementation completed successfully"
-- Show `git status` output
-- Do not create empty commit
-
-**If branch already exists:**
-
-- Checkout existing branch
-- Warn: "Using existing branch quick/[slug] - previous work may exist"
-- Show existing commits on branch: `git log main..HEAD --oneline`
-
 **If git not initialized:**
-
 - Error: "Git repository not found - initialize with `git init` first"
 - Abort command execution
-  </error_handling>
+
+**If branch creation fails:**
+- Show git error
+- Suggest checking current branch status
+
+**If agent times out:**
+- Display partial progress if available
+- Suggest re-running with `/quick continue` (future enhancement)
+
+**If delimiter not found in response:**
+- Treat as unexpected error
+- Display raw agent output
+- Suggest re-running command
+</error_handling>
