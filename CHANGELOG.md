@@ -2,6 +2,60 @@
 
 ---
 
+## [11.0.0] - 2025-12-09
+
+### 💥 Breaking Changes
+
+**Commands Now Require Task Tool for Phase Execution**
+
+The `/feature` and `/epic` commands have been completely rewritten to use imperative Task() spawning. Phase agents now return structured delimiters instead of using AskUserQuestion directly.
+
+- **feature.md v5.0**: Rewritten with imperative instructions for Task() spawning
+- **epic.md v7.0**: Rewritten with parallel sprint execution via Task()
+- **Agent return format**: All phase agents now use delimiter format (`---COMPLETED---`, `---NEEDS_INPUT---`, `---FAILED---`)
+
+### ✨ Added
+
+**Imperative Task() Architecture**
+
+Commands now explicitly tell Claude to use the Task tool with specific parameters, instead of JavaScript pseudocode that wasn't being executed.
+
+- **Delimiter-based communication**: Agents return structured results with clear delimiters:
+  - `---COMPLETED---` / `---END_COMPLETED---` for successful completion
+  - `---NEEDS_INPUT---` / `---END_NEEDS_INPUT---` for user questions
+  - `---FAILED---` / `---END_FAILED---` for errors
+  - `---WORKER_COMPLETED---` / `---WORKER_FAILED---` for worker agents
+  - `---INITIALIZED---` / `---INIT_FAILED---` for initializer agent
+
+- **Question batching protocol**: Agents return questions in NEEDS_INPUT blocks, orchestrator asks user via AskUserQuestion, then re-spawns agent with answers
+
+- **Parallel sprint execution**: Epic implementation uses `run_in_background: true` for simultaneous sprint workers
+
+### 🔧 Changed
+
+- `spec-agent.md`: Updated return format with delimiters
+- `plan-agent.md`: Updated return format with delimiters
+- `worker.md`: Updated return format with delimiters (WORKER_COMPLETED, WORKER_FAILED, ALL_DONE, BLOCKED)
+- `initializer.md`: Updated return format with delimiters (INITIALIZED, INIT_FAILED)
+
+### 📚 Architecture
+
+**Ultra-lightweight Orchestrator Pattern**:
+1. Read state from disk (state.yaml, interaction-state.yaml, domain-memory.yaml)
+2. Spawn isolated phase agents via Task tool
+3. Handle user Q&A when agents return questions
+4. Update state.yaml after each phase
+5. Never carry implementation details in context
+
+**Benefits**:
+- Unlimited feature/epic complexity (no context overflow)
+- Observable progress (all state in YAML files)
+- Resumable at any point (`/feature continue`, `/epic continue`)
+- Parallel sprint execution for epics
+- Questions batch to main context (agents stay isolated)
+
+---
+
 ## [10.17.0] - 2025-12-09
 
 ### ✨ Added

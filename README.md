@@ -283,6 +283,25 @@ See a complete feature workflow in [`specs/001-example-feature/`](specs/001-exam
 
 ## 🆕 Recent Updates
 
+### v11.0.0 (December 2025)
+
+**Imperative Task() Architecture** - Commands now properly spawn isolated agents
+
+- **Breaking Change**: `/feature` and `/epic` commands rewritten to use imperative Task() spawning
+  - Phase agents now return structured delimiters (`---COMPLETED---`, `---NEEDS_INPUT---`, `---FAILED---`)
+  - Questions batch to main context - agents return questions, main asks user, re-spawns with answers
+  - Parallel sprint execution for epics via `run_in_background: true`
+- **Ultra-lightweight Orchestrator Pattern**
+  - Read state from disk, spawn isolated agents, handle Q&A, update state
+  - Never carry implementation details in context
+  - Unlimited feature/epic complexity (no context overflow)
+- **Updated Agents**:
+  - `spec-agent.md`, `plan-agent.md`: Delimiter-based return format
+  - `worker.md`: WORKER_COMPLETED, WORKER_FAILED, ALL_DONE, BLOCKED delimiters
+  - `initializer.md`: INITIALIZED, INIT_FAILED delimiters
+
+---
+
 ### v10.17.0 (December 2025)
 
 **Domain Memory v2 - Full Phase Isolation** - Revolutionary architecture preventing context overflow
