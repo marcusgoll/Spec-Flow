@@ -2,6 +2,35 @@
 
 ---
 
+## [11.1.0] - 2025-12-09
+
+### ✨ Added
+
+**/quick Command - Task() Orchestrator Pattern**
+
+The `/quick` command now uses the same Task() isolation architecture as `/feature` and `/epic` for consistent behavior across all workflow commands.
+
+- **quick-worker agent**: New isolated agent for atomic quick change execution
+  - Domain detection (backend/frontend/test/docs)
+  - Test framework detection and execution
+  - Style guide validation (when UI changes detected)
+  - Automatic commit with conventional message
+
+- **Delimiter-based returns**: Agent uses structured protocol
+  - `---COMPLETED---` with files_changed, commit_sha, summary, tests, style_guide
+  - `---NEEDS_INPUT---` with questions for test failures or ambiguous domains
+  - `---FAILED---` with reason and recovery steps
+
+- **Full Q&A support**: Orchestrator handles question batching for test failure decisions
+
+### 🔧 Changed
+
+- `quick.md` v2.0: Converted from 8-step inline process to lightweight Task() orchestrator
+- Steps 1-3 (argument parsing, scope validation, branch) remain inline for UX
+- Steps 4-8 (implementation, tests, validation, commit) now isolated via Task()
+
+---
+
 ## [11.0.1] - 2025-12-09
 
 ### 🐛 Fixed

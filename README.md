@@ -283,6 +283,20 @@ See a complete feature workflow in [`specs/001-example-feature/`](specs/001-exam
 
 ## 🆕 Recent Updates
 
+### v11.1.0 (December 2025)
+
+**/quick Command - Task() Orchestrator Pattern** - Consistent architecture across all workflow commands
+
+- **quick-worker agent**: Isolated agent for atomic quick change execution
+  - Domain detection (backend/frontend/test/docs)
+  - Test framework detection and execution
+  - Style guide validation (UI changes)
+  - Automatic commit with conventional message
+- **Delimiter-based returns**: `---COMPLETED---`, `---NEEDS_INPUT---`, `---FAILED---`
+- **Full Q&A support**: Test failure decisions batched to main context
+
+---
+
 ### v11.0.0 (December 2025)
 
 **Imperative Task() Architecture** - Commands now properly spawn isolated agents
