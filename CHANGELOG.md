@@ -2,6 +2,38 @@
 
 ---
 
+## [11.2.0] - 2025-12-12
+
+### ✨ Added
+
+**Automatic Regression Test Generation**
+
+When bugs are discovered during debugging or implementation, regression tests are now automatically generated to capture the bug and prevent recurrence.
+
+- **regression-test-generator skill**: New skill for creating framework-specific regression tests
+  - Framework auto-detection (Jest, Vitest, pytest, Playwright)
+  - Arrange-Act-Assert test structure
+  - Bug reproduction from error details
+  - Links tests back to error-log.md entries
+
+- **Auto-invoke /debug on test failures**: When tests fail during `/implement`, the `/debug` command is automatically invoked
+  - Generates regression test for the failure (Step 3.5)
+  - Updates error-log.md with test reference
+  - Returns actionable fix recommendations
+
+- **Continuous checks integration**: Check 7/7 triggers regression test suggestions when tests fail during batch execution
+
+- **Framework templates**: Complete test templates for Jest/Vitest, pytest, and Playwright with error ID references and Arrange-Act-Assert pattern
+
+### 🔧 Changed
+
+- `/debug` command: Added Step 3.5 for regression test generation after root cause analysis
+- `/implement` command: Now auto-invokes `/debug` when tests fail instead of just recommending it
+- `continuous-checks.sh`: Added Check 7/7 for auto-debug trigger on test failures
+- `error-log-template.md`: Added regression test reference field to entry format
+
+---
+
 ## [11.1.0] - 2025-12-09
 
 ### ✨ Added

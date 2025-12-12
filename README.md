@@ -283,6 +283,21 @@ See a complete feature workflow in [`specs/001-example-feature/`](specs/001-exam
 
 ## 🆕 Recent Updates
 
+### v11.2.0 (December 2025)
+
+**Automatic Regression Test Generation** - Bugs captured as tests to prevent recurrence
+
+- **regression-test-generator skill**: Auto-generates framework-specific regression tests
+  - Framework auto-detection (Jest, Vitest, pytest, Playwright)
+  - Arrange-Act-Assert test structure with error ID references
+  - Links tests back to error-log.md entries
+- **Auto-invoke /debug on test failures**: When tests fail during `/implement`, `/debug` is automatically invoked
+  - Generates regression test for the failure (Step 3.5)
+  - Updates error-log.md with test reference
+- **Continuous checks integration**: Check 7/7 triggers auto-debug on test failures
+
+---
+
 ### v11.1.0 (December 2025)
 
 **/quick Command - Task() Orchestrator Pattern** - Consistent architecture across all workflow commands
