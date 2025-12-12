@@ -1179,7 +1179,32 @@ Recommended next steps:
 Failed tests:
   {List failed tests}
 
-Next: /debug to investigate and fix failures
+Auto-invoking /debug to investigate failures and generate regression tests...
+```
+
+**Auto-invoke /debug** with test failure context:
+
+```bash
+# Extract failed test info and invoke /debug
+/debug $FEATURE_SLUG --type=test --component={backend|frontend} --non-interactive
+```
+
+This will:
+1. Run verification checks on the failing component
+2. Analyze test failure logs
+3. **Auto-generate regression test** for the bug (Step 3.5)
+4. Update error-log.md with failure details
+5. Return with actionable fix recommendations
+
+**After /debug completes**, present results:
+
+```
+Debug session complete for test failures
+
+Error log updated: specs/{slug}/error-log.md (Entry #N)
+Regression test generated: tests/regression/regression-ERR-XXXX-{slug}.test.ts
+
+Fix the identified issues, then re-run /implement to continue.
 ```
 
 **If tasks blocked:**

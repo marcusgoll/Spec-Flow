@@ -134,6 +134,72 @@ python .spec-flow/scripts/spec-cli.py debug "$ARGUMENTS"
 - `test.log` — Frontend test failures
 - `deploy-diag.txt` — Deployment diagnostics (if --deploy-diag used)
 
+### Step 3.5: Generate Regression Test (Auto)
+
+After identifying root cause, automatically generate a regression test to prevent bug recurrence.
+
+**Extract bug details**:
+- Error ID (from error-log.md entry number, e.g., `ERR-XXXX`)
+- Title (brief description of the bug)
+- Symptoms (observable behavior from logs)
+- Root cause (from 5 Whys analysis in Step 3)
+- Component (affected file:function from stack trace)
+
+**Generate regression test**:
+
+```bash
+.spec-flow/scripts/bash/regression-test-generator.sh \
+  --error-id "ERR-XXXX" \
+  --title "Brief bug description" \
+  --symptoms "Observable error behavior" \
+  --root-cause "Why the bug occurred" \
+  --component "src/path/file.ts:functionName" \
+  --feature-dir "$FEATURE_DIR"
+```
+
+**Present to user for review**:
+
+```
+=== Regression Test Generated ===
+
+Error: ERR-XXXX - {title}
+File:  tests/regression/regression-ERR-XXXX-slug.test.ts
+
+[Generated test code displayed]
+
+This test will:
+- Capture the bug scenario to prevent regression
+- Fail before fix (proves bug exists)
+- Pass after fix (validates solution)
+
+What would you like to do?
+  [A] Save test and continue
+  [B] Edit test before saving
+  [C] Skip generation (add to tech debt)
+```
+
+**User response handling**:
+- **A (Save)**: Test file already written by script, update error-log.md with reference
+- **B (Edit)**: Allow user to modify, then save updated version
+- **C (Skip)**: Log skip reason in NOTES.md as technical debt
+
+**Update error-log.md** with regression test reference:
+
+```markdown
+**Regression Test**:
+- **File**: `tests/regression/regression-ERR-XXXX-slug.test.ts`
+- **Status**: Generated
+- **Validates**: {what the test checks}
+```
+
+**Verify test behavior**:
+- If bug not yet fixed: Test should FAIL (proves bug exists)
+- If bug already fixed: Test should PASS (validates fix)
+
+**Skip conditions**:
+- Skip if `--from-optimize` with `--non-interactive` (auto-fix mode)
+- Skip if user explicitly declines with option C
+
 ### Step 4: Present Results to User
 
 **Summary format**:
@@ -224,6 +290,12 @@ Issue {issue_id}: {resolved|requires manual fix}
 6. **Structured mode completion** (if --from-optimize):
    - Control returned to /optimize with resolution status
    - Issue metadata preserved in debug-session.json
+
+7. **Regression test generated** (unless skipped):
+   - Test file created in `tests/regression/` or project test location
+   - Test follows Arrange-Act-Assert pattern
+   - Test linked in error-log.md entry
+   - Test staged for commit (or skip reason logged in NOTES.md)
 </success_criteria>
 
 <verification>

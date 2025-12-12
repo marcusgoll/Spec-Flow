@@ -384,8 +384,8 @@ main() {
 
   echo "" >> "$result_file"
 
-  # 7. Dead code detection (new unused exports)
-  log_info "Check 6/6: Dead code detection..."
+  # 6. Dead code detection (new unused exports)
+  log_info "Check 6/7: Dead code detection..."
 
   local dead_code_failed=0
 
@@ -411,6 +411,69 @@ main() {
   else
     log_warning "  Dead code detection skipped (no npx or apps/ directory)"
     ((checks_skipped++))
+  fi
+
+  echo "" >> "$result_file"
+
+  # 7. Auto-invoke /debug on test failures (generates regression tests)
+  log_info "Check 7/7: Auto-debug on test failures..."
+
+  if [ $test_failed -eq 1 ]; then
+    log_warning "  Test failures detected - auto-invoking /debug"
+
+    # Determine component type from failed tests
+    local component="backend"
+    if echo "$changed_files" | grep -q "^apps/\|\.tsx\|\.jsx"; then
+      component="frontend"
+    fi
+
+    # Extract feature slug from feature dir
+    local feature_slug
+    feature_slug=$(basename "$FEATURE_DIR" 2>/dev/null || echo "unknown")
+
+    echo ""
+    echo "═══════════════════════════════════════════════════════════════"
+    echo -e "${YELLOW}Auto-invoking /debug to generate regression tests${NC}"
+    echo "═══════════════════════════════════════════════════════════════"
+    echo ""
+    echo "Feature: $feature_slug"
+    echo "Component: $component"
+    echo "Test failures detected in batch $BATCH_NUM"
+    echo ""
+
+    # Generate regression test suggestions first
+    local regression_script=".spec-flow/scripts/bash/regression-test-generator.sh"
+
+    if [ -f "$regression_script" ]; then
+      local suggestions_file="$FEATURE_DIR/.regression-suggestions.yaml"
+
+      # Run suggestion generator
+      bash "$regression_script" \
+        --suggest-only \
+        --failed-tests "$result_file" \
+        --output "$suggestions_file" \
+        2>&1 | tee -a "$result_file" || true
+
+      if [ -f "$suggestions_file" ]; then
+        log_info "  Regression test suggestions saved to: $suggestions_file"
+      fi
+    fi
+
+    # Signal to parent that /debug should be invoked
+    # (The actual /debug invocation happens at the orchestrator level)
+    echo ""
+    echo "REGRESSION_TEST_TRIGGER=true" >> "$result_file"
+    echo "FEATURE_SLUG=$feature_slug" >> "$result_file"
+    echo "COMPONENT=$component" >> "$result_file"
+    echo ""
+    log_info "  /debug will be auto-invoked by orchestrator"
+    log_info "  This will generate regression tests for the failures"
+
+    # Non-blocking - orchestrator handles /debug invocation
+    ((checks_passed++))
+  else
+    log_success "  No test failures - auto-debug skipped"
+    ((checks_passed++))
   fi
 
   echo "" >> "$result_file"
