@@ -154,6 +154,7 @@ async function installWorkflows({ packageRoot, targetDir, conflictStrategy, verb
  * @param {boolean} [options.verbose=false]
  * @param {string} [options.conflictStrategy='merge'] STRATEGIES.{MERGE|BACKUP|SKIP|FORCE}
  * @param {Array<string>} [options.excludeDirectories=[]]
+ * @param {boolean} [options.allowExisting=false] - Allow install over existing installation
  * @returns {Promise<{ success: boolean, error: string|null, conflictActions: Array }>}
  */
 async function install(options) {
@@ -172,6 +173,7 @@ async function install(options) {
     excludeDirectories
   } = settings;
 
+  const allowExisting = options.allowExisting || false;
   const packageRoot = getPackageRoot();
 
   if (verbose) printHeader('Pre-flight Checks');
@@ -185,9 +187,9 @@ async function install(options) {
     };
   }
 
-  // Safety net: block blind overwrite unless explicitly preserving memory or caller opted into update flow
+  // Safety net: block blind overwrite unless explicitly allowed or caller opted into update flow
   const existing = await checkExistingInstallation(targetDir);
-  if (existing.installed && !preserveMemory) {
+  if (existing.installed && !preserveMemory && !allowExisting) {
     if (verbose) {
       printWarning('Spec-Flow already installed in this directory');
       console.log('\nTo update existing installation:');
@@ -245,7 +247,7 @@ async function install(options) {
 }
 
 /**
- * Update existing spec-flow installation
+ * Update existing spec-flow installation (or install if not present)
  * Preserves memory and excludes user data directories by default.
  * @param {Object} options
  * @param {string} options.targetDir
@@ -262,26 +264,33 @@ async function update(options) {
   targetDir = path.resolve(targetDir);
 
   const existing = await checkExistingInstallation(targetDir);
-  if (!existing.installed) {
-    return {
-      success: false,
-      error: 'Spec-Flow not found in this directory. Use init command to install.'
-    };
-  }
+  const isUpdate = existing.installed;
 
   try {
     const result = await install({
       targetDir,
-      preserveMemory: true,
+      preserveMemory: isUpdate, // Preserve memory only if updating
       verbose,
-      excludeDirectories: USER_DATA_DIRECTORIES
+      excludeDirectories: USER_DATA_DIRECTORIES,
+      allowExisting: true // Allow install even if already exists
     });
 
     if (!result.success) {
-      return { success: false, error: result.error || 'Unknown update error' };
+      return { success: false, error: result.error || 'Unknown error', wasInstall: !isUpdate };
     }
 
-    // Handle hook updates
+    // For fresh installs, skip hook prompts (hooks are installed fresh)
+    if (!isUpdate) {
+      return {
+        success: true,
+        error: null,
+        conflictActions: result.conflictActions || [],
+        backupPaths: {},
+        wasInstall: true
+      };
+    }
+
+    // Handle hook updates (only for existing installations)
     const { updateHooksIfInstalled } = require('./install-hooks');
 
     // Check if hooks exist
@@ -325,7 +334,8 @@ async function update(options) {
               conflictActions: result.conflictActions || [],
               backupPaths: {},
               hooksStatus,
-              hooksMessage
+              hooksMessage,
+              wasInstall: false
             };
           }
         }
@@ -361,12 +371,13 @@ async function update(options) {
       success: true,
       error: null,
       conflictActions: result.conflictActions || [],
-      backupPaths: {}, // No backups created during update (templates only)
+      backupPaths: {},
       hooksStatus,
-      hooksMessage
+      hooksMessage,
+      wasInstall: false
     };
   } catch (error) {
-    return { success: false, error: `Update error: ${error.message}` };
+    return { success: false, error: `Error: ${error.message}`, wasInstall: !isUpdate };
   }
 }
 

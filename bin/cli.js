@@ -60,17 +60,15 @@ program
     }
   });
 
-// Update command - update existing installation
+// Update command - update existing installation (or install if not present)
 program
   .command('update')
-  .description('Update Spec-Flow to latest version')
+  .description('Update Spec-Flow (or install if not present)')
   .option('-t, --target <path>', 'Target directory (defaults to current directory)')
   .option('--update-hooks', 'Force update hooks without prompting')
   .option('--skip-hooks', 'Skip hook updates')
   .action(async (options) => {
     const targetDir = options.target ? path.resolve(options.target) : process.cwd();
-
-    printHeader('Updating Spec-Flow');
 
     try {
       const result = await update({
@@ -85,23 +83,34 @@ program
         process.exit(1);
       }
 
-      printSuccess('\nUpdate complete!');
-      console.log(chalk.cyan(`\nSpec-Flow version: ${chalk.bold(VERSION)}`));
-      console.log(chalk.gray('Templates updated, user data preserved (memory, specs, learnings.md)'));
-
-      // Show hook status
-      if (result.hooksStatus) {
+      // Show appropriate message based on whether it was fresh install or update
+      if (result.wasInstall) {
+        printSuccess('\nInstallation complete!');
+        console.log(chalk.cyan(`\nSpec-Flow version: ${chalk.bold(VERSION)}`));
         console.log('');
-        if (result.hooksStatus === 'updated') {
-          console.log(chalk.green('✓ Design token hooks updated to latest version'));
-        } else if (result.hooksStatus === 'not_installed') {
-          console.log(chalk.yellow(`⚠️  ${result.hooksMessage}`));
-        } else if (result.hooksStatus === 'skipped_by_user') {
-          console.log(chalk.gray('  Hooks update skipped by user'));
-        } else if (result.hooksStatus === 'skipped') {
-          console.log(chalk.gray('  Hooks update skipped'));
-        } else if (result.hooksStatus === 'failed') {
-          console.log(chalk.red(`✗ Hooks update failed: ${result.hooksMessage || 'Unknown error'}`));
+        console.log(chalk.white('Next steps:'));
+        console.log(chalk.green('  1. Open project in Claude Code'));
+        console.log(chalk.green('  2. Run /help') + chalk.gray(' for guidance'));
+        console.log(chalk.green('  3. Run /feature "name"') + chalk.gray(' to start building\n'));
+      } else {
+        printSuccess('\nUpdate complete!');
+        console.log(chalk.cyan(`\nSpec-Flow version: ${chalk.bold(VERSION)}`));
+        console.log(chalk.gray('Templates updated, user data preserved (memory, specs, learnings.md)'));
+
+        // Show hook status
+        if (result.hooksStatus) {
+          console.log('');
+          if (result.hooksStatus === 'updated') {
+            console.log(chalk.green('✓ Design token hooks updated to latest version'));
+          } else if (result.hooksStatus === 'not_installed') {
+            console.log(chalk.yellow(`⚠️  ${result.hooksMessage}`));
+          } else if (result.hooksStatus === 'skipped_by_user') {
+            console.log(chalk.gray('  Hooks update skipped by user'));
+          } else if (result.hooksStatus === 'skipped') {
+            console.log(chalk.gray('  Hooks update skipped'));
+          } else if (result.hooksStatus === 'failed') {
+            console.log(chalk.red(`✗ Hooks update failed: ${result.hooksMessage || 'Unknown error'}`));
+          }
         }
       }
 
@@ -113,8 +122,8 @@ program
         console.log(formatActions(result.conflictActions));
 
         // Check for Gemini extension updates
-        const geminiUpdated = result.conflictActions.some(action => 
-          (action.path.endsWith('GEMINI.md') || action.path.endsWith('gemini-extension.json')) && 
+        const geminiUpdated = result.conflictActions.some(action =>
+          (action.path.endsWith('GEMINI.md') || action.path.endsWith('gemini-extension.json')) &&
           action.action === 'backed-up'
         );
 
@@ -315,8 +324,8 @@ program
     console.log(chalk.gray('  npx spec-flow <command> [options]\n'));
 
     console.log(chalk.white('Commands:'));
-    console.log(chalk.green('  init') + chalk.gray('                   Initialize Spec-Flow in current directory'));
-    console.log(chalk.green('  update') + chalk.gray('                 Update existing Spec-Flow installation'));
+    console.log(chalk.green('  init') + chalk.gray('                   Initialize or update Spec-Flow (interactive)'));
+    console.log(chalk.green('  update') + chalk.gray('                 Install or update Spec-Flow (non-interactive)'));
     console.log(chalk.green('  status') + chalk.gray('                 Check installation health'));
     console.log(chalk.green('  setup-roadmap') + chalk.gray('          Set up GitHub Issues for roadmap'));
     console.log(chalk.green('  install-hooks') + chalk.gray('          Install design token enforcement hooks'));
