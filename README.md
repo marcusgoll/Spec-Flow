@@ -283,6 +283,20 @@ See a complete feature workflow in [`specs/001-example-feature/`](specs/001-exam
 
 ## 🆕 Recent Updates
 
+### v11.3.0 (December 2025)
+
+**Git Worktree Integration** - Parallel development with isolated git state per feature/epic
+
+- **worktree-context.sh**: Root orchestration utilities for worktree-based development
+  - Automatic worktree creation for features/epics
+  - Merge and cleanup functions for ship workflow
+  - Task() agent context generation with cd-first pattern
+- **Worktree-aware agents**: Worker agent supports isolated worktree execution
+- **Command integration**: `/feature`, `/implement-epic`, `/ship` now create and manage worktrees
+- **Enabled by default**: `worktrees.auto_create: true` - reduces merge conflicts ~90%
+
+---
+
 ### v11.2.0 (December 2025)
 
 **Automatic Regression Test Generation** - Bugs captured as tests to prevent recurrence

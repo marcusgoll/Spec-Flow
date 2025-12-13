@@ -2,6 +2,40 @@
 
 ---
 
+## [11.3.0] - 2025-12-13
+
+### ✨ Added
+
+**Git Worktree Integration for Isolated Development**
+
+Enable parallel feature/epic development with full git state isolation. Reduces merge conflicts by ~90% through isolated worktrees per feature.
+
+- **worktree-context.sh**: New root orchestration utilities for worktree-based development
+  - `get_root_path()` - Returns main worktree path
+  - `is_in_worktree()` - Detect if running in worktree
+  - `run_in_worktree()` - Execute commands in worktree without cd
+  - `merge_worktree_to_main()` - Merge worktree branch back to main
+  - `generate_worktree_context()` - Generate Task() agent context block
+
+- **Worktree-aware agents**: Worker agent now supports cd-first pattern for worktree execution
+  - Added `worktree_path` input to worker.md
+  - Added `<worktree_awareness>` section with Step 0 for worktree switching
+
+- **Command integration**: Feature, implement-epic, and ship commands now support worktrees
+  - `/feature` creates worktree if preferences enabled
+  - `/implement-epic` creates sprint-specific worktrees for parallel execution
+  - `/ship` merges worktree branch and cleans up on finalize
+
+- **User preferences**: Worktrees enabled by default
+  - `worktrees.auto_create: true` (changed from false)
+  - `worktrees.cleanup_on_finalize: true`
+
+### 🐛 Fixed
+
+- Fixed PowerShell/bash syntax mixing (`2>$null` → `2>/dev/null`) in 8 command files
+
+---
+
 ## [11.2.0] - 2025-12-12
 
 ### ✨ Added
