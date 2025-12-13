@@ -2,6 +2,14 @@
 
 ---
 
+## [11.3.1] - 2025-12-13
+
+### 🐛 Fixed
+
+- Removed hook backup files during `npx spec-flow update` - hooks now overwrite directly without creating `.backup-*` files
+
+---
+
 ## [11.3.0] - 2025-12-13
 
 ### ✨ Added
