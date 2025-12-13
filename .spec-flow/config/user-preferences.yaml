@@ -27,10 +27,12 @@ ui:
 # Git worktree preferences
 worktrees:
   # Automatically create git worktrees for epics and features
-  # Enables parallel development across multiple Claude Code instances
-  auto_create: false
+  # Isolates git state per feature/epic, preventing merge conflicts
+  # Root Claude Code orchestrates, Task() agents work in worktrees
+  auto_create: true
 
   # Automatically cleanup worktrees after /finalize completes
+  # Merges worktree branch to main, then removes worktree directory
   cleanup_on_finalize: true
 
 # Dev Studio preferences (parallel AI development)

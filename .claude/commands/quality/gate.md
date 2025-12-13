@@ -10,9 +10,9 @@ allowed-tools: [Read, Write, Edit, Bash(npm *), Bash(pnpm *), Bash(npx *), Bash(
 <context>
 **Arguments**: $ARGUMENTS
 
-**Current Branch**: !`git branch --show-current 2>$null || echo "none"`
+**Current Branch**: !`git branch --show-current 2>/dev/null || echo "none"`
 
-**Git Status**: !`git status --short 2>$null || echo "clean"`
+**Git Status**: !`git status --short 2>/dev/null || echo "clean"`
 
 **Project Type Detection**:
 

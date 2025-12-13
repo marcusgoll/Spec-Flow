@@ -18,7 +18,7 @@ updated: 2025-12-09
 
 **Interaction State**: !`cat specs/*/interaction-state.yaml 2>/dev/null | head -10 || echo "none"`
 
-**Deployment Model**: !`test -f .github/workflows/deploy-staging.yml && echo "staging-prod" || (git remote 2>$null && echo "direct-prod" || echo "local-only")`
+**Deployment Model**: !`test -f .github/workflows/deploy-staging.yml && echo "staging-prod" || (git remote 2>/dev/null && echo "direct-prod" || echo "local-only")`
 </context>
 
 <objective>
@@ -487,6 +487,71 @@ python .spec-flow/scripts/spec-cli.py ship-finalize preflight --feature-dir "$FE
    - Display conflict details
    - Tell user to resolve conflicts and run `/ship continue`
    - **EXIT**
+
+### Step 3.5: Worktree Merge and Cleanup (If Enabled)
+
+**Check if feature was developed in a worktree:**
+
+```bash
+WORKTREE_ENABLED=$(yq eval '.git.worktree_enabled // false' "$FEATURE_DIR/state.yaml")
+WORKTREE_PATH=$(yq eval '.git.worktree_path // ""' "$FEATURE_DIR/state.yaml")
+echo "Worktree enabled: $WORKTREE_ENABLED"
+echo "Worktree path: $WORKTREE_PATH"
+```
+
+**If worktree was used:**
+
+```bash
+if [ "$WORKTREE_ENABLED" = "true" ] && [ -n "$WORKTREE_PATH" ]; then
+    echo "Merging worktree branch to main..."
+
+    # Load cleanup preference
+    CLEANUP_ON_FINALIZE=$(bash .spec-flow/scripts/utils/load-preferences.sh \
+        --key "worktrees.cleanup_on_finalize" --default "true" 2>/dev/null)
+
+    # Get feature slug for merge
+    FEATURE_SLUG=$(yq eval '.slug' "$FEATURE_DIR/state.yaml")
+
+    # Merge worktree branch back to main
+    bash .spec-flow/scripts/bash/worktree-context.sh merge "$FEATURE_SLUG"
+
+    # Cleanup worktree if preference enabled
+    if [ "$CLEANUP_ON_FINALIZE" = "true" ]; then
+        echo "Cleaning up worktree: $FEATURE_SLUG"
+        bash .spec-flow/scripts/bash/worktree-manager.sh remove "$FEATURE_SLUG" --force
+        echo "Worktree removed: $WORKTREE_PATH"
+
+        # Update state.yaml to reflect cleanup
+        yq eval '.git.worktree_enabled = false' -i "$FEATURE_DIR/state.yaml"
+        yq eval '.git.worktree_path = ""' -i "$FEATURE_DIR/state.yaml"
+        yq eval '.git.worktree_merged_at = "'$(date -Iseconds)'"' -i "$FEATURE_DIR/state.yaml"
+    else
+        echo "Worktree preserved (cleanup_on_finalize=false): $WORKTREE_PATH"
+    fi
+fi
+```
+
+**Epic sprint worktrees:**
+
+For epics with multiple sprint worktrees, merge each sprint branch:
+
+```bash
+if [ -d "epics/$EPIC_SLUG/sprints" ]; then
+    for sprint_dir in epics/$EPIC_SLUG/sprints/*/; do
+        SPRINT_ID=$(basename "$sprint_dir")
+        SPRINT_WORKTREE_ENABLED=$(yq eval '.git.worktree_enabled // false' "${sprint_dir}state.yaml")
+
+        if [ "$SPRINT_WORKTREE_ENABLED" = "true" ]; then
+            SPRINT_SLUG="${EPIC_SLUG}-${SPRINT_ID}"
+            bash .spec-flow/scripts/bash/worktree-context.sh merge "$SPRINT_SLUG"
+
+            if [ "$CLEANUP_ON_FINALIZE" = "true" ]; then
+                bash .spec-flow/scripts/bash/worktree-manager.sh remove "$SPRINT_SLUG" --force
+            fi
+        fi
+    done
+fi
+```
 
 ### Step 4: Essential Finalization (All Models)
 

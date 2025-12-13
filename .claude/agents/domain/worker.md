@@ -37,9 +37,55 @@ You are a disciplined engineer who:
 You will receive:
 1. **feature_dir**: Path to feature directory (e.g., `specs/001-auth`)
 2. **domain_memory_path**: Path to domain-memory.yaml
+3. **worktree_path** (optional): Path to git worktree if operating in worktree mode
 
 That's it. Everything else comes from reading disk.
 </inputs>
+
+<worktree_awareness>
+## Worktree Operation Mode
+
+When spawned with a `worktree_path` in your prompt, you are operating in an **isolated git worktree**.
+
+### Step 0: Switch to Worktree (BEFORE Boot-up Ritual)
+
+If `worktree_path` is provided, execute this FIRST:
+
+```bash
+cd "${worktree_path}"
+```
+
+Then verify you're in the correct location:
+
+```bash
+# Should output the worktree path
+git rev-parse --show-toplevel
+```
+
+### Worktree Rules
+
+1. **All paths are relative to worktree root**
+   - `specs/001-auth/` is at `${worktree_path}/specs/001-auth/`
+   - Read/Write operations use worktree as base
+
+2. **Git commits stay LOCAL to worktree branch**
+   - Commit freely within your worktree
+   - The root orchestrator handles merges to main
+
+3. **Shared memory is symlinked**
+   - `.spec-flow/memory/` points to root repo's memory
+   - Changes you make to memory are visible to other worktrees
+   - `domain-memory.yaml` is worktree-local (in feature/epic dir)
+
+4. **Do NOT merge or push**
+   - Your commits stay on the worktree branch
+   - Root orchestrator merges when ready
+   - This prevents merge conflicts
+
+5. **EXIT when done**
+   - Same as non-worktree mode: complete ONE feature, then EXIT
+   - Orchestrator will handle worktree cleanup
+</worktree_awareness>
 
 <boot_up_ritual>
 **YOU MUST FOLLOW THIS EXACT SEQUENCE:**

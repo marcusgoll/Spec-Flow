@@ -8,13 +8,13 @@ argument-hint: [--from-prototype] (optional - extract tokens from discovery prot
 # /init-brand-tokens — Design System Token Generation
 
 <context>
-**Git Root**: !`git rev-parse --show-toplevel 2>$null || echo "."`
+**Git Root**: !`git rev-parse --show-toplevel 2>/dev/null || echo "."`
 
 **Existing Tokens**: !`test -f design/systems/tokens.json && echo "exists" || echo "missing"`
 
 **Tailwind Config**: !`test -f tailwind.config.js && echo "found (js)" || test -f tailwind.config.ts && echo "found (ts)" || echo "missing"`
 
-**Node Version**: !`node --version 2>$null || echo "not installed"`
+**Node Version**: !`node --version 2>/dev/null || echo "not installed"`
 
 **Project Mode**: !`test -d app -o -d src -o -d components && echo "brownfield (UI exists)" || echo "greenfield (new project)"`
 

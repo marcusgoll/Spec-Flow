@@ -29,6 +29,8 @@ declare -A DEFAULT_PREFS=(
     [ci_mode_default]="false"
     [show_usage_stats]="true"
     [recommend_last_used]="true"
+    [worktrees_auto_create]="true"
+    [worktrees_cleanup_on_finalize]="true"
 )
 
 # Load preferences for a specific command
@@ -194,11 +196,30 @@ get_preference_value() {
     return 0
 }
 
+# Load worktree-specific preferences
+# Usage: load_worktree_preferences [config_path]
+# Sets: PREF_WORKTREES_AUTO_CREATE, PREF_WORKTREES_CLEANUP_ON_FINALIZE
+load_worktree_preferences() {
+    local pref_path="${1:-.spec-flow/config/user-preferences.yaml}"
+
+    PREF_WORKTREES_AUTO_CREATE=$(get_preference_value --key "worktrees.auto_create" --default "true" --config "$pref_path")
+    PREF_WORKTREES_CLEANUP_ON_FINALIZE=$(get_preference_value --key "worktrees.cleanup_on_finalize" --default "true" --config "$pref_path")
+
+    export PREF_WORKTREES_AUTO_CREATE
+    export PREF_WORKTREES_CLEANUP_ON_FINALIZE
+
+    return 0
+}
+
 # If sourced, just define functions. If executed, run with args.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     # Check if --key flag is present (new mode)
     if [[ "$1" == "--key" ]]; then
         get_preference_value "$@"
+    elif [[ "$1" == "--worktrees" ]]; then
+        load_worktree_preferences "${2:-}"
+        echo "PREF_WORKTREES_AUTO_CREATE=$PREF_WORKTREES_AUTO_CREATE"
+        echo "PREF_WORKTREES_CLEANUP_ON_FINALIZE=$PREF_WORKTREES_CLEANUP_ON_FINALIZE"
     else
         load_preferences "$@"
     fi

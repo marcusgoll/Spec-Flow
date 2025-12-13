@@ -27,15 +27,15 @@ allowed-tools:
 
 **Workflow Detection**: Auto-detected via workspace files, branch pattern, or state.yaml
 
-**Current Branch**: !`git branch --show-current 2>$null || echo "none"`
+**Current Branch**: !`git branch --show-current 2>/dev/null || echo "none"`
 
-**Feature Directory**: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>$null | jq -r '.FEATURE_DIR'`
+**Feature Directory**: !`python .spec-flow/scripts/spec-cli.py check-prereqs --json --paths-only 2>/dev/null | jq -r '.FEATURE_DIR'`
 
 **Pending Tasks**: Auto-detected from ${BASE_DIR}/\*/tasks.md
 
 **Completed Tasks**: Auto-detected from ${BASE_DIR}/\*/tasks.md
 
-**Git Status**: !`git status --short 2>$null || echo "clean"`
+**Git Status**: !`git status --short 2>/dev/null || echo "clean"`
 
 **Mockup Approval Status** (if UI-first): Auto-detected from ${BASE_DIR}/\*/state.yaml
 

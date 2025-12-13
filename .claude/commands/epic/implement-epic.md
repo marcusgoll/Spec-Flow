@@ -21,19 +21,23 @@ allowed-tools:
 <context>
 **User Input**: $ARGUMENTS
 
-**Current Branch**: !`git branch --show-current 2>$null || echo "none"`
+**Current Branch**: !`git branch --show-current 2>/dev/null || echo "none"`
 
-**Epic Directory**: !`dir /b /ad epics 2>$null | head -1 || echo "none"`
+**Epic Directory**: !`ls -d epics/*/ 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo "none"`
+
+**Worktree Context**: !`bash .spec-flow/scripts/bash/worktree-context.sh info 2>/dev/null || echo '{"is_worktree": false}'`
+
+**Worktree Auto-Create**: !`bash .spec-flow/scripts/utils/load-preferences.sh --key "worktrees.auto_create" --default "true" 2>/dev/null || echo "true"`
 
 **Sprint Plan**: @epics/\*/sprint-plan.md
 
-**Total Sprints**: !`grep -c "^## Sprint S" epics/*/sprint-plan.md 2>$null || echo "0"`
+**Total Sprints**: !`grep -c "^## Sprint S" epics/*/sprint-plan.md 2>/dev/null || echo "0"`
 
-**Execution Layers**: !`grep -c "^| Layer |" epics/*/sprint-plan.md 2>$null || echo "0"`
+**Execution Layers**: !`grep -c "^| Layer |" epics/*/sprint-plan.md 2>/dev/null || echo "0"`
 
-**Locked Contracts**: !`grep -c "^####.*Contract" epics/*/sprint-plan.md 2>$null || echo "0"`
+**Locked Contracts**: !`grep -c "^####.*Contract" epics/*/sprint-plan.md 2>/dev/null || echo "0"`
 
-**Git Status**: !`git status --short 2>$null || echo "clean"`
+**Git Status**: !`git status --short 2>/dev/null || echo "clean"`
 
 **Epic Artifacts** (after execution):
 
@@ -471,6 +475,68 @@ async function executeFixStrategy(sprintId, strategy) {
 }
 ```
 
+### Step 2.6: Create Sprint Worktrees (If Preference Enabled)
+
+**Check worktree preference and create isolated worktrees for each sprint:**
+
+```javascript
+// Load worktree preferences
+const worktreeAutoCreate = await execCommand(
+  `bash .spec-flow/scripts/utils/load-preferences.sh --key "worktrees.auto_create" --default "true"`
+);
+const isInWorktree = await execCommand(
+  `bash .spec-flow/scripts/bash/worktree-context.sh in-worktree && echo "true" || echo "false"`
+);
+
+// Store worktree paths for later use
+const sprintWorktreePaths = {};
+
+if (worktreeAutoCreate.stdout.trim() === "true" && isInWorktree.stdout.trim() === "false") {
+  log("🌳 Creating isolated worktrees for each sprint...");
+
+  for (const sprint of sprints) {
+    const sprintSlug = `${metadata.epic_slug}-${sprint.id}`;
+    const sprintBranch = `epic/${metadata.epic_slug}/${sprint.id}`;
+
+    // Create worktree for this sprint
+    const createResult = await execCommand(
+      `bash .spec-flow/scripts/bash/worktree-context.sh create "epic" "${sprintSlug}" "${sprintBranch}"`
+    );
+
+    if (createResult.stdout.trim()) {
+      const worktreePath = createResult.stdout.trim();
+      sprintWorktreePaths[sprint.id] = worktreePath;
+
+      // Update sprint state.yaml with worktree info
+      const sprintStateFile = `${EPIC_DIR}/sprints/${sprint.id}/state.yaml`;
+      await execCommand(
+        `yq eval '.git.worktree_enabled = true' -i "${sprintStateFile}"`
+      );
+      await execCommand(
+        `yq eval '.git.worktree_path = "${worktreePath}"' -i "${sprintStateFile}"`
+      );
+
+      log(`  ✅ ${sprint.id}: ${worktreePath}`);
+    }
+  }
+
+  log(`🌳 Created ${Object.keys(sprintWorktreePaths).length} worktrees for parallel execution`);
+} else {
+  log("📁 Worktrees disabled or already in worktree - sprints will share main repository");
+}
+
+// Store for Task() agent prompts
+global.SPRINT_WORKTREE_PATHS = sprintWorktreePaths;
+```
+
+**Benefits of sprint worktrees:**
+- Each sprint has isolated git state (no staging conflicts)
+- Parallel agents can commit without coordination
+- Root orchestrator handles merges after completion
+- Clean rollback per sprint if needed
+
+---
+
 ### Step 2.75: Frontend Mockup Approval Gate (Optional)
 
 **If epic has Frontend subsystem and mockups exist**, provide optional approval gate:
@@ -866,6 +932,20 @@ Execute Sprint {SPRINT_ID}: {SPRINT_NAME}
 - Tasks File: {EPIC_DIR}/sprints/{SPRINT_ID}/tasks.md
 - Subsystems: {SUBSYSTEMS}
 - Dependencies: {DEPENDENCIES} (from previous layers)
+
+{IF SPRINT_WORKTREE_PATH}
+**WORKTREE CONTEXT**
+Path: {SPRINT_WORKTREE_PATH}
+
+CRITICAL: Execute this as your FIRST action before any other commands:
+```bash
+cd "{SPRINT_WORKTREE_PATH}"
+```
+
+All paths are relative to this worktree.
+Git commits stay LOCAL to this worktree's branch.
+Do NOT merge or push - the orchestrator handles that after all sprints complete.
+{ENDIF}
 
 **Contracts:**
 {IF contracts_to_lock}

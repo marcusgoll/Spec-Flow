@@ -10,15 +10,15 @@ allowed-tools: [Read, Edit, Write, Grep, Glob, Bash(git add:*), Bash(git commit:
 <context>
 **User Input**: $ARGUMENTS
 
-**Current Git Status**: !`git status --short 2>$null || echo "clean"`
+**Current Git Status**: !`git status --short 2>/dev/null || echo "clean"`
 
-**Current Branch**: !`git branch --show-current 2>$null || echo "none"`
+**Current Branch**: !`git branch --show-current 2>/dev/null || echo "none"`
 
 **Principles File Exists**: !`test -f docs/project/engineering-principles.md && echo "Yes" || echo "No"`
 
 **Principles File**: @docs/project/engineering-principles.md
 
-**Recent Constitution Commits**: !`git log --oneline --grep="constitution:" -5 2>$null || echo "none"`
+**Recent Constitution Commits**: !`git log --oneline --grep="constitution:" -5 2>/dev/null || echo "none"`
 </context>
 
 <objective>

@@ -40,6 +40,12 @@ Active workflow state (if any):
 
 Deployment model detection:
 !`git branch -r | grep -q "staging" && echo "staging-prod" || (git remote -v | grep -q "origin" && echo "direct-prod" || echo "local-only")`
+
+Worktree context:
+!`bash .spec-flow/scripts/bash/worktree-context.sh info 2>/dev/null || echo '{"is_worktree": false}'`
+
+Worktree preference:
+!`bash .spec-flow/scripts/utils/load-preferences.sh --key "worktrees.auto_create" --default "true" 2>/dev/null || echo "true"`
 </context>
 
 <process>
@@ -65,6 +71,50 @@ After the script completes, read the created state file to get the feature direc
 FEATURE_DIR=$(ls -td specs/[0-9]*-* 2>/dev/null | head -1)
 echo "Feature directory: $FEATURE_DIR"
 cat "$FEATURE_DIR/state.yaml"
+```
+
+### Step 1.1.5: Create Worktree (If Preference Enabled)
+
+Check worktree context and preference:
+
+```bash
+# Check if already in a worktree
+IS_WORKTREE=$(bash .spec-flow/scripts/bash/worktree-context.sh in-worktree && echo "true" || echo "false")
+
+# Check worktree auto-create preference
+WORKTREE_AUTO=$(bash .spec-flow/scripts/utils/load-preferences.sh --key "worktrees.auto_create" --default "true" 2>/dev/null)
+
+echo "In worktree: $IS_WORKTREE"
+echo "Auto-create worktree: $WORKTREE_AUTO"
+```
+
+**If NOT in worktree AND auto_create is true:**
+
+```bash
+if [ "$IS_WORKTREE" = "false" ] && [ "$WORKTREE_AUTO" = "true" ]; then
+    # Get feature slug and branch
+    FEATURE_SLUG=$(yq eval '.slug' "$FEATURE_DIR/state.yaml")
+    FEATURE_BRANCH="feature/$FEATURE_SLUG"
+
+    # Create worktree
+    WORKTREE_PATH=$(bash .spec-flow/scripts/bash/worktree-context.sh create "feature" "$FEATURE_SLUG" "$FEATURE_BRANCH")
+
+    if [ -n "$WORKTREE_PATH" ]; then
+        # Update state.yaml with worktree info
+        yq eval ".git.worktree_enabled = true" -i "$FEATURE_DIR/state.yaml"
+        yq eval ".git.worktree_path = \"$WORKTREE_PATH\"" -i "$FEATURE_DIR/state.yaml"
+        echo "Created worktree at: $WORKTREE_PATH"
+    fi
+fi
+```
+
+**Read worktree path for Task() agents:**
+
+```bash
+WORKTREE_PATH=$(yq eval '.git.worktree_path // ""' "$FEATURE_DIR/state.yaml")
+WORKTREE_ENABLED=$(yq eval '.git.worktree_enabled // false' "$FEATURE_DIR/state.yaml")
+echo "Worktree enabled: $WORKTREE_ENABLED"
+echo "Worktree path: $WORKTREE_PATH"
 ```
 
 ### Step 1.2: Initialize Interaction State
@@ -262,7 +312,13 @@ Task tool call:
 
 When current phase is "implement":
 
-1. Read domain-memory.yaml to find next incomplete feature
+1. Read worktree and domain-memory state:
+   ```bash
+   FEATURE_DIR=$(ls -td specs/[0-9]*-* 2>/dev/null | head -1)
+   WORKTREE_PATH=$(yq eval '.git.worktree_path // ""' "$FEATURE_DIR/state.yaml")
+   WORKTREE_ENABLED=$(yq eval '.git.worktree_enabled // false' "$FEATURE_DIR/state.yaml")
+   ```
+
 2. Spawn a worker agent for ONE feature only:
 
 ```
@@ -274,12 +330,27 @@ Task tool call:
 
     Feature directory: [FEATURE_DIR]
 
+    ${WORKTREE_ENABLED == "true" ? "
+    **WORKTREE CONTEXT**
+    Path: $WORKTREE_PATH
+
+    CRITICAL: Execute this FIRST before any other commands:
+    ```bash
+    cd \"$WORKTREE_PATH\"
+    ```
+
+    All paths are relative to this worktree.
+    Git commits stay local to worktree branch.
+    Do NOT merge or push - orchestrator handles that.
+    " : ""}
+
     Instructions:
-    1. Read domain-memory.yaml
-    2. Find the first feature with status "pending" or "in_progress"
-    3. Implement ONLY that one feature using TDD
-    4. Update domain-memory.yaml with your progress
-    5. EXIT immediately after completing the feature
+    1. ${WORKTREE_ENABLED == "true" ? "cd to worktree path" : ""}
+    2. Read domain-memory.yaml
+    3. Find the first feature with status "pending" or "in_progress"
+    4. Implement ONLY that one feature using TDD
+    5. Update domain-memory.yaml with your progress
+    6. EXIT immediately after completing the feature
 
     Return:
     ---WORKER_COMPLETED---

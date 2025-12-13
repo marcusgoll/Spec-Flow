@@ -10,13 +10,13 @@ allowed-tools: [Bash(gh *), Bash(git *), Bash(pnpm *), Bash(uv *), Bash(curl *),
 <context>
 **PR Number**: $ARGUMENTS
 
-**Current Branch**: !`git branch --show-current 2>$null || echo "none"`
+**Current Branch**: !`git branch --show-current 2>/dev/null || echo "none"`
 
-**PR Context** (if on PR branch): !`gh pr list --head $(git branch --show-current) --json number,title,state,baseRefName -q '.[0]' 2>$null || echo "null"`
+**PR Context** (if on PR branch): !`gh pr list --head $(git branch --show-current) --json number,title,state,baseRefName -q '.[0]' 2>/dev/null || echo "null"`
 
-**GitHub CLI Status**: !`gh auth status 2>$null | head -1 || echo "not authenticated"`
+**GitHub CLI Status**: !`gh auth status 2>/dev/null | head -1 || echo "not authenticated"`
 
-**Available Tools**: !`which gh git jq pnpm uv curl 2>$null || echo "missing tools"`
+**Available Tools**: !`which gh git jq pnpm uv curl 2>/dev/null || echo "missing tools"`
 
 **Repository Status**: !`git status --short | head -5 || echo "clean"`
 </context>

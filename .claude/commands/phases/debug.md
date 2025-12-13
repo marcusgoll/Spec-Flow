@@ -10,15 +10,15 @@ allowed-tools: [Bash(python .spec-flow/scripts/spec-cli.py:*), Read, Grep, Glob]
 <context>
 **User Input**: $ARGUMENTS
 
-**Current Branch**: !`git branch --show-current 2>$null || echo "none"`
+**Current Branch**: !`git branch --show-current 2>/dev/null || echo "none"`
 
-**Feature Slug**: !`git branch --show-current 2>$null | sed 's/^feature\///' || basename $(pwd)`
+**Feature Slug**: !`git branch --show-current 2>/dev/null | sed 's/^feature\///' || basename $(pwd)`
 
-**Recent Debug Sessions**: !`ls -1t specs/*/debug-session.json 2>$null | head -3 || echo "none"`
+**Recent Debug Sessions**: !`ls -1t specs/*/debug-session.json 2>/dev/null | head -3 || echo "none"`
 
-**Recent Errors**: !`tail -20 specs/*/error-log.md 2>$null | grep "^###" | head -3 || echo "none"`
+**Recent Errors**: !`tail -20 specs/*/error-log.md 2>/dev/null | grep "^###" | head -3 || echo "none"`
 
-**Git Status**: !`git status --short 2>$null || echo "clean"`
+**Git Status**: !`git status --short 2>/dev/null || echo "clean"`
 
 **Debug Session Artifacts** (after script execution):
 - @specs/*/debug-session.json
