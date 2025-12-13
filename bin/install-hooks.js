@@ -342,7 +342,7 @@ async function cleanSettings(targetDir, options = {}) {
 
 /**
  * Update hooks if already installed (for use during update)
- * Backs up existing hooks before overwriting
+ * Overwrites existing hooks without backup
  * @param {string} targetDir - Target directory
  * @param {object} options - Options
  * @param {boolean} options.force - Force update even if installed
@@ -359,39 +359,13 @@ async function updateHooksIfInstalled(targetDir, options = {}) {
     return { updated: false, reason: 'not_installed' };
   }
 
-  // Backup existing hooks
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const hookFiles = [
-    'design-token-validator.sh',
-    'design-token-validator.ps1',
-    'design-system-context.sh',
-    'design-system-context.ps1'
-  ];
-
-  let backedUp = 0;
-  for (const file of hookFiles) {
-    const hookPath = path.join(hooksDir, file);
-    if (fs.existsSync(hookPath)) {
-      const backupPath = `${hookPath}.backup-${timestamp}`;
-      try {
-        fs.copyFileSync(hookPath, backupPath);
-        backedUp++;
-        log(`  Backed up ${file}`);
-      } catch (e) {
-        // Continue if backup fails
-      }
-    }
-  }
-
-  // Install updated hooks
+  // Install updated hooks (no backup - just overwrite)
   const result = await installHooks(targetDir, { silent, force: true });
 
   if (result.success) {
-    log(`  ${backedUp} hook(s) backed up`);
     return {
       updated: true,
-      installed: result.installed,
-      backedUp
+      installed: result.installed
     };
   } else {
     return {
