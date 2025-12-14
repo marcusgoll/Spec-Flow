@@ -1,9 +1,9 @@
 ---
 description: Generate implementation plan from spec using research-driven design (meta-prompting for epics)
-allowed-tools: [Read, Bash, Task, AskUserQuestion]
-argument-hint: [feature-name or epic-slug]
-version: 11.0
-updated: 2025-12-09
+allowed-tools: [Read, Bash, Task, AskUserQuestion, Skill]
+argument-hint: "[feature-name or epic-slug] [--deep | --quick]"
+version: 11.1
+updated: 2025-12-14
 ---
 
 # /plan — Implementation Plan Generator (Thin Wrapper)
@@ -15,23 +15,87 @@ updated: 2025-12-09
 
 **Active Feature**: !`ls -td specs/[0-9]*-* 2>/dev/null | head -1 || echo "none"`
 
+**Active Epic**: !`ls -td epics/[0-9]*-* 2>/dev/null | head -1 || echo "none"`
+
 **Interaction State**: !`cat specs/*/interaction-state.yaml 2>/dev/null | head -10 || echo "none"`
+
+**Planning Depth Preference**: !`bash .spec-flow/scripts/utils/load-preferences.sh --key "planning.auto_deep_mode" --default "false" 2>/dev/null || echo "false"`
+
+**Is Epic Context**: !`[ -d "$(ls -td epics/[0-9]*-* 2>/dev/null | head -1)" ] && echo "true" || echo "false"`
 </context>
+
+<planning_depth>
+## Planning Depth Mode (--deep / --quick)
+
+**Detect flags from arguments**:
+- `--deep` → Force ultrathink/craftsman mode
+- `--quick` → Force standard mode (skip ultrathink)
+- Neither → Check preference hierarchy
+
+**Preference hierarchy** (when no flags):
+1. `planning.auto_deep_mode: true` → ultrathink by default
+2. Epic context → ultrathink (via `deep_planning_triggers.epic_features`)
+3. Complexity threshold exceeded → ultrathink
+4. Default → standard planning
+
+**When ultrathink is active**:
+1. Load skill: `Skill("ultrathink")`
+2. Add assumption-questioning step after research
+3. Add simplification review before finalizing
+4. Generate `craftsman-decision.md` artifact alongside plan.md
+
+**Determine mode**:
+```bash
+# Check if --deep or --quick flag present in arguments
+ARGS="$ARGUMENTS"
+DEEP_FLAG=$(echo "$ARGS" | grep -q "\-\-deep" && echo "true" || echo "false")
+QUICK_FLAG=$(echo "$ARGS" | grep -q "\-\-quick" && echo "true" || echo "false")
+
+# Load preference
+AUTO_DEEP=$(bash .spec-flow/scripts/utils/load-preferences.sh --key "planning.auto_deep_mode" --default "false")
+
+# Detect epic context
+IS_EPIC=$([ -d "$(ls -td epics/[0-9]*-* 2>/dev/null | head -1)" ] && echo "true" || echo "false")
+
+# Determine final mode
+if [ "$DEEP_FLAG" = "true" ]; then
+    PLANNING_MODE="deep"
+elif [ "$QUICK_FLAG" = "true" ]; then
+    PLANNING_MODE="standard"
+elif [ "$AUTO_DEEP" = "true" ]; then
+    PLANNING_MODE="deep"
+elif [ "$IS_EPIC" = "true" ]; then
+    PLANNING_MODE="deep"
+else
+    PLANNING_MODE="standard"
+fi
+
+echo "Planning mode: $PLANNING_MODE"
+```
+</planning_depth>
 
 <objective>
 Spawn isolated plan-phase-agent to generate implementation plan from spec.
 
-**Architecture (v11.0 - Phase Isolation):**
+**Architecture (v11.1 - Phase Isolation + Ultrathink):**
 ```
-/plan → Task(plan-phase-agent) → Q&A loop if needed → plan.md + research.md
+/plan → Detect Mode → [standard] → Task(plan-phase-agent) → plan.md + research.md
+                   └→ [deep]    → Skill(ultrathink) → Task(plan-phase-agent) → plan.md + research.md + craftsman-decision.md
 ```
 
-**Agent responsibilities:**
+**Standard mode responsibilities:**
 - Read spec.md and project documentation
 - Search codebase for reuse opportunities
 - Generate architectural decisions
 - Return questions for major design choices
 - Create plan.md with components and estimates
+
+**Deep mode (ultrathink) additions:**
+- Assumption inventory and challenge
+- Codebase soul analysis
+- Minimum viable architecture exploration
+- Design alternatives comparison
+- Generate craftsman-decision.md artifact
 
 **Workflow position**: `spec → clarify → plan → tasks → implement → optimize → ship`
 </objective>

@@ -1,9 +1,9 @@
 ---
 name: quick
 description: Implement small bug fixes and features (<100 LOC) without full workflow. Use for single-file changes, bug fixes, refactors, and minor enhancements that can be completed in under 30 minutes.
-argument-hint: <description>
-version: 2.0
-updated: 2025-12-09
+argument-hint: "<description> [--deep]"
+version: 2.1
+updated: 2025-12-14
 allowed-tools:
   [
     Read,
@@ -12,6 +12,7 @@ allowed-tools:
     Bash(git *),
     Task,
     AskUserQuestion,
+    Skill,
   ]
 ---
 
@@ -65,6 +66,35 @@ Recent commits (last 3):
 
 **Rule of thumb**: If you need to pause and think about architecture, use `/feature`.
 </when_to_use>
+
+<planning_depth>
+## Deep Mode for Quick Changes (--deep)
+
+**When to use --deep with /quick**:
+- Complex refactor that touches architectural patterns
+- Bug fix that reveals deeper design issues
+- Quick change that might benefit from assumption questioning
+
+**What --deep does for /quick**:
+1. Loads ultrathink skill before implementation
+2. Applies simplified craftsman checklist:
+   - What assumptions am I making about this "quick" fix?
+   - Is there a simpler solution?
+   - Does this align with codebase patterns?
+3. Does NOT generate full craftsman-decision.md (overkill for quick)
+
+**Typical /quick stays fast**:
+- No --deep flag → Standard implementation
+- Skips assumption inventory
+- Skips codebase soul analysis
+- Just implements the change
+
+**Example**:
+```bash
+/quick "fix null check in UserService"           # Standard quick fix
+/quick "refactor auth validation" --deep         # Deep thinking for complex refactor
+```
+</planning_depth>
 
 <process>
 

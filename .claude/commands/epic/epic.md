@@ -1,9 +1,9 @@
 ---
 description: Execute multi-sprint epic workflow from interactive scoping through deployment with parallel sprint execution and self-improvement
-argument-hint: [epic description | slug | continue | next]
-allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, AskUserQuestion, TodoWrite, SlashCommand
-version: 7.0
-updated: 2025-12-09
+argument-hint: "[epic description | slug | continue | next] [--deep | --auto]"
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, AskUserQuestion, TodoWrite, SlashCommand, Skill
+version: 7.1
+updated: 2025-12-14
 ---
 
 <objective>
@@ -41,7 +41,37 @@ This orchestrator is **ultra-lightweight**. You MUST:
 **Epic Workspace**: !`ls -d epics/*/ 2>/dev/null | head -3 || echo "none"`
 
 **Workflow State**: @epics/*/state.yaml
+
+**Planning Depth Preference**: !`bash .spec-flow/scripts/utils/load-preferences.sh --key "planning.auto_deep_mode" --default "false" 2>/dev/null || echo "false"`
+
+**Epic Trigger for Deep Planning**: !`bash .spec-flow/scripts/utils/load-preferences.sh --key "planning.deep_planning_triggers.epic_features" --default "true" 2>/dev/null || echo "true"`
 </context>
+
+<planning_depth>
+## Planning Depth Mode for Epics
+
+**NOTE**: Epics automatically trigger ultrathink/deep planning by default via `deep_planning_triggers.epic_features: true`.
+
+**Flags in $ARGUMENTS**:
+- `--deep` → Explicitly force ultrathink (redundant for epics, but explicit)
+- `--auto` → Use preferences (will still enable deep since epic trigger is on)
+- Neither → Interactive mode, still uses deep planning for epics
+
+**Epic-specific benefits of ultrathink**:
+- Assumption questioning across multiple sprints
+- Codebase soul analysis informs sprint boundaries
+- Minimum viable architecture prevents over-engineering
+- Design alternatives help sprint prioritization
+
+**State tracking**:
+```yaml
+# In epics/NNN-slug/state.yaml
+planning:
+  mode: deep
+  ultrathink_enabled: true
+  triggered_by: epic_features  # or explicit_flag
+```
+</planning_depth>
 
 <process>
 

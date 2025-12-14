@@ -16,6 +16,26 @@ commands:
   run-prompt:
     default_strategy: auto-detect
 
+# Planning depth preferences (ultrathink mode)
+planning:
+  # Master switch: always use deep/craftsman planning in --auto mode
+  # When true, /feature --auto and /epic --auto use ultrathink by default
+  auto_deep_mode: false
+
+  # Fine-grained triggers (when auto_deep_mode is false)
+  # These conditions automatically enable ultrathink even in standard mode
+  deep_planning_triggers:
+    # All epics get deep planning regardless of other settings
+    epic_features: true
+
+    # Features with estimated complexity > threshold get deep planning
+    # Based on task count estimate during /plan phase
+    complexity_threshold: 30
+
+    # New architectural patterns trigger deep planning
+    # Detected when /plan identifies components not matching existing patterns
+    architecture_change: true
+
 automation:
   auto_approve_minor_changes: false
   ci_mode_default: false

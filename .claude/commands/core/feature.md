@@ -1,9 +1,9 @@
 ---
 description: Execute feature development workflow from specification through production deployment with automated quality gates
-argument-hint: [description|slug|continue|next|epic:<name>|epic:<name>:sprint:<num>|sprint:<num>]
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, AskUserQuestion, TodoWrite, SlashCommand
-version: 5.0
-updated: 2025-12-09
+argument-hint: "[description|slug|continue|next|epic:<name>|epic:<name>:sprint:<num>|sprint:<num>] [--deep | --auto]"
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, AskUserQuestion, TodoWrite, SlashCommand, Skill
+version: 5.1
+updated: 2025-12-14
 ---
 
 <objective>
@@ -46,7 +46,34 @@ Worktree context:
 
 Worktree preference:
 !`bash .spec-flow/scripts/utils/load-preferences.sh --key "worktrees.auto_create" --default "true" 2>/dev/null || echo "true"`
+
+Planning depth preference:
+!`bash .spec-flow/scripts/utils/load-preferences.sh --key "planning.auto_deep_mode" --default "false" 2>/dev/null || echo "false"`
 </context>
+
+<planning_depth>
+## Planning Depth Mode (--deep / --auto)
+
+**Flags in $ARGUMENTS**:
+- `--deep` → Force ultrathink/craftsman planning for this feature
+- `--auto` → Use preferences to determine depth (respects `auto_deep_mode`)
+- Neither → Interactive mode, respects preference triggers
+
+**Pass flag to /plan phase**:
+When spawning the plan-phase-agent, include the planning mode:
+- If `--deep` in arguments: Pass `--deep` to /plan
+- If `--auto` in arguments: Determine from preferences and pass appropriate flag
+- Store planning_mode in state.yaml for reference
+
+**State tracking**:
+```yaml
+# In state.yaml
+planning:
+  mode: deep  # or standard
+  ultrathink_enabled: true
+  craftsman_decision_generated: true
+```
+</planning_depth>
 
 <process>
 

@@ -187,6 +187,110 @@ Only ask questions for:
 
 Maximum 2 questions per invocation (architectural decisions should be few).
 
+## Ultrathink Mode (Deep Planning)
+
+When `planning_mode: deep` is passed in your input, activate craftsman methodology:
+
+### Additional Steps for Deep Mode
+
+**Step 0: Load Ultrathink Skill**
+```
+Skill("ultrathink")
+```
+
+**Step 1.5: Assumption Inventory (after research, before design)**
+
+Create assumption inventory in research.md:
+
+```markdown
+## Assumption Inventory
+
+| # | Assumption | Source | Challenge Question | Resolution |
+|---|------------|--------|-------------------|------------|
+| 1 | [What we assumed] | [Spec/Convention] | [Challenge] | [Validated/Changed] |
+```
+
+Questions to ask yourself:
+- Why does it have to work this way?
+- What would break if this assumption is false?
+- Is this solving the real problem or a symptom?
+
+**Step 2.5: Codebase Soul Analysis (during research)**
+
+Add to research.md:
+
+```markdown
+## Codebase Soul Analysis
+
+### Dominant Patterns
+- [Pattern]: [count] instances (e.g., Repository pattern: 12 services)
+
+### Philosophy
+- "[Principle]" - [How it manifests in code]
+
+### Anti-Patterns to Avoid
+- [File/Pattern] - [Why to avoid]
+```
+
+**Step 3.5: Simplification Review (after design, before completion)**
+
+Before finalizing, ask:
+- Can we achieve this with fewer components?
+- What's the minimum viable architecture?
+- Are we over-engineering?
+
+Document in plan.md:
+
+```markdown
+## Simplification Analysis
+
+| Component | Status | Justification |
+|-----------|--------|---------------|
+| [Component] | Keep | [Required for core functionality] |
+| [Abstraction] | REJECTED | [Premature, can add later] |
+```
+
+**Step 4: Generate craftsman-decision.md (deep mode only)**
+
+Create additional artifact:
+
+```markdown
+# Craftsman Design Decisions
+
+## Assumptions Questioned
+[From assumption inventory]
+
+## Codebase Soul
+[From soul analysis]
+
+## The Simplest Thing That Works
+- We chose [approach] because...
+- We rejected [alternative] because...
+
+## Trade-offs Made
+- [Simplicity] over [feature] because [reasoning]
+```
+
+### Deep Mode Return Format
+
+```
+---COMPLETED---
+artifacts_created:
+  - path: specs/001-user-auth/plan.md
+    type: plan
+  - path: specs/001-user-auth/research.md
+    type: research
+  - path: specs/001-user-auth/craftsman-decision.md
+    type: craftsman_decision
+planning_mode: deep
+assumptions_challenged: 5
+simplifications_made: 2
+summary: "Created craftsman-level plan with 3 assumptions challenged, 2 simplifications"
+reuse_percentage: 33
+next_phase: tasks
+---END_COMPLETED---
+```
+
 ## Anti-Hallucination Rules
 
 1. **Read before assuming** - Check existing code, don't guess

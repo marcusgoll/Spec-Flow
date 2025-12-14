@@ -31,6 +31,10 @@ declare -A DEFAULT_PREFS=(
     [recommend_last_used]="true"
     [worktrees_auto_create]="true"
     [worktrees_cleanup_on_finalize]="true"
+    [planning_auto_deep_mode]="false"
+    [planning_trigger_epic_features]="true"
+    [planning_trigger_complexity_threshold]="30"
+    [planning_trigger_architecture_change]="true"
 )
 
 # Load preferences for a specific command
@@ -211,6 +215,88 @@ load_worktree_preferences() {
     return 0
 }
 
+# Load planning/ultrathink preferences
+# Usage: load_planning_preferences [config_path]
+# Sets: PREF_PLANNING_AUTO_DEEP_MODE, PREF_PLANNING_TRIGGER_*
+load_planning_preferences() {
+    local pref_path="${1:-.spec-flow/config/user-preferences.yaml}"
+
+    # Master switch for auto deep mode
+    PREF_PLANNING_AUTO_DEEP_MODE=$(get_preference_value --key "planning.auto_deep_mode" --default "false" --config "$pref_path")
+
+    # Deep planning triggers
+    PREF_PLANNING_TRIGGER_EPIC_FEATURES=$(get_preference_value --key "planning.deep_planning_triggers.epic_features" --default "true" --config "$pref_path")
+    PREF_PLANNING_TRIGGER_COMPLEXITY_THRESHOLD=$(get_preference_value --key "planning.deep_planning_triggers.complexity_threshold" --default "30" --config "$pref_path")
+    PREF_PLANNING_TRIGGER_ARCHITECTURE_CHANGE=$(get_preference_value --key "planning.deep_planning_triggers.architecture_change" --default "true" --config "$pref_path")
+
+    export PREF_PLANNING_AUTO_DEEP_MODE
+    export PREF_PLANNING_TRIGGER_EPIC_FEATURES
+    export PREF_PLANNING_TRIGGER_COMPLEXITY_THRESHOLD
+    export PREF_PLANNING_TRIGGER_ARCHITECTURE_CHANGE
+
+    return 0
+}
+
+# Check if deep planning should be enabled for a given context
+# Usage: should_enable_deep_planning [--is-epic] [--complexity N] [--is-new-pattern] [config_path]
+# Returns: 0 (true) if deep planning should be enabled, 1 (false) otherwise
+should_enable_deep_planning() {
+    local is_epic="false"
+    local complexity="0"
+    local is_new_pattern="false"
+    local pref_path=".spec-flow/config/user-preferences.yaml"
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --is-epic)
+                is_epic="true"
+                shift
+                ;;
+            --complexity)
+                complexity="$2"
+                shift 2
+                ;;
+            --is-new-pattern)
+                is_new_pattern="true"
+                shift
+                ;;
+            --config)
+                pref_path="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+
+    # Load preferences
+    load_planning_preferences "$pref_path"
+
+    # Check master switch first
+    if [[ "$PREF_PLANNING_AUTO_DEEP_MODE" == "true" ]]; then
+        return 0
+    fi
+
+    # Check epic trigger
+    if [[ "$is_epic" == "true" && "$PREF_PLANNING_TRIGGER_EPIC_FEATURES" == "true" ]]; then
+        return 0
+    fi
+
+    # Check complexity threshold
+    if [[ "$complexity" -gt 0 && "$complexity" -ge "$PREF_PLANNING_TRIGGER_COMPLEXITY_THRESHOLD" ]]; then
+        return 0
+    fi
+
+    # Check architecture change trigger
+    if [[ "$is_new_pattern" == "true" && "$PREF_PLANNING_TRIGGER_ARCHITECTURE_CHANGE" == "true" ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
 # If sourced, just define functions. If executed, run with args.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     # Check if --key flag is present (new mode)
@@ -220,6 +306,19 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         load_worktree_preferences "${2:-}"
         echo "PREF_WORKTREES_AUTO_CREATE=$PREF_WORKTREES_AUTO_CREATE"
         echo "PREF_WORKTREES_CLEANUP_ON_FINALIZE=$PREF_WORKTREES_CLEANUP_ON_FINALIZE"
+    elif [[ "$1" == "--planning" ]]; then
+        load_planning_preferences "${2:-}"
+        echo "PREF_PLANNING_AUTO_DEEP_MODE=$PREF_PLANNING_AUTO_DEEP_MODE"
+        echo "PREF_PLANNING_TRIGGER_EPIC_FEATURES=$PREF_PLANNING_TRIGGER_EPIC_FEATURES"
+        echo "PREF_PLANNING_TRIGGER_COMPLEXITY_THRESHOLD=$PREF_PLANNING_TRIGGER_COMPLEXITY_THRESHOLD"
+        echo "PREF_PLANNING_TRIGGER_ARCHITECTURE_CHANGE=$PREF_PLANNING_TRIGGER_ARCHITECTURE_CHANGE"
+    elif [[ "$1" == "--should-deep-plan" ]]; then
+        shift
+        if should_enable_deep_planning "$@"; then
+            echo "true"
+        else
+            echo "false"
+        fi
     else
         load_preferences "$@"
     fi
