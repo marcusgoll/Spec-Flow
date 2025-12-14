@@ -97,7 +97,7 @@ Use AskUserQuestion to ask:
      - **Commands Used**: Workflow commands executed
 
 3. **Check Spec-Flow workflow**:
-   - If `.spec-flow/memory/state.yaml` exists, include workflow state
+   - If active workflow exists (check `specs/*/state.yaml` or `epics/*/state.yaml`), include workflow state
    - Extract current phase, feature slug, quality gates status
    - Include deployment metadata if available
 
@@ -126,7 +126,7 @@ Use AskUserQuestion to ask:
      2. Review context and decisions
      3. Execute next steps
 
-   Workflow state preserved in .spec-flow/memory/
+   Workflow state preserved in specs/{slug}/ or epics/{slug}/
    ```
 
 </when_argument_is>
@@ -278,7 +278,7 @@ Use AskUserQuestion to ask:
    ```
 
 3. **Check workflow state** (if Spec-Flow active):
-   - Read `.spec-flow/memory/state.yaml`
+   - Read active workflow's `state.yaml` (in `specs/{slug}/` or `epics/{slug}/`)
    - Display current phase, feature, quality gates
    - Show deployment status if applicable
 
@@ -356,7 +356,7 @@ Before completing, verify:
 ## Integration with Spec-Flow
 
 **Handoff Integration**:
-- Captures workflow state from `.spec-flow/memory/state.yaml`
+- Captures workflow state from active workflow's `state.yaml` (in `specs/{slug}/` or `epics/{slug}/`)
 - Includes current feature, phase, quality gates
 - Preserves deployment metadata
 - Enables seamless continuation in fresh context
