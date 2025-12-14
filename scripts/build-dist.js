@@ -73,11 +73,12 @@ const BUILD_CONFIG = {
   // Core files that must exist in dist
   requiredFiles: [
     '.claude/commands/core/feature.md',
+    '.claude/commands/core/epic.md',
+    '.claude/commands/core/implement-epic.md',
     '.claude/commands/phases/clarify.md',
     '.claude/commands/phases/plan.md',
     '.claude/commands/phases/tasks.md',
     '.claude/commands/phases/implement.md',
-    '.claude/commands/epic/epic.md',
     '.claude/skills/clarification-phase/references/question-bank.md',
     '.claude/skills/epic/references/question-bank.md',
     '.spec-flow/config/user-preferences.yaml',
