@@ -311,10 +311,36 @@ python .spec-flow/scripts/spec-cli.py ship-finalize preflight --feature-dir "$FE
 
 1. Update TodoWrite: Mark "Deploy to staging" as `in_progress`
 
-2. Use SlashCommand tool:
+2. Spawn staging deployment agent via Task tool:
 
    ```
-   /ship-staging
+   Task tool call:
+     subagent_type: "ship-staging-phase-agent"
+     description: "Deploy to staging"
+     prompt: |
+       Deploy this feature to staging environment.
+
+       Feature directory: ${FEATURE_DIR}
+       Feature slug: ${FEATURE_SLUG}
+
+       Execute staging deployment:
+       1. Create PR if needed
+       2. Monitor CI checks
+       3. Auto-merge on success
+       4. Extract deployment URLs and metadata
+
+       Return:
+       ---COMPLETED---
+       deployment_url: [staging URL]
+       pr_number: [PR number]
+       ci_status: passed
+       ---END_COMPLETED---
+
+       Or if failed:
+       ---FAILED---
+       error: [error description]
+       logs: [relevant log excerpt]
+       ---END_FAILED---
    ```
 
 3. After deployment completes successfully:
@@ -394,10 +420,37 @@ python .spec-flow/scripts/spec-cli.py ship-finalize preflight --feature-dir "$FE
 
 1. Update TodoWrite: Mark "Deploy to production" as `in_progress`
 
-2. Use SlashCommand tool:
+2. Spawn production deployment agent via Task tool:
 
    ```
-   /ship-prod
+   Task tool call:
+     subagent_type: "ship-prod-phase-agent"
+     description: "Deploy to production"
+     prompt: |
+       Promote staging build to production environment.
+
+       Feature directory: ${FEATURE_DIR}
+       Feature slug: ${FEATURE_SLUG}
+       Staging validation: passed
+
+       Execute production deployment:
+       1. Trigger production deployment workflow
+       2. Create GitHub release with version tag
+       3. Update roadmap issue to "Shipped" status
+       4. Verify deployment health
+
+       Return:
+       ---COMPLETED---
+       production_url: [production URL]
+       release_version: [version tag]
+       github_release: [release URL]
+       ---END_COMPLETED---
+
+       Or if failed:
+       ---FAILED---
+       error: [error description]
+       rollback_available: true/false
+       ---END_FAILED---
    ```
 
 3. After deployment completes successfully:
@@ -418,10 +471,36 @@ python .spec-flow/scripts/spec-cli.py ship-finalize preflight --feature-dir "$FE
 
 1. Update TodoWrite: Mark "Deploy to production" as `in_progress`
 
-2. Use SlashCommand tool:
+2. Spawn production deployment agent via Task tool:
 
    ```
-   /deploy-prod
+   Task tool call:
+     subagent_type: "ship-prod-phase-agent"
+     description: "Deploy directly to production"
+     prompt: |
+       Deploy this feature directly to production (no staging step).
+
+       Feature directory: ${FEATURE_DIR}
+       Feature slug: ${FEATURE_SLUG}
+       Deployment model: direct-prod
+
+       Execute production deployment:
+       1. Trigger production deployment workflow
+       2. Create GitHub release with version tag
+       3. Update roadmap issue to "Shipped" status
+       4. Verify deployment health
+
+       Return:
+       ---COMPLETED---
+       production_url: [production URL]
+       release_version: [version tag]
+       github_release: [release URL]
+       ---END_COMPLETED---
+
+       Or if failed:
+       ---FAILED---
+       error: [error description]
+       ---END_FAILED---
    ```
 
 3. After deployment completes successfully:

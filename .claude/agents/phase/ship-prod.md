@@ -1,7 +1,7 @@
 ---
 name: ship-prod-phase-agent
-description: Orchestrates production deployment by promoting validated staging builds to production. Use after staging validation is complete to trigger production workflow, create GitHub releases, and update roadmap to Shipped status. Handles release versioning and deployment verification.
-tools: Read, Grep, Bash, SlashCommand
+description: Orchestrates production deployment by promoting validated staging builds to production. Spawned by /ship command to trigger production workflow, create GitHub releases, and update roadmap status.
+tools: Read, Grep, Bash
 model: sonnet
 ---
 
@@ -22,11 +22,12 @@ Your mission: Execute Phase 7 (Production Deployment) in an isolated context win
   </focus_areas>
 
 <responsibilities>
-- Call `/phase-2-ship` slash command to promote validated staging builds to production
+- Trigger production deployment workflow via gh CLI and GitHub Actions
 - Extract deployment status, release version, and production URLs from deployment reports
+- Create GitHub release with proper semantic versioning
 - Return structured summary for orchestrator with deployment verification results
 - Ensure secret sanitization in all reports and summaries
-- Validate GitHub release creation and roadmap synchronization
+- Update roadmap GitHub issue to "Shipped" status
 - Skip production deployment gracefully for local-only projects
 </responsibilities>
 
@@ -98,23 +99,53 @@ If project type is "local-only", skip this phase and return:
 **Rationale**: Local-only projects have no remote deployment target, so production deployment is not applicable.
 </step>
 
-<step number="2" name="execute_slash_command">
-**Call /phase-2-ship slash command**
+<step number="2" name="execute_deployment">
+**Execute production deployment workflow**
 
-For remote projects (staging-prod or direct-prod), use SlashCommand tool to execute:
+For remote projects (staging-prod or direct-prod), execute deployment directly via gh CLI:
 
 ```bash
-/phase-2-ship
+# Determine next version (semantic versioning)
+CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+NEXT_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+
+# Trigger production deployment workflow
+gh workflow run deploy-production.yml \
+  --ref main \
+  -f version="$NEXT_VERSION" \
+  -f feature_slug="$FEATURE_SLUG"
+
+# Wait for workflow to complete (poll every 30s for up to 10 minutes)
+WORKFLOW_RUN_ID=$(gh run list --workflow=deploy-production.yml --limit 1 --json databaseId -q '.[0].databaseId')
+
+for i in {1..20}; do
+  STATUS=$(gh run view "$WORKFLOW_RUN_ID" --json conclusion -q '.conclusion' 2>/dev/null)
+  if [ "$STATUS" = "success" ]; then
+    echo "DEPLOYMENT_STATUS=success"
+    break
+  elif [ "$STATUS" = "failure" ]; then
+    echo "DEPLOYMENT_STATUS=failed"
+    break
+  fi
+  sleep 30
+done
+
+# Create GitHub release if deployment succeeded
+if [ "$STATUS" = "success" ]; then
+  gh release create "$NEXT_VERSION" \
+    --title "Release $NEXT_VERSION" \
+    --notes "Production deployment for $FEATURE_SLUG" \
+    --target main
+fi
 ```
 
-This performs:
+This workflow performs:
 
-- Validates staging deployment (for staging-prod workflow)
-- Triggers production workflow via GitHub Actions
-- Waits for deployment completion
-- Creates GitHub release with version tag
+- Determines next semantic version from git tags
+- Triggers production deployment via GitHub Actions workflow
+- Monitors workflow completion status
+- Creates GitHub release with version tag on success
 - Updates roadmap GitHub issue to "Shipped" section
-- Generates ship-report.md with deployment metadata
 
 **Expected duration**: 3-8 minutes (varies with deployment complexity and CI/CD speed)
 </step>
@@ -122,7 +153,7 @@ This performs:
 <step number="3" name="extract_deployment_metadata">
 **Extract key deployment information**
 
-After `/phase-2-ship` completes, analyze artifacts:
+After deployment workflow completes, analyze artifacts:
 
 ```bash
 FEATURE_DIR="specs/$SLUG"
@@ -287,7 +318,7 @@ Return structured JSON to orchestrator:
 Production deployment phase is complete when:
 
 - ✅ Project type checked (skip if local-only)
-- ✅ `/phase-2-ship` slash command executed successfully (for remote projects)
+- ✅ Production deployment workflow executed successfully (for remote projects)
 - ✅ Production workflow succeeded (exit code 0)
 - ✅ GitHub release created with correct version tag
 - ✅ Roadmap updated to "Shipped" section with deployment link
@@ -299,20 +330,20 @@ Production deployment phase is complete when:
   </success_criteria>
 
 <error_handling>
-<scenario name="slash_command_failure">
-**Cause**: `/phase-2-ship` command fails to execute
+<scenario name="workflow_execution_failure">
+**Cause**: Production deployment workflow fails to execute
 
 **Symptoms**:
 
-- SlashCommand tool returns error
-- Command times out or crashes
-- Tool permissions issue
+- gh CLI command returns error
+- GitHub Actions workflow not found
+- Workflow times out or crashes
 
 **Recovery**:
 
 1. Return blocked status with specific error message
-2. Include error details from slash command output in blockers array
-3. Report tool failure to orchestrator
+2. Include error details from gh CLI output in blockers array
+3. Report workflow failure to orchestrator
 4. Do NOT mark deployment complete
 
 **Example**:
@@ -321,10 +352,10 @@ Production deployment phase is complete when:
 {
   "phase": "ship-production",
   "status": "blocked",
-  "summary": "Production deployment failed: /phase-2-ship command execution error",
+  "summary": "Production deployment failed: workflow execution error",
   "blockers": [
-    "SlashCommand tool failed: Permission denied",
-    "Unable to trigger production workflow"
+    "GitHub workflow dispatch failed: workflow file not found",
+    "Unable to trigger production deployment"
   ],
   "next_phase": null
 }

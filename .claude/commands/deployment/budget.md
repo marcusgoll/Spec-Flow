@@ -114,7 +114,7 @@ Track deployment quota usage and predict remaining capacity to prevent rate limi
      Next Deployment Impact
      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-     Next /phase-1-ship will use:
+     Next /ship --staging will use:
        Marketing: 1 deployment
        App: 1 deployment
        Total: 2 deployments
@@ -146,7 +146,7 @@ Track deployment quota usage and predict remaining capacity to prevent rate limi
           - Unlimited usage
 
      Preview mode usage:
-       /phase-1-ship
+       /ship --staging
        → Select 'preview' when prompted
      ```
    - **If warning status**:
@@ -156,13 +156,13 @@ Track deployment quota usage and predict remaining capacity to prevent rate limi
      ⚠️  Use quota carefully
 
      Best practices:
-       1. Run /validate-deploy before every deployment
+       1. Run /validate-staging before every deployment
        2. Use preview mode for CI testing
        3. Use staging mode only for actual staging deploys
        4. Fix issues locally before pushing
 
      Workflow:
-       /validate-deploy → /ship (preview) → verify → /ship (staging)
+       /validate-staging → /ship (preview) → verify → /ship (staging)
      ```
    - **If normal status**:
      ```
@@ -171,7 +171,7 @@ Track deployment quota usage and predict remaining capacity to prevent rate limi
      ✅ Enough quota for normal workflow
 
      Best practices:
-       1. Still run /validate-deploy to catch issues early
+       1. Still run /validate-staging to catch issues early
        2. Use preview mode for experimental changes
        3. Monitor quota with /deployment-budget
      ```
@@ -186,7 +186,7 @@ Track deployment quota usage and predict remaining capacity to prevent rate limi
 
      🚨 HIGH failure rate detected
         Run /debug to investigate issues
-        Use /validate-deploy before deploying
+        Use /validate-staging before deploying
      ```
 
 9. **Display final summary**:
@@ -210,7 +210,7 @@ Track deployment quota usage and predict remaining capacity to prevent rate limi
      Remaining: {remaining} / 100
      After next deploy: ~{projected}
 
-     Run /validate-deploy before deploying
+     Run /validate-staging before deploying
      ```
    - **Normal**:
      ```
@@ -308,7 +308,7 @@ Remaining: {remaining} / 100
 - Vercel limit: 100 deployments / 24 hours (rolling window)
 - Warning threshold: 20 remaining (allows ~10 more staging deploys)
 - Critical threshold: 10 remaining (allows ~5 more deploys)
-- Deployment cost: 2 per /phase-1-ship (Marketing + App)
+- Deployment cost: 2 per /ship --staging (Marketing + App)
 - Failure rate threshold: 30% (indicates systematic issues)
 - Read-only operations (never modify quotas)
 - Non-blocking (always returns exit code 0)
@@ -331,7 +331,7 @@ Remaining: {remaining} / 100
 - **Normal**: >= 20 remaining (✅ Safe to deploy)
 
 **Deployment costs:**
-- `/phase-1-ship` (staging): 2 deployments (Marketing + App)
+- `/ship --staging` (staging): 2 deployments (Marketing + App)
 - Preview mode: 0 deployments (doesn't count toward quota)
 
 **Rolling window calculation:**
@@ -346,8 +346,8 @@ Remaining: {remaining} / 100
 - Reserve staging mode for actual staging updates
 
 **Related commands:**
-- `/validate-deploy` - Validate deployment locally (doesn't consume quota)
-- `/phase-1-ship` - Deploy to staging (consumes 2 quota)
+- `/validate-staging` - Validate deployment locally (doesn't consume quota)
+- `/ship --staging` - Deploy to staging (consumes 2 quota)
 - `/ship` - Unified deployment orchestrator
 - `/debug` - Investigate deployment failures
 
@@ -358,7 +358,7 @@ Remaining: {remaining} / 100
 - **API errors**: Fall back to last known status
 
 **Usage scenarios:**
-- **Before `/phase-1-ship`**: Check if enough quota remains
+- **Before `/ship --staging`**: Check if enough quota remains
 - **Approaching limits**: Plan deployment strategy (preview vs staging)
 - **After failures**: Analyze failure rate to identify systematic issues
 - **Quota exhausted**: Calculate reset time to plan next deployment window
