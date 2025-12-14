@@ -467,7 +467,7 @@ Applied 4 improvements from audit report
     Impact: Save 30min per service
 
 ✓ [4] Frontend estimation multiplier
-    Modified: .spec-flow/memory/constitution.md
+    Modified: docs/project/engineering-principles.md
     Change: 1.0x → 1.8x
     Impact: More accurate sprint estimates
 

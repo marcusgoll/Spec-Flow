@@ -501,5 +501,4 @@ epic_number,slug,start_date,end_date,duration_hours,velocity_multiplier,sprint_c
 ## References
 
 - [DORA Metrics](https://dora.dev) - Delivery velocity benchmarks
-- [Workflow Auditor Agent](.claude/agents/infrastructure/workflow-auditor.md)
-- [Trend Analysis Documentation](docs/trend-analysis.md)
+- [Perpetual Learning](docs/references/perpetual-learning.md) - Self-improvement system

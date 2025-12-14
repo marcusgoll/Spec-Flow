@@ -79,28 +79,16 @@ If not found, error: "No epic workspace found. Run /epic first."
 
 ### Step 3: Analyze Workflow Effectiveness
 
-**Use workflow-auditor agent:**
+**Analysis focus areas** (execute inline - no agent delegation):
 
-```bash
-# Invoke specialized auditor agent
-Task(
-  subagent_type: "workflow-auditor",
-  description: "Audit epic workflow effectiveness",
-  prompt: """
-  Analyze the completed epic workflow at: $EPIC_DIR
+1. **Phase efficiency** - time vs value delivered per phase
+2. **Bottleneck detection** - which phases took longest
+3. **Quality gate effectiveness** - caught issues early?
+4. **Sprint parallelization** - actual vs potential speedup
+5. **Documentation quality** - XML artifacts complete?
+6. **Process adherence** - skipped phases, manual overrides
 
-  Focus areas:
-  1. Phase efficiency (time vs value delivered)
-  2. Bottleneck detection (which phases took longest)
-  3. Quality gate effectiveness (caught issues early?)
-  4. Sprint parallelization (actual vs potential speedup)
-  5. Documentation quality (XML artifacts complete?)
-  6. Process adherence (skipped phases, manual overrides)
-
-  Output: audit-report.xml with findings and recommendations
-  """
-)
-```
+**Output target:** `audit-report.xml` with findings and recommendations
 
 ### Step 4: Bottleneck Detection
 
@@ -463,5 +451,4 @@ What would you like to do?
 ## References
 
 - [DORA Metrics](https://dora.dev) - Delivery velocity and quality
-- [Workflow Auditor Agent](.claude/agents/infrastructure/workflow-auditor.md)
-- [Pattern Detection Documentation](docs/pattern-detection.md)
+- [Pattern Detection Documentation](docs/references/perpetual-learning.md)
