@@ -2,6 +2,30 @@
 
 ---
 
+## [11.5.0] - 2025-12-14
+
+### ✨ Added
+
+**CLI Version Awareness**
+
+Users can now check for updates and stay current with the latest Spec-Flow features.
+
+- **Version checking**: `npx spec-flow status` now shows installed vs latest version
+  - Fetches latest from npm registry (5s timeout, graceful offline handling)
+  - Clear "update available" indicator when behind
+  - Shows "up to date" when current
+- **CI/CD integration**: New `--check` flag exits with code 1 if update available
+  - Use in pipelines to enforce version currency
+  - Example: `npx spec-flow status --check`
+- **Offline support**: New `--skip-version-check` flag skips registry lookup
+- **README documentation**: Added "Staying Updated" section explaining update workflow
+
+### 🐛 Fixed
+
+- **healthCheck bug**: Fixed variable shadowing where `dir` was used twice instead of `dir` and `keyDir` (bin/validate.js:302-306)
+
+---
+
 ## [11.4.3] - 2025-12-14
 
 ### 🔧 Refactored

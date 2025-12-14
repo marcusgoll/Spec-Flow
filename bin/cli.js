@@ -5,7 +5,7 @@ const path = require('path');
 const chalk = require('chalk');
 const { runWizard } = require('./install-wizard');
 const { update } = require('./install');
-const { healthCheck } = require('./validate');
+const { healthCheck, checkLatestVersion, CURRENT_VERSION } = require('./validate');
 const { setupRoadmap } = require('./setup-roadmap');
 const { printHeader, printSuccess, printError, printWarning } = require('./utils');
 const { installCodexPrompts } = require('./install-codex-prompts');
@@ -148,14 +148,36 @@ program
 // Status command - check installation health
 program
   .command('status')
-  .description('Check Spec-Flow installation status')
+  .description('Check Spec-Flow installation status and version')
   .option('-t, --target <path>', 'Target directory (defaults to current directory)')
+  .option('--check', 'Exit with code 1 if update available (for CI/CD)')
+  .option('--skip-version-check', 'Skip checking npm registry for latest version')
   .action(async (options) => {
     const targetDir = options.target ? path.resolve(options.target) : process.cwd();
 
     printHeader('Spec-Flow Status');
 
     try {
+      // Version info
+      console.log(chalk.cyan(`  Installed: ${chalk.bold('v' + CURRENT_VERSION)}`));
+
+      // Check for updates (unless skipped)
+      let versionInfo = null;
+      if (!options.skipVersionCheck) {
+        versionInfo = await checkLatestVersion();
+
+        if (versionInfo.error) {
+          console.log(chalk.gray(`  Latest:    ${chalk.italic('(unable to check: ' + versionInfo.error + ')')}`));
+        } else if (versionInfo.updateAvailable) {
+          console.log(chalk.yellow(`  Latest:    ${chalk.bold('v' + versionInfo.latest)} `) + chalk.yellow.bold('← update available'));
+        } else {
+          console.log(chalk.green(`  Latest:    v${versionInfo.latest} `) + chalk.green('(up to date)'));
+        }
+      }
+
+      console.log('');
+
+      // Health check
       const health = await healthCheck(targetDir);
 
       if (health.healthy) {
@@ -176,9 +198,21 @@ program
 
       console.log('');
 
+      // Show update command if update available
+      if (versionInfo && versionInfo.updateAvailable) {
+        console.log(chalk.white('To update:'));
+        console.log(chalk.green('  npx spec-flow update\n'));
+      }
+
+      // Exit codes
       if (!health.healthy) {
-        console.log(chalk.white('To fix:'));
+        console.log(chalk.white('To fix installation issues:'));
         console.log(chalk.green('  npx spec-flow update') + chalk.gray('  # Re-install missing files\n'));
+        process.exit(1);
+      }
+
+      // --check flag: exit 1 if update available (for CI/CD)
+      if (options.check && versionInfo && versionInfo.updateAvailable) {
         process.exit(1);
       }
     } catch (error) {
@@ -326,7 +360,7 @@ program
     console.log(chalk.white('Commands:'));
     console.log(chalk.green('  init') + chalk.gray('                   Initialize or update Spec-Flow (interactive)'));
     console.log(chalk.green('  update') + chalk.gray('                 Install or update Spec-Flow (non-interactive)'));
-    console.log(chalk.green('  status') + chalk.gray('                 Check installation health'));
+    console.log(chalk.green('  status') + chalk.gray('                 Check installation health and version'));
     console.log(chalk.green('  setup-roadmap') + chalk.gray('          Set up GitHub Issues for roadmap'));
     console.log(chalk.green('  install-hooks') + chalk.gray('          Install design token enforcement hooks'));
     console.log(chalk.green('  uninstall-hooks') + chalk.gray('        Remove design token enforcement hooks'));
@@ -337,6 +371,8 @@ program
     console.log(chalk.gray('  -t, --target <path>        Target directory (default: current directory)'));
     console.log(chalk.gray('  --non-interactive          Skip prompts, use defaults (init only)'));
     console.log(chalk.gray('  -s, --strategy <mode>      Conflict resolution: merge|backup|skip|force (init only)'));
+    console.log(chalk.gray('  --check                    Exit code 1 if update available (status only, for CI)'));
+    console.log(chalk.gray('  --skip-version-check       Skip npm registry check (status only)'));
     console.log(chalk.gray('  -v, --version              Output version number\n'));
 
     console.log(chalk.white('Examples:'));
@@ -344,12 +380,12 @@ program
     console.log(chalk.green('  npx spec-flow init\n'));
     console.log(chalk.gray('  # Initialize in specific directory'));
     console.log(chalk.green('  npx spec-flow init --target ./my-project\n'));
-    console.log(chalk.gray('  # Initialize with conflict resolution strategy'));
-    console.log(chalk.green('  npx spec-flow init --strategy merge --non-interactive\n'));
     console.log(chalk.gray('  # Update existing installation'));
     console.log(chalk.green('  npx spec-flow update\n'));
-    console.log(chalk.gray('  # Check installation status'));
+    console.log(chalk.gray('  # Check for updates'));
     console.log(chalk.green('  npx spec-flow status\n'));
+    console.log(chalk.gray('  # CI/CD: fail if not on latest version'));
+    console.log(chalk.green('  npx spec-flow status --check\n'));
 
     console.log(chalk.white('Documentation:'));
     console.log(chalk.gray('  https://github.com/marcusgoll/Spec-Flow\n'));

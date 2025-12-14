@@ -1,7 +1,96 @@
 const fs = require('fs-extra');
 const path = require('path');
+const https = require('https');
 const { execSync } = require('child_process');
 const { printError, printWarning, printSuccess, isWritable } = require('./utils');
+
+const CURRENT_VERSION = require('../package.json').version;
+
+/**
+ * Check latest version from npm registry
+ * @param {number} timeout - Request timeout in ms (default: 5000)
+ * @returns {Promise<Object>} { latest: string|null, current: string, updateAvailable: boolean, error: string|null }
+ */
+async function checkLatestVersion(timeout = 5000) {
+  return new Promise((resolve) => {
+    const req = https.get(
+      'https://registry.npmjs.org/spec-flow/latest',
+      { timeout },
+      (res) => {
+        if (res.statusCode !== 200) {
+          resolve({
+            latest: null,
+            current: CURRENT_VERSION,
+            updateAvailable: false,
+            error: `Registry returned ${res.statusCode}`
+          });
+          return;
+        }
+
+        let body = '';
+        res.on('data', (chunk) => (body += chunk));
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(body);
+            const latest = data.version;
+            const updateAvailable = compareVersions(latest, CURRENT_VERSION) > 0;
+            resolve({
+              latest,
+              current: CURRENT_VERSION,
+              updateAvailable,
+              error: null
+            });
+          } catch (e) {
+            resolve({
+              latest: null,
+              current: CURRENT_VERSION,
+              updateAvailable: false,
+              error: 'Failed to parse registry response'
+            });
+          }
+        });
+      }
+    );
+
+    req.on('error', () => {
+      resolve({
+        latest: null,
+        current: CURRENT_VERSION,
+        updateAvailable: false,
+        error: 'Could not reach npm registry (offline?)'
+      });
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      resolve({
+        latest: null,
+        current: CURRENT_VERSION,
+        updateAvailable: false,
+        error: 'Registry request timed out'
+      });
+    });
+  });
+}
+
+/**
+ * Compare semver versions
+ * @param {string} a - Version string (e.g., '1.2.3')
+ * @param {string} b - Version string (e.g., '1.2.0')
+ * @returns {number} 1 if a > b, -1 if a < b, 0 if equal
+ */
+function compareVersions(a, b) {
+  const partsA = a.split('.').map(Number);
+  const partsB = b.split('.').map(Number);
+
+  for (let i = 0; i < 3; i++) {
+    const numA = partsA[i] || 0;
+    const numB = partsB[i] || 0;
+    if (numA > numB) return 1;
+    if (numA < numB) return -1;
+  }
+  return 0;
+}
 
 /**
  * Check if Git is installed
@@ -210,10 +299,10 @@ async function healthCheck(dir) {
     '.spec-flow/memory'
   ];
 
-  for (const dir of keyDirs) {
-    const fullPath = path.join(dir, dir);
+  for (const keyDir of keyDirs) {
+    const fullPath = path.join(dir, keyDir);
     if (!await fs.pathExists(fullPath)) {
-      issues.push(`Missing directory: ${dir}`);
+      issues.push(`Missing directory: ${keyDir}`);
     }
   }
 
@@ -245,5 +334,8 @@ module.exports = {
   checkExistingInstallation,
   checkInstallerScripts,
   runPreflightChecks,
-  healthCheck
+  healthCheck,
+  checkLatestVersion,
+  compareVersions,
+  CURRENT_VERSION
 };

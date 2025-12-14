@@ -46,6 +46,8 @@ That's it. Spec-Flow handles the rest: writing specs, planning architecture, bre
 npx spec-flow init
 ```
 
+This copies workflow files directly into your project (`.claude/`, `.spec-flow/`, `CLAUDE.md`). No dependency is added to your `package.json` — Spec-Flow becomes part of your codebase.
+
 ### 2. Build your first feature
 
 ```bash
@@ -63,6 +65,26 @@ Each phase produces artifacts, runs quality checks, and hands off cleanly to the
 ### 3. That's it
 
 Your feature is deployed. All decisions documented. Tests passing. Ready for the next one.
+
+### Staying Updated
+
+Check for updates anytime:
+
+```bash
+npx spec-flow status
+```
+
+Update to the latest version:
+
+```bash
+npx spec-flow update
+```
+
+For CI/CD pipelines, use `--check` to fail if outdated:
+
+```bash
+npx spec-flow status --check
+```
 
 ---
 
@@ -282,6 +304,18 @@ See a complete feature workflow in [`specs/001-example-feature/`](specs/001-exam
 - Release notes
 
 ## 🆕 Recent Updates
+
+### v11.5.0 (December 2025)
+
+**CLI Version Awareness** - Stay current with automatic update detection
+
+- **Version checking**: `npx spec-flow status` shows installed vs latest version
+  - Fetches from npm registry with graceful offline handling
+  - Clear "update available" indicator when behind
+- **CI/CD integration**: `--check` flag exits code 1 if update available
+- **Bug fix**: Fixed healthCheck variable shadowing bug
+
+---
 
 ### v11.3.0 (December 2025)
 
