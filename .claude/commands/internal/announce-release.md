@@ -1,7 +1,10 @@
 ---
+name: announce-release
 description: Post release announcement to X (Twitter) with GitHub link reply
 argument-hint: [optional: version number]
-allowed-tools: Skill(x-announcement), Bash
+allowed-tools: [Skill, Bash(git:*), Bash(grep:*)]
+version: 1.0
+updated: 2025-12-14
 ---
 
 <objective>

@@ -1,6 +1,10 @@
 ---
+name: ultrathink
 description: Enter deep craftsman mode - question everything, plan like Da Vinci, craft insanely great solutions
 argument-hint: [problem or challenge to ultrathink about]
+allowed-tools: [Read, Grep, Glob, Task, Write, Edit]
+version: 1.0
+updated: 2025-12-14
 ---
 
 <objective>

@@ -183,3 +183,54 @@ FEATURE_DIR="specs/$SLUG"  # Still works, relative to worktree
 - `.spec-flow/scripts/utils/detect-workflow-paths.sh` - Bash implementation
 - `.spec-flow/scripts/utils/detect-workflow-paths.ps1` - PowerShell implementation
 - `.spec-flow/scripts/bash/shared-lib.sh` - Contains `detect_workflow_type()` helper
+
+---
+
+## Compact Detection Pattern (v11.2)
+
+**For phase commands to use instead of inline 40-line blocks:**
+
+### In Command Context Section
+
+```markdown
+**Workflow Detection**: !`bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null || echo '{"type":"unknown"}'`
+```
+
+### In Command Process Section (Step 0)
+
+Replace 40+ lines of inline detection with this compact reference:
+
+```markdown
+### Step 0: Workflow Detection
+
+**Detect workflow using centralized skill** (see `.claude/skills/workflow-detection/SKILL.md`):
+
+1. Run detection: `bash .spec-flow/scripts/utils/detect-workflow-paths.sh`
+2. Parse JSON: Extract `type`, `base_dir`, `slug` from output
+3. If detection fails (exit code != 0): Use AskUserQuestion fallback
+4. Set paths:
+   - Feature: `SPEC_FILE="${BASE_DIR}/${SLUG}/spec.md"`
+   - Epic: `SPEC_FILE="${BASE_DIR}/${SLUG}/epic-spec.md"`
+
+**Fallback prompt** (if detection fails):
+- Question: "Which workflow are you working on?"
+- Options: "Feature" (specs/), "Epic" (epics/)
+```
+
+### Why This Pattern
+
+| Before | After |
+|--------|-------|
+| 40+ lines inline in each command | 10 lines referencing skill |
+| Duplicated across 9 commands | Single source of truth |
+| Changes require 9 file edits | Changes require 1 skill edit |
+| 360+ total lines | ~90 total lines |
+
+### Migration Guide
+
+To convert existing commands:
+
+1. **Remove** the inline bash block in Step 0
+2. **Add** the compact reference pattern above
+3. **Update** context section with dynamic detection
+4. **Verify** detection still works with test runs

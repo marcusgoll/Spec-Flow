@@ -181,457 +181,109 @@ TodoWrite({
 
 <process>
 
-### Step 0: WORKFLOW TYPE DETECTION
+### Step 0: WORKFLOW DETECTION
 
-**Detect whether this is an epic or feature workflow:**
+**Detect workflow using centralized skill** (see `.claude/skills/workflow-detection/SKILL.md`):
 
-```bash
-# Run detection utility (cross-platform)
-if command -v bash >/dev/null 2>&1; then
-    WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null)
-    DETECTION_EXIT=$?
-else
-    WORKFLOW_INFO=$(pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
-    DETECTION_EXIT=$?
-fi
-
-# Parse detection result
-if [ $DETECTION_EXIT -eq 0 ]; then
-    WORKFLOW_TYPE=$(echo "$WORKFLOW_INFO" | jq -r '.type')
-    BASE_DIR=$(echo "$WORKFLOW_INFO" | jq -r '.base_dir')
-    SLUG=$(echo "$WORKFLOW_INFO" | jq -r '.slug')
-
-    echo "✓ Detected $WORKFLOW_TYPE workflow"
-    echo "  Base directory: $BASE_DIR/$SLUG"
-
-    # Set file paths
-    TASKS_FILE="${BASE_DIR}/${SLUG}/tasks.md"
-    CLAUDE_MD="${BASE_DIR}/${SLUG}/CLAUDE.md"
-    WORKFLOW_STATE="${BASE_DIR}/${SLUG}/state.yaml"
-else
-    echo "⚠ Could not auto-detect workflow type - using fallback"
-fi
-```
+1. Run detection: `bash .spec-flow/scripts/utils/detect-workflow-paths.sh`
+2. Parse JSON: Extract `type`, `base_dir`, `slug` from output
+3. If detection fails: Use AskUserQuestion fallback
+4. Set paths:
+   - `TASKS_FILE="${BASE_DIR}/${SLUG}/tasks.md"`
+   - `WORKFLOW_STATE="${BASE_DIR}/${SLUG}/state.yaml"`
 
 ---
 
-### Step 0.5: ITERATION DETECTION (v3.0 - Feedback Loop Support)
+### Step 0.5: ITERATION DETECTION
 
-**NEW**: Check if workflow is in iteration mode and filter tasks accordingly.
+**Check if workflow is in iteration mode** (gaps from previous `/optimize`):
 
-```bash
-# Read workflow state to check iteration
-if [ -f "$WORKFLOW_STATE" ]; then
-    CURRENT_ITERATION=$(yq eval '.iteration.current' "$WORKFLOW_STATE" 2>/dev/null || echo "1")
-    MAX_ITERATIONS=$(yq eval '.iteration.max_iterations' "$WORKFLOW_STATE" 2>/dev/null || echo "3")
+1. Read `state.yaml` for `iteration.current` and `iteration.max_iterations`
+2. If `current > 1`: Filter tasks to current iteration section only
+3. If `current > max_iterations`: Block with error (prevent scope creep)
+4. Update iteration state after completion
 
-    if [ "$CURRENT_ITERATION" -gt 1 ]; then
-        echo "🔄 Iteration Mode Detected"
-        echo "  Current iteration: $CURRENT_ITERATION / $MAX_ITERATIONS"
-        echo "  Executing supplemental tasks only (iteration $CURRENT_ITERATION)"
-
-        # Check iteration limit
-        if [ "$CURRENT_ITERATION" -gt "$MAX_ITERATIONS" ]; then
-            echo "❌ ERROR: Iteration limit exceeded ($MAX_ITERATIONS)"
-            echo ""
-            echo "This workflow has reached the maximum allowed iterations."
-            echo "Remaining gaps should be addressed in a new epic/feature."
-            echo ""
-            echo "To prevent scope creep and infinite iteration, the limit is enforced."
-            exit 1
-        fi
-
-        # Set iteration flag for task filtering
-        ITERATION_MODE=true
-        ITERATION_NUMBER=$CURRENT_ITERATION
-    else
-        echo "  Iteration: 1 (initial implementation)"
-        ITERATION_MODE=false
-        ITERATION_NUMBER=1
-    fi
-else
-    # No workflow state file - default to iteration 1
-    ITERATION_MODE=false
-    ITERATION_NUMBER=1
-fi
-```
-
-**Task filtering logic:**
-
-When `ITERATION_MODE=true`, the implementation script should:
-
-1. Parse tasks.md for the current iteration section (e.g., "## Iteration 2: Gap Closure")
-2. Execute only tasks marked with `**Iteration**: $ITERATION_NUMBER`
-3. Skip all tasks from previous iterations
-4. Update workflow state after completion:
-   - Increment `iteration.total_iterations`
-   - Add entry to `iteration.history`
-   - Mark supplemental task batch as completed
-
-**Example filtered task execution:**
-
-```markdown
-# tasks.md structure
-
-### T001: Original task from iteration 1
-
-**Iteration**: 1
-**Status**: ✅ Completed
-
----
-
-## Iteration 2: Gap Closure
-
-### T031: Implement /v1/auth/me endpoint
-
-**Iteration**: 2
-**Status**: Pending
-← This task WILL execute
-
-### T032: Add tests for /v1/auth/me
-
-**Iteration**: 2
-**Status**: Pending
-← This task WILL execute
-```
-
-**Performance benefit:**
-
-- Iteration 2 with 3 tasks: ~10-30 minutes (vs full re-implementation: 2-4 hours)
-- Targeted execution reduces context switching and test suite runtime
-- Atomic iteration commits preserve ability to rollback to iteration 1
+**Key variables set:**
+- `ITERATION_MODE`: true/false
+- `ITERATION_NUMBER`: 1, 2, or 3 (max default)
 
 ---
 
 ### Step 0.55: LOAD USER PREFERENCES
 
-**Load user preferences that affect implementation behavior:**
+**Load preferences from** `.spec-flow/config/user-preferences.yaml`:
 
-```bash
-# Load preference utility functions
-source .spec-flow/scripts/utils/load-preferences.sh 2>/dev/null || true
+| Preference | Default | Effect |
+|------------|---------|--------|
+| `migrations.strictness` | `blocking` | blocking/warning/auto_apply |
+| `automation.auto_approve_minor` | `false` | Skip review for formatting |
+| `automation.ci_mode_default` | `false` | Non-interactive mode |
 
-# Load migration preferences
-MIGRATION_STRICTNESS=$(get_preference_value --key "migrations.strictness" --default "blocking")
-MIGRATION_AUTO_PLAN=$(get_preference_value --key "migrations.auto_generate_plan" --default "true")
-
-# Load automation preferences
-AUTO_APPROVE_MINOR=$(get_preference_value --key "automation.auto_approve_minor_changes" --default "false")
-CI_MODE=$(get_preference_value --key "automation.ci_mode_default" --default "false")
-
-# Load learning preferences
-LEARNING_ENABLED=$(get_preference_value --key "learning.enabled" --default "true")
-AUTO_APPLY_LOW_RISK=$(get_preference_value --key "learning.auto_apply_low_risk" --default "true")
-
-echo "User Preferences Loaded:"
-echo "  Migration Strictness: $MIGRATION_STRICTNESS"
-echo "  Auto-approve Minor: $AUTO_APPROVE_MINOR"
-echo "  CI Mode: $CI_MODE"
-echo "  Learning: $( [ "$LEARNING_ENABLED" = "true" ] && echo "enabled" || echo "disabled" )"
-```
-
-**Preferences affecting implementation:**
-
-| Preference | Phase | Effect |
-|------------|-------|--------|
-| `migrations.strictness` | Step 0.6 | blocking/warning/auto_apply |
-| `automation.auto_approve_minor` | Commit | Skip review for formatting |
-| `automation.ci_mode_default` | All steps | Non-interactive mode |
-| `learning.enabled` | Pattern detection | Track successful patterns |
+Use `load-preferences.sh` utility to extract values.
 
 ---
 
-### Step 0.6: MIGRATION ENFORCEMENT (v10.5 - Migration Safety)
+### Step 0.6: MIGRATION ENFORCEMENT
 
-**Pre-flight check**: Block tests if migrations not applied.
+**Pre-flight check**: Block if migrations not applied (see `docs/references/migration-safety.md`).
 
-```bash
-# Check if feature requires migrations
-HAS_MIGRATIONS=$(yq eval '.has_migrations // false' "$WORKFLOW_STATE" 2>/dev/null || echo "false")
+1. Check `state.yaml` for `has_migrations: true`
+2. Run `check-migration-status.sh --json` to detect pending migrations
+3. Apply strictness policy from preferences:
 
-if [ "$HAS_MIGRATIONS" = "true" ]; then
-    echo "🗄️  Migration check required (feature has schema changes)"
+| Strictness | Behavior |
+|------------|----------|
+| `blocking` (default) | Exit with error, show apply command |
+| `warning` | Log warning, continue |
+| `auto_apply` | Run migrations automatically |
 
-    # Run migration status detection
-    MIGRATION_STATUS=$(bash .spec-flow/scripts/bash/check-migration-status.sh --json 2>/dev/null)
-    MIGRATION_EXIT=$?
-
-    if [ $MIGRATION_EXIT -eq 0 ]; then
-        PENDING=$(echo "$MIGRATION_STATUS" | jq -r '.pending')
-        PENDING_COUNT=$(echo "$MIGRATION_STATUS" | jq -r '.pending_count')
-        TOOL=$(echo "$MIGRATION_STATUS" | jq -r '.tool')
-        APPLY_CMD=$(echo "$MIGRATION_STATUS" | jq -r '.apply_command')
-
-        if [ "$PENDING" = "true" ]; then
-            # Use loaded preference (from Step 0.55) or fallback to yq
-            if [ -z "$MIGRATION_STRICTNESS" ]; then
-                MIGRATION_STRICTNESS=$(yq eval '.migrations.strictness // "blocking"' .spec-flow/config/user-preferences.yaml 2>/dev/null || echo "blocking")
-            fi
-
-            case "$MIGRATION_STRICTNESS" in
-                blocking)
-                    echo "❌ BLOCKING: $PENDING_COUNT pending $TOOL migrations detected"
-                    echo ""
-                    echo "Tests will fail without applied migrations. You must:"
-                    echo "  1. Apply migrations: $APPLY_CMD"
-                    echo "  2. Re-run /implement after migrations applied"
-                    echo ""
-                    echo "To change this behavior, update .spec-flow/config/user-preferences.yaml:"
-                    echo "  migrations:"
-                    echo "    strictness: warning  # or auto_apply"
-                    exit 1
-                    ;;
-                warning)
-                    echo "⚠️  WARNING: $PENDING_COUNT pending $TOOL migrations detected"
-                    echo "  Apply before running tests: $APPLY_CMD"
-                    echo "  Continuing anyway (strictness: warning)"
-                    ;;
-                auto_apply)
-                    echo "🔄 AUTO-APPLY: Applying $PENDING_COUNT $TOOL migrations"
-                    eval "$APPLY_CMD"
-                    if [ $? -ne 0 ]; then
-                        echo "❌ Migration auto-apply failed. Manual intervention required."
-                        exit 1
-                    fi
-                    echo "✅ Migrations applied successfully"
-                    ;;
-            esac
-        else
-            echo "✅ Migrations up-to-date ($TOOL)"
-        fi
-    elif [ $MIGRATION_EXIT -eq 2 ]; then
-        echo "⚠️  No migration tool detected - skipping migration check"
-    else
-        echo "⚠️  Migration check failed - continuing anyway"
-    fi
-else
-    echo "   No migrations required for this feature"
-fi
-```
-
-**Strictness levels** (configured via user-preferences.yaml):
-
-| Level | Behavior | Use Case |
-|-------|----------|----------|
-| `blocking` | Exit with error, provide apply command | Default, safest |
-| `warning` | Log warning, continue execution | Experienced devs |
-| `auto_apply` | Run migrations automatically | CI/CD pipelines |
-
-**Why block before implementation?**
-
-- Tests will fail against outdated schema (confusing errors)
-- ORM models reference non-existent columns
-- 40% of implementation failures trace to missing migrations
-- Early failure saves debugging time
-
-**Configuration** (`.spec-flow/config/user-preferences.yaml`):
-
-```yaml
-migrations:
-  # How to handle pending migrations
-  # blocking (default): Stop and require manual apply
-  # warning: Log warning, continue
-  # auto_apply: Automatically run migrations
-  strictness: blocking
-
-  # Detection sensitivity (keyword score threshold)
-  detection_threshold: 3
-
-  # Generate migration-plan.md during /plan
-  auto_generate_plan: true
-```
+**Why block?** 40% of implementation failures trace to missing migrations.
 
 ---
 
 ### Step 0.7: MOCKUP COMPONENT EXTRACTION (UI-First Only)
 
-**Pre-condition**: Only execute if mockups exist and are approved (UI-first features).
+**Pre-condition**: `ui_first: true` AND `mockup_approval.status: approved` in state.yaml
 
-```bash
-# Check if this is a UI-first feature with approved mockups
-UI_FIRST_MODE=$(yq eval '.ui_first // false' "$WORKFLOW_STATE" 2>/dev/null || echo "false")
-MOCKUP_APPROVED=$(yq eval '.manual_gates.mockup_approval.status' "$WORKFLOW_STATE" 2>/dev/null || echo "pending")
+**Invoke mockup-extraction skill** (`.claude/skills/mockup-extraction/SKILL.md`):
 
-if [ "$UI_FIRST_MODE" = "true" ] && [ "$MOCKUP_APPROVED" = "approved" ]; then
-    echo "🎨 Mockup Component Extraction"
-    echo "  Mode: UI-first with approved mockups"
+1. Scan mockup HTML files for repeated components
+2. Map CSS to Tailwind utilities
+3. Generate `prototype-patterns.md` with:
+   - Component inventory with occurrence counts
+   - CSS to Tailwind mapping
+   - TypeScript interface definitions
+   - Interactive states (hover, focus, disabled, loading)
 
-    # Locate mockup files
-    MOCKUP_DIR="${BASE_DIR}/${SLUG}/mockups"
-    PROTOTYPE_DIR="design/prototype/screens"
-
-    if [ -d "$MOCKUP_DIR" ]; then
-        MOCKUP_SOURCE="$MOCKUP_DIR"
-    elif [ -d "$PROTOTYPE_DIR" ]; then
-        MOCKUP_SOURCE="$PROTOTYPE_DIR"
-    else
-        echo "⚠️  No mockup directory found - skipping extraction"
-        MOCKUP_SOURCE=""
-    fi
-
-    if [ -n "$MOCKUP_SOURCE" ]; then
-        echo "  Source: $MOCKUP_SOURCE"
-
-        # Invoke mockup-extraction skill
-        echo ""
-        echo "Extracting component patterns from mockups..."
-        echo "  ├── Identifying repeated components"
-        echo "  ├── Mapping CSS to Tailwind utilities"
-        echo "  ├── Documenting variants and states"
-        echo "  └── Populating prototype-patterns.md"
-
-        # Load mockup-extraction skill guidance
-        # Skill: .claude/skills/mockup-extraction/SKILL.md
-
-        # Generate prototype-patterns.md
-        PATTERNS_FILE="${BASE_DIR}/${SLUG}/prototype-patterns.md"
-
-        # Extraction output includes:
-        # 1. Component inventory with occurrence counts
-        # 2. CSS to Tailwind mapping table
-        # 3. Component details (structure, classes, props)
-        # 4. Visual fidelity checklist
-
-        echo ""
-        echo "✅ Component extraction complete"
-        echo "  Output: $PATTERNS_FILE"
-        echo "  Load patterns into context for implementation"
-    fi
-else
-    if [ "$UI_FIRST_MODE" = "true" ]; then
-        echo "⏸️  Mockup extraction skipped (mockups not yet approved)"
-    else
-        echo "   Not a UI-first feature - skipping mockup extraction"
-    fi
-fi
-```
-
-**Extraction workflow** (guided by mockup-extraction skill):
-
-1. **Inventory mockup files**: List all HTML files in mockup directory
-2. **Parse for components**: Identify buttons, cards, forms, alerts, navigation, etc.
-3. **Count occurrences**: Track how many times each component appears across screens
-4. **Score reusability**: 1 occurrence = inline OK, 2 = consider extraction, 3+ = must extract
-5. **Map CSS to Tailwind**: Convert theme CSS variables to Tailwind utilities
-6. **Document props**: Define TypeScript interfaces for each component
-7. **List states**: Document all interactive states (hover, focus, disabled, loading)
-8. **Generate prototype-patterns.md**: Output extraction results for implementation reference
-
-**Why extraction matters**:
-- Prevents 40-60% of visual fidelity issues
-- Provides consistent component props across screens
-- Maps mockup styling directly to production Tailwind classes
-- Creates component inventory for tasks.md extraction tasks
+**Why?** Prevents 40-60% of visual fidelity issues.
 
 ---
 
-### Step 0.8: DOMAIN MEMORY WORKER PATTERN (v11.0)
+### Step 0.8: DOMAIN MEMORY WORKER PATTERN
 
-**NEW**: If domain-memory.yaml exists, use Worker pattern for isolated task execution.
+**Pre-condition**: `domain-memory.yaml` exists in feature directory
 
-```bash
-DOMAIN_MEMORY_FILE="${BASE_DIR}/${SLUG}/domain-memory.yaml"
+**If present**, use isolated Worker pattern (see `.claude/skills/domain-memory/SKILL.md`):
 
-if [ -f "$DOMAIN_MEMORY_FILE" ]; then
-    echo ""
-    echo "🧠 Domain Memory Pattern Active"
-    echo "   Using isolated Workers for atomic task execution"
-    echo ""
-
-    # Get current status
-    .spec-flow/scripts/bash/domain-memory.sh status "${BASE_DIR}/${SLUG}"
-fi
+```
+While remaining features > 0:
+  1. Spawn Task(worker) with domain-memory.yaml path
+  2. Worker implements ONE feature, updates disk, exits
+  3. Read updated domain-memory.yaml
+  4. Repeat until all features complete
 ```
 
-**Worker Loop Orchestration:**
+**Key behaviors:**
+- Orchestrator is lightweight (reads disk, spawns Task)
+- Workers are isolated (fresh context per spawn)
+- Disk is source of truth (domain-memory.yaml)
+- Auto-retry up to 3 times before blocking
 
-When domain-memory.yaml exists, the orchestrator spawns isolated Workers instead of batching tasks:
-
-```javascript
-// Read domain memory to check for remaining work
-const memoryFile = `${FEATURE_DIR}/domain-memory.yaml`;
-let remaining = getUntestedOrFailingFeatures(memoryFile);
-
-console.log(`📋 Features remaining: ${remaining.length}`);
-
-while (remaining.length > 0) {
-  console.log(`\n${"─".repeat(60)}`);
-  console.log(`🔧 Spawning Worker for next feature...`);
-  console.log(`${"─".repeat(60)}\n`);
-
-  // Spawn isolated Worker via Task tool
-  // CRITICAL: Each Worker gets fresh context, no memory of previous runs
-  const workerResult = await Task({
-    subagent_type: "worker",  // Uses .claude/agents/domain/worker.md
-    prompt: `
-      Execute ONE feature from domain memory:
-
-      Feature directory: ${FEATURE_DIR}
-      Domain memory: ${memoryFile}
-
-      Boot-up ritual:
-      1. READ domain-memory.yaml from disk
-      2. RUN baseline tests (verify no regressions)
-      3. PICK one failing/untested feature (highest priority)
-      4. LOCK the feature
-      5. IMPLEMENT that ONE feature
-      6. RUN tests
-      7. UPDATE domain-memory.yaml status
-      8. COMMIT changes
-      9. EXIT (even if more work remains)
-
-      CRITICAL: Work on exactly ONE feature, then EXIT.
-    `
-  });
-
-  // Worker has exited - read updated state from disk
-  console.log(`\n✅ Worker completed: ${workerResult.status}`);
-  console.log(`   Feature: ${workerResult.feature_id}`);
-  console.log(`   Tests: ${workerResult.tests_passed ? "PASSED" : "FAILED"}`);
-
-  // Re-read domain memory to get updated state
-  remaining = getUntestedOrFailingFeatures(memoryFile);
-  console.log(`   Remaining features: ${remaining.length}`);
-
-  // If Worker failed, check if we should continue
-  if (workerResult.status === "failed") {
-    const feature = workerResult.feature_id;
-    const attempts = getAttemptCount(memoryFile, feature);
-
-    if (attempts >= 3) {
-      console.log(`\n⚠️  Feature ${feature} failed 3 times - marking as blocked`);
-      // Update status to blocked, continue with other features
-    }
-  }
-}
-
-console.log(`\n${"═".repeat(60)}`);
-console.log(`✅ All features completed!`);
-console.log(`${"═".repeat(60)}\n`);
-```
-
-**Key Behaviors:**
-
-1. **Orchestrator is lightweight**: Only reads disk, spawns Task(), checks completion
-2. **Workers are isolated**: Fresh context each spawn, no memory of previous Workers
-3. **Disk is source of truth**: domain-memory.yaml is the only shared state
-4. **One task per Worker**: Strict atomic progress, observable after each task
-5. **Automatic retry**: Failed features get retried up to 3 times before blocking
-
-**Fallback to Batch Mode:**
-
-If domain-memory.yaml doesn't exist, fall back to traditional batch execution (Step 1 below).
-
-```bash
-if [ ! -f "$DOMAIN_MEMORY_FILE" ]; then
-    echo "   Domain memory not found - using batch mode"
-    echo "   (Generate with: .spec-flow/scripts/bash/domain-memory.sh generate-from-tasks ${BASE_DIR}/${SLUG})"
-fi
-```
+**If not present**, fall back to batch mode (Step 1).
 
 ---
 
-### Step 1: PARSE AND GROUP TASKS (MANDATORY)
+### Step 1: PARSE AND GROUP TASKS
 
 **You MUST execute tasks directly. Do not wait for scripts.**
 
@@ -785,125 +437,27 @@ If a task fails (tests don't pass, error occurs):
 
 ---
 
-### Step 1.7: RUN CONTINUOUS QUALITY CHECKS (NEW - v10.16)
+### Step 1.7: CONTINUOUS QUALITY CHECKS
 
-**After each batch group of 3-4 tasks completes**, run lightweight quality checks:
-
-#### 1.7.1 When to Run
-
-Run continuous checks when:
-- A batch group (3-4 tasks) has been completed
-- At least one task involved code changes
-- NOT in iteration 2+ (gaps should be small, focus on completion)
-
-Skip continuous checks when:
-- Batch has < 3 tasks
-- No code changes (documentation-only tasks)
-- Iteration ≥ 2 (quality gates already ran in iteration 1)
-- User passes `--no-checks` flag to /implement
-
-#### 1.7.2 Execute Continuous Checks
+**After each batch group of 3-4 tasks**, run `continuous-checks.sh`:
 
 ```bash
-# Run continuous checks for current batch
-bash .spec-flow/scripts/bash/continuous-checks.sh \
-  --batch-num $BATCH_NUM \
-  --feature-dir "$FEATURE_DIR"
-```
-
-**Exit codes:**
-- `0`: All checks passed, continue to next batch
-- `1`: Some checks failed, user decision required
-- `2`: Timeout exceeded (> 30s), consider reducing scope
-
-#### 1.7.3 Checks Performed
-
-The continuous-checks.sh script runs 5 lightweight checks:
-
-1. **Linting** (auto-fix enabled)
-   - ESLint, Prettier for frontend
-   - Ruff, Black for backend
-   - Auto-fixes applied, committed if successful
-
-2. **Type Checking** (quick mode)
-   - TypeScript: `tsc --noEmit --incremental`
-   - Python: `mypy --incremental`
-   - Changed files only
-
-3. **Unit Tests** (related tests only)
-   - Frontend: `pnpm test --findRelatedTests`
-   - Backend: `pytest` on related test files
-   - Fast feedback on new code
-
-4. **Coverage Delta**
-   - Check if coverage dropped since last batch
-   - Baseline stored in `.baseline-coverage`
-   - Warn if coverage decreased
-
-5. **Dead Code Detection**
-   - Detect new unused exports (TypeScript)
-   - Flag potential cleanup opportunities
-   - Non-blocking, warning only
-
-#### 1.7.4 Handling Failures
-
-If continuous checks fail:
-
-**Option 1: Fix now and continue (recommended)**
-```bash
-# Review failures in batch log
-cat .continuous-checks/batch-${BATCH_NUM}.log
-
-# Fix the issues
-# ... make corrections ...
-
-# Commit fixes
-git add .
-git commit -m "fix: address continuous check failures from batch $BATCH_NUM"
-
-# Re-run continuous checks
 bash .spec-flow/scripts/bash/continuous-checks.sh --batch-num $BATCH_NUM --feature-dir "$FEATURE_DIR"
 ```
 
-**Option 2: Continue anyway** (not recommended)
-- Use for minor issues that don't block progress
-- Issues will be caught again in /optimize
-- Add TODO comments for tracking
+**5 Checks Performed** (target: < 30s total):
 
-**Option 3: Abort batch**
-- For critical failures (build breaks, tests won't run)
-- Rollback last task: `git reset --hard HEAD~1`
-- Fix the blocking issue
-- Resume /implement
+| Check | Tool | Auto-fix |
+|-------|------|----------|
+| Linting | ESLint/Ruff | Yes |
+| Type checking | tsc/mypy (incremental) | No |
+| Unit tests | Related tests only | No |
+| Coverage delta | Compare to baseline | No |
+| Dead code | Unused exports | No (warning) |
 
-#### 1.7.5 Performance Target
+**On failure**: Fix now (recommended), continue anyway, or abort batch.
 
-Continuous checks should complete in < 30 seconds:
-- Linting + auto-fix: ~5-8s
-- Type checking (incremental): ~5-10s
-- Unit tests (related only): ~8-12s
-- Coverage + dead code: ~2-5s
-
-If checks exceed 30s, consider:
-- Reducing batch size (2-3 tasks instead of 3-4)
-- Skipping dead code detection (lowest value)
-- Running some checks only in /optimize
-
-#### 1.7.6 Continuous vs Full Quality Gates
-
-**Continuous (after each batch)**:
-- Fast (< 30s)
-- Incremental (changed files only)
-- Auto-fix enabled
-- Warning-based (mostly non-blocking)
-- Purpose: Catch issues early
-
-**Full Quality Gates (/optimize phase)**:
-- Comprehensive (10-15 min)
-- Full codebase scan
-- No auto-fix
-- Blocking failures
-- Purpose: Production-readiness validation
+**Skip when**: Iteration 2+, `--no-checks` flag, documentation-only batch.
 
 ---
 

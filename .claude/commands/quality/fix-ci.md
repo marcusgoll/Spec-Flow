@@ -2,646 +2,636 @@
 name: fix-ci
 description: Diagnose and fix CI/deployment blockers for pull requests to enable safe deployment
 argument-hint: [pr-number]
-allowed-tools: [Bash(gh *), Bash(git *), Bash(pnpm *), Bash(uv *), Bash(curl *), Bash(jq *), Bash(cd *), Bash(echo *), Bash(grep *), Bash(declare *), TodoWrite, Read, Write, Edit]
+allowed-tools: [Bash, Read, Write, Edit, Grep, Glob, Task, TodoWrite, AskUserQuestion]
 ---
 
-# /fix-ci — CI/Deployment Blocker Resolution
+# /fix-ci — CI Blocker Resolution
 
 <context>
-**PR Number**: $ARGUMENTS
+**Arguments**: $ARGUMENTS
 
 **Current Branch**: !`git branch --show-current 2>/dev/null || echo "none"`
 
-**PR Context** (if on PR branch): !`gh pr list --head $(git branch --show-current) --json number,title,state,baseRefName -q '.[0]' 2>/dev/null || echo "null"`
+**PR from Current Branch**: !`gh pr list --head $(git branch --show-current 2>/dev/null) --json number,title,state -q '.[0]' 2>/dev/null || echo "null"`
 
-**GitHub CLI Status**: !`gh auth status 2>/dev/null | head -1 || echo "not authenticated"`
+**GitHub CLI**: !`gh auth status 2>&1 | head -1 || echo "not authenticated"`
 
-**Available Tools**: !`which gh git jq pnpm uv curl 2>/dev/null || echo "missing tools"`
-
-**Repository Status**: !`git status --short | head -5 || echo "clean"`
+**Git Status**: !`git status --short | head -5`
 </context>
 
 <objective>
-Diagnose and fix CI/deployment blockers for PR #$ARGUMENTS to make it deployment-ready.
+Diagnose and fix CI blockers for a pull request.
 
-**Mission**: Act as a deployment doctor — diagnose → auto-fix → delegate → validate.
+**Mission**: Act as a deployment doctor — diagnose, auto-fix, delegate, validate.
 
-**Scope**:
-- Read PR context (checks, files, reviews, logs)
-- Categorize blockers (lint, types, tests, build, deploy, smoke, e2e)
-- Auto-fix simple issues (format/lint)
-- Delegate complex issues (types, build, test debugging)
-- Validate deployment readiness gates
+**What This Command Does**:
+1. Load PR context (checks, files, reviews)
+2. Categorize failures (lint, types, tests, build, deploy)
+3. Auto-fix simple issues (formatting, linting)
+4. Delegate complex issues to specialist agents
+5. Validate deployment readiness
 
-**State awareness**:
-- Base branch `main` → Phase 1 (feature → staging)
-- Base branch `production` → Phase 2 (staging → production)
-- Infer phase from PR base
-
-**Deployment mode awareness**:
-- **Preview mode**: Debug CI and workflows safely (preferred during triage)
-- **Staging mode**: Updates staging domain; use only when explicitly shipping
-- Default to **preview** to avoid burning quotas
-
-**Progressive disclosure**:
-- Show only relevant blockers/fixes
-- Link to logs; don't dump giant logs into PR
-- Keep PR bot comments <30 lines
-
-**Prerequisites**:
-- GitHub CLI (`gh`) installed and authenticated
-- PR exists
-- Local checkout of the PR head branch (needed for auto-fixes)
+**Risk Level**: MEDIUM — May push auto-fix commits to PR branch
 </objective>
 
-## Anti-Hallucination Rules
+<anti-hallucination>
+## Critical Rules
 
-**CRITICAL**: Follow these rules to prevent fabricating fixes or deployment status.
-
-1. **Never claim a fix succeeded without re-running checks**
-   - Always run `pnpm run lint` / `ruff check` / `mypy` / `pnpm build`
-   - Report actual exit codes and status lines from command output
-   - Don't say "fixed" until verification passes
-
-2. **Quote real CI output when diagnosing**
-   - Use `gh pr checks --json` and workflow run logs for exact errors
-   - Include the failing check name and minimal excerpt (first relevant line)
-   - Never guess at error messages
-
-3. **Read the PR diff before guessing root cause**
-   - Pull `gh pr view <n> --json files` to see changed files
-   - Correlate failures to specific changed files
-   - Don't assume cause without evidence
-
-4. **Verify check status before claiming "green"**
-   - After pushes, poll `gh pr checks` for actual statuses
-   - Report current check state: PENDING, SUCCESS, FAILURE
-   - Never claim all checks pass without verification
-
-5. **Don't fabricate deployment URLs/IDs**
-   - Only report URLs/IDs present in CI logs or `gh` output
-   - Quote actual deployment logs when referencing URLs
-   - If no deployment URL found, say so explicitly
-
-**Why this matters**: Bad guesses waste time, greenwashing breaks production, fabricated URLs destroy credibility.
-
----
+1. **Never claim fixes without verification** — Run commands, check exit codes
+2. **Quote real CI output** — Use `gh pr checks` for actual errors
+3. **Read PR diff first** — Don't guess root cause without evidence
+4. **Verify check status** — Poll `gh pr checks` after pushes
+5. **No fabricated URLs** — Only report URLs from actual CI logs
+</anti-hallucination>
 
 <process>
 
-## STEP 1: Track Progress with TodoWrite
+## Step 1: Parse PR Number
 
-Initialize blocker tracking:
+**If argument provided**: Use it as PR number
+**If no argument**: Detect from current branch
+
+```bash
+# Get PR number from current branch
+gh pr list --head $(git branch --show-current) --json number -q '.[0].number'
+```
+
+**If no PR found**: Show usage and exit
+```
+Usage: /fix-ci <pr-number>
+Example: /fix-ci 123
+
+Or run from a branch with an open PR.
+```
+
+## Step 2: Load PR Context
+
+Fetch PR data:
+```bash
+gh pr view $PR_NUMBER --json title,baseRefName,headRefName,state,mergeable,reviewDecision,files
+```
+
+Extract:
+- `PR_TITLE` — PR title
+- `PR_BASE` — Base branch (main, production, etc.)
+- `PR_HEAD` — Head branch (feature branch)
+- `PR_STATE` — State (OPEN, MERGED, CLOSED)
+- `PR_MERGEABLE` — Merge status
+- `PR_REVIEW` — Review decision (APPROVED, CHANGES_REQUESTED, etc.)
+
+Display:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Fixing CI for PR #{number}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Title: {title}
+Branch: {head} → {base}
+State: {state}
+```
+
+## Step 3: Detect Deployment Phase
+
+| Base Branch | Phase | Environment | Next Command |
+|-------------|-------|-------------|--------------|
+| `main` | 1 | staging | `/ship --staging` |
+| `production` | 2 | production | `/ship --prod` |
+| other | 0 | unknown | — |
+
+Display phase context.
+
+## Step 4: Fetch Check Statuses
+
+```bash
+gh pr checks $PR_NUMBER --json name,state,conclusion,detailsUrl
+```
+
+Count by status:
+- PENDING — Still running
+- SUCCESS — Passed
+- FAILURE — Failed
+
+Display summary:
+```
+Checks: {success} passing, {failure} failing, {pending} pending
+```
+
+## Step 5: Categorize Failures
+
+Group failing checks by type:
+
+| Pattern in Name | Category |
+|-----------------|----------|
+| `lint`, `eslint`, `ruff` | lint |
+| `type`, `typescript`, `mypy` | types |
+| `test`, `jest`, `pytest` | tests |
+| `build` | build |
+| `deploy`, `vercel`, `railway` | deploy |
+| `smoke` | smoke |
+| `e2e`, `playwright` | e2e |
+
+For each failing check, extract:
+- Check name
+- Details URL (for logs)
+- Category
+
+Display categorized failures:
+```
+Failures by category:
+  lint: 1 check
+  types: 2 checks
+  build: 1 check
+```
+
+## Step 6: Initialize TodoWrite
+
+Create task list for tracking:
 
 ```javascript
 TodoWrite({
   todos: [
-    {content: "Load PR context and checks", status: "pending", activeForm: "Loading PR context"},
-    {content: "Categorize blockers (lint/types/tests/build/deploy/smoke)", status: "pending", activeForm: "Categorizing blockers"},
-    {content: "Auto-fix lint/format issues", status: "pending", activeForm: "Auto-fixing lint/format"},
-    {content: "Fix or delegate type errors", status: "pending", activeForm: "Type fixes"},
-    {content: "Fix or delegate test failures", status: "pending", activeForm: "Test fixes"},
-    {content: "Diagnose build/deploy failures", status: "pending", activeForm: "Build/Deploy fixes"},
-    {content: "Validate gates (checks/review/conflicts + phase-specific)", status: "pending", activeForm: "Validating gates"},
-    {content: "Update PR with status", status: "pending", activeForm: "Updating PR"}
+    {content: "Auto-fix lint/format issues", status: "pending", activeForm: "Auto-fixing lint"},
+    {content: "Analyze type errors", status: "pending", activeForm: "Analyzing types"},
+    {content: "Analyze test failures", status: "pending", activeForm: "Analyzing tests"},
+    {content: "Diagnose build failures", status: "pending", activeForm: "Diagnosing build"},
+    {content: "Validate deployment gates", status: "pending", activeForm: "Validating gates"}
   ]
 })
 ```
 
-**Rules**:
-- Only one `in_progress` at a time
-- Flip to `completed` immediately after verified success
-- Mark with failure reason and link to logs if stuck
+Only include tasks for categories with failures.
 
----
+## Step 7: Auto-Fix Lint/Format
 
-## STEP 2: Load PR Context
+**If lint failures detected**:
 
-**Parse PR number and fetch context**:
+1. Checkout PR branch (if not already):
+   ```bash
+   git fetch origin $PR_HEAD && git checkout $PR_HEAD
+   ```
 
-```bash
-# If no argument, infer from current branch
-if [ -z "$ARGUMENTS" ]; then
-  CURRENT_BRANCH=$(git branch --show-current)
-  PR_NUMBER=$(gh pr list --head "$CURRENT_BRANCH" --json number -q '.[0].number' 2>/dev/null)
-  if [ -z "$PR_NUMBER" ]; then
-    echo "Usage: /fix-ci <pr-number>"
-    echo "Example: /fix-ci 123"
-    exit 1
-  fi
-else
-  if [[ "$ARGUMENTS" =~ ([0-9]+) ]]; then
-    PR_NUMBER="${BASH_REMATCH[1]}"
-  else
-    echo "Provide a PR number."
-    echo "Example: /fix-ci 123"
-    exit 1
-  fi
-fi
+2. Detect project type and run auto-fix:
 
-# Validate and load core PR fields
-PR_DATA=$(gh pr view "$PR_NUMBER" --json title,body,author,baseRefName,headRefName,state,mergeable,reviewDecision)
-PR_TITLE=$(echo "$PR_DATA" | jq -r '.title')
-PR_BASE=$(echo "$PR_DATA" | jq -r '.baseRefName')
-PR_HEAD=$(echo "$PR_DATA" | jq -r '.headRefName')
-PR_STATE=$(echo "$PR_DATA" | jq -r '.state')
-PR_AUTHOR=$(echo "$PR_DATA" | jq -r '.author.login')
-PR_MERGEABLE=$(echo "$PR_DATA" | jq -r '.mergeable')
-PR_REVIEW=$(echo "$PR_DATA" | jq -r '.reviewDecision')
-```
+   **Node.js** (package.json exists):
+   ```bash
+   npm run lint -- --fix || pnpm lint --fix
+   npm run format || pnpm format
+   ```
 
-**Display PR info**:
-```
-Fixing CI for PR #$PR_NUMBER
-Title: $PR_TITLE
-Base: $PR_BASE
-State: $PR_STATE
-```
+   **Python** (pyproject.toml or requirements.txt):
+   ```bash
+   ruff check --fix .
+   ruff format .
+   ```
 
----
+   **Rust** (Cargo.toml):
+   ```bash
+   cargo fmt
+   cargo clippy --fix --allow-dirty
+   ```
 
-## STEP 3: Detect Deployment Phase
+   **Go** (go.mod):
+   ```bash
+   gofmt -w .
+   go mod tidy
+   ```
 
-**Determine phase from base branch**:
+3. If changes made, commit and push:
+   ```bash
+   git add .
+   git diff --cached --quiet || git commit -m "style: auto-fix lint/format via /fix-ci
 
-```bash
-PHASE=0; ENVIRONMENT="unknown"; NEXT_COMMAND=""
+   🤖 Generated with Claude Code
+   Co-Authored-By: Claude <noreply@anthropic.com>"
+   git push origin $PR_HEAD
+   ```
 
-if [ "$PR_BASE" = "main" ]; then
-  PHASE=1; ENVIRONMENT="staging"; NEXT_COMMAND="/ship-staging"
-  echo "Phase 1: Feature → Staging"
-elif [ "$PR_BASE" = "production" ]; then
-  PHASE=2; ENVIRONMENT="production"; NEXT_COMMAND="/ship-prod"
-  echo "Phase 2: Staging → Production"
-else
-  echo "Unknown base: $PR_BASE (expect main or production)"; PHASE=0
-fi
-```
+4. Post PR comment:
+   ```bash
+   gh pr comment $PR_NUMBER --body "✅ Auto-fixed lint/format issues. CI re-running."
+   ```
 
----
+Mark TodoWrite task as completed.
 
-## STEP 4: Read PR Checks and Files
+## Step 8: Analyze Type Errors
 
-**Fetch check statuses**:
+**If type failures detected**:
 
-```bash
-CHECK_DATA=$(gh pr checks "$PR_NUMBER" --json name,state,conclusion,detailsUrl 2>/dev/null || echo "[]")
-TOTAL_CHECKS=$(echo "$CHECK_DATA" | jq 'length')
-PENDING=$(echo "$CHECK_DATA" | jq '[.[] | select(.state=="PENDING" or .state=="QUEUED" or .state=="IN_PROGRESS")] | length')
-SUCCESS=$(echo "$CHECK_DATA" | jq '[.[] | select(.conclusion=="SUCCESS")] | length')
-FAILURE=$(echo "$CHECK_DATA" | jq '[.[] | select(.conclusion=="FAILURE")] | length')
+1. Run type checker locally to get full error output:
 
-CHANGED_FILES=$(gh pr view "$PR_NUMBER" --json files -q '.files[].path')
-```
+   **Node.js**:
+   ```bash
+   npx tsc --noEmit 2>&1
+   ```
 
-**Display check summary**:
-```
-Checks: $SUCCESS passing, $FAILURE failing, $PENDING pending (total: $TOTAL_CHECKS)
-```
+   **Python**:
+   ```bash
+   mypy . 2>&1
+   ```
 
----
+2. Extract error summary (file:line references)
 
-## STEP 5: Categorize Failing Checks
+3. **Delegate to type-enforcer agent**:
+   ```
+   Task({
+     subagent_type: "type-enforcer",
+     description: "Fix type errors in PR #$PR_NUMBER",
+     prompt: "Fix the following type errors in the codebase:
 
-**Group failures by type**:
+   ## Type Errors
+   {type_error_output}
 
-```bash
-declare -A FAILURES_BY_TYPE
-RATE_LIMITED=false
+   ## Changed Files
+   {list of changed files from PR}
 
-echo "$CHECK_DATA" | jq -r '.[] | select(.conclusion=="FAILURE") | "\(.name)|\(.detailsUrl)"' \
-| while IFS='|' read -r check_name check_url; do
-  [ -z "$check_name" ] && continue
-  category="other"
-  [[ "$check_name" =~ [Ll]int ]] && category="lint"
-  [[ "$check_name" =~ [Tt]ype|TypeScript|MyPy ]] && category="types"
-  [[ "$check_name" =~ [Tt]est|Jest|Pytest ]] && category="tests"
-  [[ "$check_name" =~ [Bb]uild ]] && category="build"
-  [[ "$check_name" =~ [Dd]eploy|Vercel|Railway ]] && category="deploy"
-  [[ "$check_name" =~ [Ss]moke ]] && category="smoke"
-  [[ "$check_name" =~ E2E|e2e|Playwright ]] && category="e2e"
+   ## Instructions
+   1. Read each file with type errors
+   2. Fix the type issues while preserving functionality
+   3. Run type checker to verify fixes
+   4. Commit changes with message: fix(types): resolve type errors
 
-  FAILURES_BY_TYPE[$category]="${FAILURES_BY_TYPE[$category]}$check_name|$check_url
-"
+   Do NOT change logic or behavior, only fix type annotations."
+   })
+   ```
 
-  # Check for quota/rate-limit in deploy jobs
-  if [ "$category" = "deploy" ] && [[ "$check_url" =~ /runs/([0-9]+) ]]; then
-    RUN_ID="${BASH_REMATCH[1]}"
-    if gh run view "$RUN_ID" --log 2>/dev/null | grep -qiE "rate limit|quota|Too Many Requests"; then
-      RATE_LIMITED=true
-    fi
-  fi
-done
-```
+4. Post PR comment with delegation notice:
+   ```bash
+   gh pr comment $PR_NUMBER --body "❌ Type errors detected. Delegating to type-enforcer agent.
 
-**Report categorized failures** to user and update TodoWrite.
+   Errors found:
+   {first 5 errors}
 
----
+   Run locally: \`npx tsc --noEmit\` or \`mypy .\`"
+   ```
 
-## STEP 6: Handle Deployment Quota/Rate Limits
+Mark TodoWrite task as completed (delegated).
 
-**If deployment quota hit**, post recovery guide:
+## Step 9: Analyze Test Failures
 
-```bash
-if [ "$RATE_LIMITED" = true ]; then
-  gh pr comment "$PR_NUMBER" --body "⚠️ Deployment quota or rate limit reached.
+**If test failures detected**:
 
-**Options**
-1) Run local validation: \`pnpm run ci:validate\`
-2) Use **preview mode** when re-running CI to avoid consuming staging/production quotas
-3) Re-try after quota window resets
+1. Identify failing test files from CI logs:
+   ```bash
+   gh run view $RUN_ID --log 2>&1 | grep -E "FAIL|ERROR" | head -20
+   ```
 
-— generated by /fix-ci"
-fi
-```
+2. **Delegate to debugger agent**:
+   ```
+   Task({
+     subagent_type: "debugger",
+     description: "Fix test failures in PR #$PR_NUMBER",
+     prompt: "Investigate and fix test failures:
 
-**Switch to preview-mode validation** and skip staging deployment until quota resets.
+   ## Failing Tests
+   {test failure output}
 
----
+   ## Changed Files
+   {list of changed files from PR}
 
-## STEP 7: Auto-Fix Lint/Format Issues
+   ## Instructions
+   1. Read failing test files
+   2. Read the implementation files they test
+   3. Determine if tests are wrong or implementation is wrong
+   4. Fix the appropriate files
+   5. Run tests locally to verify
+   6. Commit with message: fix(tests): resolve test failures"
+   })
+   ```
 
-**Checkout PR branch and run auto-fixers**:
+3. Post PR comment:
+   ```bash
+   gh pr comment $PR_NUMBER --body "❌ Test failures detected. Delegating to debugger agent.
 
-```bash
-CURRENT_BRANCH=$(git branch --show-current)
-if [ "$CURRENT_BRANCH" != "$PR_HEAD" ]; then
-  git fetch origin "$PR_HEAD" && git checkout "$PR_HEAD"
-fi
+   Failing tests:
+   {first 5 failures}
 
-LINT_FIXED=false
+   Run locally: \`npm test\` or \`pytest\`"
+   ```
 
-# Marketing app
-if echo "$CHANGED_FILES" | grep -q "^apps/marketing"; then
-  cd apps/marketing && pnpm install --silent || true
-  pnpm lint --fix || true
-  cd ../..
-  LINT_FIXED=true
-fi
+Mark TodoWrite task as completed (delegated).
 
-# Main app
-if echo "$CHANGED_FILES" | grep -q "^apps/app"; then
-  cd apps/app && pnpm install --silent || true
-  pnpm lint --fix || true
-  cd ../..
-  LINT_FIXED=true
-fi
+## Step 10: Diagnose Build Failures
 
-# API (Python)
-if echo "$CHANGED_FILES" | grep -q "^api/"; then
-  cd api
-  uv run ruff check --fix || true
-  uv run ruff format || true
-  cd ..
-  LINT_FIXED=true
-fi
+**If build failures detected**:
 
-# Commit and push auto-fixes
-if [ "$LINT_FIXED" = true ] && [ -n "$(git status --porcelain)" ]; then
-  git add . && git commit -m "fix: auto-fix lint/format via /fix-ci" && git push origin "$PR_HEAD"
-  gh pr comment "$PR_NUMBER" --body "✅ Auto-fixed lint/format. CI re-running."
-fi
-```
+1. Fetch build logs:
+   ```bash
+   gh run view $RUN_ID --log 2>&1 | grep -A 5 "error" | head -30
+   ```
 
-**Update TodoWrite**: Mark "Auto-fix lint/format issues" as completed.
+2. Common causes checklist:
+   - Missing dependencies
+   - TypeScript/compilation errors
+   - Missing environment variables
+   - Import path issues
+   - Memory limits
 
----
+3. Try local build:
+   ```bash
+   npm run build 2>&1 || pnpm build 2>&1
+   ```
 
-## STEP 8: Analyze Type Errors
+4. Post diagnostic comment:
+   ```bash
+   gh pr comment $PR_NUMBER --body "❌ Build failures detected.
 
-**Run type checkers and report**:
+   Common causes:
+   - Missing dependencies
+   - TypeScript errors
+   - Missing env vars
+   - Import path issues
+
+   Error excerpt:
+   \`\`\`
+   {first 10 lines of error}
+   \`\`\`
+
+   Check CI logs: {details_url}"
+   ```
+
+Mark TodoWrite task as completed (diagnosed).
+
+## Step 11: Check Rate Limits
+
+**If deploy failures detected**, check for quota issues:
 
 ```bash
-TYPE_ERRORS=false
-
-# Frontend type check
-if echo "$CHANGED_FILES" | grep -q "^apps/app"; then
-  cd apps/app && pnpm install --silent || true
-  pnpm run type-check || TYPE_ERRORS=true
-  cd ../..
-fi
-
-# Backend type check (Python)
-if echo "$CHANGED_FILES" | grep -q "^api/"; then
-  cd api
-  uv run mypy app/ || TYPE_ERRORS=true
-  cd ..
-fi
-
-# Delegate if type errors found
-if [ "$TYPE_ERRORS" = true ]; then
-  gh pr comment "$PR_NUMBER" --body "❌ Type errors detected. Delegating to type-enforcer agent.
-
-Run locally: \`pnpm run type-check\` (frontend) or \`uv run mypy app/\` (backend)"
-fi
+gh run view $RUN_ID --log 2>&1 | grep -iE "rate limit|quota|429|too many"
 ```
 
-**Update TodoWrite**: Mark type fixes as delegated if errors found.
-
----
-
-## STEP 9: Analyze Build Failures
-
-**Reproduce build failures locally**:
-
+**If rate limited**:
 ```bash
-if [ -n "${FAILURES_BY_TYPE[build]}" ]; then
-  BUILD_NOTE="Common causes: missing deps, TS errors, env vars, import paths, Node memory"
-  echo "$BUILD_NOTE"
+gh pr comment $PR_NUMBER --body "⚠️ Deployment quota or rate limit reached.
 
-  # Try local builds
-  if echo "$CHANGED_FILES" | grep -q "^apps/app"; then
-    cd apps/app && pnpm install --silent || true
-    rm -rf .next
-    pnpm build || true
-    cd ../..
-  fi
+Options:
+1. Wait for quota reset
+2. Run local validation: \`npm run build && npm test\`
+3. Use preview mode for next deployment attempt
 
-  if echo "$CHANGED_FILES" | grep -q "^apps/marketing"; then
-    cd apps/marketing && pnpm install --silent || true
-    rm -rf .next
-    pnpm build || true
-    cd ../..
-  fi
-
-  gh pr comment "$PR_NUMBER" --body "❌ Build failures detected.
-
-$BUILD_NOTE
-
-Check CI logs for exact errors. Running local builds for diagnosis."
-fi
+This is NOT a code issue - it's a platform limit."
 ```
 
----
+## Step 12: Validate Deployment Gates
 
-## STEP 10: Analyze Test Failures
+Check all gates for current phase:
 
-**Delegate test debugging**:
+| Gate | Check | Required |
+|------|-------|----------|
+| CI Checks | All SUCCESS | Yes |
+| Review | APPROVED | Yes |
+| Mergeable | MERGEABLE | Yes |
+| Smoke Tests | No smoke failures | Phase 1 |
+| Staging Validation | Report approved | Phase 2 |
 
-```bash
-if [ -n "${FAILURES_BY_TYPE[tests]}" ]; then
-  gh pr comment "$PR_NUMBER" --body "❌ Test failures detected. Delegating to debugger agent.
+Count gates passed vs. total.
 
-Run locally:
-- Frontend: \`pnpm test\`
-- Backend: \`pytest\`"
-fi
-```
-
----
-
-## STEP 11: Validate Smoke Tests (Local)
-
-**Run smoke tests if dev servers are running**:
-
-```bash
-FRONTEND_UP=false; BACKEND_UP=false
-
-if curl -sf http://localhost:3001/health >/dev/null; then FRONTEND_UP=true; fi
-if curl -sf http://localhost:8000/api/v1/health/healthz >/dev/null; then BACKEND_UP=true; fi
-
-if [ "$FRONTEND_UP" = true ] && [ "$BACKEND_UP" = true ]; then
-  # Run smoke-tagged tests
-  cd apps/app && pnpm exec playwright test --grep "@smoke" --reporter=line || true; cd ../..
-  cd api && pytest -m smoke --tb=short || true; cd ..
-else
-  gh pr comment "$PR_NUMBER" --body "⚠️ Skipped local smoke tests: dev servers not running.
-
-Start servers first:
-- Frontend: \`pnpm dev\` (port 3001)
-- Backend: \`uvicorn app.main:app --reload\` (port 8000)"
-fi
-```
-
----
-
-## STEP 12: Check Review Status
-
-**Verify review approval**:
-
-```bash
-if [ "$PR_REVIEW" = "APPROVED" ]; then
-  echo "✅ Review approved."
-elif [ "$PR_REVIEW" = "CHANGES_REQUESTED" ]; then
-  gh pr comment "$PR_NUMBER" --body "🔍 Changes requested in review. Delegating to senior-code-reviewer agent."
-else
-  echo "⏳ Review pending."
-fi
-```
-
----
-
-## STEP 13: Update Deployment Tracking
-
-**Ensure deployment metadata exists in feature notes**:
-
-If `specs/$PR_HEAD/NOTES.md` doesn't have deployment metadata, add:
-
-```markdown
-## Deployment Metadata
-
-| Date | Marketing Deploy ID | App Deploy ID | API Image Ref | Status |
-|------|---------------------|---------------|---------------|--------|
-| YYYY-MM-DD | [pending] | [pending] | [pending] | ⏳ Pending |
-```
-
-Commit on the feature branch if added.
-
----
-
-## STEP 14: Validate Deployment Readiness Gates
-
-**Check all gates for the current phase**:
-
-```bash
-GATES_PASSED=0; GATES_TOTAL=0
-
-# Gate 1: CI checks
-((GATES_TOTAL++)); [ "$FAILURE" -eq 0 ] && ((GATES_PASSED++))
-
-# Gate 2: Review approval
-((GATES_TOTAL++)); [ "$PR_REVIEW" = "APPROVED" ] && ((GATES_PASSED++))
-
-# Gate 3: No merge conflicts
-((GATES_TOTAL++)); [ "$PR_MERGEABLE" = "MERGEABLE" ] && ((GATES_PASSED++))
-
-# Phase 1 specific: Smoke tests
-if [ "$PHASE" -eq 1 ]; then
-  ((GATES_TOTAL++))
-  [ -z "${FAILURES_BY_TYPE[smoke]}" ] && ((GATES_PASSED++))
-fi
-
-# Phase 2 specific: Staging validation + deployment tracking
-if [ "$PHASE" -eq 2 ]; then
-  # Staging validation doc present and approved
-  ((GATES_TOTAL++))
-  VALIDATION_REPORT="specs/$PR_HEAD/staging-validation-report.md"
-  if [ -f "$VALIDATION_REPORT" ] && grep -q "Ready for production: ✅ Yes" "$VALIDATION_REPORT" 2>/dev/null; then
-    ((GATES_PASSED++))
-  fi
-
-  # Deployment metadata present
-  ((GATES_TOTAL++))
-  NOTES_FILE="specs/$PR_HEAD/NOTES.md"
-  if [ -f "$NOTES_FILE" ] && grep -q "## Deployment Metadata" "$NOTES_FILE" 2>/dev/null; then
-    ((GATES_PASSED++))
-  fi
-fi
-```
-
----
-
-## STEP 15: Post PR Status Comment
+## Step 13: Post Final Status
 
 **If all gates pass**:
-
 ```bash
-if [ "$GATES_PASSED" -eq "$GATES_TOTAL" ]; then
-  PHASE_GATES=""
-  [ "$PHASE" -eq 1 ] && PHASE_GATES="- ✅ Smoke tests passing"
-  [ "$PHASE" -eq 2 ] && PHASE_GATES="- ✅ Staging validation complete
-- ✅ Deployment tracking ready"
+gh pr comment $PR_NUMBER --body "## ✅ Ready for {environment}
 
-  gh pr comment "$PR_NUMBER" --body "## ✅ Ready for $ENVIRONMENT
-
+All gates passed:
 - ✅ CI checks green
 - ✅ Review approved
 - ✅ No merge conflicts
-$PHASE_GATES
+{phase-specific gates}
 
-Next: \`$NEXT_COMMAND\`"
-fi
+Next: \`{next_command}\`"
 ```
 
 **If gates fail**:
-
 ```bash
-if [ "$GATES_PASSED" -ne "$GATES_TOTAL" ]; then
-  gh pr comment "$PR_NUMBER" --body "## ⚠️ Not ready for $ENVIRONMENT
+gh pr comment $PR_NUMBER --body "## ⚠️ Not ready for {environment}
 
-Gates: $GATES_PASSED / $GATES_TOTAL passing
+Gates: {passed}/{total} passing
 
-Blockers remain. See comments above for delegated items and logs."
-fi
+Remaining blockers:
+{list of failing gates}
+
+See comments above for details."
 ```
 
----
+## Step 14: Display CLI Summary
 
-## STEP 16: Display CLI Summary
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Summary: PR #{number}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Print concise summary**:
+Phase: {phase} ({environment})
+Gates: {passed}/{total} passed
 
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Summary: PR #$PR_NUMBER"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Phase: $PHASE ($ENVIRONMENT)"
-echo "Gates: $GATES_PASSED / $GATES_TOTAL passed"
-echo ""
+Actions taken:
+  {list of actions}
 
-if [ "$GATES_PASSED" -eq "$GATES_TOTAL" ]; then
-  echo "✅ Ready for $ENVIRONMENT"
-  echo ""
-  echo "Next: $NEXT_COMMAND"
-else
-  echo "❌ Not ready - $((GATES_TOTAL - GATES_PASSED)) gate(s) failing"
-  echo ""
-  echo "Next: Address blockers, then re-run /fix-ci $PR_NUMBER"
-fi
+{If all gates pass:}
+✅ Ready for {environment}
+Next: {next_command}
+
+{If gates fail:}
+❌ {remaining} gate(s) failing
+Next: Address blockers, re-run /fix-ci {pr_number}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 </process>
 
-<success_criteria>
-**CI fix workflow successfully completed when:**
-
-1. **PR context loaded**: PR number, title, base, head, checks fetched and displayed
-2. **Failures categorized**: All failing checks grouped by type (lint, types, tests, build, deploy, smoke, e2e)
-3. **Auto-fixes applied**: Lint/format issues fixed and pushed if any
-4. **Complex issues delegated**: Type errors, test failures, build failures delegated with clear context
-5. **Gates validated**: All deployment readiness gates checked for current phase
-6. **PR updated**: Status comment posted with clear next steps
-7. **CLI summary displayed**: User sees concise summary with next command
-8. **TodoWrite updated**: All tasks marked completed or delegated
-</success_criteria>
-
 <verification>
-**Before marking /fix-ci complete, verify:**
+Before completing, verify:
 
-1. **Check PR comment posted**:
+1. **PR comment posted**:
    ```bash
-   gh pr view $PR_NUMBER --comments | tail -20
+   gh pr view $PR_NUMBER --comments | tail -10
    ```
-   Should show /fix-ci generated comment
 
-2. **Verify git operations if auto-fixes applied**:
+2. **Auto-fixes committed** (if applied):
    ```bash
    git log -1 --oneline
    ```
-   Should show "fix: auto-fix lint/format via /fix-ci" if fixes were pushed
 
-3. **Confirm check statuses reported accurately**:
+3. **Check statuses accurate**:
    ```bash
-   gh pr checks $PR_NUMBER --json name,conclusion -q '.[] | "\(.name): \(.conclusion)"'
+   gh pr checks $PR_NUMBER
    ```
-   Should match reported status
 
-4. **Validate gates calculation**:
-   - CI checks: Quote actual FAILURE count
-   - Review: Quote actual reviewDecision value
-   - Mergeable: Quote actual mergeable status
-
-**Never claim fixes succeeded without verifying check status or build output.**
+4. **TodoWrite updated**: All tasks marked completed or delegated
 </verification>
 
-<output>
-**Actions taken by this command:**
+<examples>
 
-**PR analysis**:
-- Loaded PR context (title, base, head, checks, files)
-- Categorized failures by type
-- Detected deployment phase (1 or 2)
+## Example 1: Lint Failures Auto-Fixed
 
-**Auto-fixes** (if applicable):
-- Ran lint --fix on changed apps/files
-- Committed and pushed fixes if any changes made
+```
+> /fix-ci 123
 
-**Delegations** (if applicable):
-- Type errors → type-enforcer agent
-- Test failures → debugger agent
-- Build failures → logged for investigation
-- Review changes requested → senior-code-reviewer agent
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Fixing CI for PR #123
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**PR comments**:
-- Status comment with gate results
-- Auto-fix confirmation (if fixes applied)
-- Deployment quota warning (if rate limited)
-- Delegation notices (if issues delegated)
+Title: Add user profile page
+Branch: feature/user-profile → main
+State: OPEN
 
-**CLI output**:
-- Summary with phase, gates passed/total
-- Next command recommendation
-</output>
+Phase: 1 (staging)
 
----
+Checks: 4 passing, 1 failing, 0 pending
 
-## Notes
+Failures by category:
+  lint: 1 check
 
-**Tool Requirements**:
-- GitHub CLI (`gh`) - authenticated with repo access
-- `jq` - JSON parsing
-- `git` - version control operations
-- `pnpm` - frontend package management (if frontend changes)
-- `uv` - Python package management (if backend changes)
-- `curl` - health check endpoints
+Auto-fixing lint issues...
+  Running: npm run lint -- --fix
+  ✓ 3 files auto-fixed
+  Committing and pushing...
+  ✓ Pushed fix commit
 
-**Phase Detection**:
-- **Phase 1** (feature → staging): PR base is `main`
-- **Phase 2** (staging → production): PR base is `production`
+Posted PR comment: "✅ Auto-fixed lint/format issues."
 
-**Gate Requirements**:
-- **Phase 1**: CI green, review approved, no conflicts, smoke tests pass
-- **Phase 2**: CI green, review approved, no conflicts, staging validation complete, deployment metadata present
+Waiting for CI to re-run...
 
-**Rate Limit Handling**: When deployment quota hit, switches to local validation and preview mode to conserve quota.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Summary: PR #123
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Actions taken:
+  - Auto-fixed lint issues (3 files)
+  - Pushed fix commit
+  - CI re-running
+
+Next: Wait for CI, then /fix-ci 123 to verify
+```
+
+## Example 2: Multiple Failures, Delegation
+
+```
+> /fix-ci 456
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Fixing CI for PR #456
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Title: Implement payment processing
+Branch: feature/payments → main
+State: OPEN
+
+Phase: 1 (staging)
+
+Checks: 2 passing, 3 failing, 0 pending
+
+Failures by category:
+  lint: 1 check
+  types: 1 check
+  tests: 1 check
+
+Auto-fixing lint issues...
+  ✓ 1 file auto-fixed, pushed
+
+Analyzing type errors...
+  Found 5 type errors
+  Delegating to type-enforcer agent...
+  ✓ Agent spawned
+
+Analyzing test failures...
+  Found 2 failing tests
+  Delegating to debugger agent...
+  ✓ Agent spawned
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Summary: PR #456
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Actions taken:
+  - Auto-fixed lint (1 file)
+  - Delegated type errors to type-enforcer
+  - Delegated test failures to debugger
+
+Gates: 1/4 passed
+
+❌ Blockers remain
+Next: Wait for agents, re-run /fix-ci 456
+```
+
+## Example 3: All Gates Pass
+
+```
+> /fix-ci 789
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Fixing CI for PR #789
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Title: Update dashboard layout
+Branch: feature/dashboard → main
+State: OPEN
+
+Phase: 1 (staging)
+
+Checks: 5 passing, 0 failing, 0 pending
+
+No failures detected!
+
+Validating gates...
+  ✅ CI checks: all green
+  ✅ Review: approved
+  ✅ Mergeable: yes
+  ✅ Smoke tests: passing
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Summary: PR #789
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Gates: 4/4 passed
+
+✅ Ready for staging
+Next: /ship --staging
+```
+
+</examples>
+
+<notes>
+
+## Prerequisites
+
+- GitHub CLI (`gh`) installed and authenticated
+- PR exists and is open
+- Local checkout available (for auto-fixes)
+
+## Phase Detection
+
+| Base Branch | Phase | Deployment Target |
+|-------------|-------|-------------------|
+| main | 1 | staging |
+| production | 2 | production |
+| other | 0 | unknown |
+
+## Gate Requirements
+
+**Phase 1** (staging):
+- CI checks green
+- Review approved
+- No merge conflicts
+- Smoke tests pass
+
+**Phase 2** (production):
+- CI checks green
+- Review approved
+- No merge conflicts
+- Staging validation complete
+- Deployment metadata present
+
+## When to Re-run
+
+Re-run `/fix-ci` after:
+- CI completes from auto-fix push
+- Delegated agents complete their work
+- Manual fixes are pushed
+- Reviews are updated
+
+## Integration with /ship
+
+After `/fix-ci` shows all gates passing:
+- Phase 1: Run `/ship --staging`
+- Phase 2: Run `/ship --prod`
+
+</notes>

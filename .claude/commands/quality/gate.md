@@ -2,392 +2,602 @@
 name: gate
 description: Run quality gates (CI checks or security scanning)
 argument-hint: <type> [args...] where type is: ci | sec
-allowed-tools: [Read, Write, Edit, Bash(npm *), Bash(pnpm *), Bash(npx *), Bash(pytest *), Bash(black *), Bash(flake8 *), Bash(mypy *), Bash(cargo *), Bash(go *), Bash(jq *), Bash(cat *), Bash(grep *), Bash(.spec-flow/scripts/bash/gate-sec.sh:*), Bash(semgrep *), Bash(git-secrets *), Bash(git secrets:*), Bash(npm audit:*), Bash(pip-audit *), Bash(safety *), Bash(which:*), Bash(command -v:*), Bash(test:*), Bash(yq:*), AskUserQuestion]
+allowed-tools: [Read, Write, Edit, Bash, Grep, Glob, AskUserQuestion, Task]
 ---
 
-# /gate — Consolidated Quality Gates
+# /gate — Quality Gates
 
 <context>
 **Arguments**: $ARGUMENTS
 
 **Current Branch**: !`git branch --show-current 2>/dev/null || echo "none"`
 
-**Git Status**: !`git status --short 2>/dev/null || echo "clean"`
-
-**Project Type Detection**:
-
-- Node.js: !`test -f package.json && echo "node" || echo ""`
-- Python: !`test -f requirements.txt && echo "python" || echo ""`
-- Rust: !`test -f Cargo.toml && echo "rust" || echo ""`
-- Go: !`test -f go.mod && echo "go" || echo ""`
-
-**Security tools installed**: !`for tool in semgrep git-secrets npm pip-audit safety; do command -v $tool >/dev/null 2>&1 && echo "$tool: yes" || echo "$tool: no"; done`
+**Project Detection**:
+- Node.js: !`test -f package.json && echo "yes" || echo "no"`
+- Python: !`test -f pyproject.toml -o -f requirements.txt && echo "yes" || echo "no"`
+- Rust: !`test -f Cargo.toml && echo "yes" || echo "no"`
+- Go: !`test -f go.mod && echo "yes" || echo "no"`
 
 **Workflow State**: @.spec-flow/memory/state.yaml
 </context>
 
 <objective>
-Unified entry point for quality gate validation:
+Unified quality gate validation:
 
-- `/gate ci` → Run CI quality checks (tests, linters, type checks, coverage ≥80%)
-- `/gate sec` → Run security gate (SAST, secrets detection, dependency scanning)
+| Command | Purpose | Pass Criteria |
+|---------|---------|---------------|
+| `/gate ci` | CI quality checks | All checks pass |
+| `/gate sec` | Security scanning | No CRITICAL/HIGH issues |
 
-These gates ensure code quality and security before deployment.
+Gates block deployment until passed.
 </objective>
 
 <process>
 
-## Step 1: Parse Type Argument
+## Step 1: Parse Gate Type
 
-**Extract first argument as type:**
+Extract first argument as gate type:
+- `ci` → Run CI quality checks
+- `sec` → Run security scanning
 
-```
-$type = first word of $ARGUMENTS
-$remaining = rest of $ARGUMENTS
-```
+**If no argument provided**, use AskUserQuestion:
 
-**If no type provided:**
-Use AskUserQuestion to ask:
 ```json
 {
-  "question": "Which quality gate do you want to run?",
-  "header": "Gate Type",
-  "multiSelect": false,
-  "options": [
-    {
-      "label": "ci",
-      "description": "CI checks (tests, linters, types, coverage ≥80%)"
-    },
-    {
-      "label": "sec",
-      "description": "Security (SAST, secrets, dependencies)"
-    }
-  ]
+  "questions": [{
+    "question": "Which quality gate do you want to run?",
+    "header": "Gate",
+    "multiSelect": false,
+    "options": [
+      {"label": "ci", "description": "Tests, linting, types, coverage (Recommended)"},
+      {"label": "sec", "description": "SAST, secrets detection, dependency audit"}
+    ]
+  }]
 }
 ```
 
-## Step 2: Execute Gate Based on Type
+---
 
-<when_argument_is value="ci">
+## Gate: CI (`/gate ci`)
 
-### CI Quality Gate
+### Purpose
 
-**Purpose**: Run CI quality checks as a blocking gate before epics can transition from Review → Integrated state.
+Validate code quality before deployment:
+1. All tests pass
+2. Linting checks pass
+3. Type checks pass
+4. Coverage meets threshold (if configured)
 
-**Checks**:
-1. **Unit & Integration Tests**: All tests must pass
-2. **Linters**: Code style compliance (ESLint/Prettier, Black/Flake8, clippy, golint)
-3. **Type Checks**: TypeScript/Python/Rust/Go type safety
-4. **Code Coverage**: Minimum 80% line coverage
+### Step CI-1: Detect Project Type
 
-**Pass Criteria**: ALL checks must pass (no failures allowed)
+Use Glob to detect project files:
 
-### Anti-Hallucination Rules
+| File Found | Project Type | Test Command | Lint Command | Type Command |
+|------------|--------------|--------------|--------------|--------------|
+| `package.json` | Node.js | `npm test` or `pnpm test` | `npm run lint` | `npx tsc --noEmit` |
+| `pyproject.toml` | Python | `pytest` | `ruff check .` | `mypy .` |
+| `Cargo.toml` | Rust | `cargo test` | `cargo clippy` | `cargo check` |
+| `go.mod` | Go | `go test ./...` | `go vet ./...` | (included in vet) |
 
-**CRITICAL**: Follow these rules to prevent fabricating gate results.
+**If multiple project types detected**, run checks for each.
 
-1. **Never claim tests pass without running them**
-   - Always execute actual test commands: `npm test`, `pytest`, `cargo test`, `go test`
-   - Report actual exit codes and output
-   - Don't say "passed" until verification succeeds
+### Step CI-2: Run Tests
 
-2. **Quote real command output**
-   - Show actual test failures, lint errors, type errors
-   - Include file:line references from real output
-   - Never invent error messages
+Execute test command for detected project type:
 
-3. **Verify coverage from actual reports**
-   - Read coverage/coverage-summary.json (Node.js)
-   - Read coverage.xml or .coverage (Python)
-   - Parse actual coverage percentages
-   - Don't guess at coverage numbers
+```bash
+# Node.js
+npm test 2>&1
 
-4. **Check state.yaml was updated**
-   - Read .spec-flow/memory/state.yaml after recording gate
-   - Verify gate status matches actual results
-   - Confirm timestamp recorded
+# Python
+pytest 2>&1
 
-5. **Report all failures, not just first one**
-   - If tests fail AND linters fail, report both
-   - Don't stop at first failure
-   - Give complete picture of gate status
+# Rust
+cargo test 2>&1
 
-### Implementation Steps
+# Go
+go test ./... 2>&1
+```
 
-1. **Parse Arguments**:
-   - Extract `--epic <name>` if present for per-epic tracking
-   - Extract `--verbose` flag for detailed output
+**Capture**: Exit code and output
+**Record**: TESTS_PASSED = (exit code == 0)
 
-2. **Detect Project Type**:
-   ```bash
-   PROJECT_TYPE="unknown"
-   if [ -f "package.json" ]; then PROJECT_TYPE="node"; fi
-   if [ -f "requirements.txt" ]; then PROJECT_TYPE="python"; fi
-   if [ -f "Cargo.toml" ]; then PROJECT_TYPE="rust"; fi
-   if [ -f "go.mod" ]; then PROJECT_TYPE="go"; fi
+### Step CI-3: Run Linters
 
-   if [ "$PROJECT_TYPE" = "unknown" ]; then
-     echo "❌ Unknown project type"
-     exit 1
-   fi
-   ```
+Execute lint command:
 
-3. **Run Tests**:
-   ```bash
-   TESTS_PASSED=false
-   case "$PROJECT_TYPE" in
-     node) npm test && TESTS_PASSED=true ;;
-     python) pytest && TESTS_PASSED=true ;;
-     rust) cargo test && TESTS_PASSED=true ;;
-     go) go test ./... && TESTS_PASSED=true ;;
-   esac
-   ```
+```bash
+# Node.js
+npm run lint 2>&1
 
-4. **Run Linters**:
-   ```bash
-   LINTERS_PASSED=false
-   case "$PROJECT_TYPE" in
-     node) npm run lint && LINTERS_PASSED=true ;;
-     python) black --check . && flake8 && LINTERS_PASSED=true ;;
-     rust) cargo clippy -- -D warnings && LINTERS_PASSED=true ;;
-     go) golint ./... && LINTERS_PASSED=true ;;
-   esac
-   ```
+# Python
+ruff check . 2>&1
 
-5. **Run Type Checks**:
-   ```bash
-   TYPE_CHECK_PASSED=false
-   case "$PROJECT_TYPE" in
-     node) npx tsc --noEmit && TYPE_CHECK_PASSED=true ;;
-     python) mypy . && TYPE_CHECK_PASSED=true ;;
-     rust) cargo check && TYPE_CHECK_PASSED=true ;;
-     go) go vet ./... && TYPE_CHECK_PASSED=true ;;
-   esac
-   ```
+# Rust
+cargo clippy -- -D warnings 2>&1
 
-6. **Verify Code Coverage**:
-   ```bash
-   COVERAGE_PASSED=false
-   case "$PROJECT_TYPE" in
-     node)
-       if [ -f "coverage/coverage-summary.json" ]; then
-         COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
-         if (( $(echo "$COVERAGE >= 80" | bc -l) )); then
-           COVERAGE_PASSED=true
-         fi
-       fi
-       ;;
-     python)
-       if [ -f "coverage.xml" ]; then
-         COVERAGE=$(grep -oP 'line-rate="\K[0-9.]+' coverage.xml | head -1)
-         COVERAGE_PCT=$(echo "$COVERAGE * 100" | bc)
-         if (( $(echo "$COVERAGE_PCT >= 80" | bc -l) )); then
-           COVERAGE_PASSED=true
-         fi
-       fi
-       ;;
-     rust|go)
-       COVERAGE_PASSED=true  # Coverage check optional for Rust/Go
-       ;;
-   esac
-   ```
+# Go
+go vet ./... 2>&1
+```
 
-7. **Determine Gate Status**:
-   ```bash
-   GATE_PASSED=false
-   if [ "$TESTS_PASSED" = true ] && \
-      [ "$LINTERS_PASSED" = true ] && \
-      [ "$TYPE_CHECK_PASSED" = true ] && \
-      [ "$COVERAGE_PASSED" = true ]; then
-     GATE_PASSED=true
-   fi
-   ```
+**Capture**: Exit code and output
+**Record**: LINTERS_PASSED = (exit code == 0)
 
-8. **Record Gate Result in state.yaml**:
+### Step CI-4: Run Type Checks
 
-   Use Edit tool to update `.spec-flow/memory/state.yaml`:
-   ```yaml
-   quality_gates:
-     ci:
-       status: passed # or failed
-       timestamp: 2025-11-20T10:00:00Z
-       tests: true
-       linters: true
-       type_check: true
-       coverage: true
-   ```
+Execute type check command:
 
-9. **Display Gate Summary**:
-   ```
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   CI Quality Gate
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```bash
+# Node.js (if tsconfig.json exists)
+npx tsc --noEmit 2>&1
 
-   ℹ️  Project type: {node|python|rust|go}
+# Python (if mypy configured)
+mypy . 2>&1
 
-   ✅ Tests passed (or ❌ Tests failed)
-   ✅ Linters passed (or ❌ Linters failed)
-   ✅ Type checks passed (or ❌ Type checks failed)
-   ✅ Coverage sufficient (≥80%) (or ❌ Coverage insufficient)
+# Rust (built into cargo check)
+cargo check 2>&1
 
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Go (included in go vet)
+# Already run in linter step
+```
 
-   ✅ CI gate PASSED (or ❌ CI gate FAILED)
+**Capture**: Exit code and output
+**Record**: TYPE_CHECK_PASSED = (exit code == 0)
 
-   {Next steps based on pass/fail}
-   ```
+### Step CI-5: Check Coverage (If Configured)
 
-</when_argument_is>
+**Node.js** — Check `coverage/coverage-summary.json`:
+```bash
+# Read coverage file if exists
+test -f coverage/coverage-summary.json && cat coverage/coverage-summary.json
+```
 
-<when_argument_is value="sec">
+Extract `total.lines.pct` using Read tool and JSON parsing.
 
-### Security Quality Gate
+**Python** — Check `coverage.xml` or `.coverage`:
+```bash
+# Generate coverage report if .coverage exists
+test -f .coverage && coverage report --format=total
+```
 
-**Purpose**: Run security quality gate to ensure no HIGH/CRITICAL security issues before deployment.
+**Rust/Go** — Coverage optional, mark as SKIPPED (not PASSED).
 
-**Checks performed:**
-1. **SAST** - Static Application Security Testing (Semgrep)
-2. **Secrets Detection** - No hardcoded credentials (git-secrets or regex fallback)
-3. **Dependency Scan** - No HIGH/CRITICAL vulnerabilities (npm audit, pip-audit, safety)
+**Coverage Evaluation**:
+| Coverage | Status |
+|----------|--------|
+| >= 80% | PASSED |
+| < 80% | FAILED |
+| Not configured | SKIPPED |
 
-**Pass criteria:**
-- SAST: Zero ERROR-level findings
-- Secrets: Zero secrets detected
-- Dependencies: Zero CRITICAL/HIGH vulnerabilities
+**IMPORTANT**: SKIPPED is NOT the same as PASSED. Display honestly:
+- `PASSED (87%)` — Coverage meets threshold
+- `FAILED (62%)` — Coverage below threshold
+- `SKIPPED` — Coverage not configured for this project type
 
-### Implementation Steps
+### Step CI-6: Determine Gate Status
 
-1. **Execute security gate script**:
-   ```bash
-   bash .spec-flow/scripts/bash/gate-sec.sh
-   ```
+```
+GATE_STATUS = "PASSED" if:
+  - TESTS_PASSED == true
+  - LINTERS_PASSED == true
+  - TYPE_CHECK_PASSED == true
+  - COVERAGE_STATUS != "FAILED"  (SKIPPED is acceptable)
 
-   The gate-sec.sh script performs:
-   - Detect project type (Node.js, Python, Rust, Go)
-   - Check tool availability (Semgrep, git-secrets, npm audit, pip-audit)
-   - Run SAST with `semgrep --config=auto --json .`
-   - Run secrets detection (git-secrets or regex fallback)
-   - Run dependency scan (npm audit, pip-audit, or safety check)
-   - Aggregate results and count ERROR/CRITICAL/HIGH findings
-   - Determine pass/fail (PASS: 0 ERROR, 0 secrets, 0 CRITICAL/HIGH deps)
-   - Update state.yaml with gate results
-   - Display formatted output with pass/fail status and remediation
+GATE_STATUS = "FAILED" otherwise
+```
 
-2. **Read gate results**:
-   - Load updated `.spec-flow/memory/state.yaml`
-   - Extract `quality_gates.security.status` (passed or failed)
-   - Extract `quality_gates.security.findings` (counts by severity)
+### Step CI-7: Record Results
 
-3. **Present results to user**:
+Update `.spec-flow/memory/state.yaml`:
 
-   **If PASSED:**
-   ```
-   Security Quality Gate
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```yaml
+quality_gates:
+  ci:
+    status: passed  # or failed
+    timestamp: 2025-12-14T18:00:00Z
+    checks:
+      tests: passed
+      linters: passed
+      type_check: passed
+      coverage: passed  # or failed or skipped
+    coverage_pct: 87  # if available
+```
 
-   ℹ️  Project type: {node|python|rust|go}
+### Step CI-8: Display Results
 
-   ✅ SAST passed (no HIGH/CRITICAL issues)
-   ✅ No secrets detected
-   ✅ Dependencies secure
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CI Quality Gate
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Project: {Node.js | Python | Rust | Go}
 
-   ✅ Security gate PASSED
+Tests:      {PASSED | FAILED}
+Linting:    {PASSED | FAILED}
+Type Check: {PASSED | FAILED}
+Coverage:   {PASSED (N%) | FAILED (N%) | SKIPPED}
 
-   Epic can transition: Review → Integrated
-   ```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-   **If FAILED:**
-   ```
-   Security Quality Gate
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{PASSED: Gate passed. Ready for deployment.}
+{FAILED: Gate failed. Fix issues before proceeding.}
 
-   ℹ️  Project type: {node|python|rust|go}
-
-   ❌ SAST failed ({N} ERROR findings)
-   ✅ No secrets detected
-   ❌ Vulnerable dependencies found ({N} HIGH, {N} CRITICAL)
-
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-   ❌ Security gate FAILED
-
-   Fix security issues before proceeding:
-     • Review SAST findings: semgrep --config=auto .
-     • Update vulnerable dependencies: npm audit fix
-
-   Installation (if tools missing):
-     • Semgrep: pip install semgrep
-     • git-secrets: brew install git-secrets (macOS)
-     • pip-audit: pip install pip-audit (Python)
-   ```
-
-4. **Suggest next action** based on gate status:
-   - **If PASSED**: Epic can proceed to Integrated state
-   - **If FAILED**: Epic remains in Review state, developer must fix issues and re-run gate
-
-</when_argument_is>
-
-</process>
-
-<verification>
-Before completing, verify:
-- Gate type correctly identified (ci or sec)
-- Appropriate checks executed for project type
-- state.yaml updated with gate results
-- Gate status matches actual check results
-- User presented with clear pass/fail status
-- Remediation instructions provided if failed
-</verification>
-
-<success_criteria>
-**CI gate:**
-- All checks executed (tests, linters, type checks, coverage)
-- Results accurate from actual command output
-- Gate status recorded in state.yaml
-- Summary displayed with remediation steps if failed
-
-**Security gate:**
-- All security checks completed (SAST, secrets, dependencies)
-- Results aggregated correctly
-- Gate status recorded in state.yaml
-- Remediation instructions provided for failed checks
-
-**Both gates:**
-- Pass/fail determination matches criteria
-- Epic transition enabled/blocked appropriately
-- Results persist in workflow state
-</success_criteria>
+{If FAILED, show first error from each failing check}
+```
 
 ---
 
-## Quick Reference
+## Gate: Security (`/gate sec`)
 
-| Command | Purpose |
-|---------|---------|
-| `/gate ci` | Run CI quality checks |
-| `/gate ci --epic <name>` | CI gate for epic |
-| `/gate ci --verbose` | CI gate with detailed output |
-| `/gate sec` | Run security scanning |
+### Purpose
 
-## What Each Gate Checks
+Ensure no security vulnerabilities before deployment:
+1. Static Application Security Testing (SAST)
+2. Secrets detection (no hardcoded credentials)
+3. Dependency vulnerability scanning
 
-**CI Gate (`/gate ci`):**
-- Unit/integration tests pass
-- Linter checks pass
-- Type checks pass
-- Coverage ≥80%
+### Step SEC-1: Check Available Tools
 
-**Security Gate (`/gate sec`):**
-- No HIGH/CRITICAL SAST findings
-- No secrets in code
-- No vulnerable dependencies
+Detect which security tools are installed:
 
-**Supported Project Types:**
-- **Node.js**: Jest/Vitest, ESLint/Prettier, TypeScript
-- **Python**: pytest, Black/Flake8, mypy
-- **Rust**: cargo test, clippy, rustfmt
-- **Go**: go test, golint, gofmt, go vet
+```bash
+# Check each tool
+command -v semgrep >/dev/null 2>&1 && echo "semgrep: available"
+command -v git-secrets >/dev/null 2>&1 && echo "git-secrets: available"
+command -v npm >/dev/null 2>&1 && echo "npm audit: available"
+command -v pip-audit >/dev/null 2>&1 && echo "pip-audit: available"
+```
 
-**Gate Blocking**: Epic cannot transition from Review → Integrated until both gates pass.
+**If no tools available**, provide installation guidance:
+
+```
+Security tools not found. Install one or more:
+
+SAST:
+  pip install semgrep
+
+Secrets Detection:
+  brew install git-secrets  (macOS)
+  choco install git-secrets (Windows)
+
+Dependency Scanning:
+  npm audit (Node.js - built-in)
+  pip install pip-audit (Python)
+```
+
+### Step SEC-2: Run SAST (if available)
+
+```bash
+# Semgrep with auto config
+semgrep --config=auto --json . 2>&1
+```
+
+**Parse output**:
+- Count findings by severity: ERROR, WARNING, INFO
+- Extract file:line references for ERROR findings
+
+**Record**: SAST_PASSED = (ERROR count == 0)
+
+**If semgrep unavailable**: SAST_STATUS = "SKIPPED"
+
+### Step SEC-3: Run Secrets Detection
+
+**Option A: git-secrets (if available)**
+```bash
+git secrets --scan 2>&1
+```
+
+**Option B: Regex fallback**
+Use Grep tool to search for common secret patterns:
+- `password\s*=\s*['"][^'"]+['"]`
+- `api[_-]?key\s*=\s*['"][^'"]+['"]`
+- `secret\s*=\s*['"][^'"]+['"]`
+- AWS access keys: `AKIA[0-9A-Z]{16}`
+- Private keys: `-----BEGIN.*PRIVATE KEY-----`
+
+**Record**: SECRETS_PASSED = (no secrets found)
+
+### Step SEC-4: Run Dependency Scan
+
+**Node.js**:
+```bash
+npm audit --json 2>&1
+```
+
+**Python**:
+```bash
+pip-audit --format=json 2>&1
+# or
+safety check --json 2>&1
+```
+
+**Parse output**:
+- Count vulnerabilities by severity: CRITICAL, HIGH, MODERATE, LOW
+- Extract package names and CVE IDs for CRITICAL/HIGH
+
+**Record**: DEPS_PASSED = (CRITICAL + HIGH count == 0)
+
+### Step SEC-5: Determine Gate Status
+
+```
+GATE_STATUS = "PASSED" if:
+  - SAST_PASSED == true OR SAST_STATUS == "SKIPPED"
+  - SECRETS_PASSED == true
+  - DEPS_PASSED == true OR DEPS_STATUS == "SKIPPED"
+
+GATE_STATUS = "FAILED" otherwise
+```
+
+**Note**: Secrets detection is NEVER skipped. It must pass.
+
+### Step SEC-6: Record Results
+
+Update `.spec-flow/memory/state.yaml`:
+
+```yaml
+quality_gates:
+  security:
+    status: passed  # or failed
+    timestamp: 2025-12-14T18:00:00Z
+    checks:
+      sast: passed  # or failed or skipped
+      secrets: passed  # or failed (never skipped)
+      dependencies: passed  # or failed or skipped
+    findings:
+      sast_errors: 0
+      secrets_found: 0
+      critical_deps: 0
+      high_deps: 0
+```
+
+### Step SEC-7: Display Results
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Security Quality Gate
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Project: {Node.js | Python | Rust | Go}
+
+SAST:         {PASSED | FAILED (N errors) | SKIPPED}
+Secrets:      {PASSED | FAILED (N found)}
+Dependencies: {PASSED | FAILED (N critical, N high) | SKIPPED}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{PASSED: Security gate passed. No blocking issues.}
+{FAILED: Security gate failed. Fix issues before deployment.}
+
+{If FAILED, show remediation steps:}
+  - SAST: Run `semgrep --config=auto .` for details
+  - Secrets: Remove hardcoded credentials, use env vars
+  - Deps: Run `npm audit fix` or update vulnerable packages
+```
+
+</process>
+
+<anti-hallucination>
+## Rules to Prevent Fabricated Results
+
+1. **Run actual commands** — Never claim tests pass without executing them
+2. **Report real output** — Quote actual error messages, not invented ones
+3. **Verify before recording** — Read state.yaml after update to confirm
+4. **Honest about skipped** — SKIPPED means not checked, NOT passed
+5. **Show all failures** — If tests AND lint fail, report both
+6. **No fake coverage** — Only report coverage from actual reports
+</anti-hallucination>
+
+<verification>
+Before completing, verify:
+
+1. **Commands actually ran**:
+   ```bash
+   # Check command history or output
+   ```
+
+2. **State was updated**:
+   - Read `.spec-flow/memory/state.yaml`
+   - Verify gate status matches actual results
+
+3. **All checks reported**:
+   - Each check shows PASSED, FAILED, or SKIPPED
+   - No check is silently ignored
+
+4. **Failures include details**:
+   - File:line references for errors
+   - Specific error messages
+   - Remediation guidance
+</verification>
+
+<examples>
+
+## Example 1: CI Gate Passes
+
+```
+> /gate ci
+
+Detecting project type...
+Found: Node.js (package.json)
+
+Running tests...
+  npm test
+  ✓ 47 tests passed
+
+Running linters...
+  npm run lint
+  ✓ No issues found
+
+Running type check...
+  npx tsc --noEmit
+  ✓ No type errors
+
+Checking coverage...
+  Reading coverage/coverage-summary.json
+  ✓ Coverage: 87.3%
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CI Quality Gate
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Project: Node.js
+
+Tests:      PASSED
+Linting:    PASSED
+Type Check: PASSED
+Coverage:   PASSED (87%)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ CI gate PASSED. Ready for deployment.
+```
+
+## Example 2: CI Gate Fails
+
+```
+> /gate ci
+
+Detecting project type...
+Found: Python (pyproject.toml)
+
+Running tests...
+  pytest
+  ✗ 2 tests failed
+
+Running linters...
+  ruff check .
+  ✓ No issues found
+
+Running type check...
+  mypy .
+  ✗ 3 type errors found
+
+Checking coverage...
+  Coverage not configured (no .coverage file)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CI Quality Gate
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Project: Python
+
+Tests:      FAILED
+Linting:    PASSED
+Type Check: FAILED
+Coverage:   SKIPPED
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✗ CI gate FAILED. Fix issues before proceeding.
+
+Test failures:
+  tests/test_api.py:45: AssertionError
+  tests/test_auth.py:23: TypeError
+
+Type errors:
+  app/models.py:12: Incompatible return type
+  app/routes.py:34: Missing argument
+  app/routes.py:56: Missing argument
+```
+
+## Example 3: Security Gate
+
+```
+> /gate sec
+
+Checking security tools...
+  semgrep: available
+  git-secrets: not found (using regex fallback)
+  npm audit: available
+
+Running SAST...
+  semgrep --config=auto --json .
+  ✓ 0 errors, 2 warnings, 5 info
+
+Running secrets scan...
+  Scanning for common secret patterns...
+  ✓ No secrets detected
+
+Running dependency audit...
+  npm audit --json
+  ✗ 1 critical, 2 high vulnerabilities
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Security Quality Gate
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Project: Node.js
+
+SAST:         PASSED
+Secrets:      PASSED
+Dependencies: FAILED (1 critical, 2 high)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✗ Security gate FAILED.
+
+Vulnerable packages:
+  lodash@4.17.20 (critical) - CVE-2021-23337
+  axios@0.21.0 (high) - CVE-2021-3749
+  minimist@1.2.5 (high) - CVE-2021-44906
+
+Fix: npm audit fix --force
+```
+
+</examples>
+
+<notes>
+
+## Gate Requirements by Deployment Phase
+
+| Phase | Required Gates |
+|-------|---------------|
+| Feature development | None (optional) |
+| Before PR | `/gate ci` |
+| Before merge | `/gate ci` + `/gate sec` |
+| Before production | Both gates must be PASSED in state.yaml |
+
+## Tool Installation
+
+**SAST**:
+```bash
+pip install semgrep
+```
+
+**Secrets Detection**:
+```bash
+# macOS
+brew install git-secrets
+
+# Windows
+choco install git-secrets
+
+# Linux
+git clone https://github.com/awslabs/git-secrets && cd git-secrets && make install
+```
+
+**Dependency Scanning**:
+```bash
+# Node.js (built-in)
+npm audit
+
+# Python
+pip install pip-audit
+# or
+pip install safety
+```
+
+## Gate Status in State
+
+Gates record their status in `.spec-flow/memory/state.yaml` for workflow continuity:
+
+```yaml
+quality_gates:
+  ci:
+    status: passed
+    timestamp: 2025-12-14T18:00:00Z
+  security:
+    status: passed
+    timestamp: 2025-12-14T18:05:00Z
+```
+
+</notes>

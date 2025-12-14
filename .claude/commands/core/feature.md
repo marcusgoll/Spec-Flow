@@ -102,47 +102,14 @@ cat "$FEATURE_DIR/state.yaml"
 
 ### Step 1.1.5: Create Worktree (If Preference Enabled)
 
-Check worktree context and preference:
+**Handle worktree using centralized skill** (see `.claude/skills/worktree-context/SKILL.md`):
 
-```bash
-# Check if already in a worktree
-IS_WORKTREE=$(bash .spec-flow/scripts/bash/worktree-context.sh in-worktree && echo "true" || echo "false")
-
-# Check worktree auto-create preference
-WORKTREE_AUTO=$(bash .spec-flow/scripts/utils/load-preferences.sh --key "worktrees.auto_create" --default "true" 2>/dev/null)
-
-echo "In worktree: $IS_WORKTREE"
-echo "Auto-create worktree: $WORKTREE_AUTO"
-```
-
-**If NOT in worktree AND auto_create is true:**
-
-```bash
-if [ "$IS_WORKTREE" = "false" ] && [ "$WORKTREE_AUTO" = "true" ]; then
-    # Get feature slug and branch
-    FEATURE_SLUG=$(yq eval '.slug' "$FEATURE_DIR/state.yaml")
-    FEATURE_BRANCH="feature/$FEATURE_SLUG"
-
-    # Create worktree
-    WORKTREE_PATH=$(bash .spec-flow/scripts/bash/worktree-context.sh create "feature" "$FEATURE_SLUG" "$FEATURE_BRANCH")
-
-    if [ -n "$WORKTREE_PATH" ]; then
-        # Update state.yaml with worktree info
-        yq eval ".git.worktree_enabled = true" -i "$FEATURE_DIR/state.yaml"
-        yq eval ".git.worktree_path = \"$WORKTREE_PATH\"" -i "$FEATURE_DIR/state.yaml"
-        echo "Created worktree at: $WORKTREE_PATH"
-    fi
-fi
-```
-
-**Read worktree path for Task() agents:**
-
-```bash
-WORKTREE_PATH=$(yq eval '.git.worktree_path // ""' "$FEATURE_DIR/state.yaml")
-WORKTREE_ENABLED=$(yq eval '.git.worktree_enabled // false' "$FEATURE_DIR/state.yaml")
-echo "Worktree enabled: $WORKTREE_ENABLED"
-echo "Worktree path: $WORKTREE_PATH"
-```
+1. Check preference: `worktrees.auto_create` (default: true)
+2. Check if already in worktree: `bash .spec-flow/scripts/bash/worktree-context.sh in-worktree`
+3. If NOT in worktree AND auto_create is true:
+   - Create: `bash .spec-flow/scripts/bash/worktree-context.sh create "feature" "$SLUG" "$BRANCH"`
+   - Store in state.yaml: `git.worktree_enabled`, `git.worktree_path`
+4. Read worktree info from state.yaml for Task() agent prompts
 
 ### Step 1.2: Initialize Interaction State
 

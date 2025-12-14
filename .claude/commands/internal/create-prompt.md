@@ -2,6 +2,9 @@
 name: create-prompt
 description: Expert prompt engineer that creates optimized, XML-structured prompts with intelligent depth selection
 argument-hint: [task description]
+allowed-tools: [Read, Write, Glob, Bash(ls:*), Bash(mkdir:*), SlashCommand]
+version: 1.0
+updated: 2025-12-14
 ---
 
 # Prompt Engineer

@@ -60,42 +60,17 @@ Quality targets: Auto-detected from ${BASE_DIR}/\*/plan.md
 
 <process>
 
-### Step 0: WORKFLOW TYPE DETECTION
+### Step 0: WORKFLOW DETECTION
 
-**Detect whether this is an epic or feature workflow:**
+**Detect workflow using centralized skill** (see `.claude/skills/workflow-detection/SKILL.md`):
 
-```bash
-# Run detection utility (cross-platform)
-if command -v bash >/dev/null 2>&1; then
-    WORKFLOW_INFO=$(bash .spec-flow/scripts/utils/detect-workflow-paths.sh 2>/dev/null)
-    DETECTION_EXIT=$?
-else
-    WORKFLOW_INFO=$(pwsh -File .spec-flow/scripts/utils/detect-workflow-paths.ps1 2>/dev/null)
-    DETECTION_EXIT=$?
-fi
-
-# Parse detection result
-if [ $DETECTION_EXIT -eq 0 ]; then
-    WORKFLOW_TYPE=$(echo "$WORKFLOW_INFO" | jq -r '.type')
-    BASE_DIR=$(echo "$WORKFLOW_INFO" | jq -r '.base_dir')
-    SLUG=$(echo "$WORKFLOW_INFO" | jq -r '.slug')
-
-    echo "✓ Detected $WORKFLOW_TYPE workflow"
-    echo "  Base directory: $BASE_DIR/$SLUG"
-
-    # Determine which quality gates to run
-    if [ "$WORKFLOW_TYPE" = "epic" ]; then
-        echo "  Running 10 quality gates (core + enhanced)"
-    else
-        echo "  Running 6 quality gates (core only)"
-    fi
-
-    # Set file paths
-    WORKFLOW_STATE="${BASE_DIR}/${SLUG}/state.yaml"
-else
-    echo "⚠ Could not auto-detect workflow type - using fallback"
-fi
-```
+1. Run detection: `bash .spec-flow/scripts/utils/detect-workflow-paths.sh`
+2. Parse JSON: Extract `type`, `base_dir`, `slug` from output
+3. If detection fails: Use default (feature workflow with 6 gates)
+4. Set gate count:
+   - Feature: 6 core gates
+   - Epic: 10 gates (core + enhanced)
+5. Set `WORKFLOW_STATE="${BASE_DIR}/${SLUG}/state.yaml"`
 
 ---
 
