@@ -346,7 +346,13 @@ When current phase is "implement":
    WORKTREE_ENABLED=$(yq eval '.git.worktree_enabled // false' "$FEATURE_DIR/state.yaml")
    ```
 
-2. Spawn a worker agent for ONE feature only:
+2. Extract feature slug and spawn a worker agent for ONE feature only:
+
+   ```bash
+   # Extract the feature slug (last component of FEATURE_DIR)
+   FEATURE_SLUG=$(basename "$FEATURE_DIR")
+   echo "Feature slug: $FEATURE_SLUG"
+   ```
 
 ```
 Task tool call:
@@ -355,25 +361,40 @@ Task tool call:
   prompt: |
     Implement ONE feature from the domain memory.
 
-    Feature directory: [FEATURE_DIR]
+    ## Path Context
+    Feature slug: ${FEATURE_SLUG}
+    Feature directory (main repo relative): ${FEATURE_DIR}
+    Worktree enabled: ${WORKTREE_ENABLED}
+    Worktree path: ${WORKTREE_PATH}
 
     ${WORKTREE_ENABLED == "true" ? "
-    **WORKTREE CONTEXT**
-    Path: $WORKTREE_PATH
+    ## WORKTREE MODE (CRITICAL)
 
-    CRITICAL: Execute this FIRST before any other commands:
+    You are operating in an isolated git worktree.
+
+    **Step 1: Switch to worktree FIRST**
     ```bash
-    cd \"$WORKTREE_PATH\"
+    cd \"${WORKTREE_PATH}\" || exit 1
+    echo \"Working in: $(pwd)\"
     ```
 
-    All paths are relative to this worktree.
-    Git commits stay local to worktree branch.
-    Do NOT merge or push - orchestrator handles that.
-    " : ""}
+    **Step 2: Reconstruct paths relative to worktree**
+    After cd, the feature directory is at: specs/${FEATURE_SLUG}/
+    Domain memory is at: specs/${FEATURE_SLUG}/domain-memory.yaml
 
-    Instructions:
-    1. ${WORKTREE_ENABLED == "true" ? "cd to worktree path" : ""}
-    2. Read domain-memory.yaml
+    **Rules:**
+    - All paths are relative to worktree root AFTER cd
+    - Git commits stay local to worktree branch
+    - Do NOT merge or push - orchestrator handles that
+    " : "
+    ## NORMAL MODE
+    Feature directory: ${FEATURE_DIR}
+    Domain memory: ${FEATURE_DIR}/domain-memory.yaml
+    "}
+
+    ## Instructions
+    1. ${WORKTREE_ENABLED == "true" ? "cd to worktree path and verify" : "Verify feature directory exists"}
+    2. Read domain-memory.yaml (use worktree-relative path if in worktree mode)
     3. Find the first feature with status "pending" or "in_progress"
     4. Implement ONLY that one feature using TDD
     5. Update domain-memory.yaml with your progress

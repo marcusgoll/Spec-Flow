@@ -364,6 +364,81 @@ Do NOT merge or push - the orchestrator handles that.
 EOF
 }
 
+# Extract worktree-relative path from a main-repo-relative path
+# Fixes path duplication bug where worktree path gets nested inside itself
+# Usage: extract_worktree_relative_path "specs/001-auth" "/path/to/worktree"
+# Usage: extract_worktree_relative_path "epics/004-web-app/sprints/S01" "/path/to/worktree"
+# Returns: The path relative to worktree root (same as input for valid paths)
+extract_worktree_relative_path() {
+    local main_repo_path="$1"
+    local worktree_path="${2:-}"
+
+    # If the path contains "worktrees/" prefix, strip it and extract relative part
+    # This handles the duplication bug: worktrees/epic/004-190/epics/004-190
+    if [[ "$main_repo_path" == *"/worktrees/"* ]]; then
+        # Find where specs/ or epics/ starts after worktrees/
+        local relative_path
+        if [[ "$main_repo_path" == *"/specs/"* ]]; then
+            relative_path="specs/${main_repo_path##*/specs/}"
+        elif [[ "$main_repo_path" == *"/epics/"* ]]; then
+            relative_path="epics/${main_repo_path##*/epics/}"
+        else
+            # Extract just the slug from the path
+            relative_path=$(basename "$main_repo_path")
+        fi
+        echo "$relative_path"
+        return 0
+    fi
+
+    # If path starts with specs/ or epics/, it's already correct
+    if [[ "$main_repo_path" == specs/* ]] || [[ "$main_repo_path" == epics/* ]]; then
+        echo "$main_repo_path"
+        return 0
+    fi
+
+    # For bare slugs, try to detect the correct prefix
+    local slug="$main_repo_path"
+    if [[ -n "$worktree_path" ]]; then
+        if [[ -d "$worktree_path/specs/$slug" ]]; then
+            echo "specs/$slug"
+            return 0
+        elif [[ -d "$worktree_path/epics/$slug" ]]; then
+            echo "epics/$slug"
+            return 0
+        fi
+    fi
+
+    # Default: return as-is
+    echo "$main_repo_path"
+}
+
+# Get the feature/epic slug from any path format
+# Usage: extract_slug_from_path "specs/001-auth/domain-memory.yaml"
+# Usage: extract_slug_from_path "worktrees/feature/001-auth/specs/001-auth"
+# Returns: The slug (e.g., "001-auth")
+extract_slug_from_path() {
+    local path="$1"
+
+    # Handle various path formats
+    # Format 1: specs/001-auth/... or epics/001-auth/...
+    if [[ "$path" =~ specs/([^/]+) ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    elif [[ "$path" =~ epics/([^/]+) ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    fi
+
+    # Format 2: worktrees/type/slug/...
+    if [[ "$path" =~ worktrees/[^/]+/([^/]+) ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    fi
+
+    # Fallback: return basename
+    basename "$path"
+}
+
 # =============================================================================
 # CLI INTERFACE
 # =============================================================================
@@ -387,12 +462,16 @@ Commands:
   create <type> <slug> <branch>  Create new worktree
   cleanup [--dry-run]     Remove merged worktrees
   context <path>          Generate Task() agent context block
+  relative-path <path> [worktree]  Extract worktree-relative path (fixes duplication)
+  extract-slug <path>     Extract feature/epic slug from any path format
 
 Examples:
   worktree-context.sh root
   worktree-context.sh run /path/to/worktree "npm test"
   worktree-context.sh merge 001-auth-system
   worktree-context.sh context /path/to/worktree
+  worktree-context.sh relative-path "worktrees/epic/004-190/epics/004-190"
+  worktree-context.sh extract-slug "specs/001-auth/domain-memory.yaml"
 EOF
 }
 
@@ -437,6 +516,12 @@ main() {
             ;;
         context)
             generate_worktree_context "$@"
+            ;;
+        relative-path)
+            extract_worktree_relative_path "$@"
+            ;;
+        extract-slug)
+            extract_slug_from_path "$@"
             ;;
         help|--help|-h)
             show_help

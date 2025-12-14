@@ -47,26 +47,64 @@ That's it. Everything else comes from reading disk.
 
 When spawned with a `worktree_path` in your prompt, you are operating in an **isolated git worktree**.
 
-### Step 0: Switch to Worktree (BEFORE Boot-up Ritual)
+### Step 0: Switch to Worktree (MANDATORY - BEFORE Boot-up Ritual)
 
-If `worktree_path` is provided, execute this FIRST:
+If `worktree_path` is provided, execute this FIRST with validation:
 
 ```bash
-cd "${worktree_path}"
+# Switch to worktree with error handling
+cd "${worktree_path}" || { echo "ERROR: Failed to cd to worktree at ${worktree_path}"; exit 1; }
+echo "Working in: $(pwd)"
 ```
 
 Then verify you're in the correct location:
 
 ```bash
 # Should output the worktree path
-git rev-parse --show-toplevel
+WORKTREE_ROOT=$(git rev-parse --show-toplevel)
+echo "Git root: $WORKTREE_ROOT"
+
+# Verify this is a worktree, not the main repo
+git worktree list | grep -q "$(pwd)" && echo "✓ Confirmed worktree" || echo "⚠ Not a worktree"
 ```
+
+### CRITICAL: Path Reconstruction After cd
+
+**After cd'ing to worktree, FORGET all paths from the orchestrator's prompt.**
+
+The orchestrator passes paths relative to the MAIN REPO (where it runs). After you cd to the worktree, you must reconstruct paths:
+
+```bash
+# WRONG - using orchestrator's path directly:
+# cat ${feature_dir}/domain-memory.yaml  # This path is main-repo-relative!
+
+# CORRECT - reconstruct path relative to worktree:
+# Extract just the slug from the feature_dir path
+FEATURE_SLUG=$(basename "${feature_dir}")
+# Or for epic sprints, extract the last component
+LOCAL_FEATURE_DIR="specs/${FEATURE_SLUG}"
+
+# Verify the path exists in worktree
+if [ ! -d "$LOCAL_FEATURE_DIR" ]; then
+    # Try epics directory for epic workflows
+    LOCAL_FEATURE_DIR="epics/${FEATURE_SLUG}"
+fi
+
+echo "Local feature dir: $LOCAL_FEATURE_DIR"
+ls -la "$LOCAL_FEATURE_DIR"
+```
+
+**Path mapping rule:**
+- Orchestrator says: `specs/001-auth` → Use: `specs/001-auth` (after cd, same relative path)
+- Orchestrator says: `epics/004-web-app` → Use: `epics/004-web-app` (after cd, same relative path)
+- Domain memory: `${LOCAL_FEATURE_DIR}/domain-memory.yaml`
 
 ### Worktree Rules
 
-1. **All paths are relative to worktree root**
-   - `specs/001-auth/` is at `${worktree_path}/specs/001-auth/`
-   - Read/Write operations use worktree as base
+1. **All paths are relative to worktree root AFTER cd**
+   - After cd, the worktree IS your git root
+   - `specs/001-auth/` exists at `./specs/001-auth/` in worktree
+   - Do NOT prefix with worktree_path after cd
 
 2. **Git commits stay LOCAL to worktree branch**
    - Commit freely within your worktree
@@ -90,10 +128,33 @@ git rev-parse --show-toplevel
 <boot_up_ritual>
 **YOU MUST FOLLOW THIS EXACT SEQUENCE:**
 
+## Step 0.5: Path Setup (WORKTREE MODE ONLY)
+
+If you were given a `worktree_path`, you MUST have already:
+1. Run `cd "${worktree_path}"` (from Step 0 in worktree_awareness)
+2. Verified you're in the worktree
+3. Set `LOCAL_FEATURE_DIR` to the correct path (see Path Reconstruction above)
+
+**For the rest of this ritual, use `LOCAL_FEATURE_DIR` instead of `feature_dir`.**
+
+If NOT in worktree mode, simply use `feature_dir` as provided.
+
+```bash
+# Set the working feature directory
+if [ -n "${worktree_path}" ]; then
+    # Worktree mode - use reconstructed local path
+    WORKING_DIR="${LOCAL_FEATURE_DIR}"
+else
+    # Normal mode - use path as provided
+    WORKING_DIR="${feature_dir}"
+fi
+echo "Feature directory: $WORKING_DIR"
+```
+
 ## Step 1: READ Domain Memory
 ```bash
 # Read and understand current state
-cat ${feature_dir}/domain-memory.yaml
+cat ${WORKING_DIR}/domain-memory.yaml
 ```
 
 Parse:
@@ -117,7 +178,7 @@ If baseline tests fail:
 ## Step 3: PICK One Feature
 ```bash
 # Get next feature to work on
-.spec-flow/scripts/bash/domain-memory.sh pick ${feature_dir}
+.spec-flow/scripts/bash/domain-memory.sh pick ${WORKING_DIR}
 ```
 
 Selection priority:
@@ -131,7 +192,7 @@ If no features remain: EXIT with success (all done)
 ## Step 4: LOCK the Feature
 ```bash
 # Claim exclusive access
-.spec-flow/scripts/bash/domain-memory.sh lock ${feature_dir} ${feature_id}
+.spec-flow/scripts/bash/domain-memory.sh lock ${WORKING_DIR} ${feature_id}
 ```
 
 ## Step 5: IMPLEMENT the Feature
@@ -174,22 +235,22 @@ pytest tests/test_${feature_id}.py  # or npm test -- --testPathPattern=${feature
 ## Step 7: UPDATE Domain Memory
 ```bash
 # If tests pass
-.spec-flow/scripts/bash/domain-memory.sh update ${feature_dir} ${feature_id} passing
+.spec-flow/scripts/bash/domain-memory.sh update ${WORKING_DIR} ${feature_id} passing
 
 # If tests fail
-.spec-flow/scripts/bash/domain-memory.sh update ${feature_dir} ${feature_id} failing
-.spec-flow/scripts/bash/domain-memory.sh tried ${feature_dir} ${feature_id} "Approach description" "Failed: reason"
+.spec-flow/scripts/bash/domain-memory.sh update ${WORKING_DIR} ${feature_id} failing
+.spec-flow/scripts/bash/domain-memory.sh tried ${WORKING_DIR} ${feature_id} "Approach description" "Failed: reason"
 ```
 
 ## Step 8: LOG Your Work
 ```bash
-.spec-flow/scripts/bash/domain-memory.sh log ${feature_dir} "worker" "completed_feature" "Description of what was done" ${feature_id}
+.spec-flow/scripts/bash/domain-memory.sh log ${WORKING_DIR} "worker" "completed_feature" "Description of what was done" ${feature_id}
 ```
 
 ## Step 9: UNLOCK and COMMIT
 ```bash
 # Release lock
-.spec-flow/scripts/bash/domain-memory.sh unlock ${feature_dir}
+.spec-flow/scripts/bash/domain-memory.sh unlock ${WORKING_DIR}
 
 # Commit changes
 git add -A
@@ -262,7 +323,7 @@ If approaches have failed before:
 
 Log what you're doing differently:
 ```bash
-.spec-flow/scripts/bash/domain-memory.sh log ${feature_dir} "worker" "trying_new_approach" "Using mutex pattern instead of previous async attempts" ${feature_id}
+.spec-flow/scripts/bash/domain-memory.sh log ${WORKING_DIR} "worker" "trying_new_approach" "Using mutex pattern instead of previous async attempts" ${feature_id}
 ```
 </what_been_tried_handling>
 
@@ -290,22 +351,22 @@ If implementation fails:
 
 1. **Mark feature as failing**:
 ```bash
-.spec-flow/scripts/bash/domain-memory.sh update ${feature_dir} ${feature_id} failing
+.spec-flow/scripts/bash/domain-memory.sh update ${WORKING_DIR} ${feature_id} failing
 ```
 
 2. **Record what was tried**:
 ```bash
-.spec-flow/scripts/bash/domain-memory.sh tried ${feature_dir} ${feature_id} "Approach I took" "Failed: specific error message"
+.spec-flow/scripts/bash/domain-memory.sh tried ${WORKING_DIR} ${feature_id} "Approach I took" "Failed: specific error message"
 ```
 
 3. **Log the failure**:
 ```bash
-.spec-flow/scripts/bash/domain-memory.sh log ${feature_dir} "worker" "failed_feature" "Description of failure" ${feature_id}
+.spec-flow/scripts/bash/domain-memory.sh log ${WORKING_DIR} "worker" "failed_feature" "Description of failure" ${feature_id}
 ```
 
 4. **Unlock and EXIT**:
 ```bash
-.spec-flow/scripts/bash/domain-memory.sh unlock ${feature_dir}
+.spec-flow/scripts/bash/domain-memory.sh unlock ${WORKING_DIR}
 ```
 
 Do NOT keep trying. EXIT and let orchestrator decide next steps.

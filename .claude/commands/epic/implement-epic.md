@@ -926,25 +926,43 @@ I'm going to launch 3 sprints in parallel using specialist agents:
 Execute Sprint {SPRINT_ID}: {SPRINT_NAME}
 
 **Sprint Context:**
-- Epic Directory: {EPIC_DIR}
+- Epic Slug: {EPIC_SLUG}
+- Epic Directory (main repo relative): {EPIC_DIR}
 - Sprint ID: {SPRINT_ID}
-- Sprint Directory: {EPIC_DIR}/sprints/{SPRINT_ID}
-- Tasks File: {EPIC_DIR}/sprints/{SPRINT_ID}/tasks.md
+- Sprint Slug: {EPIC_SLUG}-{SPRINT_ID}
 - Subsystems: {SUBSYSTEMS}
 - Dependencies: {DEPENDENCIES} (from previous layers)
+- Worktree Enabled: {WORKTREE_ENABLED}
+- Worktree Path: {SPRINT_WORKTREE_PATH}
 
 {IF SPRINT_WORKTREE_PATH}
-**WORKTREE CONTEXT**
-Path: {SPRINT_WORKTREE_PATH}
+**WORKTREE MODE (CRITICAL)**
 
-CRITICAL: Execute this as your FIRST action before any other commands:
+You are operating in an isolated git worktree.
+
+**Step 1: Switch to worktree FIRST**
 ```bash
-cd "{SPRINT_WORKTREE_PATH}"
+cd "{SPRINT_WORKTREE_PATH}" || exit 1
+echo "Working in: $(pwd)"
+git rev-parse --show-toplevel
 ```
 
-All paths are relative to this worktree.
-Git commits stay LOCAL to this worktree's branch.
-Do NOT merge or push - the orchestrator handles that after all sprints complete.
+**Step 2: Reconstruct paths relative to worktree**
+After cd, the directory structure is relative to worktree root:
+- Epic directory: epics/{EPIC_SLUG}/
+- Sprint directory: epics/{EPIC_SLUG}/sprints/{SPRINT_ID}/
+- Tasks file: epics/{EPIC_SLUG}/sprints/{SPRINT_ID}/tasks.md
+- State file: epics/{EPIC_SLUG}/sprints/{SPRINT_ID}/state.yaml
+
+**Rules:**
+- All paths are relative to worktree root AFTER cd
+- Git commits stay LOCAL to this worktree's branch
+- Do NOT merge or push - the orchestrator handles that after all sprints complete
+- Do NOT use paths from the orchestrator's perspective after cd
+{ELSE}
+**NORMAL MODE**
+- Sprint Directory: {EPIC_DIR}/sprints/{SPRINT_ID}
+- Tasks File: {EPIC_DIR}/sprints/{SPRINT_ID}/tasks.md
 {ENDIF}
 
 **Contracts:**
@@ -963,17 +981,20 @@ Do NOT merge or push - the orchestrator handles that after all sprints complete.
 {ENDIF}
 
 **Workflow:**
-1. Read tasks from {EPIC_DIR}/sprints/{SPRINT_ID}/tasks.md
-2. {IF contracts_to_lock}Lock API contracts before implementation{ENDIF}
-3. Execute each task with TDD workflow:
+1. **Set up working paths** (after cd if worktree mode):
+   - If worktree: `LOCAL_SPRINT_DIR="epics/{EPIC_SLUG}/sprints/{SPRINT_ID}"`
+   - If normal: `LOCAL_SPRINT_DIR="{EPIC_DIR}/sprints/{SPRINT_ID}"`
+2. Read tasks from `${LOCAL_SPRINT_DIR}/tasks.md`
+3. {IF contracts_to_lock}Lock API contracts before implementation{ENDIF}
+4. Execute each task with TDD workflow:
    - Red: Write failing test
    - Green: Implement to pass test
    - Refactor: Improve without changing behavior
    - Commit: Atomic commit per task
-4. Run sprint-level test suite
-5. **Update sprint state.yaml** (CRITICAL - must happen after completion):
+5. Run sprint-level test suite
+6. **Update sprint state.yaml** (CRITICAL - must happen after completion):
    ```yaml
-   # {EPIC_DIR}/sprints/{SPRINT_ID}/state.yaml
+   # ${LOCAL_SPRINT_DIR}/state.yaml
    sprint:
      id: {SPRINT_ID}
      status: completed  # or failed if tests fail
