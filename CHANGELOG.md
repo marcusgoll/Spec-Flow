@@ -2,6 +2,60 @@
 
 ---
 
+## [11.4.0] - 2025-12-14
+
+### ✨ Added
+
+**Ultrathink Deep Planning Mode**
+
+Add Steve Jobs-inspired craftsman planning methodology with `--deep` flag support across all workflow commands.
+
+- **ultrathink skill**: New skill for craftsman-level architecture
+  - 5 Pillars: Think Different, Obsess Over Details, Plan Like Da Vinci, Simplify Ruthlessly, Iterate
+  - Assumption Inventory - challenge implicit assumptions
+  - Codebase Soul Analysis - understand project philosophy
+  - Simplification Review - reject premature abstractions
+  - Generates `craftsman-decision.md` artifact
+
+- **Planning depth preferences**: New preference `planning.auto_deep_mode` with triggers
+  - Epic features (>5 features)
+  - High complexity (>30 tasks estimated)
+  - Architecture changes
+
+- **Command support**: `--deep` flag added to `/feature`, `/epic`, `/quick`, `/plan`
+  - Forces ultrathink/craftsman mode for important decisions
+  - `--quick` flag for standard mode when speed needed
+
+**Init/Update Command Flexibility**
+
+- `npx spec-flow init` and `npx spec-flow update` now interchangeable
+  - Both commands detect existing installation state
+  - Automatically run correct operation (install or update)
+
+### 🐛 Fixed
+
+**Worktree Path Bugs**
+
+Fixed critical path issues where Task() agents worked in wrong directory when worktrees enabled.
+
+- **worker.md**: Strengthened cd validation with error handling
+  - Added path reconstruction after cd (WORKING_DIR pattern)
+  - Clear instructions to forget orchestrator paths after cd
+
+- **feature.md**: Pass worktree-relative paths to Task()
+  - Feature slug explicitly passed for path reconstruction
+  - Conditional instructions for worktree vs normal mode
+
+- **implement-epic.md**: Fixed sprint worktree paths
+  - Epic slug included in context
+  - LOCAL_SPRINT_DIR pattern for path reconstruction
+
+- **worktree-context.sh**: Added path conversion helpers
+  - `extract_worktree_relative_path()` - fixes duplication bug
+  - `extract_slug_from_path()` - extract slug from any path format
+
+---
+
 ## [11.3.1] - 2025-12-13
 
 ### 🐛 Fixed
