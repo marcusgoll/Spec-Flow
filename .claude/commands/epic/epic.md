@@ -197,7 +197,7 @@ cat "$EPIC_DIR/domain-memory.yaml"
 | plan | plan-phase-agent | tasks | Creates plan.md + sprint-plan.md |
 | tasks | tasks-phase-agent | analyze | Creates tasks.md for all sprints |
 | analyze | analyze-phase-agent | implement | Validates artifacts |
-| implement | epic | optimize | **Special: parallel sprint execution** |
+| implement | SlashCommand(/implement-epic) | optimize | **Delegates to parallel sprint execution** |
 | optimize | optimize-phase-agent | ship | Runs quality gates |
 | ship | ship-staging-phase-agent | finalize | Deploys to staging/prod |
 | finalize | finalize-phase-agent | complete | Generates walkthrough.md |
@@ -350,94 +350,41 @@ Task tool call:
 
 ---
 
-## PHASE 5: Implementation Phase (Parallel Sprint Execution)
+## PHASE 5: Implementation Phase (Delegation)
 
-**The implement phase for epics uses parallel workers across sprints.**
+**The implement phase delegates to `/implement-epic` for parallel sprint execution.**
 
 When current phase is "implement":
 
-### Step 5.1: Read Sprint Dependencies
+### Step 5.1: Delegate to /implement-epic
 
-```bash
-# Parse execution layers from sprint-plan.md
-# Layer 1: Independent sprints (can run in parallel)
-# Layer 2: Sprints depending on Layer 1
-# etc.
-
-cat "$EPIC_DIR/sprint-plan.md" | grep -A 20 "## Execution Layers"
-```
-
-### Step 5.2: Execute Sprints by Layer
-
-For each execution layer:
-
-1. Identify sprints in this layer (can run in parallel)
-2. Spawn worker agents for ALL sprints in the layer SIMULTANEOUSLY
-
-**Example: Layer with S01 and S02 (parallel):**
+**Use SlashCommand to invoke the dedicated sprint orchestrator:**
 
 ```
-Task tool call #1:
-  subagent_type: "worker"
-  description: "Implement Sprint S01"
-  run_in_background: true
-  prompt: |
-    Implement Sprint S01 for this epic.
-
-    Epic directory: [EPIC_DIR]
-    Sprint directory: [EPIC_DIR]/sprints/S01
-    Domain memory: [EPIC_DIR]/sprints/S01/domain-memory.yaml
-
-    Instructions:
-    1. Read sprint domain-memory.yaml for features to implement
-    2. Implement features using TDD
-    3. Update domain-memory.yaml with progress
-    4. EXIT when sprint is complete
-
-    Return:
-    ---SPRINT_COMPLETED---
-    sprint_id: S01
-    features_completed: N
-    files_changed: [list]
-    tests_added: [list]
-    ---END_SPRINT_COMPLETED---
-
-Task tool call #2 (parallel):
-  subagent_type: "worker"
-  description: "Implement Sprint S02"
-  run_in_background: true
-  prompt: |
-    Implement Sprint S02 for this epic.
-    [same structure as above]
+SlashCommand:
+  command: "/implement-epic"
 ```
 
-### Step 5.3: Wait for Layer Completion
+The `/implement-epic` command handles:
+- Reading sprint dependencies from sprint-plan.md
+- Executing sprints layer by layer (parallel within layers)
+- Spawning workers for each sprint
+- Waiting for layer completion
+- Validating results and contract compliance
+- Updating state when complete
 
-Use AgentOutputTool to wait for all parallel workers:
+See `.claude/commands/epic/implement-epic.md` for full implementation details.
 
-```
-AgentOutputTool:
-  agentId: [worker-S01-id]
-  block: true
+### Step 5.2: Handle Result
 
-AgentOutputTool:
-  agentId: [worker-S02-id]
-  block: true
-```
+**If /implement-epic completes successfully:**
+- State will be updated to phase: optimize
+- Proceed to PHASE 6 (quality gates)
 
-### Step 5.4: Validate Layer Results
-
-After all workers in a layer complete:
-- Check that all sprints completed successfully
-- Verify tests pass
-- Check for contract violations
-- If any sprint failed, stop and report
-
-### Step 5.5: Proceed to Next Layer
-
-If more layers remain, repeat steps 5.2-5.4 for the next layer.
-
-When all layers complete, update state and proceed to optimize phase.
+**If /implement-epic fails:**
+- Error will be reported with specific sprint that failed
+- User instructed to fix and run `/epic continue`
+- Workflow stops until issue resolved
 
 ---
 
@@ -585,11 +532,7 @@ You do:
 9. Create sprint directories with domain-memory.yaml for each
 10. **Task(tasks-phase-agent)** to create tasks.md
 11. **Task(analyze-phase-agent)** to validate
-12. For implementation:
-    - Layer 1: **Task(worker)** for S01 and S02 in parallel
-    - Wait for both
-    - Layer 2: **Task(worker)** for S03 (depends on S01+S02)
-    - etc.
+12. **SlashCommand(/implement-epic)** for parallel sprint execution
 13. **Task(optimize-phase-agent)** for quality gates
 14. **Task(ship-phase-agent)** for deployment
 15. **Task(finalize-phase-agent)** for walkthrough.md
@@ -602,10 +545,8 @@ You do:
 1. Detect workflow via detect-workflow-paths.sh
 2. Verify it's an epic workflow
 3. Read state.yaml → phase is "implement"
-4. Check sprint progress in domain-memory.yaml files
-5. Find which layer/sprint was in progress
-6. Resume from that point with **Task(worker)** calls
-7. Continue through remaining phases
+4. **SlashCommand(/implement-epic)** to resume sprint execution
+5. Continue through remaining phases (optimize → ship → finalize)
 
 </examples>
 
