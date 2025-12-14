@@ -203,7 +203,7 @@ The command uses 3-tier preferences to determine mode:
 
    // Spawn isolated agent for document generation
    const agentResult = await Task({
-     subagent_type: "project-architect",  // or custom init-project-agent
+     subagent_type: "init-project-agent",
      prompt: `
        Generate 8 project documentation files from questionnaire answers:
 
