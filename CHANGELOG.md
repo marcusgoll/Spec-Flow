@@ -2,6 +2,45 @@
 
 ---
 
+## [11.4.2] - 2025-12-14
+
+### 🔧 Refactored
+
+**Epic Workflow Simplification (80% reduction)**
+
+Major refactoring of `implement-epic.md` to improve maintainability and reusability.
+
+- **implement-epic.md**: Reduced from 1,578 to 314 lines
+  - Extracted error handling to reusable skill
+  - Extracted sprint utilities to bash script
+  - References shared components instead of inline code
+  - Cleaner orchestration-only focus
+
+- **error-recovery skill**: New reusable skill for failure classification
+  - Distinguishes critical vs fixable failures
+  - Auto-fix strategies with retry logic
+  - Progressive delays (5s, 10s, 15s)
+  - Consistent error reporting format
+
+- **sprint-utils.sh**: New utilities for sprint operations
+  - `validate` - Check sprint directories
+  - `status` - Get sprint status as JSON
+  - `consolidate` - Aggregate layer results
+  - `check-contracts` - Validate contract compliance
+
+- **Agent routing documentation**: Clear decision tree for agent selection
+  - When to use worker vs specialist agents
+  - Phase agent vs implementation agent rules
+  - Anti-patterns to avoid
+
+- **Workflow repair command**: New `/workflow repair` for state recovery
+  - Diagnose corrupted state.yaml
+  - Clear stale locks in domain-memory.yaml
+  - Reset to known good phase
+  - Rebuild state from artifacts
+
+---
+
 ## [11.4.0] - 2025-12-14
 
 ### ✨ Added
