@@ -2,6 +2,34 @@
 
 ---
 
+## [11.4.3] - 2025-12-14
+
+### 🔧 Refactored
+
+**Command Organization & Worktree Centralization**
+
+- **Epic commands relocated**: Moved `epic.md` and `implement-epic.md` from `epic/` to `core/` directory for consistency
+- **Worktree handling centralized**: Extracted inline worktree logic to dedicated skill (`.claude/skills/worktree-context/SKILL.md`)
+  - Phase commands now delegate to skill instead of inline bash
+  - ~60% reduction in command complexity
+- **Help agent added**: New `help-agent.md` for `/help` command support
+- **Workflow detection enhanced**: Updated patterns in workflow-detection skill
+
+### 🐛 Fixed
+
+- **Build validation**: Updated `requiredFiles` paths for relocated epic commands (2a11779)
+- **Project references**: Corrected non-existent `project-architect` agent references (aaff57e)
+- **Meta references**: Fixed stale `state.yaml` path references in `context.md` (69517ad)
+- **Infrastructure**: Removed references to non-existent `workflow-auditor` agent (0853661)
+- **Deployment workflow**: Repaired broken command references (0dd83d6)
+- **Constitution paths**: Corrected path references and cleaned up orphaned commands (45251f4)
+
+### 🗑️ Chores
+
+- **Archived commands cleanup**: Deleted 44 files (~90% reduction in archived commands) (d42e6d5)
+
+---
+
 ## [11.4.2] - 2025-12-14
 
 ### 🔧 Refactored
