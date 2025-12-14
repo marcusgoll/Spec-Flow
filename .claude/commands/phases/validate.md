@@ -15,7 +15,7 @@ Plan exists: Auto-detected (epics/_/plan.md OR specs/_/plan.md)
 
 Tasks exist: Auto-detected (epics/_/tasks.md OR specs/_/tasks.md)
 
-Constitution exists: !`test -f docs/project/constitution.md && echo "✅ Found" || echo "❌ Missing (run /init-project)"`
+Engineering Principles: !`test -f docs/project/engineering-principles.md && echo "✅ Found" || echo "❌ Missing (run /init-project)"`
 
 Previous validation: Auto-detected from ${BASE_DIR}/\*/analysis-report.md
 </context>
@@ -47,7 +47,7 @@ Cross-artifact consistency analysis to validate implementation readiness.
 
 - Git repository initialized
 - spec.md, plan.md, tasks.md completed
-- Optional: docs/project/constitution.md for principle validation
+- Optional: docs/project/engineering-principles.md for principle validation
   </objective>
 
 <process>
@@ -148,7 +148,7 @@ echo "📊 Will generate: $REPORT_FILE"
 
    The validate-workflow.sh script performs:
    a. **Prerequisite validation** — Runs check-prerequisites.sh with --require-tasks flag
-   b. **Load artifacts** — Reads spec.md, plan.md, tasks.md, constitution.md
+   b. **Load artifacts** — Reads spec.md, plan.md, tasks.md, engineering-principles.md
    c. **Run 6 detection passes**:
 
    - Pass 1: Constitution violations (auto-CRITICAL)
@@ -209,7 +209,7 @@ echo "📊 Will generate: $REPORT_FILE"
    Validation Summary
 
    Feature: {slug}
-   Artifacts analyzed: spec.md, plan.md, tasks.md, constitution.md
+   Artifacts analyzed: spec.md, plan.md, tasks.md, engineering-principles.md
 
    Findings:
      CRITICAL: {count} (blocks implementation)
@@ -325,8 +325,8 @@ Before completing, verify:
 
 4. **Verify constitution rules exist before citing violations**
 
-   - Read constitution.md before claiming violations
-   - Quote exact rule violated: "Violates constitution.md:25 'All APIs must use OpenAPI contracts'"
+   - Read engineering-principles.md before claiming violations
+   - Quote exact rule violated: "Violates engineering-principles.md:25 'All APIs must use OpenAPI contracts'"
    - Don't invent constitution rules
 
 5. **Never fabricate severity levels**

@@ -48,7 +48,7 @@ All workflow artifacts live in `specs/` (features) or `epics/` (complex work). T
 | `/ship` | Deploy (--staging, --prod, status, budget) |
 | `/help` | Context-aware guidance |
 
-**Project Setup**: `/init`, `/init --preferences`, `/init --tokens`, `/roadmap`, `/prototype`
+**Project Setup**: `/init`, `/init --preferences`, `/init --tokens`, `/roadmap`, `/prototype`, `/constitution`
 
 **Context Management**: `/context next`, `/context todos`, `/context add`
 

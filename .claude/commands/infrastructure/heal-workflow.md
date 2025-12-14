@@ -320,7 +320,7 @@ log('  Location: .claude/skills/project-custom/create-service-boilerplate/');
 // User approved: [4] Frontend estimation fix
 
 // Read workflow config
-const config = readYAML('.spec-flow/memory/constitution.md');
+const config = readYAML('docs/project/engineering-principles.md');
 
 // Update estimation multipliers
 config.estimation = config.estimation || {};
@@ -328,7 +328,7 @@ config.estimation.complexity_multipliers = config.estimation.complexity_multipli
 config.estimation.complexity_multipliers.frontend = 1.8; // was 1.0
 
 // Write updated config
-writeYAML('.spec-flow/memory/constitution.md', config);
+writeYAML('docs/project/engineering-principles.md', config);
 
 log('✓ Updated estimation multiplier for frontend tasks: 1.0x → 1.8x');
 log('  Impact: More accurate sprint time estimates');
@@ -342,7 +342,7 @@ log('  Impact: More accurate sprint time estimates');
 const modifiedFiles = [
   '.claude/commands/phases/clarify.md',
   '.claude/commands/phases/preview.md',
-  '.spec-flow/memory/constitution.md'
+  'docs/project/engineering-principles.md'
 ];
 
 for (const file of modifiedFiles) {
@@ -408,7 +408,7 @@ log('✓ All changes validated successfully');
     <improvement id="4" type="config_changes" priority="medium">
       <name>Frontend estimation multiplier</name>
       <files_modified>
-        <file>.spec-flow/memory/constitution.md</file>
+        <file>docs/project/engineering-principles.md</file>
       </files_modified>
       <changes>
         <change>complexity_multipliers.frontend: 1.0 → 1.8</change>
