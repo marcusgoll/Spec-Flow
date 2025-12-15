@@ -305,6 +305,20 @@ See a complete feature workflow in [`specs/001-example-feature/`](specs/001-exam
 
 ## 🆕 Recent Updates
 
+### v11.7.0 (December 2025)
+
+**Auto-Mode for End-to-End Workflow Execution** - Run entire workflows without stopping
+
+- **`--auto` flag**: Added to `/feature` and `/epic` commands
+  - Continue automatically through optimize → ship → finalize
+  - Skip manual approval prompts
+  - Auto-merge PR when CI passes (controlled by preference)
+- **`/ship --auto`**: Full autopilot for deployment phase
+- **New preferences**: `deployment.auto_ship`, `deployment.auto_merge`, `deployment.auto_finalize`
+- **Full autopilot**: `/feature "add auth" --auto` runs entire workflow unattended
+
+---
+
 ### v11.5.0 (December 2025)
 
 **CLI Version Awareness** - Stay current with automatic update detection

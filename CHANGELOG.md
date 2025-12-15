@@ -2,6 +2,48 @@
 
 ---
 
+## [11.7.0] - 2025-12-15
+
+### ✨ Added
+
+**Auto-Mode for End-to-End Workflow Execution**
+
+Run entire workflows without stopping - from specification through deployment with a single flag.
+
+- **`--auto` flag**: Added to `/feature` and `/epic` commands
+  - Continue automatically through optimize → ship → finalize without stopping
+  - Skip manual approval prompts (proceed automatically)
+  - Auto-merge PR when CI passes (controlled by preference)
+- **`/ship --auto`**: Full autopilot for deployment phase
+  - Skip production approval prompt
+  - Auto-merge when CI passes
+  - Continue to /finalize automatically
+
+**New Deployment Preferences**
+
+- **`deployment.auto_ship`**: Continue from optimize → ship → finalize without pausing (default: false)
+- **`deployment.auto_merge`**: Auto-merge PR when CI passes, no approval prompt (default: false)
+- **`deployment.auto_finalize`**: Run /finalize automatically after deployment (default: true)
+
+**Full Autopilot Example**
+
+```yaml
+# .spec-flow/config/user-preferences.yaml
+deployment:
+  auto_ship: true
+  auto_merge: true
+  auto_finalize: true
+```
+
+Then run: `/feature "add auth" --auto` → Runs spec → plan → tasks → implement → optimize → ship → finalize automatically.
+
+### 🔧 Changed
+
+- **User preferences schema**: Added `deployment` section (v1.5)
+- **Phase configuration**: Updated to pass `--auto` flag through workflow phases
+
+---
+
 ## [11.6.1] - 2025-12-15
 
 ### 🐛 Fixed
