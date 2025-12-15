@@ -1,7 +1,7 @@
 ---
 name: debug
 description: Execute systematic debugging workflow via spec-cli.py, track failures in error-log.md, and generate session reports
-argument-hint: [feature-slug] [--from-optimize] [--issue-id=...] [--severity=...] [--type=...] [--component=...] [--non-interactive] [--json] [--deploy-diag] [--push]
+argument-hint: "[feature-slug] [--from-optimize] [--issue-id=...] [--severity=...] [--type=...] [--component=...] [--non-interactive] [--json] [--deploy-diag] [--push] [--dry-run]"
 allowed-tools: [Bash(python .spec-flow/scripts/spec-cli.py:*), Read, Grep, Glob]
 ---
 
@@ -12,7 +12,7 @@ allowed-tools: [Bash(python .spec-flow/scripts/spec-cli.py:*), Read, Grep, Glob]
 
 **Current Branch**: !`git branch --show-current 2>/dev/null || echo "none"`
 
-**Feature Slug**: !`git branch --show-current 2>/dev/null | sed 's/^feature\///' || basename $(pwd)`
+**Feature Slug**: !`git branch --show-current 2>/dev/null | sed 's/^feature\///' || echo "unknown"`
 
 **Recent Debug Sessions**: !`ls -1t specs/*/debug-session.json 2>/dev/null | head -3 || echo "none"`
 
@@ -79,6 +79,88 @@ Execute debugging workflow by:
 ---
 
 <process>
+
+### Step 0: Dry-Run Mode Detection
+
+**Check for --dry-run flag** (see `.claude/skills/dry-run/SKILL.md`):
+
+```bash
+DRY_RUN="false"
+if [[ "$ARGUMENTS" == *"--dry-run"* ]]; then
+  DRY_RUN="true"
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--dry-run//g' | xargs)
+  echo "DRY-RUN MODE ENABLED"
+fi
+```
+
+**If DRY_RUN is true:**
+
+Output dry-run summary and exit:
+
+```
+════════════════════════════════════════════════════════════════════════════════
+DRY-RUN MODE: No changes will be made
+════════════════════════════════════════════════════════════════════════════════
+
+📋 COMMAND: /debug $ARGUMENTS
+
+📋 CONTEXT THAT WOULD BE READ:
+  • Current branch: $(git branch --show-current)
+  • Feature slug: extracted from branch or argument
+  • Recent debug sessions: specs/*/debug-session.json
+  • Recent errors: specs/*/error-log.md
+
+🔧 SCRIPT THAT WOULD EXECUTE:
+  python .spec-flow/scripts/spec-cli.py debug "$ARGUMENTS"
+
+  Script operations:
+    1. Parse arguments (feature slug, flags, issue metadata)
+    2. Load feature directory and validate existence
+    3. Initialize error-log.md template if missing
+    4. Show recent error log entries (context)
+    5. Run verification (lint, types, tests based on --type/--component)
+    6. Optional: Deployment diagnostics (if --deploy-diag)
+    7. Aggregate verification summary
+    8. Update error-log.md with timestamped entry
+    9. Emit debug-session.json
+    10. Commit artifacts if verification passed
+    11. Display summary
+
+📁 FILES THAT WOULD BE CREATED:
+  ✚ specs/[slug]/debug-session.json (machine-readable session data)
+  ✚ specs/[slug]/debug/run-XXXXXX/ (directory for this session)
+  ✚ specs/[slug]/debug/run-XXXXXX/*.log (verification logs)
+
+📝 FILES THAT WOULD BE MODIFIED:
+  ✎ specs/[slug]/error-log.md
+    + New entry: "### Entry N: YYYY-MM-DD HH:MM:SS UTC"
+    + Symptoms, root cause, fix applied
+    + Regression test reference (if generated)
+
+🧪 REGRESSION TEST (if bug found):
+  ✚ tests/regression/regression-ERR-XXXX-[slug].test.ts
+    - Arrange-Act-Assert pattern
+    - Linked to error-log.md entry
+
+🔀 GIT OPERATIONS (if verification passes):
+  • git add specs/[slug]/error-log.md specs/[slug]/debug-session.json
+  • git commit -m "debug: session complete for [feature-slug]"
+  • git push origin [branch] (if --push flag)
+
+📊 EXIT CODES:
+  • 0 = Verification passed, artifacts committed
+  • 1 = Bad arguments or script error
+  • 2 = Verification failed, artifacts created but not committed
+
+════════════════════════════════════════════════════════════════════════════════
+DRY-RUN COMPLETE: 0 actual changes made
+Run `/debug $ARGUMENTS` (without --dry-run) to execute
+════════════════════════════════════════════════════════════════════════════════
+```
+
+**Exit after dry-run summary. Do NOT proceed to script execution.**
+
+---
 
 ### Step 1: Execute Debug Script
 
@@ -401,6 +483,7 @@ Issue {issue_id}: {resolved|requires manual fix}
 - `--from-optimize` — Structured mode (requires issue metadata)
 - `--non-interactive` — Never prompt; fail with actionable output
 - `--json` — Print machine-readable summary to stdout
+- `--dry-run` — Preview operations without executing (no files created, no scripts run)
 
 **Issue metadata** (required with --from-optimize):
 - `--issue-id=CR###` — Code review issue ID

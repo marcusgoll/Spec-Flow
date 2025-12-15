@@ -1,7 +1,7 @@
 ---
 description: Manage product roadmap via GitHub Issues (brainstorm, prioritize, track). Auto-validates features against project vision (from overview.md) before adding to roadmap.
 allowed-tools: [Read, Bash(.spec-flow/scripts/bash/github-roadmap-manager.sh:*), Bash(.spec-flow/scripts/powershell/github-roadmap-manager.ps1:*), Bash(gh issue:*), Bash(gh api:*), Bash(gh label:*), Bash(gh milestone:*), Bash(git remote:*), Bash(test:*), Bash(ls:*), Bash(jq:*), WebSearch, AskUserQuestion, Task]
-argument-hint: [add|brainstorm|move|delete|search|list|milestone|epic] [additional args]
+argument-hint: "[add|brainstorm|from-ultrathink|move|delete|search|list|milestone|epic] [additional args]"
 version: 11.0
 updated: 2025-12-09
 ---
@@ -73,6 +73,7 @@ Manage product roadmap via GitHub Issues with vision alignment validation.
 **Actions supported:**
 - **add** — Add new feature with vision validation
 - **brainstorm** — Generate feature ideas via web research
+- **from-ultrathink** — Materialize features from ultrathink session (v2.0)
 - **move** — Change feature status (Backlog → Next → In Progress → Shipped)
 - **delete** — Remove feature from roadmap
 - **search** — Find features by keyword/area/role
@@ -100,19 +101,20 @@ Manage product roadmap via GitHub Issues with vision alignment validation.
 
    **Action routing:**
    ```
-   If $ARGUMENTS starts with "add "        → ADD action (remaining = feature description)
-   If $ARGUMENTS starts with "brainstorm " → BRAINSTORM action (remaining = topic)
-   If $ARGUMENTS starts with "move "       → MOVE action (parse: slug, target status)
-   If $ARGUMENTS starts with "delete "     → DELETE action (remaining = slug)
-   If $ARGUMENTS starts with "search "     → SEARCH action (remaining = query)
-   If $ARGUMENTS equals "list"             → LIST action (no params)
-   If $ARGUMENTS starts with "milestone "  → MILESTONE sub-actions:
-      - "milestone list"                   → list all milestones
-      - "milestone create <name> [date]"   → create milestone
-      - "milestone plan <name>"            → interactive assignment
-   If $ARGUMENTS starts with "epic "       → EPIC sub-actions:
-      - "epic list"                        → list all epic labels
-      - "epic create <name> [description]" → create epic label
+   If $ARGUMENTS starts with "add "            → ADD action (remaining = feature description)
+   If $ARGUMENTS starts with "brainstorm "     → BRAINSTORM action (remaining = topic)
+   If $ARGUMENTS starts with "from-ultrathink" → FROM-ULTRATHINK action (remaining = path or --list)
+   If $ARGUMENTS starts with "move "           → MOVE action (parse: slug, target status)
+   If $ARGUMENTS starts with "delete "         → DELETE action (remaining = slug)
+   If $ARGUMENTS starts with "search "         → SEARCH action (remaining = query)
+   If $ARGUMENTS equals "list"                 → LIST action (no params)
+   If $ARGUMENTS starts with "milestone "      → MILESTONE sub-actions:
+      - "milestone list"                       → list all milestones
+      - "milestone create <name> [date]"       → create milestone
+      - "milestone plan <name>"                → interactive assignment
+   If $ARGUMENTS starts with "epic "           → EPIC sub-actions:
+      - "epic list"                            → list all epic labels
+      - "epic create <name> [description]"     → create epic label
    ```
 
 3. **Execute platform-specific script**:
@@ -209,6 +211,134 @@ Manage product roadmap via GitHub Issues with vision alignment validation.
    **If agent returns warnings:**
    - Display warnings to user
    - Suggest alternative approaches if no ideas found
+
+4b. **For FROM-ULTRATHINK action (v2.0)** — Materialize features from ultrathink session:
+
+   **If `--list` flag:**
+   ```bash
+   # List available ultrathink sessions
+   echo "📚 Available Ultrathink Sessions:"
+   for file in specs/ultrathink/*.yaml; do
+     if [ -f "$file" ]; then
+       topic=$(yq eval '.metadata.topic' "$file")
+       created=$(yq eval '.metadata.created' "$file")
+       count=$(yq eval '.extracted_features | length' "$file")
+       materialized=$(yq eval '.roadmap_status.materialized' "$file")
+       echo "  • $(basename $file .yaml): $topic ($count features, materialized: $materialized)"
+     fi
+   done
+   ```
+
+   **If path provided:**
+   ```bash
+   ULTRATHINK_FILE="$REMAINING_ARGS"
+   if [ ! -f "$ULTRATHINK_FILE" ]; then
+     echo "❌ File not found: $ULTRATHINK_FILE"
+     echo "💡 Use: /roadmap from-ultrathink --list to see available sessions"
+     exit 1
+   fi
+   ```
+
+   **Extract features from ultrathink output:**
+   ```javascript
+   const ultrathinkData = await readYaml(ultrathinkFile);
+   const features = ultrathinkData.extracted_features || [];
+
+   if (features.length === 0) {
+     console.log("⚠️ No extracted features found in this ultrathink session");
+     console.log("💡 Run /ultrathink again and ensure features are extracted");
+     return;
+   }
+
+   // Display features from the thinking session
+   console.log(`\n🧠 Features from: ${ultrathinkData.metadata.topic}`);
+   console.log(`   Session: ${ultrathinkData.metadata.created}\n`);
+
+   for (const feature of features) {
+     const icon = feature.type === 'epic' ? '📦' : '⚡';
+     console.log(`${icon} ${feature.type}: ${feature.name}`);
+     console.log(`   ${feature.description}`);
+     console.log(`   Priority: ${feature.priority} • ${feature.complexity_rationale}`);
+     console.log();
+   }
+   ```
+
+   **Prompt user for selection:**
+   ```javascript
+   const selection = await AskUserQuestion({
+     question: "Which features should be added to the roadmap?",
+     header: "Select Features",
+     multiSelect: true,
+     options: features.map(f => ({
+       label: `${f.type === 'epic' ? '📦' : '⚡'} ${f.name}`,
+       description: `${f.priority} priority • ${f.description}`
+     }))
+   });
+   ```
+
+   **Create GitHub Issues for selected features:**
+   ```bash
+   for feature in selected_features; do
+     # Create issue with traceability back to ultrathink session
+     gh issue create \
+       --title "${feature.type}: ${feature.name}" \
+       --body "$(cat <<EOF
+   ## Origin
+
+   This ${feature.type} emerged from ultrathink session:
+   \`${ULTRATHINK_FILE}\`
+
+   **Topic**: ${ultrathinkData.metadata.topic}
+   **Session Date**: ${ultrathinkData.metadata.created}
+
+   ## Description
+
+   ${feature.description}
+
+   ## Complexity Rationale
+
+   ${feature.complexity_rationale}
+
+   ## From the Vision
+
+   > ${feature.from_vision}
+
+   ## Dependencies
+
+   ${feature.dependencies.length > 0 ? feature.dependencies.join(', ') : 'None'}
+
+   ---
+   *Generated by /roadmap from-ultrathink on $(date -Idate)*
+   EOF
+   )" \
+       --label "status:backlog" \
+       --label "type:${feature.type}" \
+       --label "priority:${feature.priority}"
+
+     echo "✅ Created #$ISSUE_NUMBER: ${feature.name}"
+   done
+   ```
+
+   **Update ultrathink file with materialization status:**
+   ```bash
+   yq eval '.roadmap_status.materialized = true' -i "$ULTRATHINK_FILE"
+   yq eval '.roadmap_status.issues_created = ['"$CREATED_ISSUES"']' -i "$ULTRATHINK_FILE"
+   yq eval '.roadmap_status.materialized_at = "'"$(date -Iseconds)"'"' -i "$ULTRATHINK_FILE"
+   ```
+
+   **Display summary:**
+   ```
+   ✅ Materialized ultrathink session to roadmap:
+
+   Source: specs/ultrathink/notification-system-redesign.yaml
+   Features created: 3
+
+   #42 📦 Epic: Notification Service
+   #43 ⚡ Feature: Push Notification API
+   #44 ⚡ Feature: Notification Preferences
+
+   Next: /feature #43 or /epic #42 to start implementing
+   ```
 
 5. **For ADD action only** — Perform vision alignment validation:
 

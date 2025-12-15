@@ -58,6 +58,8 @@ All workflow artifacts live in `specs/` (features) or `epics/` (complex work). T
 
 **Meta-Prompting**: `/create-prompt`, `/run-prompt`
 
+**Deep Thinking**: `/ultrathink "problem"` (craftsman planning mode)
+
 **Infrastructure**: `/audit-workflow`, `/heal-workflow`, `/workflow-health`
 
 ### Deployment Models (Auto-Detected)
@@ -92,6 +94,65 @@ For development/debugging: Clone GitHub repo to access archived commands.
 - Staging validation (staging-prod only)
 
 Resume: `/ship continue` or `/feature continue`
+
+### Dry-Run Mode (v11.5+)
+
+Test any command without making changes using `--dry-run`:
+
+```bash
+/feature "add auth" --dry-run    # Preview workspace creation and phases
+/implement --dry-run              # Preview task execution and file changes
+/ship --dry-run                   # Preview deployment operations
+```
+
+**Dry-run output shows:**
+- Files that would be created/modified
+- Agents that would be spawned
+- Git operations that would occur
+- State changes that would happen
+
+**Use cases:**
+- Testing new features before committing to workflow
+- Debugging workflow issues safely
+- CI/CD validation without side effects
+- Training and demonstrations
+
+**Skill reference**: `.claude/skills/dry-run/SKILL.md`
+
+### Ultrathink → Roadmap Flow (v2.0)
+
+Think deeply about problems, then materialize your thinking into actionable roadmap items.
+
+**Flow:**
+```
+/ultrathink "notification system"    # Deep craftsman thinking
+                │
+                ▼
+     Assumption Questioning
+     Codebase Soul Analysis
+     Architecture Sketching
+     Feature Extraction
+                │
+                ▼
+     "Would you like to add these to the roadmap?"
+     [Add All] [Select] [Just Save] [Skip]
+                │
+                ▼
+     GitHub Issues created with traceability
+```
+
+**Usage:**
+```bash
+/ultrathink "redesign notification system"     # Interactive mode
+/ultrathink "new feature" --roadmap            # Auto-materialize to roadmap
+/ultrathink "idea" --save                      # Save thinking, don't create issues
+/roadmap from-ultrathink --list                # List saved ultrathink sessions
+/roadmap from-ultrathink specs/ultrathink/notification.yaml  # Materialize later
+```
+
+**Output saved to**: `specs/ultrathink/[slug].yaml` with full thinking artifacts and extracted features.
+
+**Skill reference**: `.claude/skills/ultrathink/SKILL.md`
 
 ### Continuous Quality Features (v10.16)
 

@@ -1,7 +1,7 @@
 ---
 name: ship
 description: Deploy feature through automated staging validation to production with rollback testing
-argument-hint: [continue|status|budget|rollback|recover|--staging|--prod|--validate]
+argument-hint: "[continue|status|budget|rollback|recover|--staging|--prod|--validate|--dry-run]"
 allowed-tools: [Read, Bash, Task, AskUserQuestion, SlashCommand, TodoWrite]
 version: 11.0
 updated: 2025-12-09
@@ -166,7 +166,87 @@ SlashCommand: /deployment/budget
 
 Display deployment quota status and EXIT.
 
-**If none of the above, continue to Step 1.**
+**If none of the above, continue to Step 0.1.**
+
+---
+
+### Step 0.1: DRY-RUN MODE DETECTION
+
+**Check for --dry-run flag** (see `.claude/skills/dry-run/SKILL.md`):
+
+```bash
+DRY_RUN="false"
+if [[ "$ARGUMENTS" == *"--dry-run"* ]]; then
+  DRY_RUN="true"
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--dry-run//g' | xargs)
+  echo "DRY-RUN MODE ENABLED"
+fi
+```
+
+**If DRY_RUN is true:**
+
+1. Detect deployment model (staging-prod, direct-prod, local-only)
+2. Read state.yaml for current phase status
+3. Output dry-run summary and exit:
+
+```
+════════════════════════════════════════════════════════════════════════════════
+DRY-RUN MODE: No changes will be made
+════════════════════════════════════════════════════════════════════════════════
+
+📋 DEPLOYMENT CONFIGURATION:
+  Feature: $FEATURE_DIR
+  Deployment model: [staging-prod | direct-prod | local-only]
+  Current phase: [phase from state.yaml]
+
+📋 PRE-FLIGHT CHECKS (would execute):
+  ✓ Build verification
+  ✓ Test suite (N tests)
+  ✓ Type checking
+  ✓ Security scan
+  ✓ Environment variables validation
+
+🔀 GIT OPERATIONS THAT WOULD OCCUR:
+  • git push origin feature/$SLUG
+  • gh pr create --base [staging|main] --head feature/$SLUG
+  • Wait for CI to pass
+  • gh pr merge --auto
+
+📦 DEPLOYMENT THAT WOULD OCCUR:
+  [If staging-prod model:]
+  • Merge to staging branch triggers deploy-staging.yml
+  • Staging health check verification
+  • Production approval requested
+  • Merge staging to main triggers deploy-prod.yml
+  • Production health check verification
+
+  [If direct-prod model:]
+  • Merge to main triggers production deployment
+  • Health check verification
+
+  [If local-only model:]
+  • Build artifacts created locally
+  • No remote deployment
+
+🤖 AGENTS THAT WOULD BE SPAWNED:
+  1. ship-staging-phase-agent → Execute staging deployment
+  2. ship-prod-phase-agent → Execute production deployment
+  3. finalize-phase-agent → Archive and document
+
+📊 STATE CHANGES:
+  state.yaml:
+    - phases.ship: pending → completed
+    - deployment.staging.status: → deployed (if staging-prod)
+    - deployment.prod.status: → deployed
+    - deployment.prod.version: → [semver]
+
+════════════════════════════════════════════════════════════════════════════════
+DRY-RUN COMPLETE: 0 actual changes made
+Run `/ship` to execute deployment workflow
+════════════════════════════════════════════════════════════════════════════════
+```
+
+**Exit after dry-run summary. Do NOT proceed to deployment.**
 
 ---
 

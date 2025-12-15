@@ -1,7 +1,7 @@
 ---
 name: implement
 description: Execute all implementation tasks from tasks.md with test-driven development, parallel batching, and atomic commits
-argument-hint: [feature-slug]
+argument-hint: "[feature-slug] [--dry-run]"
 allowed-tools:
   [
     Read,
@@ -191,6 +191,75 @@ TodoWrite({
 4. Set paths:
    - `TASKS_FILE="${BASE_DIR}/${SLUG}/tasks.md"`
    - `WORKFLOW_STATE="${BASE_DIR}/${SLUG}/state.yaml"`
+
+---
+
+### Step 0.1: DRY-RUN MODE DETECTION
+
+**Check for --dry-run flag** (see `.claude/skills/dry-run/SKILL.md`):
+
+```bash
+DRY_RUN="false"
+if [[ "$ARGUMENTS" == *"--dry-run"* ]]; then
+  DRY_RUN="true"
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--dry-run//g' | xargs)
+  echo "DRY-RUN MODE ENABLED"
+fi
+```
+
+**If DRY_RUN is true:**
+
+1. Read tasks.md to count pending/completed tasks
+2. Read domain-memory.yaml (if exists) for feature count
+3. Output dry-run summary and exit:
+
+```
+════════════════════════════════════════════════════════════════════════════════
+DRY-RUN MODE: No changes will be made
+════════════════════════════════════════════════════════════════════════════════
+
+📋 CURRENT STATE:
+  Feature: ${BASE_DIR}/${SLUG}/
+  Phase: implement
+  Tasks remaining: N of M
+
+📝 FILES THAT WOULD BE MODIFIED:
+  ✎ ${BASE_DIR}/${SLUG}/domain-memory.yaml
+    - features[F001].status: pending → completed
+    - features[F002].status: pending → in_progress
+  ✎ ${BASE_DIR}/${SLUG}/tasks.md (checkboxes marked)
+  ✎ ${BASE_DIR}/${SLUG}/state.yaml (phase progress)
+  ✎ src/... (implementation files)
+  ✎ src/...test... (test files)
+
+🤖 AGENTS THAT WOULD BE SPAWNED:
+  For each pending feature in domain-memory.yaml:
+    worker → Implement feature atomically with TDD
+
+  Specialist routing:
+    backend-dev → For Python/FastAPI tasks
+    frontend-dev → For React/Next.js tasks
+    database-architect → For schema tasks
+    api-contracts → For OpenAPI tasks
+
+🔄 TDD CYCLE PER TASK:
+  1. Write failing tests (Red)
+  2. Implement feature (Green)
+  3. Refactor if needed
+  4. Update domain-memory.yaml
+  5. Commit changes
+
+🔀 GIT OPERATIONS:
+  • git add (after each task)
+  • git commit -m "feat: [task description]" (per task)
+
+════════════════════════════════════════════════════════════════════════════════
+DRY-RUN COMPLETE: 0 actual changes made
+Run `/implement` to execute N remaining tasks
+════════════════════════════════════════════════════════════════════════════════
+```
+
+**Exit after dry-run summary. Do NOT proceed to normal execution.**
 
 ---
 

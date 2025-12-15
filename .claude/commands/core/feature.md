@@ -1,6 +1,6 @@
 ---
 description: Execute feature development workflow from specification through production deployment with automated quality gates
-argument-hint: "[description|slug|continue|next|epic:<name>|epic:<name>:sprint:<num>|sprint:<num>] [--deep | --auto]"
+argument-hint: "[description|slug|continue|next|epic:<name>|epic:<name>:sprint:<num>|sprint:<num>] [--deep | --auto | --dry-run]"
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, AskUserQuestion, TodoWrite, SlashCommand, Skill
 version: 5.1
 updated: 2025-12-14
@@ -75,7 +75,71 @@ planning:
 ```
 </planning_depth>
 
+<dry_run_mode>
+## Dry-Run Mode (--dry-run)
+
+**When `--dry-run` is in $ARGUMENTS:**
+
+Preview all operations without executing them. See `.claude/skills/dry-run/SKILL.md` for full specification.
+
+**Detection:**
+```bash
+DRY_RUN="false"
+if [[ "$ARGUMENTS" == *"--dry-run"* ]]; then
+  DRY_RUN="true"
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--dry-run//g' | xargs)
+fi
+```
+
+**If DRY_RUN is true:**
+1. Output dry-run banner immediately
+2. Execute all Read/Grep/Glob operations normally (for accurate context)
+3. Simulate all Write/Edit operations (log what would be created/modified)
+4. Simulate all Task() spawns (log agent type and expected outputs)
+5. Simulate all git operations (log commands that would run)
+6. At end, output standardized summary and exit
+
+**Do NOT spawn any agents or create any files in dry-run mode.**
+</dry_run_mode>
+
 <process>
+
+## PHASE 0: Mode Detection
+
+### Step 0.1: Detect Dry-Run and Planning Modes
+
+**Parse flags from arguments:**
+```bash
+DRY_RUN="false"
+DEEP_MODE="false"
+CLEAN_ARGS="$ARGUMENTS"
+
+if [[ "$ARGUMENTS" == *"--dry-run"* ]]; then
+  DRY_RUN="true"
+  CLEAN_ARGS=$(echo "$CLEAN_ARGS" | sed 's/--dry-run//g')
+fi
+
+if [[ "$ARGUMENTS" == *"--deep"* ]]; then
+  DEEP_MODE="true"
+  CLEAN_ARGS=$(echo "$CLEAN_ARGS" | sed 's/--deep//g')
+fi
+
+if [[ "$ARGUMENTS" == *"--auto"* ]]; then
+  CLEAN_ARGS=$(echo "$CLEAN_ARGS" | sed 's/--auto//g')
+fi
+
+CLEAN_ARGS=$(echo "$CLEAN_ARGS" | xargs)  # Trim whitespace
+echo "Dry-run: $DRY_RUN, Deep: $DEEP_MODE, Args: $CLEAN_ARGS"
+```
+
+**If DRY_RUN is true, output banner:**
+```
+════════════════════════════════════════════════════════════════════════════════
+DRY-RUN MODE: No changes will be made
+════════════════════════════════════════════════════════════════════════════════
+```
+
+---
 
 ## PHASE 1: Initialize Feature Workspace
 
@@ -85,6 +149,22 @@ $ARGUMENTS
 ```
 
 ### Step 1.1: Parse Arguments and Initialize
+
+**If DRY_RUN is true:**
+```
+Log: "WOULD EXECUTE: python .spec-flow/scripts/spec-cli.py feature '$CLEAN_ARGS'"
+Log: "WOULD CREATE: specs/NNN-[slug]/state.yaml"
+Log: "WOULD CREATE: specs/NNN-[slug]/NOTES.md"
+
+# For accurate simulation, determine what the slug would be:
+SLUG=$(echo "$CLEAN_ARGS" | tr ' ' '-' | tr '[:upper:]' '[:lower:]' | head -c 40)
+NEXT_NUM=$(ls -d specs/[0-9]*-* 2>/dev/null | wc -l)
+NEXT_NUM=$((NEXT_NUM + 1))
+FEATURE_DIR="specs/$(printf '%03d' $NEXT_NUM)-$SLUG"
+echo "Would create feature directory: $FEATURE_DIR"
+```
+
+**If DRY_RUN is false (normal execution):**
 
 Run the spec-cli tool to initialize the feature workspace:
 
@@ -135,6 +215,17 @@ Resume anytime with: /feature continue
 
 ## PHASE 2: Domain Memory Initialization
 
+**If DRY_RUN is true:**
+```
+Log: "WOULD SPAWN AGENT: initializer"
+Log: "  Description: Initialize domain memory"
+Log: "  Expected output: $FEATURE_DIR/domain-memory.yaml"
+Log: "  Expected content: 3-8 sub-features expanded from description"
+```
+Skip to Phase 3 dry-run simulation.
+
+**If DRY_RUN is false (normal execution):**
+
 **YOU MUST spawn the Initializer agent via Task tool.**
 
 Check if domain-memory.yaml exists:
@@ -173,6 +264,60 @@ cat "$FEATURE_DIR/domain-memory.yaml"
 ---
 
 ## PHASE 3: Execute Phase Loop
+
+**If DRY_RUN is true:**
+
+Output the full dry-run summary and exit:
+
+```
+════════════════════════════════════════════════════════════════════════════════
+DRY-RUN MODE: No changes will be made
+════════════════════════════════════════════════════════════════════════════════
+
+📁 FILES THAT WOULD BE CREATED:
+  ✚ $FEATURE_DIR/state.yaml
+  ✚ $FEATURE_DIR/NOTES.md
+  ✚ $FEATURE_DIR/interaction-state.yaml
+  ✚ $FEATURE_DIR/domain-memory.yaml (via initializer agent)
+  ✚ $FEATURE_DIR/spec.md (via spec-phase-agent)
+  ✚ $FEATURE_DIR/plan.md (via plan-phase-agent)
+  ✚ $FEATURE_DIR/tasks.md (via tasks-phase-agent)
+  ✚ $FEATURE_DIR/analysis-report.md (via analyze-phase-agent)
+  ✚ $FEATURE_DIR/optimization-report.md (via optimize-phase-agent)
+
+🤖 AGENTS THAT WOULD BE SPAWNED:
+  1. initializer → Initialize domain memory (3-8 sub-features)
+  2. spec-phase-agent → Generate feature specification
+  3. clarify-phase-agent → Resolve requirement ambiguities
+  4. plan-phase-agent → Create implementation plan
+  5. tasks-phase-agent → Break down into TDD tasks
+  6. analyze-phase-agent → Validate spec/plan/tasks consistency
+  7. worker (N times) → Implement each feature atomically
+  8. optimize-phase-agent → Run quality gates (5-10 checks)
+  9. ship-staging-phase-agent → Deploy to staging
+  10. finalize-phase-agent → Archive and document
+
+🔀 GIT OPERATIONS THAT WOULD OCCUR:
+  • git checkout -b feature/$SLUG (if not exists)
+  • git add (after each phase completes)
+  • git commit (after each phase completes)
+  • git push origin feature/$SLUG (during ship phase)
+  • gh pr create (during ship phase)
+
+📊 WORKFLOW PHASES:
+  init → spec → clarify → plan → tasks → analyze → implement → optimize → ship → finalize → complete
+
+════════════════════════════════════════════════════════════════════════════════
+DRY-RUN COMPLETE: 0 actual changes made
+Run `/feature "$CLEAN_ARGS"` to execute these operations
+════════════════════════════════════════════════════════════════════════════════
+```
+
+**Exit after dry-run summary. Do NOT proceed to normal execution.**
+
+---
+
+**If DRY_RUN is false (normal execution):**
 
 **CRITICAL: You MUST spawn each phase as an isolated Task() agent. NEVER execute phase logic inline.**
 
