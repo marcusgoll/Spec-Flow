@@ -52,7 +52,8 @@ test-projects/
 examples/local/
 
 # Build artifacts that shouldn't be published
-dist/
+# Note: dist/ is NOT excluded - it contains the package distribution files
+# dist/  <- Removed: dist is the primary package content, included via package.json "files"
 build/
 coverage/
 

@@ -2,6 +2,17 @@
 
 ---
 
+## [11.8.1] - 2025-12-15
+
+### 🐛 Fixed
+
+**Package Distribution Missing Essential Files**
+
+- Fixed `.npmignore` excluding `dist/` folder which prevented `CLAUDE.md` and `QUICKSTART.md` from being included in the npm package
+- Users running `npx spec-flow init` or `npx spec-flow update` no longer see "Package is corrupted" errors
+
+---
+
 ## [11.8.0] - 2025-12-15
 
 ### ✨ Added
