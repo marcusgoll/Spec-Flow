@@ -1,7 +1,7 @@
 ---
 name: ship
 description: Deploy feature through automated staging validation to production with rollback testing
-argument-hint: "[continue|status|budget|rollback|recover|--staging|--prod|--validate|--dry-run]"
+argument-hint: "[continue|status|budget|rollback|recover|--staging|--prod|--validate|--dry-run|--auto]"
 allowed-tools: [Read, Bash, Task, AskUserQuestion, SlashCommand, TodoWrite]
 version: 11.0
 updated: 2025-12-09
@@ -69,6 +69,7 @@ Spawn isolated ship-phase-agent to orchestrate deployment workflow.
 - `rollback [version]`: Rollback to previous deployment version (v10.14+)
 - `recover`: Recover corrupted state.yaml from git history (v10.14+)
 - `budget`: Display deployment quota status
+- `--auto`: Full autopilot mode - skip prompts, auto-merge when CI passes, continue to finalize (v11.7)
 
 **Dependencies**: Requires completed `/implement` phase
 
@@ -170,18 +171,37 @@ Display deployment quota status and EXIT.
 
 ---
 
-### Step 0.1: DRY-RUN MODE DETECTION
+### Step 0.1: DRY-RUN AND AUTO MODE DETECTION
 
-**Check for --dry-run flag** (see `.claude/skills/dry-run/SKILL.md`):
+**Check for --dry-run and --auto flags:**
 
 ```bash
 DRY_RUN="false"
+AUTO_MODE="false"
+
 if [[ "$ARGUMENTS" == *"--dry-run"* ]]; then
   DRY_RUN="true"
   ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--dry-run//g' | xargs)
   echo "DRY-RUN MODE ENABLED"
 fi
+
+if [[ "$ARGUMENTS" == *"--auto"* ]]; then
+  AUTO_MODE="true"
+  ARGUMENTS=$(echo "$ARGUMENTS" | sed 's/--auto//g' | xargs)
+  echo "AUTO MODE ENABLED"
+
+  # Load auto-mode preferences
+  AUTO_MERGE=$(bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_merge" --default "false" 2>/dev/null || echo "false")
+  AUTO_FINALIZE=$(bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_finalize" --default "true" 2>/dev/null || echo "true")
+  echo "Auto-merge: $AUTO_MERGE, Auto-finalize: $AUTO_FINALIZE"
+fi
 ```
+
+**Auto mode behavior (v11.7)**:
+When `--auto` flag is set, /ship will:
+1. Skip all manual approval prompts (proceed automatically)
+2. Auto-merge PR when CI passes (if `deployment.auto_merge: true`)
+3. Continue to /finalize automatically after successful deployment (if `deployment.auto_finalize: true`)
 
 **If DRY_RUN is true:**
 
@@ -954,6 +974,13 @@ fi
    - `/ship status` displays current phase, completed/pending phases, errors
    - Does not modify state or proceed with deployment
    - Exits after displaying status
+
+9. **Auto mode works** (v11.7):
+   - `/ship --auto` runs full deployment without manual prompts
+   - Auto-merge PR when CI passes (if `deployment.auto_merge: true`)
+   - Continues to /finalize automatically (if `deployment.auto_finalize: true`)
+   - Stores auto_mode settings in state.yaml for resume capability
+   - Works with all deployment models (staging-prod, direct-prod, local-only)
      </success_criteria>
 
 <verification>
@@ -1110,6 +1137,17 @@ fi
 - Shows deployment model, current phase, completed/pending phases, errors
 - Does NOT proceed with deployment (read-only operation)
 - Exits after displaying status
+
+**Auto Mode (v11.7)**:
+
+- `/ship --auto` runs full deployment without manual prompts
+- Controlled by user preferences:
+  - `deployment.auto_ship: true` → Enable auto-mode for ship command (when called from /feature --auto)
+  - `deployment.auto_merge: true` → Auto-merge PR when CI passes (no production approval prompt)
+  - `deployment.auto_finalize: true` → Continue to /finalize automatically
+- Use case: CI/CD pipelines, trusted deployments, experienced users
+- Stores auto_mode settings in state.yaml: `auto_mode.enabled`, `auto_mode.auto_merge`, `auto_mode.auto_finalize`
+- Resume works normally: `/ship continue` respects stored auto_mode settings
 
 **Manual Gates Removed**:
 

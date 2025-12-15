@@ -45,6 +45,12 @@ This orchestrator is **ultra-lightweight**. You MUST:
 **Planning Depth Preference**: !`bash .spec-flow/scripts/utils/load-preferences.sh --key "planning.auto_deep_mode" --default "false" 2>/dev/null || echo "false"`
 
 **Epic Trigger for Deep Planning**: !`bash .spec-flow/scripts/utils/load-preferences.sh --key "planning.deep_planning_triggers.epic_features" --default "true" 2>/dev/null || echo "true"`
+
+**Auto-ship preference**: !`bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_ship" --default "false" 2>/dev/null || echo "false"`
+
+**Auto-merge preference**: !`bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_merge" --default "false" 2>/dev/null || echo "false"`
+
+**Auto-finalize preference**: !`bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_finalize" --default "true" 2>/dev/null || echo "true"`
 </context>
 
 <planning_depth>
@@ -54,7 +60,7 @@ This orchestrator is **ultra-lightweight**. You MUST:
 
 **Flags in $ARGUMENTS**:
 - `--deep` → Explicitly force ultrathink (redundant for epics, but explicit)
-- `--auto` → Use preferences (will still enable deep since epic trigger is on)
+- `--auto` → Use preferences AND continue through ship→finalize without stopping
 - Neither → Interactive mode, still uses deep planning for epics
 
 **Epic-specific benefits of ultrathink**:
@@ -72,6 +78,44 @@ planning:
   triggered_by: epic_features  # or explicit_flag
 ```
 </planning_depth>
+
+<auto_mode>
+## Auto Mode (--auto flag) for Epics
+
+When `--auto` flag is present, the epic workflow runs end-to-end without stopping:
+
+**Full auto-mode behavior** (when `--auto` flag is set):
+1. **Planning**: Use deep planning (epics always trigger ultrathink)
+2. **Implementation**: Execute all sprints in parallel per dependency layers
+3. **Ship**: Check CI, auto-merge when passing (if `deployment.auto_merge: true`)
+4. **Finalize**: Run /finalize automatically with epic walkthrough generation
+
+**Preference-controlled auto-ship** (v11.7):
+- `deployment.auto_ship: true` → Continue from optimize → ship → finalize without stopping
+- `deployment.auto_merge: true` → Auto-merge PR when CI passes (no production approval prompt)
+- `deployment.auto_finalize: true` → Run /finalize automatically after successful deployment
+
+**Parse --auto flag at start**:
+```bash
+AUTO_MODE="false"
+if [[ "$ARGUMENTS" == *"--auto"* ]]; then
+  AUTO_MODE="true"
+  AUTO_SHIP=$(bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_ship" --default "false" 2>/dev/null || echo "false")
+  AUTO_MERGE=$(bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_merge" --default "false" 2>/dev/null || echo "false")
+  AUTO_FINALIZE=$(bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_finalize" --default "true" 2>/dev/null || echo "true")
+fi
+```
+
+**State tracking**:
+```yaml
+# In epics/NNN-slug/state.yaml
+auto_mode:
+  enabled: true
+  auto_ship: true   # Continue optimize → ship → finalize
+  auto_merge: true  # Auto-merge when CI passes
+  auto_finalize: true
+```
+</auto_mode>
 
 <process>
 
@@ -385,6 +429,58 @@ See `.claude/commands/epic/implement-epic.md` for full implementation details.
 - Error will be reported with specific sprint that failed
 - User instructed to fix and run `/epic continue`
 - Workflow stops until issue resolved
+
+---
+
+## PHASE 5.5: Auto-Mode Ship and Finalize (v11.7)
+
+**When optimize phase completes in auto mode, continue through ship and finalize automatically.**
+
+Check for auto-mode after optimize phase completes:
+```bash
+AUTO_MODE=$(yq eval '.auto_mode.enabled // false' "$EPIC_DIR/state.yaml")
+AUTO_SHIP=$(yq eval '.auto_mode.auto_ship // false' "$EPIC_DIR/state.yaml")
+AUTO_MERGE=$(yq eval '.auto_mode.auto_merge // false' "$EPIC_DIR/state.yaml")
+AUTO_FINALIZE=$(yq eval '.auto_mode.auto_finalize // true' "$EPIC_DIR/state.yaml")
+```
+
+**If optimize phase just completed AND auto_mode is enabled:**
+
+### Step 5.5.1: Proceed to Ship Phase Automatically
+
+```
+SlashCommand:
+  command: "/ship --auto"
+```
+
+The `--auto` flag tells /ship to:
+- Skip production approval prompt
+- Auto-merge PR when CI passes (if `auto_merge: true`)
+- Continue to finalize automatically
+
+### Step 5.5.2: After Ship Completes, Proceed to Finalize
+
+If `/ship` returns successfully and `auto_finalize: true`:
+```
+SlashCommand:
+  command: "/finalize"
+```
+
+The finalize phase for epics generates:
+- `walkthrough.md` - Comprehensive epic documentation
+- CHANGELOG updates
+- GitHub release with all sprint summaries
+- Roadmap issue closures
+
+### Step 5.5.3: Update State After Full Workflow Completion
+
+```bash
+yq eval '.status = "completed"' -i "$EPIC_DIR/state.yaml"
+yq eval '.completed_at = "'$(date -Iseconds)'"' -i "$EPIC_DIR/state.yaml"
+```
+
+**Non-auto mode behavior (default):**
+After optimize completes, display summary and wait for user to run `/ship` manually.
 
 ---
 

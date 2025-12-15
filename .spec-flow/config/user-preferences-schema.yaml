@@ -228,6 +228,25 @@ properties:
             maximum: 1.0
             description: "Statistical significance threshold (0.0-1.0) for pattern confidence"
 
+  deployment:
+    type: object
+    description: "Deployment behavior configuration (v11.7)"
+    properties:
+      auto_ship:
+        type: boolean
+        default: false
+        description: "Automatically continue from optimize to ship to finalize when using --auto mode (no pause after optimize)"
+
+      auto_merge:
+        type: boolean
+        default: false
+        description: "Automatically merge PR when CI passes without production approval prompt"
+
+      auto_finalize:
+        type: boolean
+        default: true
+        description: "Automatically run /finalize after successful deployment (documentation, CHANGELOG, GitHub release)"
+
   migrations:
     type: object
     description: "Database migration safety configuration (v10.5)"
@@ -258,7 +277,7 @@ properties:
 # Validation rules
 validation:
   required_fields: []
-  optional_fields: [commands, automation, ui, worktrees, studio, prototype, e2e_visual, learning, migrations]
+  optional_fields: [commands, automation, ui, worktrees, studio, prototype, e2e_visual, learning, deployment, migrations]
 
 # Migration notes
 version_history:
@@ -267,6 +286,7 @@ version_history:
   "1.2": "Added migrations section for database migration safety (v10.5)"
   "1.3": "Added feature command preferences with auto/interactive mode and skip_mode_prompt (v10.9)"
   "1.4": "Added studio section for Dev Studio parallel AI development (v10.12)"
+  "1.5": "Added deployment section for auto-ship, auto-merge, auto-finalize (v11.7)"
 
 # Examples
 examples:
@@ -322,3 +342,20 @@ examples:
       ui:
         show_usage_stats: false
         recommend_last_used: false
+
+  - name: "Full autopilot (auto-ship enabled)"
+    description: "End-to-end automation: optimize → ship → finalize without stopping"
+    config:
+      commands:
+        feature:
+          default_mode: auto
+          skip_mode_prompt: true
+        epic:
+          default_mode: auto
+          skip_mode_prompt: true
+      deployment:
+        auto_ship: true
+        auto_merge: true
+        auto_finalize: true
+      automation:
+        auto_approve_minor_changes: true

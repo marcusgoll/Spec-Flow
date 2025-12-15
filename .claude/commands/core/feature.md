@@ -49,6 +49,15 @@ Worktree preference:
 
 Planning depth preference:
 !`bash .spec-flow/scripts/utils/load-preferences.sh --key "planning.auto_deep_mode" --default "false" 2>/dev/null || echo "false"`
+
+Auto-ship preference:
+!`bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_ship" --default "false" 2>/dev/null || echo "false"`
+
+Auto-merge preference:
+!`bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_merge" --default "false" 2>/dev/null || echo "false"`
+
+Auto-finalize preference:
+!`bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_finalize" --default "true" 2>/dev/null || echo "true"`
 </context>
 
 <planning_depth>
@@ -56,7 +65,7 @@ Planning depth preference:
 
 **Flags in $ARGUMENTS**:
 - `--deep` → Force ultrathink/craftsman planning for this feature
-- `--auto` → Use preferences to determine depth (respects `auto_deep_mode`)
+- `--auto` → Use preferences to determine depth (respects `auto_deep_mode`), AND continue through ship→finalize without stopping
 - Neither → Interactive mode, respects preference triggers
 
 **Pass flag to /plan phase**:
@@ -74,6 +83,33 @@ planning:
   craftsman_decision_generated: true
 ```
 </planning_depth>
+
+<auto_mode>
+## Auto Mode (--auto flag)
+
+When `--auto` flag is present, the workflow runs end-to-end without stopping:
+
+**Full auto-mode behavior** (when `--auto` flag is set):
+1. **Planning**: Skip spec/plan review prompts (use preferences for depth)
+2. **Implementation**: Continue through all phases automatically
+3. **Ship**: Check CI, auto-merge when passing (if `deployment.auto_merge: true`)
+4. **Finalize**: Run /finalize automatically (if `deployment.auto_finalize: true`)
+
+**Preference-controlled auto-ship** (v11.7):
+- `deployment.auto_ship: true` → Continue from optimize → ship → finalize without stopping
+- `deployment.auto_merge: true` → Auto-merge PR when CI passes (no production approval prompt)
+- `deployment.auto_finalize: true` → Run /finalize automatically after successful deployment
+
+**State tracking**:
+```yaml
+# In state.yaml
+auto_mode:
+  enabled: true
+  auto_ship: true   # Continue optimize → ship → finalize
+  auto_merge: true  # Auto-merge when CI passes
+  auto_finalize: true
+```
+</auto_mode>
 
 <dry_run_mode>
 ## Dry-Run Mode (--dry-run)
@@ -106,12 +142,13 @@ fi
 
 ## PHASE 0: Mode Detection
 
-### Step 0.1: Detect Dry-Run and Planning Modes
+### Step 0.1: Detect Dry-Run, Planning, and Auto Modes
 
 **Parse flags from arguments:**
 ```bash
 DRY_RUN="false"
 DEEP_MODE="false"
+AUTO_MODE="false"
 CLEAN_ARGS="$ARGUMENTS"
 
 if [[ "$ARGUMENTS" == *"--dry-run"* ]]; then
@@ -125,11 +162,22 @@ if [[ "$ARGUMENTS" == *"--deep"* ]]; then
 fi
 
 if [[ "$ARGUMENTS" == *"--auto"* ]]; then
+  AUTO_MODE="true"
   CLEAN_ARGS=$(echo "$CLEAN_ARGS" | sed 's/--auto//g')
 fi
 
 CLEAN_ARGS=$(echo "$CLEAN_ARGS" | xargs)  # Trim whitespace
-echo "Dry-run: $DRY_RUN, Deep: $DEEP_MODE, Args: $CLEAN_ARGS"
+echo "Dry-run: $DRY_RUN, Deep: $DEEP_MODE, Auto: $AUTO_MODE, Args: $CLEAN_ARGS"
+```
+
+**If AUTO_MODE is true, load deployment preferences:**
+```bash
+if [ "$AUTO_MODE" = "true" ]; then
+  AUTO_SHIP=$(bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_ship" --default "false" 2>/dev/null || echo "false")
+  AUTO_MERGE=$(bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_merge" --default "false" 2>/dev/null || echo "false")
+  AUTO_FINALIZE=$(bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_finalize" --default "true" 2>/dev/null || echo "true")
+  echo "Auto-ship: $AUTO_SHIP, Auto-merge: $AUTO_MERGE, Auto-finalize: $AUTO_FINALIZE"
+fi
 ```
 
 **If DRY_RUN is true, output banner:**
@@ -344,6 +392,24 @@ Execute these phases in order. For each phase:
 | ship | ship-staging-phase-agent | finalize |
 | finalize | finalize-phase-agent | complete |
 
+**Auto-mode handling (--auto flag)**:
+When `AUTO_MODE=true` (from Step 0.1), the workflow continues automatically through optimize → ship → finalize:
+
+1. After **optimize** phase completes: Automatically proceed to **ship** phase (no pause)
+2. During **ship** phase: Pass `--auto` flag to ship command to enable auto-merge
+3. After **ship** completes: Automatically proceed to **finalize** phase
+4. After **finalize** completes: Mark workflow complete
+
+**Store auto_mode in state.yaml** after feature initialization:
+```bash
+if [ "$AUTO_MODE" = "true" ]; then
+  yq eval '.auto_mode.enabled = true' -i "$FEATURE_DIR/state.yaml"
+  yq eval '.auto_mode.auto_ship = '$AUTO_SHIP'' -i "$FEATURE_DIR/state.yaml"
+  yq eval '.auto_mode.auto_merge = '$AUTO_MERGE'' -i "$FEATURE_DIR/state.yaml"
+  yq eval '.auto_mode.auto_finalize = '$AUTO_FINALIZE'' -i "$FEATURE_DIR/state.yaml"
+fi
+```
+
 ### For Each Phase, Follow This Exact Pattern:
 
 #### Step 3.1: Read Current State
@@ -442,6 +508,47 @@ Task tool call:
 2. Output error message to user
 3. Instruct user to fix and run `/feature continue`
 4. STOP the workflow
+
+#### Step 3.5: Auto-Mode Ship and Finalize (v11.7)
+
+**When optimize phase completes in auto mode, continue through ship and finalize automatically.**
+
+Check for auto-mode after optimize phase:
+```bash
+AUTO_MODE=$(yq eval '.auto_mode.enabled // false' "$FEATURE_DIR/state.yaml")
+AUTO_SHIP=$(yq eval '.auto_mode.auto_ship // false' "$FEATURE_DIR/state.yaml")
+AUTO_MERGE=$(yq eval '.auto_mode.auto_merge // false' "$FEATURE_DIR/state.yaml")
+AUTO_FINALIZE=$(yq eval '.auto_mode.auto_finalize // true' "$FEATURE_DIR/state.yaml")
+```
+
+**If optimize phase just completed AND auto_mode is enabled:**
+
+1. **Proceed to ship phase automatically (no pause):**
+   ```
+   SlashCommand:
+     command: "/ship --auto"
+   ```
+
+   The `--auto` flag tells /ship to:
+   - Skip production approval prompt
+   - Auto-merge PR when CI passes (if `auto_merge: true`)
+   - Continue to finalize automatically (if `auto_finalize: true`)
+
+2. **After ship completes, proceed to finalize:**
+   If `/ship` returns successfully and `auto_finalize: true`:
+   ```
+   SlashCommand:
+     command: "/finalize"
+   ```
+
+3. **Update state after full workflow completion:**
+   ```bash
+   yq eval '.status = "completed"' -i "$FEATURE_DIR/state.yaml"
+   yq eval '.completed_at = "'$(date -Iseconds)'"' -i "$FEATURE_DIR/state.yaml"
+   ```
+
+**Non-auto mode behavior (default):**
+After optimize completes, display summary and wait for user to run `/ship` manually.
 
 ---
 
