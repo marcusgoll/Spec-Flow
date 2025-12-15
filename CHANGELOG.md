@@ -2,6 +2,17 @@
 
 ---
 
+## [11.8.3] - 2025-12-15
+
+### 🐛 Fixed
+
+**Script Path References in feature-workflow.sh**
+
+- Fixed undefined `$SCRIPT_DIR` variable causing worktree creation to fail
+- Corrected paths to use relative paths from repo root (`.spec-flow/scripts/bash/...`)
+
+---
+
 ## [11.8.2] - 2025-12-15
 
 ### ✨ Added
