@@ -2,6 +2,22 @@
 
 ---
 
+## [11.8.4] - 2025-12-15
+
+### ✨ Added
+
+**Worktree Branch Sync**
+
+- Worktrees now fetch `origin/main` before creating branches, ensuring they start up-to-date
+- New `worktree-manager.sh sync <slug>` command to rebase existing worktrees onto latest main
+- Prevents "This branch is out of date from base branch" warnings in GitHub PRs
+
+### 🐛 Fixed
+
+- Branches are now created from `origin/main` instead of local `main` which may be stale
+
+---
+
 ## [11.8.3] - 2025-12-15
 
 ### 🐛 Fixed
