@@ -358,7 +358,7 @@ echo "Project type: $PROJECT_TYPE"
 # WORKTREE CONFIGURATION (v11.8)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-WORKTREE_AUTO_CREATE=$(bash "$SCRIPT_DIR/utils/load-preferences.sh" --key "worktrees.auto_create" --default "true" 2>/dev/null || echo "true")
+WORKTREE_AUTO_CREATE=$(bash .spec-flow/scripts/bash/utils/load-preferences.sh --key "worktrees.auto_create" --default "true" 2>/dev/null || echo "true")
 WORKTREE_PATH=""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -388,7 +388,7 @@ else
     # Create worktree or regular branch based on preference
     if [ "$WORKTREE_AUTO_CREATE" = "true" ]; then
       echo "Creating worktree for feature..."
-      WORKTREE_RESULT=$("$SCRIPT_DIR/worktree-manager.sh" --json create "feature" "$FEATURE_NUM-$SLUG" "$BRANCH_NAME" 2>&1)
+      WORKTREE_RESULT=$(bash .spec-flow/scripts/bash/worktree-manager.sh --json create "feature" "$FEATURE_NUM-$SLUG" "$BRANCH_NAME" 2>&1)
       if [ $? -eq 0 ]; then
         # Extract worktree path from JSON result
         WORKTREE_PATH=$(echo "$WORKTREE_RESULT" | grep -o '"worktree_path": *"[^"]*"' | sed 's/.*: *"\([^"]*\)"/\1/')
