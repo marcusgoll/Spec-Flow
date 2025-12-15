@@ -355,6 +355,13 @@ fi
 echo "Project type: $PROJECT_TYPE"
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# WORKTREE CONFIGURATION (v11.8)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WORKTREE_AUTO_CREATE=$(bash "$SCRIPT_DIR/utils/load-preferences.sh" --key "worktrees.auto_create" --default "true" 2>/dev/null || echo "true")
+WORKTREE_PATH=""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # BRANCH MANAGEMENT
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -377,7 +384,29 @@ else
     BASE="feature/$FEATURE_NUM-$SLUG"
     BRANCH_NAME="$BASE"
     i=2; while git rev-parse --verify --quiet "$BRANCH_NAME" >/dev/null 2>&1; do BRANCH_NAME="$BASE-$i"; i=$((i+1)); done
-    git checkout -b "$BRANCH_NAME"
+
+    # Create worktree or regular branch based on preference
+    if [ "$WORKTREE_AUTO_CREATE" = "true" ]; then
+      echo "Creating worktree for feature..."
+      WORKTREE_RESULT=$("$SCRIPT_DIR/worktree-manager.sh" --json create "feature" "$FEATURE_NUM-$SLUG" "$BRANCH_NAME" 2>&1)
+      if [ $? -eq 0 ]; then
+        # Extract worktree path from JSON result
+        WORKTREE_PATH=$(echo "$WORKTREE_RESULT" | grep -o '"worktree_path": *"[^"]*"' | sed 's/.*: *"\([^"]*\)"/\1/')
+        if [ -n "$WORKTREE_PATH" ] && [ -d "$WORKTREE_PATH" ]; then
+          echo "✅ Worktree created: $WORKTREE_PATH"
+          cd "$WORKTREE_PATH"
+        else
+          echo "⚠️ Worktree creation returned empty path, falling back to regular branch"
+          git checkout -b "$BRANCH_NAME"
+        fi
+      else
+        echo "⚠️ Worktree creation failed, falling back to regular branch"
+        echo "   Error: $WORKTREE_RESULT"
+        git checkout -b "$BRANCH_NAME"
+      fi
+    else
+      git checkout -b "$BRANCH_NAME"
+    fi
   else
     BRANCH_NAME="$CURRENT_BRANCH"
   fi
@@ -402,6 +431,12 @@ start_phase_timing "$FEATURE_DIR" "spec-flow"
 
 [ -n "$ISSUE_NUMBER" ] && yq -i ".feature.github_issue = $ISSUE_NUMBER" "$FEATURE_DIR/state.yaml" || true
 
+# Add worktree info to state.yaml (v11.8)
+if [ -n "$WORKTREE_PATH" ]; then
+  yq -i '.git.worktree_enabled = true' "$FEATURE_DIR/state.yaml" 2>/dev/null || true
+  yq -i ".git.worktree_path = \"$WORKTREE_PATH\"" "$FEATURE_DIR/state.yaml" 2>/dev/null || true
+fi
+
 # Optional: generate feature CLAUDE.md
 .spec-flow/scripts/bash/generate-feature-claude-md.sh "$FEATURE_DIR" 2>/dev/null || true
 
@@ -410,6 +445,12 @@ echo "✅ Feature initialized: $FEATURE_NUM-$SLUG"
 echo "   Branch: $BRANCH_NAME"
 echo "   Directory: $FEATURE_DIR"
 [ -n "$ISSUE_NUMBER" ] && echo "   GitHub Issue: #$ISSUE_NUMBER"
+if [ -n "$WORKTREE_PATH" ]; then
+  echo "   Worktree: $WORKTREE_PATH"
+  echo ""
+  echo "📂 Working directory: $WORKTREE_PATH"
+  echo "💡 Run 'cd $WORKTREE_PATH' to continue development"
+fi
 echo ""
 
 # Exit here - LLM will handle phase execution through slash commands
