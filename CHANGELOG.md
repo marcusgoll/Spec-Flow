@@ -2,6 +2,20 @@
 
 ---
 
+## [11.6.1] - 2025-12-15
+
+### 🐛 Fixed
+
+**Initializer Agent Tool Execution**
+
+The initializer agent was planning but not executing tools (0 tool uses despite 10k tokens of output).
+
+- **Root cause**: Agent instructions used code blocks as documentation examples, agent treated them as text to output rather than commands to execute
+- **Fix**: Added explicit "MUST use tools" constraints, anti-pattern warnings, verification steps, and fallback direct-write mechanism
+- **Affected file**: `.claude/agents/domain/initializer.md`
+
+---
+
 ## [11.6.0] - 2025-12-14
 
 ### ✨ Added
