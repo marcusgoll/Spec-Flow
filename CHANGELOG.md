@@ -2,6 +2,59 @@
 
 ---
 
+## [11.8.0] - 2025-12-15
+
+### ✨ Added
+
+**Worktree-First Safety Model for Multi-Agent Isolation**
+
+Run multiple Claude Code instances from root folder with automatic git isolation - each agent works in its own worktree with namespaced branches.
+
+- **Studio context detection**: Auto-detect when running in `worktrees/studio/agent-N/` directories
+  - `detect_studio_context()`: Returns agent ID (e.g., `agent-1`) if in studio worktree
+  - `is_studio_mode()`: Boolean check for studio context
+- **Branch namespacing**: Studio agents get isolated branch names
+  - Studio mode: `studio/agent-N/feature/XXX-slug`
+  - Normal mode: `feature/XXX-slug`
+  - Prevents git conflicts during parallel development
+- **Root safety checks**: Block changes from root when active worktrees exist
+  - `find_active_worktrees()`: List all in-progress features/epics in worktrees
+  - `check_root_safety()`: Returns safe/blocked status with recommended action
+- **PHASE 0.5 safety check**: Added to `/feature`, `/epic`, `/quick` commands
+  - Runs before any work begins
+  - Blocks or prompts based on protection level
+
+**New Worktree Preferences**
+
+- **`worktrees.enforce_isolation`**: Require worktree isolation for all implementation (default: true)
+- **`worktrees.root_protection`**: Protection level when in root with active worktrees
+  - `strict`: Block changes, require switch to worktree (default)
+  - `prompt`: Ask user to confirm root changes
+  - `none`: Allow changes without protection
+- **`worktrees.auto_switch_on_continue`**: Auto-prompt to switch when resuming from root (default: true)
+- **`worktrees.cleanup_on_finalize`**: Remove worktree after deployment (default: true)
+
+**Worktree Cleanup at Finalize**
+
+- `/finalize` now cleans up worktree when `cleanup_on_finalize` is enabled
+- Agent returns to root repository for next work
+- Safe deletion only (preserves unmerged changes)
+
+**Studio Mode Integration**
+
+- `/feature`, `/epic`, `/quick` automatically detect studio context
+- Branch names auto-namespaced for studio agents
+- PR-based shipping for studio agents (like real dev teams)
+- No code changes needed in existing workflows
+
+### 🔧 Changed
+
+- **User preferences schema**: Added `worktrees` section (v1.6)
+- **worktree-context.sh**: Central script for all worktree management
+- **CLAUDE.md**: Added Studio Mode and Worktree-First Safety documentation
+
+---
+
 ## [11.7.0] - 2025-12-15
 
 ### ✨ Added
