@@ -2,6 +2,24 @@
 
 ---
 
+## [11.8.2] - 2025-12-15
+
+### ✨ Added
+
+**Worktree Creation in /feature Command**
+
+The `/feature` command now creates isolated git worktrees by default:
+
+- **Automatic worktree creation**: Running `/feature "description"` creates `worktrees/feature/XXX-slug/` instead of just a branch
+- **State tracking**: Stores `git.worktree_enabled` and `git.worktree_path` in state.yaml
+- **Clear output**: Shows worktree path and `cd` command for easy navigation
+- **Graceful fallback**: Falls back to regular branch if worktree creation fails
+- **Configurable**: Set `worktrees.auto_create: false` in preferences to disable
+
+This completes the v11.8.0 worktree-first safety model - now features actually create worktrees.
+
+---
+
 ## [11.8.1] - 2025-12-15
 
 ### 🐛 Fixed
