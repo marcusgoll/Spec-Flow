@@ -44,6 +44,9 @@ Deployment model detection:
 Worktree context:
 !`bash .spec-flow/scripts/bash/worktree-context.sh info 2>/dev/null || echo '{"is_worktree": false}'`
 
+Studio context (multi-agent isolation):
+!`bash .spec-flow/scripts/bash/worktree-context.sh studio-detect 2>/dev/null || echo ""`
+
 Worktree preference:
 !`bash .spec-flow/scripts/utils/load-preferences.sh --key "worktrees.auto_create" --default "true" 2>/dev/null || echo "true"`
 
@@ -110,6 +113,46 @@ auto_mode:
   auto_finalize: true
 ```
 </auto_mode>
+
+<studio_mode>
+## Studio Mode (Multi-Agent Isolation) (v11.8)
+
+When running in a studio worktree (`worktrees/studio/agent-N/`), the workflow automatically:
+
+1. **Detects studio context** - Auto-detected from working directory
+2. **Namespaces branches** - `studio/agent-N/feature/XXX-slug` instead of `feature/XXX-slug`
+3. **Creates PRs for merging** - Studio agents always create PRs (like a real dev team)
+4. **Prevents git conflicts** - Each agent has isolated branches
+
+**Detection (automatic, no user action needed):**
+```bash
+STUDIO_AGENT=$(bash .spec-flow/scripts/bash/worktree-context.sh studio-detect 2>/dev/null || echo "")
+IS_STUDIO_MODE=$([[ -n "$STUDIO_AGENT" ]] && echo "true" || echo "false")
+```
+
+**Branch naming in studio mode:**
+```bash
+# Get namespaced branch (handles studio detection automatically)
+BRANCH=$(bash .spec-flow/scripts/bash/worktree-context.sh studio-branch "feature" "$SLUG" 2>/dev/null)
+# Returns: "studio/agent-1/feature/001-auth" in studio mode
+# Returns: "feature/001-auth" in normal mode
+```
+
+**State tracking (in state.yaml):**
+```yaml
+studio:
+  enabled: true
+  agent_id: agent-1
+  branch_namespace: studio/agent-1
+  merge_strategy: pr  # Always PR in studio mode
+```
+
+**Ship behavior in studio mode:**
+- Always creates PR instead of direct merge
+- PR targets `main` branch from `studio/agent-N/feature/XXX-slug`
+- Auto-merge enabled via GitHub branch protection (no manual review needed)
+- CI gates validate the change before merge
+</studio_mode>
 
 <dry_run_mode>
 ## Dry-Run Mode (--dry-run)
@@ -180,12 +223,94 @@ if [ "$AUTO_MODE" = "true" ]; then
 fi
 ```
 
+**Detect studio context (v11.8):**
+```bash
+STUDIO_AGENT=$(bash .spec-flow/scripts/bash/worktree-context.sh studio-detect 2>/dev/null || echo "")
+IS_STUDIO_MODE="false"
+if [[ -n "$STUDIO_AGENT" ]]; then
+  IS_STUDIO_MODE="true"
+  echo "Studio mode: $STUDIO_AGENT"
+fi
+```
+
 **If DRY_RUN is true, output banner:**
 ```
 ════════════════════════════════════════════════════════════════════════════════
 DRY-RUN MODE: No changes will be made
 ════════════════════════════════════════════════════════════════════════════════
 ```
+
+---
+
+## PHASE 0.5: Worktree Safety Check (v11.8)
+
+**Before any work, verify we're in a safe location.**
+
+### Step 0.5.1: Check Root Safety
+
+```bash
+SAFETY_CHECK=$(bash .spec-flow/scripts/bash/worktree-context.sh check-safety 2>/dev/null || echo '{"safe": true}')
+IS_SAFE=$(echo "$SAFETY_CHECK" | jq -r '.safe')
+ACTION=$(echo "$SAFETY_CHECK" | jq -r '.action')
+```
+
+### Step 0.5.2: Handle Safety Check Result
+
+**If IS_SAFE is false AND ACTION is "switch_to_worktree" (strict mode):**
+
+Parse active worktrees and display switch instructions:
+```bash
+ACTIVE_WORKTREES=$(echo "$SAFETY_CHECK" | jq -r '.active_worktrees')
+```
+
+Output:
+```
+════════════════════════════════════════════════════════════════════════════════
+⚠️  WORKTREE ISOLATION ACTIVE
+════════════════════════════════════════════════════════════════════════════════
+
+You're in the root repository with active feature/epic worktrees.
+For safety, changes should be made from within the appropriate worktree.
+
+Active worktrees:
+${FOR EACH worktree in ACTIVE_WORKTREES}
+  • ${worktree.type}/${worktree.slug} (phase: ${worktree.phase})
+    Path: ${worktree.path}
+${END FOR}
+
+Options:
+  1. Switch to an existing worktree: cd [path] && claude
+  2. Start a NEW feature (will create new worktree): proceed with /feature "new description"
+
+════════════════════════════════════════════════════════════════════════════════
+```
+
+**If argument is NOT "continue" and NOT empty (starting new feature):**
+- Proceed to PHASE 1 (new feature will get its own worktree)
+
+**If argument is "continue":**
+- Use AskUserQuestion to ask which worktree to switch to
+- Display switch instructions and STOP (user must run from worktree)
+
+**If IS_SAFE is false AND ACTION is "prompt_user" (prompt mode):**
+
+Use AskUserQuestion:
+```
+Question: "Active worktrees detected. Where would you like to work?"
+Header: "Workspace"
+Options:
+  - label: "Switch to existing worktree"
+    description: "Continue work in an existing feature/epic worktree"
+  - label: "Start new feature here"
+    description: "Create a new worktree for this feature"
+  - label: "Work in root (unsafe)"
+    description: "Make changes directly in root (not recommended)"
+```
+
+Handle user choice accordingly.
+
+**If IS_SAFE is true:**
+- Proceed to PHASE 1
 
 ---
 
@@ -228,16 +353,32 @@ echo "Feature directory: $FEATURE_DIR"
 cat "$FEATURE_DIR/state.yaml"
 ```
 
-### Step 1.1.5: Create Worktree (If Preference Enabled)
+### Step 1.1.5: Create Worktree and Branch (Studio-Aware)
 
 **Handle worktree using centralized skill** (see `.claude/skills/worktree-context/SKILL.md`):
 
 1. Check preference: `worktrees.auto_create` (default: true)
 2. Check if already in worktree: `bash .spec-flow/scripts/bash/worktree-context.sh in-worktree`
-3. If NOT in worktree AND auto_create is true:
+3. **Get studio-aware branch name (v11.8):**
+   ```bash
+   # Auto-detects studio context and namespaces branch appropriately
+   BRANCH=$(bash .spec-flow/scripts/bash/worktree-context.sh studio-branch "feature" "$SLUG" 2>/dev/null)
+   # Returns: "studio/agent-1/feature/001-auth" in studio mode
+   # Returns: "feature/001-auth" in normal mode
+   ```
+4. If NOT in worktree AND auto_create is true:
    - Create: `bash .spec-flow/scripts/bash/worktree-context.sh create "feature" "$SLUG" "$BRANCH"`
    - Store in state.yaml: `git.worktree_enabled`, `git.worktree_path`
-4. Read worktree info from state.yaml for Task() agent prompts
+5. **Store studio context in state.yaml (v11.8):**
+   ```bash
+   if [ "$IS_STUDIO_MODE" = "true" ]; then
+     yq eval '.studio.enabled = true' -i "$FEATURE_DIR/state.yaml"
+     yq eval '.studio.agent_id = "'$STUDIO_AGENT'"' -i "$FEATURE_DIR/state.yaml"
+     yq eval '.studio.branch_namespace = "studio/'$STUDIO_AGENT'"' -i "$FEATURE_DIR/state.yaml"
+     yq eval '.studio.merge_strategy = "pr"' -i "$FEATURE_DIR/state.yaml"
+   fi
+   ```
+6. Read worktree info from state.yaml for Task() agent prompts
 
 ### Step 1.2: Initialize Interaction State
 
@@ -247,7 +388,7 @@ bash .spec-flow/scripts/bash/interaction-manager.sh init "$FEATURE_DIR"
 
 ### Step 1.3: Display Autopilot Banner
 
-Output this to the user:
+Output this to the user (with studio context if active):
 ```
 ════════════════════════════════════════════════════════════════════════════════
 🤖 AUTOPILOT MODE - Domain Memory v2
@@ -256,7 +397,11 @@ All phases execute via isolated Task() agents
 Progress tracked in: $FEATURE_DIR/state.yaml
 Questions batched and asked in main context
 Resume anytime with: /feature continue
-════════════════════════════════════════════════════════════════════════════════
+${IS_STUDIO_MODE == "true" ? "
+Studio Agent: $STUDIO_AGENT
+Branch: $BRANCH (namespaced for multi-agent isolation)
+Merge strategy: PR (auto-merge when CI passes)
+" : ""}════════════════════════════════════════════════════════════════════════════════
 ```
 
 ---

@@ -101,17 +101,33 @@ properties:
 
   worktrees:
     type: object
-    description: "Git worktree configuration for parallel development"
+    description: "Git worktree configuration for safe parallel development (v11.8)"
     properties:
       auto_create:
         type: boolean
-        default: false
-        description: "Automatically create git worktrees for epics and features (enables parallel development)"
+        default: true
+        description: "Automatically create git worktrees for epics and features (enables parallel development and isolation)"
 
       cleanup_on_finalize:
         type: boolean
         default: true
         description: "Automatically remove worktrees after /finalize completes"
+
+      enforce_isolation:
+        type: boolean
+        default: true
+        description: "Enforce worktree isolation - all implementation happens in worktrees, root is orchestration-only"
+
+      root_protection:
+        type: string
+        enum: [strict, prompt, none]
+        default: strict
+        description: "Protection level when in root with active worktrees (strict=block changes, prompt=ask first, none=allow)"
+
+      auto_switch_on_continue:
+        type: boolean
+        default: true
+        description: "When resuming a feature/epic from root, automatically prompt to switch to its worktree"
 
   studio:
     type: object
@@ -287,6 +303,7 @@ version_history:
   "1.3": "Added feature command preferences with auto/interactive mode and skip_mode_prompt (v10.9)"
   "1.4": "Added studio section for Dev Studio parallel AI development (v10.12)"
   "1.5": "Added deployment section for auto-ship, auto-merge, auto-finalize (v11.7)"
+  "1.6": "Enhanced worktrees section with enforce_isolation, root_protection, auto_switch_on_continue (v11.8)"
 
 # Examples
 examples:
@@ -359,3 +376,37 @@ examples:
         auto_finalize: true
       automation:
         auto_approve_minor_changes: true
+
+  - name: "Worktree-first (recommended for teams)"
+    description: "Safe parallel development - all changes isolated in worktrees, root is read-only"
+    config:
+      worktrees:
+        auto_create: true
+        enforce_isolation: true
+        root_protection: strict
+        auto_switch_on_continue: true
+        cleanup_on_finalize: true
+      deployment:
+        auto_merge: true
+        auto_finalize: true
+
+  - name: "Multi-agent parallel (full studio mode)"
+    description: "Run multiple Claude Code instances from root, each with isolated worktrees"
+    config:
+      worktrees:
+        auto_create: true
+        enforce_isolation: true
+        root_protection: strict
+        auto_switch_on_continue: true
+        cleanup_on_finalize: true
+      studio:
+        auto_continue: true
+        default_agents: 3
+      deployment:
+        auto_ship: true
+        auto_merge: true
+        auto_finalize: true
+      commands:
+        feature:
+          default_mode: auto
+          skip_mode_prompt: true

@@ -51,6 +51,10 @@ This orchestrator is **ultra-lightweight**. You MUST:
 **Auto-merge preference**: !`bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_merge" --default "false" 2>/dev/null || echo "false"`
 
 **Auto-finalize preference**: !`bash .spec-flow/scripts/utils/load-preferences.sh --key "deployment.auto_finalize" --default "true" 2>/dev/null || echo "true"`
+
+**Studio context (multi-agent isolation)**: !`bash .spec-flow/scripts/bash/worktree-context.sh studio-detect 2>/dev/null || echo ""`
+
+**Worktree context**: !`bash .spec-flow/scripts/bash/worktree-context.sh info 2>/dev/null || echo '{"is_worktree": false}'`
 </context>
 
 <planning_depth>
@@ -117,7 +121,119 @@ auto_mode:
 ```
 </auto_mode>
 
+<studio_mode>
+## Studio Mode (Multi-Agent Isolation) (v11.8)
+
+When running in a studio worktree (`worktrees/studio/agent-N/`), the epic workflow automatically:
+
+1. **Detects studio context** - Auto-detected from working directory
+2. **Namespaces branches** - `studio/agent-N/epic/XXX-slug` instead of `epic/XXX-slug`
+3. **Creates PRs for merging** - Studio agents always create PRs (like a real dev team)
+4. **Prevents git conflicts** - Each agent has isolated branches
+
+**Detection (automatic, no user action needed):**
+```bash
+STUDIO_AGENT=$(bash .spec-flow/scripts/bash/worktree-context.sh studio-detect 2>/dev/null || echo "")
+IS_STUDIO_MODE=$([[ -n "$STUDIO_AGENT" ]] && echo "true" || echo "false")
+```
+
+**Branch naming in studio mode:**
+```bash
+# Get namespaced branch (handles studio detection automatically)
+BRANCH=$(bash .spec-flow/scripts/bash/worktree-context.sh studio-branch "epic" "$SLUG" 2>/dev/null)
+# Returns: "studio/agent-1/epic/001-auth" in studio mode
+# Returns: "epic/001-auth" in normal mode
+```
+
+**State tracking (in state.yaml):**
+```yaml
+studio:
+  enabled: true
+  agent_id: agent-1
+  branch_namespace: studio/agent-1
+  merge_strategy: pr  # Always PR in studio mode
+```
+
+**Ship behavior in studio mode:**
+- Always creates PR instead of direct merge
+- PR targets `main` branch from `studio/agent-N/epic/XXX-slug`
+- Auto-merge enabled via GitHub branch protection (no manual review needed)
+- CI gates validate the change before merge
+</studio_mode>
+
 <process>
+
+## PHASE 0.5: Worktree Safety Check (v11.8)
+
+**Before any work, verify we're in a safe location.**
+
+### Step 0.5.1: Check Root Safety
+
+```bash
+SAFETY_CHECK=$(bash .spec-flow/scripts/bash/worktree-context.sh check-safety 2>/dev/null || echo '{"safe": true}')
+IS_SAFE=$(echo "$SAFETY_CHECK" | jq -r '.safe')
+ACTION=$(echo "$SAFETY_CHECK" | jq -r '.action')
+```
+
+### Step 0.5.2: Handle Safety Check Result
+
+**If IS_SAFE is false AND ACTION is "switch_to_worktree" (strict mode):**
+
+Parse active worktrees and display switch instructions:
+```bash
+ACTIVE_WORKTREES=$(echo "$SAFETY_CHECK" | jq -r '.active_worktrees')
+```
+
+Output:
+```
+════════════════════════════════════════════════════════════════════════════════
+⚠️  WORKTREE ISOLATION ACTIVE
+════════════════════════════════════════════════════════════════════════════════
+
+You're in the root repository with active feature/epic worktrees.
+For safety, changes should be made from within the appropriate worktree.
+
+Active worktrees:
+${FOR EACH worktree in ACTIVE_WORKTREES}
+  • ${worktree.type}/${worktree.slug} (phase: ${worktree.phase})
+    Path: ${worktree.path}
+${END FOR}
+
+Options:
+  1. Switch to an existing worktree: cd [path] && claude
+  2. Start a NEW epic (will create new worktree): proceed with /epic "new description"
+
+════════════════════════════════════════════════════════════════════════════════
+```
+
+**If argument is NOT "continue" and NOT empty (starting new epic):**
+- Proceed to PHASE 1 (new epic will get its own worktree)
+
+**If argument is "continue":**
+- Use AskUserQuestion to ask which worktree to switch to
+- Display switch instructions and STOP (user must run from worktree)
+
+**If IS_SAFE is false AND ACTION is "prompt_user" (prompt mode):**
+
+Use AskUserQuestion:
+```
+Question: "Active worktrees detected. Where would you like to work?"
+Header: "Workspace"
+Options:
+  - label: "Switch to existing worktree"
+    description: "Continue work in an existing feature/epic worktree"
+  - label: "Start new epic here"
+    description: "Create a new worktree for this epic"
+  - label: "Work in root (unsafe)"
+    description: "Make changes directly in root (not recommended)"
+```
+
+Handle user choice accordingly.
+
+**If IS_SAFE is true:**
+- Proceed to PHASE 1
+
+---
 
 ## PHASE 1: Initialize Epic Workspace
 
@@ -126,13 +242,31 @@ auto_mode:
 $ARGUMENTS
 ```
 
-### Step 1.1: Parse Arguments and Detect Mode
+### Step 1.1: Parse Arguments, Detect Mode, and Studio Context
 
 Determine the mode from arguments:
 - If argument is "continue" → Resume mode (skip to PHASE 1.5)
 - If argument is "next" → Select from backlog
 - If argument starts with slug/number → Lookup mode
 - Otherwise → New epic creation
+
+**Detect studio context (v11.8):**
+```bash
+STUDIO_AGENT=$(bash .spec-flow/scripts/bash/worktree-context.sh studio-detect 2>/dev/null || echo "")
+IS_STUDIO_MODE="false"
+if [[ -n "$STUDIO_AGENT" ]]; then
+  IS_STUDIO_MODE="true"
+  echo "Studio mode: $STUDIO_AGENT"
+fi
+```
+
+**Get studio-aware branch name:**
+```bash
+# Auto-detects studio context and namespaces branch appropriately
+BRANCH=$(bash .spec-flow/scripts/bash/worktree-context.sh studio-branch "epic" "$SLUG" 2>/dev/null)
+# Returns: "studio/agent-1/epic/001-auth" in studio mode
+# Returns: "epic/001-auth" in normal mode
+```
 
 ### Step 1.2: Create Epic Workspace (New Epic)
 
@@ -156,9 +290,21 @@ cat "$EPIC_DIR/state.yaml"
 bash .spec-flow/scripts/bash/interaction-manager.sh init "$EPIC_DIR"
 ```
 
+### Step 1.3.5: Store Studio Context in State (v11.8)
+
+If in studio mode, record it in state.yaml:
+```bash
+if [ "$IS_STUDIO_MODE" = "true" ]; then
+  yq eval '.studio.enabled = true' -i "$EPIC_DIR/state.yaml"
+  yq eval '.studio.agent_id = "'$STUDIO_AGENT'"' -i "$EPIC_DIR/state.yaml"
+  yq eval '.studio.branch_namespace = "studio/'$STUDIO_AGENT'"' -i "$EPIC_DIR/state.yaml"
+  yq eval '.studio.merge_strategy = "pr"' -i "$EPIC_DIR/state.yaml"
+fi
+```
+
 ### Step 1.4: Display Autopilot Banner
 
-Output this to the user:
+Output this to the user (with studio context if active):
 ```
 ════════════════════════════════════════════════════════════════════════════════
 🤖 EPIC AUTOPILOT - Domain Memory v2 with Parallel Sprints
@@ -168,7 +314,11 @@ Sprint execution parallelized via dependency graph
 Progress tracked in: $EPIC_DIR/state.yaml
 Questions batched and asked in main context
 Resume anytime with: /epic continue
-════════════════════════════════════════════════════════════════════════════════
+${IS_STUDIO_MODE == "true" ? "
+Studio Agent: $STUDIO_AGENT
+Branch: $BRANCH (namespaced for multi-agent isolation)
+Merge strategy: PR (auto-merge when CI passes)
+" : ""}════════════════════════════════════════════════════════════════════════════════
 ```
 
 ### Step 1.5: Continue Mode (Resume)

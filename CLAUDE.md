@@ -154,6 +154,91 @@ Think deeply about problems, then materialize your thinking into actionable road
 
 **Skill reference**: `.claude/skills/ultrathink/SKILL.md`
 
+### Studio Mode - Multi-Agent Isolation (v11.8)
+
+Run multiple Claude Code instances in parallel, each with isolated git branches.
+
+**Problem Solved**: When multiple agents work from the same git branch, they overwrite each other's changes. Studio mode gives each agent its own branch namespace.
+
+**How it works**:
+```bash
+/studio init 3        # Create 3 agent worktrees
+# In agent terminals:
+cd worktrees/studio/agent-1 && claude
+cd worktrees/studio/agent-2 && claude
+cd worktrees/studio/agent-3 && claude
+```
+
+**Branch namespacing (automatic)**:
+- Normal mode: `feature/001-auth`
+- Studio mode: `studio/agent-1/feature/001-auth`
+
+**No code changes needed** - existing `/feature`, `/epic`, `/quick` commands auto-detect studio context and namespace branches accordingly.
+
+**Ship behavior in studio mode**:
+- Always creates PR instead of direct merge
+- PR targets `main` from namespaced branch
+- Auto-merge via GitHub branch protection when CI passes
+- Like a real dev team with code review gates
+
+**Setup GitHub auto-merge** (one-time):
+```bash
+/studio setup         # Configure branch protection
+```
+
+**Commands**:
+| Command | Purpose |
+|---------|---------|
+| `/studio init N` | Create N agent worktrees (1-10) |
+| `/studio setup` | Configure GitHub for auto-merge |
+| `/studio status` | Show agent worktrees and their work |
+| `/studio stop` | Shutdown guidance |
+
+**Scripts**: `.spec-flow/scripts/bash/worktree-context.sh studio-*`
+
+### Worktree-First Safety Model (v11.8)
+
+All implementation happens in isolated worktrees. Root is read-only orchestration.
+
+**Protection levels** (configure in preferences):
+- `strict` (default) - Block changes from root when active worktrees exist
+- `prompt` - Ask user before allowing changes from root
+- `none` - Allow changes anywhere (not recommended)
+
+**How it works**:
+```
+ROOT (orchestration only)
+├── Can: Read state, spawn Task() agents, update state.yaml
+├── Cannot: Edit feature code directly when worktrees exist
+│
+└── WORKTREES (safe workspaces)
+    ├── worktrees/feature/001-auth/  → Full read/write
+    ├── worktrees/epic/002-payment/  → Full read/write
+    └── Each feature/epic gets its own isolated worktree
+```
+
+**Automatic behaviors**:
+- `/feature "desc"` from root → Creates worktree → Workers operate there
+- `/feature continue` from root → Detects worktree → Prompts to switch
+- `/finalize` → Cleans up worktree → Returns to root
+
+**Preferences**:
+```yaml
+worktrees:
+  auto_create: true              # Create worktrees automatically
+  enforce_isolation: true        # Block direct edits from root
+  root_protection: strict        # strict | prompt | none
+  auto_switch_on_continue: true  # Prompt to switch on resume
+  cleanup_on_finalize: true      # Remove worktree after completion
+```
+
+**Commands**:
+```bash
+worktree-context.sh check-safety    # Check if safe to make changes
+worktree-context.sh find-active     # List active worktrees
+worktree-context.sh get-worktree feature 001-auth  # Get worktree path
+```
+
 ### Continuous Quality Features (v10.16)
 
 **Multi-Agent Voting** - Error decorrelation through diverse sampling:

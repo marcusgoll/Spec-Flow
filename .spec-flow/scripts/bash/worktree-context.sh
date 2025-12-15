@@ -26,6 +26,262 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 # CORE FUNCTIONS
 # =============================================================================
 
+# Detect if running inside a studio worktree (worktrees/studio/agent-N/)
+# Returns: Agent ID (e.g., "agent-1") or empty string if not in studio
+detect_studio_context() {
+    local current_path
+    current_path=$(pwd)
+
+    # Check for studio worktree pattern: worktrees/studio/agent-N
+    if [[ "$current_path" == *"/worktrees/studio/"* ]]; then
+        # Extract agent ID from path
+        local agent_id
+        agent_id=$(echo "$current_path" | sed 's|.*/worktrees/studio/||' | cut -d'/' -f1)
+
+        if [[ "$agent_id" =~ ^agent-[0-9]+$ ]]; then
+            echo "$agent_id"
+            return 0
+        fi
+    fi
+
+    # Also check git worktree info for studio branches
+    local git_dir
+    git_dir=$(git rev-parse --git-dir 2>/dev/null || echo "")
+
+    if [[ -n "$git_dir" ]] && [[ "$git_dir" == *"/worktrees/"* ]]; then
+        # Extract worktree name from git-dir path
+        local worktree_name
+        worktree_name=$(basename "$(dirname "$git_dir")" 2>/dev/null || echo "")
+
+        if [[ "$worktree_name" =~ ^agent-[0-9]+$ ]]; then
+            echo "$worktree_name"
+            return 0
+        fi
+    fi
+
+    echo ""
+    return 1
+}
+
+# Get namespaced branch name for studio context
+# Usage: get_namespaced_branch "feature" "001-auth"
+# Returns: "studio/agent-1/feature/001-auth" if in studio, else "feature/001-auth"
+get_namespaced_branch() {
+    local workflow_type="$1"
+    local slug="$2"
+    local studio_agent
+
+    studio_agent=$(detect_studio_context)
+
+    if [[ -n "$studio_agent" ]]; then
+        # In studio context: namespace with agent ID
+        echo "studio/$studio_agent/$workflow_type/$slug"
+    else
+        # Normal context: standard branch naming
+        echo "$workflow_type/$slug"
+    fi
+}
+
+# Check if current context is studio mode
+# Returns: 0 if in studio, 1 if not
+is_studio_mode() {
+    local studio_agent
+    studio_agent=$(detect_studio_context)
+    [[ -n "$studio_agent" ]]
+}
+
+# =============================================================================
+# WORKTREE SAFETY FUNCTIONS (v11.8)
+# =============================================================================
+
+# Find all active worktrees with in-progress features/epics
+# Returns: JSON array of active worktrees with their feature info
+find_active_worktrees() {
+    local root_path
+    root_path=$(get_root_path 2>/dev/null || pwd)
+
+    local active_worktrees="[]"
+
+    # Check feature worktrees
+    if [[ -d "$root_path/worktrees/feature" ]]; then
+        for wt_dir in "$root_path/worktrees/feature/"*/; do
+            if [[ -d "$wt_dir" ]]; then
+                local slug
+                slug=$(basename "$wt_dir")
+                local state_file="$wt_dir/specs/$slug/state.yaml"
+
+                if [[ -f "$state_file" ]]; then
+                    local status
+                    status=$(yq eval '.status // "unknown"' "$state_file" 2>/dev/null || echo "unknown")
+                    if [[ "$status" == "in_progress" ]]; then
+                        local phase
+                        phase=$(yq eval '.phase // "unknown"' "$state_file" 2>/dev/null || echo "unknown")
+                        active_worktrees=$(echo "$active_worktrees" | jq --arg path "$wt_dir" --arg slug "$slug" --arg type "feature" --arg phase "$phase" '. + [{"path": $path, "slug": $slug, "type": $type, "phase": $phase}]')
+                    fi
+                fi
+            fi
+        done
+    fi
+
+    # Check epic worktrees
+    if [[ -d "$root_path/worktrees/epic" ]]; then
+        for wt_dir in "$root_path/worktrees/epic/"*/; do
+            if [[ -d "$wt_dir" ]]; then
+                local slug
+                slug=$(basename "$wt_dir")
+                local state_file="$wt_dir/epics/$slug/state.yaml"
+
+                if [[ -f "$state_file" ]]; then
+                    local status
+                    status=$(yq eval '.status // "unknown"' "$state_file" 2>/dev/null || echo "unknown")
+                    if [[ "$status" == "in_progress" ]]; then
+                        local phase
+                        phase=$(yq eval '.phase // "unknown"' "$state_file" 2>/dev/null || echo "unknown")
+                        active_worktrees=$(echo "$active_worktrees" | jq --arg path "$wt_dir" --arg slug "$slug" --arg type "epic" --arg phase "$phase" '. + [{"path": $path, "slug": $slug, "type": $type, "phase": $phase}]')
+                    fi
+                fi
+            fi
+        done
+    fi
+
+    echo "$active_worktrees"
+}
+
+# Check if we're in root and should be blocked from making changes
+# Returns: JSON with safety status and recommended actions
+check_root_safety() {
+    local root_path
+    root_path=$(get_root_path 2>/dev/null || pwd)
+    local current_path
+    current_path=$(pwd)
+
+    # Load preferences
+    local enforce_isolation
+    enforce_isolation=$(bash "$root_path/.spec-flow/scripts/utils/load-preferences.sh" --key "worktrees.enforce_isolation" --default "true" 2>/dev/null || echo "true")
+    local root_protection
+    root_protection=$(bash "$root_path/.spec-flow/scripts/utils/load-preferences.sh" --key "worktrees.root_protection" --default "strict" 2>/dev/null || echo "strict")
+
+    # Check if we're in a worktree
+    if is_in_worktree; then
+        cat <<EOF
+{
+    "safe": true,
+    "in_worktree": true,
+    "message": "Operating in worktree - safe to make changes",
+    "action": "proceed"
+}
+EOF
+        return 0
+    fi
+
+    # We're in root - check for active worktrees
+    local active_worktrees
+    active_worktrees=$(find_active_worktrees)
+    local active_count
+    active_count=$(echo "$active_worktrees" | jq 'length')
+
+    if [[ "$active_count" -eq 0 ]]; then
+        cat <<EOF
+{
+    "safe": true,
+    "in_worktree": false,
+    "message": "No active worktrees - safe to start new work",
+    "action": "proceed",
+    "active_worktrees": []
+}
+EOF
+        return 0
+    fi
+
+    # There are active worktrees - apply protection level
+    case "$root_protection" in
+        strict)
+            cat <<EOF
+{
+    "safe": false,
+    "in_worktree": false,
+    "message": "Active worktrees detected - changes blocked from root",
+    "action": "switch_to_worktree",
+    "protection_level": "strict",
+    "active_worktrees": $active_worktrees
+}
+EOF
+            return 1
+            ;;
+        prompt)
+            cat <<EOF
+{
+    "safe": false,
+    "in_worktree": false,
+    "message": "Active worktrees detected - user should choose where to work",
+    "action": "prompt_user",
+    "protection_level": "prompt",
+    "active_worktrees": $active_worktrees
+}
+EOF
+            return 1
+            ;;
+        none)
+            cat <<EOF
+{
+    "safe": true,
+    "in_worktree": false,
+    "message": "Root protection disabled - proceeding with caution",
+    "action": "proceed_with_warning",
+    "protection_level": "none",
+    "active_worktrees": $active_worktrees
+}
+EOF
+            return 0
+            ;;
+    esac
+}
+
+# Get worktree path for a specific feature or epic slug
+# Usage: get_worktree_for_workflow "feature" "001-auth"
+# Returns: Worktree path or empty string
+get_worktree_for_workflow() {
+    local workflow_type="$1"
+    local slug="$2"
+    local root_path
+    root_path=$(get_root_path 2>/dev/null || pwd)
+
+    local worktree_path="$root_path/worktrees/$workflow_type/$slug"
+
+    if [[ -d "$worktree_path" ]]; then
+        echo "$worktree_path"
+    else
+        echo ""
+    fi
+}
+
+# Generate switch instructions for user
+# Usage: generate_switch_instructions "feature" "001-auth" "/path/to/worktree"
+generate_switch_instructions() {
+    local workflow_type="$1"
+    local slug="$2"
+    local worktree_path="$3"
+
+    cat <<EOF
+
+════════════════════════════════════════════════════════════════════════════════
+⚠️  WORKTREE ISOLATION - Please switch to the correct workspace
+════════════════════════════════════════════════════════════════════════════════
+
+Active $workflow_type: $slug
+Worktree path: $worktree_path
+
+To continue working on this $workflow_type, run:
+
+    cd "$worktree_path" && claude
+
+Then run: /$workflow_type continue
+
+════════════════════════════════════════════════════════════════════════════════
+
+EOF
+}
+
 # Get the root repository path (main worktree, not a child worktree)
 # Returns: Absolute path to the main git repository
 get_root_path() {
@@ -64,10 +320,10 @@ is_in_worktree() {
 }
 
 # Get current worktree info (if in a worktree)
-# Returns: JSON with worktree details
+# Returns: JSON with worktree details including studio context
 get_current_worktree_info() {
     if ! is_in_worktree; then
-        echo '{"is_worktree": false}'
+        echo '{"is_worktree": false, "is_studio": false}'
         return 0
     fi
 
@@ -79,11 +335,19 @@ get_current_worktree_info() {
     branch=$(git branch --show-current 2>/dev/null || echo "")
 
     # Extract worktree type and slug from path
-    # Expected: worktrees/{type}/{slug}
+    # Expected: worktrees/{type}/{slug} or worktrees/studio/agent-N
     local worktree_type=""
     local worktree_slug=""
+    local studio_agent=""
+    local is_studio="false"
 
-    if [[ "$current_path" == *"/worktrees/feature/"* ]]; then
+    # Check for studio worktree first
+    if [[ "$current_path" == *"/worktrees/studio/"* ]]; then
+        is_studio="true"
+        worktree_type="studio"
+        studio_agent=$(echo "$current_path" | sed 's|.*/worktrees/studio/||' | cut -d'/' -f1)
+        worktree_slug="$studio_agent"
+    elif [[ "$current_path" == *"/worktrees/feature/"* ]]; then
         worktree_type="feature"
         worktree_slug=$(echo "$current_path" | sed 's|.*/worktrees/feature/||' | cut -d'/' -f1)
     elif [[ "$current_path" == *"/worktrees/epic/"* ]]; then
@@ -94,6 +358,8 @@ get_current_worktree_info() {
     cat <<EOF
 {
     "is_worktree": true,
+    "is_studio": $is_studio,
+    "studio_agent": "$studio_agent",
     "worktree_path": "$current_path",
     "root_path": "$root_path",
     "branch": "$branch",
@@ -452,7 +718,7 @@ Usage: worktree-context.sh <command> [args...]
 Commands:
   root                    Get root repository path
   in-worktree             Check if in worktree (exit 0 = yes, 1 = no)
-  info                    Get current worktree info (JSON)
+  info                    Get current worktree info (JSON with studio context)
   run <path> <cmd>        Run command in worktree
   git <path> <git-args>   Run git command in worktree
   list [--json]           List active worktrees
@@ -465,6 +731,17 @@ Commands:
   relative-path <path> [worktree]  Extract worktree-relative path (fixes duplication)
   extract-slug <path>     Extract feature/epic slug from any path format
 
+Studio Context Commands (v11.8):
+  studio-detect           Detect studio context, returns agent ID or empty
+  studio-mode             Check if in studio mode (exit 0 = yes, 1 = no)
+  studio-branch <type> <slug>  Get namespaced branch for studio context
+
+Worktree Safety Commands (v11.8):
+  find-active             Find all worktrees with in-progress features/epics (JSON)
+  check-safety            Check if safe to make changes from current location (JSON)
+  get-worktree <type> <slug>   Get worktree path for a feature/epic
+  switch-instructions <type> <slug> <path>  Generate instructions for switching
+
 Examples:
   worktree-context.sh root
   worktree-context.sh run /path/to/worktree "npm test"
@@ -472,6 +749,14 @@ Examples:
   worktree-context.sh context /path/to/worktree
   worktree-context.sh relative-path "worktrees/epic/004-190/epics/004-190"
   worktree-context.sh extract-slug "specs/001-auth/domain-memory.yaml"
+
+Studio Examples:
+  worktree-context.sh studio-detect
+  # Returns: agent-1 (if in studio worktree) or empty
+
+  worktree-context.sh studio-branch feature 001-auth
+  # Returns: studio/agent-1/feature/001-auth (if in studio)
+  # Returns: feature/001-auth (if not in studio)
 EOF
 }
 
@@ -522,6 +807,27 @@ main() {
             ;;
         extract-slug)
             extract_slug_from_path "$@"
+            ;;
+        studio-detect)
+            detect_studio_context
+            ;;
+        studio-mode)
+            is_studio_mode
+            ;;
+        studio-branch)
+            get_namespaced_branch "$@"
+            ;;
+        find-active)
+            find_active_worktrees
+            ;;
+        check-safety)
+            check_root_safety
+            ;;
+        get-worktree)
+            get_worktree_for_workflow "$@"
+            ;;
+        switch-instructions)
+            generate_switch_instructions "$@"
             ;;
         help|--help|-h)
             show_help

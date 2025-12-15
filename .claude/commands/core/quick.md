@@ -40,6 +40,12 @@ Current branch:
 
 Recent commits (last 3):
 !`git log -3 --oneline`
+
+Studio context (multi-agent isolation):
+!`bash .spec-flow/scripts/bash/worktree-context.sh studio-detect 2>/dev/null || echo ""`
+
+Worktree context:
+!`bash .spec-flow/scripts/bash/worktree-context.sh info 2>/dev/null || echo '{"is_worktree": false}'`
 </context>
 
 <when_to_use>
@@ -96,7 +102,65 @@ Recent commits (last 3):
 ```
 </planning_depth>
 
+<studio_mode>
+## Studio Mode (Multi-Agent Isolation) (v11.8)
+
+When running in a studio worktree (`worktrees/studio/agent-N/`), the quick workflow automatically:
+
+1. **Detects studio context** - Auto-detected from working directory
+2. **Namespaces branches** - `studio/agent-N/quick/fix-button` instead of `quick/fix-button`
+3. **Creates PRs for merging** - Studio agents create PRs (like a real dev team)
+4. **Prevents git conflicts** - Each agent has isolated branches
+
+**Detection (automatic, no user action needed):**
+```bash
+STUDIO_AGENT=$(bash .spec-flow/scripts/bash/worktree-context.sh studio-detect 2>/dev/null || echo "")
+IS_STUDIO_MODE=$([[ -n "$STUDIO_AGENT" ]] && echo "true" || echo "false")
+```
+
+**Branch naming in studio mode:**
+```bash
+# Get namespaced branch (handles studio detection automatically)
+BRANCH=$(bash .spec-flow/scripts/bash/worktree-context.sh studio-branch "quick" "$SLUG" 2>/dev/null)
+# Returns: "studio/agent-1/quick/fix-button" in studio mode
+# Returns: "quick/fix-button" in normal mode
+```
+</studio_mode>
+
 <process>
+
+## PHASE 0.5: Worktree Safety Check (v11.8)
+
+**Before any work, verify we're in a safe location.**
+
+Quick changes follow a simpler safety model:
+- If in a worktree → proceed (working in isolated space)
+- If in root with active worktrees → warn but allow (quick changes are low-risk)
+- Quick changes get their own lightweight branches, not full worktrees
+
+```bash
+SAFETY_CHECK=$(bash .spec-flow/scripts/bash/worktree-context.sh check-safety 2>/dev/null || echo '{"safe": true}')
+IS_SAFE=$(echo "$SAFETY_CHECK" | jq -r '.safe')
+IN_WORKTREE=$(echo "$SAFETY_CHECK" | jq -r '.in_worktree')
+ACTIVE_COUNT=$(echo "$SAFETY_CHECK" | jq -r '.active_worktrees | length // 0')
+```
+
+**If IN_WORKTREE is true:**
+- Proceed normally (isolated environment)
+
+**If IN_WORKTREE is false AND ACTIVE_COUNT > 0:**
+- Output warning:
+```
+⚠️  Note: Active worktrees detected. Quick changes from root will be on a separate branch.
+    Active worktrees: ${ACTIVE_COUNT}
+    Proceeding with quick change...
+```
+- Proceed with quick change (creates its own branch)
+
+**If IS_SAFE is true:**
+- Proceed normally
+
+---
 
 ## PHASE 1: Parse Arguments and Validate Scope (INLINE)
 
@@ -153,7 +217,7 @@ Then EXIT - do not proceed.
 
 ---
 
-## PHASE 2: Detect UI Mode and Setup Branch (INLINE)
+## PHASE 2: Detect UI Mode, Studio Context, and Setup Branch (INLINE)
 
 ### Step 2.1: Detect UI Changes
 
@@ -169,23 +233,42 @@ Then EXIT - do not proceed.
 **If non-UI change:**
 - Set STYLE_GUIDE_MODE = false
 
-### Step 2.2: Create Branch
+### Step 2.2: Detect Studio Context (v11.8)
 
-**Generate branch name:**
+**Check for studio mode (automatic):**
+```bash
+STUDIO_AGENT=$(bash .spec-flow/scripts/bash/worktree-context.sh studio-detect 2>/dev/null || echo "")
+IS_STUDIO_MODE="false"
+if [[ -n "$STUDIO_AGENT" ]]; then
+  IS_STUDIO_MODE="true"
+  echo "Studio mode: $STUDIO_AGENT"
+fi
+```
+
+### Step 2.3: Create Branch (Studio-Aware)
+
+**Generate branch name (studio-aware):**
 - Slugify DESCRIPTION: lowercase, replace spaces with hyphens, remove special chars
-- Prefix with `quick/`
-- Truncate to 50 characters
+- Truncate slug to 50 characters
+- Use studio-branch helper for proper namespacing:
+
+```bash
+# Get namespaced branch (handles studio detection automatically)
+BRANCH=$(bash .spec-flow/scripts/bash/worktree-context.sh studio-branch "quick" "[slug]" 2>/dev/null)
+# Returns: "studio/agent-1/quick/fix-button" in studio mode
+# Returns: "quick/fix-button" in normal mode
+```
 
 **Create branch:**
 ```bash
-git checkout -b quick/[slug]
+git checkout -b $BRANCH
 ```
 
 **If branch exists:**
 ```bash
-git checkout quick/[slug]
+git checkout $BRANCH
 ```
-Output: "Using existing branch quick/[slug]"
+Output: "Using existing branch $BRANCH"
 
 ---
 
@@ -207,7 +290,9 @@ Task tool call:
     ## Context
     Description: {DESCRIPTION}
     Style Guide Mode: {STYLE_GUIDE_MODE}
-    Branch: quick/{slug}
+    Branch: {BRANCH}
+    Studio Mode: {IS_STUDIO_MODE}
+    Studio Agent: {STUDIO_AGENT or "N/A"}
 
     ## Your Task
     1. Read the agent brief for detailed instructions
@@ -255,27 +340,34 @@ Task tool call:
 
 ### If `---COMPLETED---`
 
-Extract the result fields and display completion banner:
+Extract the result fields and display completion banner (with studio info if active):
 
 ```
 ════════════════════════════════════════════════════════════════════════════════
 ✅ Quick change complete!
 ════════════════════════════════════════════════════════════════════════════════
 
-Branch: quick/{slug}
+Branch: {BRANCH}
 Files changed: {files_changed}
 Commit: {commit_sha}
 Tests: {tests}
 Style guide: {style_guide}
+${IS_STUDIO_MODE == "true" ? "Studio Agent: {STUDIO_AGENT}" : ""}
 
 Summary: {summary}
 
 Next steps:
+${IS_STUDIO_MODE == "true" ? "
+  • Review changes: git show
+  • Create PR: gh pr create --base main
+  • PR will auto-merge when CI passes
+" : "
   • Review changes: git show
   • Run app locally: npm run dev (or pytest)
-  • Merge to main: git checkout main && git merge quick/{slug}
+  • Merge to main: git checkout main && git merge {BRANCH}
   • Push (if remote): git push origin main
-  • Delete branch: git branch -d quick/{slug}
+  • Delete branch: git branch -d {BRANCH}
+"}
 ```
 
 ### If `---NEEDS_INPUT---`

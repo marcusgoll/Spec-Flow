@@ -112,6 +112,24 @@ Required tools check: !`for c in gh jq yq git python; do command -v "$c" >/dev/n
      - Feature: spec.md, plan.md, tasks.md, NOTES.md
      - state.yaml remains in root (for metrics/history)
 
+   - **Cleanup worktree** (v11.8 - if worktrees.cleanup_on_finalize is true):
+     - Check if current feature/epic has a worktree
+     - If cleanup_on_finalize is enabled (default: true):
+       ```bash
+       CLEANUP_ENABLED=$(bash .spec-flow/scripts/utils/load-preferences.sh --key "worktrees.cleanup_on_finalize" --default "true" 2>/dev/null || echo "true")
+       if [ "$CLEANUP_ENABLED" = "true" ]; then
+         WORKFLOW_TYPE=$(yq eval '.workflow_type // "feature"' "$WORKSPACE_DIR/state.yaml" 2>/dev/null)
+         SLUG=$(basename "$WORKSPACE_DIR")
+         WORKTREE_PATH=$(bash .spec-flow/scripts/bash/worktree-context.sh get-worktree "$WORKFLOW_TYPE" "$SLUG" 2>/dev/null)
+
+         if [ -n "$WORKTREE_PATH" ] && [ -d "$WORKTREE_PATH" ]; then
+           echo "Cleaning up worktree: $WORKTREE_PATH"
+           bash .spec-flow/scripts/bash/worktree-manager.sh remove "$SLUG" --force
+         fi
+       fi
+       ```
+     - Output: "Worktree cleaned up. Returning to root repository."
+
 3. **Review summary output** - Verify all tasks completed successfully
 
 4. **Next steps** (displayed in output):
@@ -192,6 +210,9 @@ Before completing, verify:
   * Roadmap status checked for remaining work
   * User prompted if work available
   * Next feature started if user confirms (or roadmap exhausted)
+- **Worktree cleanup** (v11.8+):
+  * If worktrees.cleanup_on_finalize is true, worktree removed
+  * User returned to root repository for next work
 </verification>
 
 <success_criteria>
