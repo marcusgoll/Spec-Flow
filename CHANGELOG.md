@@ -2,6 +2,52 @@
 
 ---
 
+## [11.6.0] - 2025-12-14
+
+### ✨ Added
+
+**Dry-Run Mode for Commands**
+
+Preview command effects without making changes - perfect for learning, testing, and CI validation.
+
+- **`--dry-run` flag**: Added to `/feature`, `/implement`, `/ship`, `/debug`
+  - Simulates file writes, git operations, agent spawns, state changes
+  - Safe operations (reads) execute normally for accurate context
+  - Standardized output format with emoji prefixes (📋, 📁, 📝, 🔀, 🤖)
+- **Dry-run skill**: New `.claude/skills/dry-run/SKILL.md` with integration patterns
+- **Exit codes**: Returns 0 always (no actual changes made)
+
+**Ultrathink → Roadmap Integration (v2.0)**
+
+Transform deep thinking sessions into actionable GitHub Issues with full traceability.
+
+- **Phase 5: Materialize the Thinking**: New phase in `/ultrathink` extracts features during analysis
+- **Structured YAML output**: `specs/ultrathink/[slug].yaml` with:
+  - `extracted_features`: id, name, type, description, complexity_rationale, priority, dependencies
+  - `thinking`: assumptions_questioned, codebase_soul, architecture_sketch, alternatives_considered
+  - `roadmap_status`: materialized flag, issues_created, timestamps
+- **New flags**: `--roadmap` (save + create issues), `--save` (save only), `--no-save` (ephemeral)
+- **AskUserQuestion integration**: Choose to Add All, Select specific, Just Save, or Skip
+
+**Roadmap from-ultrathink Action**
+
+- **`/roadmap from-ultrathink [path]`**: Materialize features from saved ultrathink sessions
+- **`/roadmap from-ultrathink --list`**: List available ultrathink sessions with stats
+- **GitHub Issue creation**: Auto-generates issues with:
+  - Origin section linking back to ultrathink session
+  - Complexity rationale and vision connection
+  - Proper labels (status:backlog, type:epic/feature, priority:*)
+
+### 🔧 Changed
+
+- **Ultrathink location**: Moved from `/internal:ultrathink` to `/core:ultrathink` (promoted to core command)
+
+### 🐛 Fixed
+
+- **Debug command**: Fixed bash syntax error with `$(pwd)` in context section (Windows compatibility)
+
+---
+
 ## [11.5.0] - 2025-12-14
 
 ### ✨ Added
