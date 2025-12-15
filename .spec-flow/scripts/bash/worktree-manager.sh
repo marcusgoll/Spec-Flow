@@ -18,6 +18,7 @@ Commands:
   remove <slug>                  Remove worktree
   exists <slug>                  Check if worktree exists (exit 0 if yes)
   get-path <slug>                Get absolute path to worktree
+  sync <slug>                    Rebase worktree branch onto latest main
   cleanup [--dry-run]            Remove merged/stale worktrees
   link-memory <slug>             Create symlinks to shared memory
 
@@ -163,12 +164,26 @@ PY
 
     local worktree_path="$type_dir/$slug"
 
+    # Fetch latest from origin to ensure we're up to date (v11.8.4)
+    log_info "Fetching latest from origin..."
+    git fetch origin --quiet 2>/dev/null || log_warn "Could not fetch from origin (working offline?)"
+
+    # Determine base branch (origin/main or origin/master)
+    local base_branch="origin/main"
+    if ! git rev-parse --verify --quiet "$base_branch" >/dev/null 2>&1; then
+        base_branch="origin/master"
+        if ! git rev-parse --verify --quiet "$base_branch" >/dev/null 2>&1; then
+            base_branch="HEAD"  # Fallback to current HEAD if no remote
+            log_warn "No origin/main or origin/master found, using HEAD"
+        fi
+    fi
+
     # Create or checkout branch
     if branch_exists "$branch"; then
         log_info "Branch '$branch' already exists, will link to worktree"
     else
-        log_info "Creating new branch: $branch"
-        git branch "$branch" 2>/dev/null || log_warn "Branch creation skipped (may already exist)"
+        log_info "Creating new branch: $branch (from $base_branch)"
+        git branch "$branch" "$base_branch" 2>/dev/null || log_warn "Branch creation skipped (may already exist)"
     fi
 
     # Create worktree
@@ -370,6 +385,92 @@ cmd_get_path() {
 }
 
 # ============================================================================
+# Command: sync (v11.8.4)
+# ============================================================================
+
+cmd_sync() {
+    if [ $# -lt 1 ]; then
+        log_error "Usage: worktree-manager.sh sync <slug>"
+        exit 1
+    fi
+
+    local slug="$1"
+    ensure_git_repo
+
+    if ! worktree_exists "$slug"; then
+        log_error "Worktree not found: $slug"
+        exit 1
+    fi
+
+    local worktree_path
+    worktree_path=$(get_worktree_path "$slug")
+
+    # Fetch latest from origin
+    log_info "Fetching latest from origin..."
+    git fetch origin --quiet 2>/dev/null || log_warn "Could not fetch from origin"
+
+    # Determine base branch
+    local base_branch="origin/main"
+    if ! git rev-parse --verify --quiet "$base_branch" >/dev/null 2>&1; then
+        base_branch="origin/master"
+        if ! git rev-parse --verify --quiet "$base_branch" >/dev/null 2>&1; then
+            log_error "No origin/main or origin/master found"
+            exit 1
+        fi
+    fi
+
+    # Get current branch in worktree
+    local current_branch
+    current_branch=$(get_worktree_branch "$worktree_path")
+
+    # Check if worktree is clean
+    if ! is_worktree_clean "$worktree_path"; then
+        log_error "Worktree has uncommitted changes. Commit or stash first."
+        exit 1
+    fi
+
+    # Check how far behind we are
+    local behind_count
+    behind_count=$(cd "$worktree_path" && git rev-list --count HEAD.."$base_branch" 2>/dev/null || echo "0")
+
+    if [ "$behind_count" = "0" ]; then
+        log_success "Branch is already up to date with $base_branch"
+        if $JSON_OUT; then
+            echo '{"status": "up-to-date", "behind": 0}'
+        fi
+        return 0
+    fi
+
+    log_info "Branch is $behind_count commits behind $base_branch"
+
+    if $DRY_RUN; then
+        log_info "[DRY-RUN] Would rebase $current_branch onto $base_branch"
+        if $JSON_OUT; then
+            echo "{\"status\": \"dry-run\", \"behind\": $behind_count, \"base\": \"$base_branch\"}"
+        fi
+        return 0
+    fi
+
+    # Perform rebase
+    log_info "Rebasing $current_branch onto $base_branch..."
+    cd "$worktree_path" || exit 1
+
+    if git rebase "$base_branch" 2>/dev/null; then
+        log_success "Successfully rebased onto $base_branch"
+        if $JSON_OUT; then
+            echo "{\"status\": \"rebased\", \"behind\": 0, \"base\": \"$base_branch\"}"
+        fi
+    else
+        log_error "Rebase failed. Resolve conflicts in $worktree_path then run 'git rebase --continue'"
+        git rebase --abort 2>/dev/null || true
+        if $JSON_OUT; then
+            echo "{\"status\": \"conflict\", \"behind\": $behind_count, \"base\": \"$base_branch\"}"
+        fi
+        exit 1
+    fi
+}
+
+# ============================================================================
 # Command: cleanup
 # ============================================================================
 
@@ -530,6 +631,9 @@ case "$COMMAND" in
         ;;
     get-path)
         cmd_get_path "$@"
+        ;;
+    sync)
+        cmd_sync "$@"
         ;;
     cleanup)
         cmd_cleanup "$@"
