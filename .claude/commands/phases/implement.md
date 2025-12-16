@@ -392,6 +392,99 @@ Group tasks for parallel execution:
 
 ---
 
+### Step 1.4.5: Ultrathink Checkpoint — Craft, Don't Code
+
+> **Philosophy**: "Would a junior developer understand this in 5 minutes?"
+
+Before executing each task batch, apply the anti-duplication ritual.
+
+**Display thinking prompt** (once per batch):
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 💭 ULTRATHINK CHECKPOINT: Craft, Don't Code                 │
+├─────────────────────────────────────────────────────────────┤
+│ Before implementing, always ask:                            │
+│                                                             │
+│ • Have I searched for similar patterns? (mgrep first!)      │
+│ • Can I extend existing code instead of creating new?       │
+│ • Does this abstraction earn its complexity?                │
+│ • Would a junior dev understand this in 5 minutes?          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Pre-Coding Ritual** (execute before EACH new file creation):
+
+```bash
+# Step 1: Anti-duplication search
+echo "=== Anti-Duplication Check ==="
+
+# Use mgrep for semantic search (finds similar by meaning)
+TASK_DESCRIPTION="[task description from tasks.md]"
+mgrep "$TASK_DESCRIPTION"
+
+# If mgrep unavailable, fallback to Grep
+Grep "similar pattern keywords" --type ts
+```
+
+**Decision tree after search:**
+
+```
+Search Results:
+  │
+  ├─ Found similar code
+  │   └─ Q: "Can we extend this instead of creating new?"
+  │       ├─ Yes → Extend existing file (preferred)
+  │       └─ No → Document why in NOTES.md, then create new
+  │
+  └─ No similar code found
+      └─ Proceed with new implementation
+         └─ Follow existing codebase patterns (from plan.md)
+```
+
+**Abstraction check** (for new files):
+
+```markdown
+## Abstraction Justification
+
+| New File | Justification | Alternatives Considered |
+|----------|---------------|------------------------|
+| [path] | [why this earns its complexity] | [what was ruled out] |
+```
+
+**Quality questions per task:**
+
+Before writing code, answer mentally:
+1. **Reuse**: Did I search for existing patterns?
+2. **Simplicity**: Is this the simplest approach that works?
+3. **Clarity**: Would someone understand this without comments?
+4. **Testability**: Can this be tested in isolation?
+
+**If creating an abstraction** (interface, base class, utility):
+
+```json
+{
+  "question": "You're about to create a new abstraction. Does it earn its complexity?",
+  "header": "Abstraction",
+  "multiSelect": false,
+  "options": [
+    {"label": "Yes, multiple consumers", "description": "This will be used by 2+ implementations"},
+    {"label": "Yes, complex logic", "description": "Encapsulates genuinely complex behavior"},
+    {"label": "No, premature", "description": "I should inline this for now"},
+    {"label": "Skip check", "description": "I've already considered this"}
+  ]
+}
+```
+
+**Red flags to catch:**
+
+- Creating interface with only 1 implementation
+- Adding "for future use" code
+- Generic utility for a single use case
+- Inheritance hierarchy deeper than 2 levels
+
+---
+
 ### Step 1.5: EXECUTE TASK BATCHES (MANDATORY)
 
 **For each batch group, execute tasks using specialist agents.**

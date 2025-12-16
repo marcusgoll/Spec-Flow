@@ -276,6 +276,123 @@ This ensures architecture decisions are grounded in existing codebase patterns a
 
 ---
 
+### Step 0.75: Ultrathink Checkpoint — Obsess Over Details + Simplify Ruthlessly
+
+> **Philosophy**: "What's the simplest architecture that could possibly work?"
+
+Before designing architecture, understand the codebase soul and explore alternatives.
+
+**Display thinking prompt** (for standard+ complexity):
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 💭 ULTRATHINK CHECKPOINT: Obsess + Simplify                 │
+├─────────────────────────────────────────────────────────────┤
+│ Before architecting, consider:                              │
+│                                                             │
+│ • What patterns dominate this codebase?                     │
+│ • What existing code can we reuse?                          │
+│ • What's the SIMPLEST architecture that works?              │
+│ • Does each new component earn its complexity?              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Codebase Soul Analysis** (required for complex/epic, recommended for standard):
+
+```bash
+# Quick soul analysis - find dominant patterns
+echo "=== Codebase Soul Analysis ==="
+
+# Backend patterns
+SERVICE_COUNT=$(find . -name "*[Ss]ervice*" -type f 2>/dev/null | wc -l)
+REPO_COUNT=$(find . -name "*[Rr]epository*" -type f 2>/dev/null | wc -l)
+CONTROLLER_COUNT=$(find . -name "*[Cc]ontroller*" -type f 2>/dev/null | wc -l)
+
+echo "Services: $SERVICE_COUNT | Repositories: $REPO_COUNT | Controllers: $CONTROLLER_COUNT"
+
+# Frontend patterns
+COMPONENT_COUNT=$(find . -name "*.tsx" -path "*/components/*" 2>/dev/null | wc -l)
+HOOK_COUNT=$(grep -r "^export.*function use" --include="*.ts" --include="*.tsx" 2>/dev/null | wc -l)
+
+echo "Components: $COMPONENT_COUNT | Hooks: $HOOK_COUNT"
+
+# Determine dominant pattern
+if [ "$SERVICE_COUNT" -gt 5 ]; then
+    echo "Dominant: Service Layer Pattern"
+fi
+```
+
+**Document in plan.md** (inline section):
+
+```markdown
+## Codebase Soul Summary
+
+**Dominant Patterns**: [Service Layer / Repository / MVC / Hooks-based]
+**Philosophy**: [Thin controllers | Fat services | Composition-first]
+**Conventions**: [Naming, file structure, error handling observed]
+
+**Reuse Opportunities**:
+- [Existing service/component that can be extended]
+- [Existing pattern to follow]
+
+**Anti-Patterns to Avoid**:
+- [File/pattern observed that shouldn't be repeated]
+```
+
+**Generate 3 Alternatives** (required for complex/epic):
+
+```markdown
+## Architecture Alternatives
+
+### Approach A: [Name] (Initial Thought)
+- New components: [list]
+- Pros: [list]
+- Cons: [list]
+
+### Approach B: [Name] (Simplified)
+- New components: [list]
+- Pros: [list]
+- Cons: [list]
+
+### Approach C: [Name] (Alternative)
+- New components: [list]
+- Pros: [list]
+- Cons: [list]
+
+### Selected: Approach [X]
+**Reasoning**: [Why this is the simplest approach that works]
+```
+
+**Complexity Budget** (required for complex/epic):
+
+```markdown
+## Complexity Budget
+
+| Component | Complexity | Justification |
+|-----------|------------|---------------|
+| [NewService] | Medium | Core logic requires dedicated service |
+| [NewComponent] | Low | Composition of existing primitives |
+| [NewAbstraction] | REJECTED | Premature - can refactor later if needed |
+
+**Simplification Applied**:
+- Before: [X] new components, [Y] new services
+- After: [A] new components, [B] new services
+- Removed: [What was eliminated and why]
+```
+
+**When to generate craftsman-decision.md** (full artifact):
+
+```bash
+# Check if deep mode or complex feature
+if [ "$PLANNING_MODE" = "deep" ] || [ "$TASK_ESTIMATE" -ge 30 ]; then
+    # Generate separate craftsman-decision.md
+    CRAFTSMAN_FILE="${BASE_DIR}/${SLUG}/craftsman-decision.md"
+    echo "Generating: $CRAFTSMAN_FILE"
+fi
+```
+
+---
+
 ### Step 0.5: MIGRATION DETECTION (v10.5)
 
 **Detect if this feature requires database schema changes:**

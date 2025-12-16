@@ -39,8 +39,17 @@ If there's a way to remove complexity without losing power, find it. Elegance is
 
 <context>
 **Guiding Principles**: @CLAUDE.md
-**Project Architecture**: @docs/project/system-architecture.md
-**Tech Stack Decisions**: @docs/project/tech-stack.md
+**Deep Planning Skill**: @.claude/skills/ultrathink/SKILL.md
+
+**Project docs (if they exist)**:
+- Architecture: `docs/project/system-architecture.md`
+- Tech Stack: `docs/project/tech-stack.md`
+
+Check file existence before referencing:
+```bash
+test -f docs/project/system-architecture.md && echo "ARCH_EXISTS"
+test -f docs/project/tech-stack.md && echo "TECH_EXISTS"
+```
 </context>
 
 <process>
@@ -131,7 +140,7 @@ If there's a way to remove complexity without losing power, find it. Elegance is
 
 13. **Offer roadmap materialization**
 
-    If features were extracted, ask user:
+    If features were extracted, display summary and ask user:
 
     ```
     Your analysis identified N actionable items:
@@ -145,19 +154,70 @@ If there's a way to remove complexity without losing power, find it. Elegance is
     Would you like to add these to the roadmap?
     ```
 
-    Use AskUserQuestion with options:
-    - **Add All** - Create GitHub Issues for all extracted features
-    - **Select** - Choose which features to add
-    - **Just Save** - Save thinking but don't create issues
-    - **Skip** - Don't save or create issues
+    Use AskUserQuestion:
+
+    ```json
+    {
+      "question": "Would you like to add these to the roadmap?",
+      "header": "Materialize",
+      "multiSelect": false,
+      "options": [
+        {"label": "Add All (Recommended)", "description": "Create GitHub Issues for all extracted features"},
+        {"label": "Select", "description": "Choose which features to add"},
+        {"label": "Just Save", "description": "Save thinking to file but don't create issues"},
+        {"label": "Skip", "description": "Don't save or create issues"}
+      ]
+    }
+    ```
+
+    **If "Select" chosen**, show multi-select:
+
+    ```json
+    {
+      "question": "Which features should be added to the roadmap?",
+      "header": "Select",
+      "multiSelect": true,
+      "options": [
+        {"label": "[Epic] Feature Name 1", "description": "[description]"},
+        {"label": "[Feature] Feature Name 2", "description": "[description]"}
+      ]
+    }
+    ```
 
 14. **Create GitHub Issues (if materializing)**
 
-    For each selected feature:
+    **Pre-flight checks**:
+
+    ```bash
+    # Verify gh CLI is authenticated
+    if ! gh auth status &>/dev/null; then
+      echo "ERROR: GitHub CLI not authenticated"
+      echo "Run: gh auth login"
+      echo ""
+      echo "Saving thinking to file instead..."
+      # Fall back to --save behavior
+    fi
+
+    # Verify we're in a git repo with a remote
+    if ! git remote get-url origin &>/dev/null; then
+      echo "WARNING: No git remote found"
+      echo "Issues will be created but may not link correctly"
+    fi
+
+    # Check if required labels exist, create if missing
+    gh label list | grep -q "status:backlog" || \
+      gh label create "status:backlog" --color "FBCA04" --description "In backlog, not started"
+    gh label list | grep -q "type:epic" || \
+      gh label create "type:epic" --color "7057FF" --description "Large multi-sprint work"
+    gh label list | grep -q "type:feature" || \
+      gh label create "type:feature" --color "0E8A16" --description "Single feature implementation"
+    ```
+
+    **Create issues** for each selected feature:
 
     ```bash
     # Create issue with proper labels
-    gh issue create \
+    ISSUE_URL=$(gh issue create \
       --title "[type]: [name]" \
       --body "$(cat <<EOF
     ## Origin
@@ -181,10 +241,20 @@ If there's a way to remove complexity without losing power, find it. Elegance is
     EOF
     )" \
       --label "status:backlog" \
-      --label "type:[epic/feature]"
+      --label "type:[epic/feature]" 2>&1)
+
+    # Check for errors
+    if [[ $? -ne 0 ]]; then
+      echo "ERROR creating issue: $ISSUE_URL"
+      # Continue with remaining issues
+    else
+      echo "Created: $ISSUE_URL"
+      # Extract issue number for tracking
+      ISSUE_NUM=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$')
+    fi
     ```
 
-    Display created issues:
+    **Display summary**:
 
     ```
     ✅ Created roadmap items from your thinking:
@@ -194,6 +264,18 @@ If there's a way to remove complexity without losing power, find it. Elegance is
     #44 Feature: User Preferences
 
     Next: /feature #43 to start implementing
+    ```
+
+    **If any issues failed**, show partial success:
+
+    ```
+    ⚠️ Partially completed:
+
+    ✅ #42 Epic: Notification Service
+    ❌ Feature: Push Notification API (label missing)
+    ✅ #44 Feature: User Preferences
+
+    Fix issues manually or re-run: /roadmap from-ultrathink specs/ultrathink/[slug].yaml
     ```
 </process>
 

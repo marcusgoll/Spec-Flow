@@ -319,6 +319,98 @@ Use Read tool to verify tasks.md was created successfully.
 
 ---
 
+### Step 2.6: Ultrathink Checkpoint — Simplify Ruthlessly
+
+> **Philosophy**: "Is each task necessary, or can we achieve more with less?"
+
+After generating tasks.md, apply ruthless simplification.
+
+**Display thinking prompt:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 💭 ULTRATHINK CHECKPOINT: Simplify Ruthlessly               │
+├─────────────────────────────────────────────────────────────┤
+│ Review each task and ask:                                   │
+│                                                             │
+│ • Is this task NECESSARY or just nice-to-have?              │
+│ • Can any tasks be COMBINED?                                │
+│ • Are we adding complexity that isn't justified?            │
+│ • What tasks could we REMOVE without losing core value?     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Task Count Validation:**
+
+```bash
+# Count generated tasks
+TASK_COUNT=$(grep -c "^- \[ \] T[0-9]" "${TASKS_FILE}" || echo "0")
+
+echo "Generated tasks: $TASK_COUNT"
+
+# Thresholds from ultrathink-integration.yaml
+MAX_WITHOUT_JUSTIFICATION=25
+REQUIRE_RATIONALE_ABOVE=20
+
+if [ "$TASK_COUNT" -gt "$MAX_WITHOUT_JUSTIFICATION" ]; then
+    echo "⚠️  High task count ($TASK_COUNT) - requires complexity rationale"
+fi
+```
+
+**Simplification Questions** (for complex features):
+
+```json
+{
+  "question": "This feature has $TASK_COUNT tasks. Would you like to simplify?",
+  "header": "Simplify",
+  "multiSelect": false,
+  "options": [
+    {"label": "Proceed as-is", "description": "All tasks are necessary"},
+    {"label": "Review for removal", "description": "Let's identify tasks to cut"},
+    {"label": "Split into phases", "description": "Defer some tasks to future iteration"}
+  ]
+}
+```
+
+**If "Review for removal" selected:**
+
+Analyze tasks and suggest removals:
+
+```markdown
+## Task Simplification Review
+
+| Task | Recommendation | Rationale |
+|------|----------------|-----------|
+| T025 | REMOVE | Nice-to-have, not in core requirements |
+| T030, T031 | COMBINE | Same file, sequential operations |
+| T045 | DEFER | Enhancement, not MVP |
+
+**Simplification Result**:
+- Before: {X} tasks
+- After: {Y} tasks
+- Removed: {list of removed task IDs}
+- Combined: {list of combined tasks}
+- Deferred: {list of deferred to future iteration}
+```
+
+**Add complexity rationale** (for 20+ tasks):
+
+```markdown
+## Complexity Rationale
+
+This feature requires {X} tasks because:
+1. [Reason 1 - e.g., "Multiple user stories with distinct acceptance criteria"]
+2. [Reason 2 - e.g., "TDD requires separate RED/GREEN/REFACTOR cycles"]
+3. [Reason 3 - e.g., "Database migrations must precede ORM code"]
+
+**Simplification attempted**:
+- Combined {N} redundant tasks
+- Deferred {M} non-MVP tasks
+- Final count represents minimum viable implementation
+```
+
+---
+
 ### Step 2.5: EPIC SPRINT BREAKDOWN (Epic Workflows Only)
 
 **If WORKFLOW_TYPE == "epic"**, generate sprint breakdown:

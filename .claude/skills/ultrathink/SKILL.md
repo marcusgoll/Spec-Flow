@@ -387,3 +387,85 @@ ULTRATHINK: Research → QUESTION → Design → SIMPLIFY → Estimate → Docum
 - Performance-critical code
 - Security-sensitive features
 </philosophy>
+
+<workflow_integration>
+## Embedded Checkpoints Across Workflow (v11.1)
+
+Ultrathink philosophy is embedded as lightweight checkpoints throughout the workflow, not just during explicit `/ultrathink` invocations.
+
+**Configuration**: `.spec-flow/config/ultrathink-integration.yaml`
+
+### Phase Checkpoints
+
+| Phase | Principle | Checkpoint |
+|-------|-----------|------------|
+| `/spec` | Think Different | Assumption inventory before requirements |
+| `/plan` | Obsess + Simplify | Codebase soul analysis, 3 alternatives, complexity budget |
+| `/tasks` | Simplify Ruthlessly | Task count validation, simplification review |
+| `/implement` | Craft, Don't Code | Anti-duplication ritual, abstraction justification |
+| `/optimize` | Iterate Relentlessly | Pride check, real problem validation |
+
+### Progressive Depth
+
+Complexity determines thinking depth automatically:
+
+```
+Trivial (<5 tasks)    → Skip checkpoints, fast path
+Standard (5-30 tasks) → Lightweight inline checkpoints
+Complex (30+ tasks)   → Full checkpoints + separate artifacts
+Epic (multi-sprint)   → Mandatory deep planning + craftsman-decision.md
+```
+
+### Checkpoint Display
+
+Each checkpoint displays a thinking prompt:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 💭 ULTRATHINK CHECKPOINT: [Principle]                       │
+├─────────────────────────────────────────────────────────────┤
+│ Before proceeding, consider:                                │
+│ • [Question 1]                                              │
+│ • [Question 2]                                              │
+│ • [Question 3]                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Spec Phase: Think Different
+
+```markdown
+## Assumption Inventory (inline in spec.md)
+
+| # | Assumption | Source | Challenge | Status |
+|---|------------|--------|-----------|--------|
+| 1 | [from user input] | User request | Is this the real problem? | [validated] |
+```
+
+### Plan Phase: Obsess + Simplify
+
+Required sections in plan.md:
+- **Codebase Soul Summary** - Dominant patterns, philosophy, conventions
+- **Architecture Alternatives** - At least 3 approaches for complex features
+- **Complexity Budget** - Justify each new component
+
+### Tasks Phase: Simplify Ruthlessly
+
+Validation after task generation:
+- Task count check (warn if >25)
+- Simplification review (combine, remove, defer options)
+- Complexity rationale (required for 20+ tasks)
+
+### Implement Phase: Craft, Don't Code
+
+Pre-coding ritual before each task batch:
+1. **Anti-duplication search** - mgrep/Grep before creating new files
+2. **Extend vs create decision** - Prefer extending existing code
+3. **Abstraction check** - Must earn its complexity
+
+### Benefits
+
+- **Consistent quality** - Same thinking applied regardless of who runs the workflow
+- **Velocity preservation** - Lightweight for simple work, deep for complex
+- **Self-documenting** - Thinking artifacts capture design rationale
+- **Reduced rework** - "One hour of deeper thinking saves ten hours of rework"
+</workflow_integration>

@@ -1,0 +1,148 @@
+# Ultrathink Philosophy Integration
+# Controls how deep thinking principles are embedded across workflow phases
+#
+# Philosophy: "One hour of deeper thinking saves ten hours of rework"
+
+version: "1.0"
+
+# Progressive depth based on complexity
+progressive_depth:
+  # Complexity thresholds determine thinking depth
+  thresholds:
+    trivial: 5        # <5 tasks → skip ultrathink, fast path
+    standard: 30      # 5-30 tasks → lightweight checkpoints
+    complex: 30       # 30+ tasks → full ultrathink workflow
+    epic: "auto"      # Multi-sprint → mandatory deep planning
+
+  # Auto-detection triggers
+  auto_triggers:
+    - condition: "task_count >= 30"
+      depth: "full"
+    - condition: "is_epic"
+      depth: "full"
+    - condition: "touches_auth_or_security"
+      depth: "full"
+    - condition: "new_architectural_pattern"
+      depth: "full"
+    - condition: "task_count >= 5"
+      depth: "lightweight"
+
+# Phase-specific thinking checkpoints
+checkpoints:
+  spec:
+    principle: "Think Different"
+    trigger: "always"  # always | on_complexity | never
+    questions:
+      - "Is this solving the real problem or a symptom?"
+      - "What assumptions are we making about users?"
+      - "What would the simplest solution look like?"
+      - "Is this a feature or a symptom of a missing feature?"
+    artifact: "assumption-inventory"
+    blocking: false  # Don't block phase completion
+
+  plan:
+    principle: "Obsess Over Details + Simplify Ruthlessly"
+    trigger: "on_complexity"
+    questions:
+      - "What patterns dominate this codebase?"
+      - "What existing code can we reuse?"
+      - "What's the simplest architecture that works?"
+      - "Does each new component earn its complexity?"
+    required_sections:
+      - "codebase_soul_summary"      # Brief pattern analysis
+      - "reuse_opportunities"        # Existing code to leverage
+      - "alternatives_considered"    # At least 2 for complex work
+      - "complexity_budget"          # Justify new components
+    artifact: "craftsman-decision.md"
+    blocking: true  # For complex work, require before proceeding
+
+  tasks:
+    principle: "Simplify Ruthlessly"
+    trigger: "on_complexity"
+    questions:
+      - "Is each task necessary or nice-to-have?"
+      - "Can any tasks be combined?"
+      - "Are we adding complexity that isn't justified?"
+      - "What tasks could we remove without losing core value?"
+    validation:
+      max_tasks_without_justification: 25
+      require_complexity_rationale_above: 20
+    blocking: false
+
+  implement:
+    principle: "Craft, Don't Code"
+    trigger: "always"
+    pre_coding_ritual:
+      - step: "anti_duplication_search"
+        command: "Search for similar patterns before writing new code"
+        tool: "mgrep or Grep"
+      - step: "reuse_check"
+        question: "Can we extend existing code instead?"
+      - step: "abstraction_check"
+        question: "Does this abstraction earn its complexity?"
+    questions:
+      - "Would a junior developer understand this in 5 minutes?"
+      - "Am I future-proofing or over-engineering?"
+      - "Is there a simpler way to achieve this?"
+    blocking: false
+
+  optimize:
+    principle: "Iterate Relentlessly"
+    trigger: "always"
+    questions:
+      - "Would I be proud to sign my name to this?"
+      - "Does this solve the *real* problem?"
+      - "Is the codebase better than before?"
+    final_check:
+      - "All abstractions earn their complexity"
+      - "No dead code or unused imports"
+      - "Names are so clear they eliminate need for comments"
+    blocking: false
+
+# Artifact requirements by depth
+artifacts:
+  lightweight:
+    - assumption_inventory: "inline"  # In spec.md, not separate file
+    - alternatives: "optional"
+
+  full:
+    - assumption_inventory: "specs/{slug}/assumption-inventory.md"
+    - craftsman_decision: "specs/{slug}/craftsman-decision.md"
+    - alternatives: "required"  # Minimum 3 approaches
+    - complexity_budget: "required"
+
+# Integration with existing commands
+command_hooks:
+  # These phases check ultrathink config before proceeding
+  spec_phase_agent:
+    inject_checkpoint: true
+    checkpoint_position: "before_requirements"
+
+  plan_phase_agent:
+    inject_checkpoint: true
+    checkpoint_position: "before_architecture"
+    require_codebase_analysis: "on_complexity"
+
+  tasks_phase_agent:
+    inject_checkpoint: true
+    checkpoint_position: "after_generation"
+    validate_task_count: true
+
+  implement_phase:
+    inject_checkpoint: true
+    checkpoint_position: "before_each_task"
+    anti_duplication: true
+
+# Display settings
+display:
+  show_thinking_prompts: true
+  checkpoint_style: "box"  # box | inline | minimal
+
+  # Box style example:
+  # ┌─────────────────────────────────────────────────┐
+  # │ 💭 ULTRATHINK CHECKPOINT: Think Different       │
+  # ├─────────────────────────────────────────────────┤
+  # │ Before proceeding, consider:                    │
+  # │ • Is this solving the real problem?             │
+  # │ • What assumptions are we making?               │
+  # └─────────────────────────────────────────────────┘

@@ -51,6 +51,69 @@ Spawn isolated spec-phase-agent to generate production-grade feature specificati
 
 <process>
 
+## Step 0: Ultrathink Checkpoint — Think Different
+
+> **Philosophy**: "Is this solving the real problem or a symptom?"
+
+Before generating any specification, pause to question assumptions.
+
+**Display thinking prompt:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 💭 ULTRATHINK CHECKPOINT: Think Different                   │
+├─────────────────────────────────────────────────────────────┤
+│ Before specifying, consider:                                │
+│                                                             │
+│ • Is this the REAL problem or just a symptom?               │
+│ • What assumptions are we making about users?               │
+│ • What would the simplest solution look like?               │
+│ • Is this a feature, or a symptom of a missing feature?     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Create assumption inventory** (inline in spec.md):
+
+```markdown
+## Assumption Inventory
+
+| # | Assumption | Source | Challenge | Status |
+|---|------------|--------|-----------|--------|
+| 1 | [assumption from user input] | User request | [challenge question] | [validated/changed/removed] |
+```
+
+**Complexity check** - determine thinking depth:
+
+```bash
+# Check ultrathink config
+ULTRATHINK_CONFIG=".spec-flow/config/ultrathink-integration.yaml"
+
+# For spec phase, checkpoint always triggers (lightweight)
+# but assumption inventory depth varies:
+# - Trivial: Skip inventory, just proceed
+# - Standard: Inline inventory in spec.md
+# - Complex/Epic: Separate assumption-inventory.md artifact
+```
+
+**Quick assumption questions** (ask if ambiguity detected):
+
+```json
+{
+  "question": "Before we specify, let's validate the core assumption. What problem is this REALLY solving?",
+  "header": "Real Problem",
+  "multiSelect": false,
+  "options": [
+    {"label": "As stated", "description": "The user's description captures the real problem"},
+    {"label": "Symptom of larger issue", "description": "This is a symptom - we should address the root cause"},
+    {"label": "Needs reframing", "description": "The problem statement needs to be reframed"}
+  ]
+}
+```
+
+**If "Symptom" or "Needs reframing" selected**, prompt for clarification before proceeding.
+
+---
+
 ## Step 1: Detect Feature Directory
 
 ```bash
