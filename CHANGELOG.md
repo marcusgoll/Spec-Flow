@@ -2,6 +2,58 @@
 
 ---
 
+## [11.9.0] - 2025-12-16
+
+### ✨ Added
+
+**shadcn/ui Integration with 8 Customization Options**
+
+The `/init --tokens` command now generates both OKLCH design tokens (source of truth) AND shadcn/ui-compatible CSS variables through the Token Bridge Pattern:
+
+- **8 customization options**: Style Preset, Base Color, Theme Mode, Icon Library, Font Family, Border Radius, Menu Color, Menu Accent
+- **Token Bridge Pattern**: OKLCH tokens remain the accessible source of truth, with shadcn CSS variable aliases generated automatically
+- **Brownfield scanning**: Automatically detects and consolidates existing color tokens
+- **Component integration**: Generated `components.json` works directly with shadcn CLI
+- **Menu theming**: New menu-specific tokens for background, hover, active, and accent styles
+
+New files:
+- `.spec-flow/scripts/node/generate-shadcn-tokens.js` - Token generation engine
+- `.claude/skills/shadcn-integration/SKILL.md` - Integration skill documentation
+- `.spec-flow/templates/design/shadcn-variables.css` - shadcn variable template
+- `.spec-flow/templates/design/menu-variants.ts` - Menu component variants
+
+**Ultrathink Philosophy Checkpoints Across Workflow Phases**
+
+Ultrathink principles are now embedded as lightweight checkpoints throughout the workflow, not just during explicit `/ultrathink` invocations:
+
+| Phase | Principle | Checkpoint |
+|-------|-----------|------------|
+| `/spec` | Think Different | Assumption inventory before requirements |
+| `/plan` | Obsess + Simplify | Codebase soul analysis, 3 alternatives, complexity budget |
+| `/tasks` | Simplify Ruthlessly | Task count validation, simplification review |
+| `/implement` | Craft, Don't Code | Anti-duplication ritual, abstraction justification |
+
+Progressive depth based on complexity:
+- Trivial (<5 tasks): Skip checkpoints, fast path
+- Standard (5-30 tasks): Lightweight inline checkpoints
+- Complex (30+ tasks): Full checkpoints + separate artifacts
+- Epic (multi-sprint): Mandatory deep planning + craftsman-decision.md
+
+New files:
+- `.spec-flow/config/ultrathink-integration.yaml` - Checkpoint configuration
+
+### 🔧 Improved
+
+**Ultrathink Command Enhancements**
+
+- Added skill reference for context
+- Added proper AskUserQuestion JSON format for roadmap materialization
+- Added pre-flight checks for `gh` CLI authentication
+- Added error handling for GitHub issue creation
+- Fixed inconsistent terminology
+
+---
+
 ## [11.8.4] - 2025-12-15
 
 ### ✨ Added

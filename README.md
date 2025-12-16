@@ -305,6 +305,24 @@ See a complete feature workflow in [`specs/001-example-feature/`](specs/001-exam
 
 ## 🆕 Recent Updates
 
+### v11.9.0 (December 2025)
+
+**shadcn/ui Integration with Token Bridge Pattern** - Generate OKLCH tokens + shadcn-compatible CSS variables
+
+- **8 customization options**: Style Preset, Base Color, Theme Mode, Icon Library, Font Family, Border Radius, Menu Color, Menu Accent
+- **Token Bridge Pattern**: OKLCH tokens remain source of truth, shadcn CSS variable aliases generated
+- **Brownfield scanning**: Auto-detect and consolidate existing color tokens
+- **Menu theming**: New menu-specific tokens for background, hover, active, and accent styles
+
+**Ultrathink Philosophy Checkpoints** - Deep thinking embedded across all workflow phases
+
+- **Phase checkpoints**: Think Different (spec), Obsess+Simplify (plan), Simplify Ruthlessly (tasks), Craft Don't Code (implement)
+- **Progressive depth**: Trivial → Standard → Complex → Epic with increasing thinking requirements
+- **Assumption inventory**: Question everything before designing
+- **Complexity budgets**: Justify each new component
+
+---
+
 ### v11.7.0 (December 2025)
 
 **Auto-Mode for End-to-End Workflow Execution** - Run entire workflows without stopping
