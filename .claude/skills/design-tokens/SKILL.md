@@ -889,3 +889,373 @@ Fix: npx tailwindcss init
 **Accessibility built-in**: Reduced motion, focus ring, colorblind-safe data viz (Okabe-Ito palette).
 
 **Non-UI surfaces matter**: Emails, PDFs, CLI, and charts deserve the same design system rigor as UI components.
+
+---
+
+## shadcn/ui Integration (v2.1)
+
+### Overview
+
+When the `--shadcn` flag is provided to `/init --tokens`, the system generates shadcn/ui-compatible CSS variable aliases that map OKLCH tokens to shadcn's expected variable names. This preserves OKLCH's superior accessibility while enabling seamless shadcn component usage.
+
+**Key principle**: OKLCH tokens remain the source of truth. shadcn variables are aliases that reference OKLCH tokens.
+
+### OKLCH → shadcn Variable Mapping
+
+shadcn/ui components expect specific CSS variable names. The token bridge creates aliases:
+
+```css
+/* shadcn/ui CSS Variable Aliases */
+/* These reference OKLCH tokens - not hardcoded values */
+
+:root {
+  /* Core Colors */
+  --background: var(--color-neutral-50);
+  --foreground: var(--color-neutral-900);
+
+  /* Cards & Popovers */
+  --card: var(--color-neutral-50);
+  --card-foreground: var(--color-neutral-900);
+  --popover: var(--color-neutral-50);
+  --popover-foreground: var(--color-neutral-900);
+
+  /* Primary */
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-neutral-50);
+
+  /* Secondary */
+  --secondary: var(--color-neutral-100);
+  --secondary-foreground: var(--color-neutral-900);
+
+  /* Muted */
+  --muted: var(--color-neutral-100);
+  --muted-foreground: var(--color-neutral-500);
+
+  /* Accent */
+  --accent: var(--color-neutral-100);
+  --accent-foreground: var(--color-neutral-900);
+
+  /* Destructive */
+  --destructive: var(--color-error-fg);
+  --destructive-foreground: var(--color-neutral-50);
+
+  /* Borders & Inputs */
+  --border: var(--color-neutral-200);
+  --input: var(--color-neutral-200);
+  --ring: var(--color-primary);
+
+  /* Border Radius */
+  --radius: 0.5rem;  /* Configurable via questionnaire */
+}
+```
+
+### Dark Mode Mapping
+
+```css
+.dark {
+  --background: var(--color-neutral-950);
+  --foreground: var(--color-neutral-50);
+  --card: var(--color-neutral-900);
+  --card-foreground: var(--color-neutral-50);
+  --popover: var(--color-neutral-900);
+  --popover-foreground: var(--color-neutral-50);
+  --primary: var(--color-primary);  /* OKLCH auto-adjusts */
+  --primary-foreground: var(--color-neutral-950);
+  --secondary: var(--color-neutral-800);
+  --secondary-foreground: var(--color-neutral-50);
+  --muted: var(--color-neutral-800);
+  --muted-foreground: var(--color-neutral-400);
+  --accent: var(--color-neutral-800);
+  --accent-foreground: var(--color-neutral-50);
+  --destructive: var(--color-error-icon);
+  --destructive-foreground: var(--color-neutral-50);
+  --border: var(--color-neutral-800);
+  --input: var(--color-neutral-800);
+  --ring: var(--color-primary);
+}
+```
+
+### Menu Token Generation
+
+Based on questionnaire answers for menu_color and menu_accent:
+
+**Menu Color Options**:
+
+| Choice | Token Values |
+|--------|--------------|
+| `background` | `--menu: var(--background)` |
+| `surface` | `--menu: var(--card); --menu-shadow: var(--shadow-sm)` |
+| `primaryTint` | `--menu: oklch(from var(--color-primary) l c h / 0.05)` |
+| `glass` | `--menu: oklch(from var(--background) l c h / 0.8); --menu-backdrop: blur(8px)` |
+
+**Menu Accent Options**:
+
+| Choice | Token Values |
+|--------|--------------|
+| `border` | `--menu-accent-border: 3px solid var(--primary); --menu-accent-bg: transparent` |
+| `background` | `--menu-accent-border: none; --menu-accent-bg: oklch(from var(--color-primary) l c h / 0.1)` |
+| `iconTint` | `--menu-accent-border: none; --menu-accent-bg: transparent; --menu-accent-icon: var(--primary)` |
+| `combined` | `--menu-accent-border: 3px solid var(--primary); --menu-accent-bg: oklch(from var(--color-primary) l c h / 0.05)` |
+
+**Generated Menu CSS**:
+```css
+:root {
+  /* Menu theming */
+  --menu: var(--background);
+  --menu-hover: var(--color-neutral-100);
+  --menu-active: var(--primary);
+  --menu-accent-border: 3px solid var(--primary);
+  --menu-accent-bg: transparent;
+  --menu-radius: calc(var(--radius) - 2px);
+}
+
+.dark {
+  --menu: var(--color-neutral-900);
+  --menu-hover: var(--color-neutral-800);
+}
+```
+
+### components.json Generation
+
+The token generation creates a shadcn/ui CLI configuration file:
+
+```json
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.ts",
+    "css": "app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "iconLibrary": "lucide"
+}
+```
+
+**Style preset mapping**:
+
+| Questionnaire Choice | shadcn Style | Density |
+|---------------------|--------------|---------|
+| Default | `default` | comfortable (1x) |
+| New York | `new-york` | comfortable (1x) |
+| Minimal | `default` | spacious (1.25x) |
+| Bold | `new-york` | compact (0.85x) |
+
+### Icon Library Integration
+
+Based on questionnaire selection, install the appropriate package:
+
+| Choice | Package | Import Pattern |
+|--------|---------|----------------|
+| Lucide | `lucide-react` | `import { Icon } from 'lucide-react'` |
+| Heroicons | `@heroicons/react` | `import { IconOutline } from '@heroicons/react/24/outline'` |
+| Phosphor | `@phosphor-icons/react` | `import { Icon } from '@phosphor-icons/react'` |
+
+### Font Configuration (Next.js)
+
+For Next.js projects, configure `next/font` in `app/layout.tsx`:
+
+```typescript
+// app/layout.tsx
+import { Inter } from 'next/font/google'
+// OR for Geist:
+// import { GeistSans, GeistMono } from 'geist/font'
+// OR for Plus Jakarta Sans:
+// import { Plus_Jakarta_Sans } from 'next/font/google'
+
+const fontSans = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+})
+
+const fontMono = /* Fira_Code, JetBrains_Mono, etc. */({
+  subsets: ['latin'],
+  variable: '--font-mono',
+})
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" className={`${fontSans.variable} ${fontMono.variable}`}>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+### Border Radius Scale
+
+Based on questionnaire selection:
+
+| Choice | `--radius` Value | Effect |
+|--------|------------------|--------|
+| None | `0` | Sharp corners everywhere |
+| Small | `0.25rem` (4px) | Minimal rounding |
+| Medium | `0.5rem` (8px) | Modern balance |
+| Large | `0.75rem` (12px) | Soft, friendly |
+| Full | `9999px` | Pill shapes |
+
+shadcn components use this value with modifiers:
+- `--radius` - Default for buttons, inputs
+- `calc(var(--radius) - 2px)` - Nested elements
+- `calc(var(--radius) + 4px)` - Cards, dialogs
+
+### Tailwind v4 Integration
+
+Update `tailwind.config.ts` to reference CSS variables:
+
+```typescript
+// tailwind.config.ts
+import type { Config } from 'tailwindcss'
+
+const config: Config = {
+  darkMode: ['class'],
+  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        // Map OKLCH tokens
+        primary: 'var(--color-primary)',
+        secondary: 'var(--color-secondary)',
+        // ... other brand colors
+
+        // shadcn aliases work automatically via CSS variables
+      },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
+      },
+      fontFamily: {
+        sans: ['var(--font-sans)'],
+        mono: ['var(--font-mono)'],
+      },
+    },
+  },
+  plugins: [require('tailwindcss-animate')],
+}
+
+export default config
+```
+
+### Menu Component Variants (tailwind-variants)
+
+For projects using `tailwind-variants`, generate menu styling presets:
+
+```typescript
+// components/ui/menu-variants.ts
+import { tv } from 'tailwind-variants'
+
+export const menuStyles = tv({
+  slots: {
+    root: 'flex flex-col',
+    item: 'flex items-center gap-3 px-3 py-2 rounded-[var(--menu-radius)] transition-colors',
+    icon: 'h-5 w-5',
+    label: 'flex-1',
+  },
+  variants: {
+    menuColor: {
+      background: { root: 'bg-[var(--menu)]' },
+      surface: { root: 'bg-card shadow-sm' },
+      primaryTint: { root: 'bg-primary/5' },
+      glass: { root: 'bg-background/80 backdrop-blur-sm' },
+    },
+    menuAccent: {
+      border: {
+        item: 'data-[active=true]:border-l-[3px] data-[active=true]:border-primary data-[active=true]:pl-[calc(0.75rem-3px)]',
+      },
+      background: {
+        item: 'data-[active=true]:bg-primary/10',
+      },
+      iconTint: {
+        item: '[&[data-active=true]_svg]:text-primary',
+      },
+      combined: {
+        item: 'data-[active=true]:border-l-[3px] data-[active=true]:border-primary data-[active=true]:bg-primary/5 data-[active=true]:pl-[calc(0.75rem-3px)]',
+      },
+    },
+    state: {
+      default: { item: 'text-foreground' },
+      hover: { item: 'bg-[var(--menu-hover)]' },
+      active: { item: 'font-medium' },
+      disabled: { item: 'opacity-50 cursor-not-allowed' },
+    },
+  },
+  defaultVariants: {
+    menuColor: 'background',
+    menuAccent: 'border',
+    state: 'default',
+  },
+})
+```
+
+### Primary Scale Generation
+
+Generate full 11-shade OKLCH scale from base hue:
+
+```javascript
+// generate-primary-scale.js
+function generateOKLCHScale(hue, chroma = 0.15) {
+  const lightnesses = {
+    50:  0.98,
+    100: 0.94,
+    200: 0.88,
+    300: 0.78,
+    400: 0.65,
+    500: 0.55,
+    600: 0.48,  // Primary action color
+    700: 0.40,
+    800: 0.32,
+    900: 0.22,
+    950: 0.14,
+  };
+
+  const scale = {};
+  for (const [name, lightness] of Object.entries(lightnesses)) {
+    // Reduce chroma at extreme lightnesses for better contrast
+    const adjustedChroma = lightness > 0.9 || lightness < 0.2
+      ? chroma * 0.3
+      : chroma;
+    scale[name] = `oklch(${lightness * 100}% ${adjustedChroma} ${hue})`;
+  }
+  return scale;
+}
+
+// Usage based on questionnaire
+const hueMap = { blue: 250, purple: 285, green: 150, orange: 50, red: 25 };
+const primaryScale = generateOKLCHScale(hueMap[selectedColor]);
+```
+
+### Customization Summary Table
+
+| Questionnaire | Affects | Files Modified |
+|---------------|---------|----------------|
+| Style preset | shadcn style, density | `components.json`, spacing tokens |
+| Base color | Primary scale (11 shades) | `tokens.json`, `tokens.css` |
+| Theme mode | Dark mode CSS | `tokens.css`, `layout.tsx` |
+| Icon library | Icon imports | `package.json`, `components.json` |
+| Font family | Typography | `layout.tsx`, `tailwind.config.ts` |
+| Border radius | `--radius` variable | `tokens.css` |
+| Menu color | Menu background tokens | `tokens.css`, `menu-variants.ts` |
+| Menu accent | Menu active state tokens | `tokens.css`, `menu-variants.ts` |
+
+### Quality Gates (shadcn Integration)
+
+**FAIL**:
+- `components.json` missing after --shadcn flag
+- Icon library not installed
+- shadcn CSS variable aliases missing from tokens.css
+
+**WARN**:
+- Font not configured in layout.tsx
+- `tailwindcss-animate` plugin not installed
+- Dark mode class not on html element

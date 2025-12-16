@@ -87,6 +87,9 @@ theme:
       xl: "16px"
       full: "9999px"
 
+    # Active radius (set by questionnaire)
+    radius_default: "[RADIUS]"  # none | sm | md | lg | full
+
     # Shadows
     shadow:
       sm: "0 1px 2px oklch(0% 0 0 / 0.05)"
@@ -102,6 +105,71 @@ theme:
 
     # Focus ring
     focus_ring: "0 0 0 3px oklch(55% 0.2 250 / 0.3)"
+
+    # Menu Theming (shadcn integration)
+    menu:
+      # Menu background style
+      # Options: background | surface | primaryTint | glass
+      color: "[MENU_COLOR]"
+
+      # CSS values for each menu color option
+      color_values:
+        background:
+          background: "var(--background)"
+          shadow: "none"
+          backdrop: "none"
+        surface:
+          background: "var(--card)"
+          shadow: "var(--shadow-sm)"
+          backdrop: "none"
+        primaryTint:
+          background: "oklch(from var(--primary) l c h / 0.05)"
+          shadow: "none"
+          backdrop: "none"
+        glass:
+          background: "oklch(from var(--background) l c h / 0.8)"
+          shadow: "none"
+          backdrop: "blur(8px)"
+
+      # Menu active indicator style
+      # Options: border | background | iconTint | combined
+      accent: "[MENU_ACCENT]"
+
+      # CSS values for each menu accent option
+      accent_values:
+        border:
+          border: "3px solid var(--primary)"
+          background: "transparent"
+          icon_color: "inherit"
+        background:
+          border: "none"
+          background: "oklch(from var(--primary) l c h / 0.1)"
+          icon_color: "inherit"
+        iconTint:
+          border: "none"
+          background: "transparent"
+          icon_color: "var(--primary)"
+        combined:
+          border: "3px solid var(--primary)"
+          background: "oklch(from var(--primary) l c h / 0.05)"
+          icon_color: "var(--primary)"
+
+  # shadcn/ui Integration
+  shadcn:
+    # Style preset: default | new-york | minimal | bold
+    style: "[STYLE_PRESET]"
+
+    # Icon library: lucide | heroicons | phosphor
+    icon_library: "[ICON_LIBRARY]"
+
+    # Theme mode: light | dark | system | both
+    theme_mode: "[THEME_MODE]"
+
+    # RSC compatibility (always true for Next.js App Router)
+    rsc: true
+
+    # Whether to generate components.json
+    generate_config: true
 
   # Tone & Voice (guides content presentation)
   tone:

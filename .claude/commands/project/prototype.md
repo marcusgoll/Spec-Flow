@@ -18,6 +18,11 @@ updated: 2025-12-09
 - Design tokens: `design/systems/tokens.json` and `tokens.css`
 - Project docs: `docs/project/overview.md`
 - User preferences: `.spec-flow/config/user-preferences.yaml`
+
+**Related skills (auto-loaded on demand):**
+- `shadcn-integration` - Generates shadcn/ui compatible CSS variables and components.json
+- `design-tokens` - OKLCH token generation and WCAG validation
+- `theme-consistency` - Enforces token usage across prototype screens
 </context>
 
 <architecture>
@@ -212,6 +217,79 @@ Found existing design tokens: design/systems/tokens.json
 | Bold | oklch(55% 0.25 0) Red | oklch(50% 0.2 270) Purple | oklch(80% 0.2 90) Yellow |
 | Minimal | oklch(25% 0.02 270) Charcoal | oklch(50% 0.02 270) Gray | oklch(55% 0.15 270) Accent |
 
+### Step 2b: shadcn/ui Style Options (NEW)
+
+**These questions integrate with shadcn/ui component library:**
+
+```json
+{
+  "question": "shadcn/ui style preset?",
+  "header": "Style",
+  "multiSelect": false,
+  "options": [
+    {"label": "Default (Recommended)", "description": "Clean, balanced - shadcn 'default' style"},
+    {"label": "New York", "description": "Refined, sophisticated - shadcn 'new-york' style"},
+    {"label": "Minimal", "description": "Ultra-clean, lots of whitespace"},
+    {"label": "Bold", "description": "Strong visual presence, compact density"}
+  ]
+}
+```
+
+```json
+{
+  "question": "Menu background style?",
+  "header": "Menu Color",
+  "multiSelect": false,
+  "options": [
+    {"label": "Background (Recommended)", "description": "Uses page background - clean and simple"},
+    {"label": "Surface", "description": "Elevated card with subtle shadow"},
+    {"label": "Primary Tint", "description": "5% wash of your primary color"},
+    {"label": "Glass", "description": "Transparent with blur backdrop effect"}
+  ]
+}
+```
+
+```json
+{
+  "question": "Menu active indicator style?",
+  "header": "Menu Accent",
+  "multiSelect": false,
+  "options": [
+    {"label": "Left Border (Recommended)", "description": "3px border on active items"},
+    {"label": "Background Highlight", "description": "Full background color change"},
+    {"label": "Icon Tint", "description": "Only icon changes to primary color"},
+    {"label": "Combined", "description": "Border + subtle background highlight"}
+  ]
+}
+```
+
+```json
+{
+  "question": "Border radius style?",
+  "header": "Radius",
+  "multiSelect": false,
+  "options": [
+    {"label": "None", "description": "Sharp corners - brutalist, stark"},
+    {"label": "Small", "description": "4px - minimal, technical"},
+    {"label": "Medium (Recommended)", "description": "8px - modern, balanced"},
+    {"label": "Large", "description": "12px - friendly, soft"},
+    {"label": "Full", "description": "Pill-shaped - playful"}
+  ]
+}
+```
+
+**Vibe → shadcn Style Mapping:**
+
+| Vibe | shadcn Style | Density | Menu Color | Menu Accent |
+|------|--------------|---------|------------|-------------|
+| Professional | default | comfortable | background | border |
+| Modern SaaS | new-york | comfortable | surface | combined |
+| Friendly | default | spacious | primaryTint | background |
+| Bold | new-york | compact | glass | combined |
+| Minimal | default | spacious | background | iconTint |
+
+**If user selects Custom for any option, prompt for specific values.**
+
 **Write starter tokens to `design/prototype/theme.yaml`** (NOT design/systems/ - keep discovery separate):
 ```yaml
 theme:
@@ -233,6 +311,22 @@ theme:
     neutral-50: "oklch(98% 0.01 270)"
     neutral-100: "oklch(96% 0.01 270)"
     # ... through neutral-950
+
+  # Component defaults (from shadcn questions)
+  components:
+    radius_default: "[RADIUS]"  # none | sm | md | lg | full
+
+    # Menu theming
+    menu:
+      color: "[MENU_COLOR]"    # background | surface | primaryTint | glass
+      accent: "[MENU_ACCENT]"  # border | background | iconTint | combined
+
+  # shadcn/ui integration
+  shadcn:
+    style: "[STYLE_PRESET]"         # default | new-york | minimal | bold
+    icon_library: "lucide"          # Default for prototypes
+    theme_mode: "system"            # light | dark | system | both
+    rsc: true
 ```
 
 ### Step 3: App Vision Brainstorm
@@ -301,6 +395,14 @@ palette:
   source: "${PALETTE_SOURCE}"  # quick-picker | existing-tokens | skip
   vibe: "${SELECTED_VIBE}"     # Professional | Modern SaaS | Friendly | Bold | Minimal | Custom
   custom_primary: null         # Only if Custom selected
+
+# shadcn/ui Integration (NEW)
+shadcn:
+  style_preset: "${STYLE_PRESET}"      # default | new-york | minimal | bold
+  menu_color: "${MENU_COLOR}"          # background | surface | primaryTint | glass
+  menu_accent: "${MENU_ACCENT}"        # border | background | iconTint | combined
+  border_radius: "${BORDER_RADIUS}"    # none | sm | md | lg | full
+  icon_library: "lucide"               # Default to lucide for prototypes
 
 vision:
   category: "${VISION_CATEGORY}"

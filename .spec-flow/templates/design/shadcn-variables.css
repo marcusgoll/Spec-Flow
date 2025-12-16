@@ -1,0 +1,252 @@
+/**
+ * shadcn/ui CSS Variable Aliases - TEMPLATE
+ *
+ * This template is processed by generate-shadcn-tokens.js
+ * Placeholders (${variable}) are replaced with generated values.
+ *
+ * DO NOT EDIT DIRECTLY - edit the generator script instead.
+ *
+ * Architecture:
+ *   OKLCH Tokens (source of truth) → shadcn Aliases → Components
+ */
+
+/* ========================================
+   OKLCH TOKEN PRIMITIVES
+   ======================================== */
+
+:root {
+  /* Primary Color Scale (OKLCH) */
+  --color-primary-50: ${primary.50.oklch};
+  --color-primary-100: ${primary.100.oklch};
+  --color-primary-200: ${primary.200.oklch};
+  --color-primary-300: ${primary.300.oklch};
+  --color-primary-400: ${primary.400.oklch};
+  --color-primary-500: ${primary.500.oklch};
+  --color-primary-600: ${primary.600.oklch};
+  --color-primary-700: ${primary.700.oklch};
+  --color-primary-800: ${primary.800.oklch};
+  --color-primary-900: ${primary.900.oklch};
+  --color-primary-950: ${primary.950.oklch};
+
+  /* Neutral Color Scale (OKLCH) */
+  --color-neutral-50: ${neutral.50.oklch};
+  --color-neutral-100: ${neutral.100.oklch};
+  --color-neutral-200: ${neutral.200.oklch};
+  --color-neutral-300: ${neutral.300.oklch};
+  --color-neutral-400: ${neutral.400.oklch};
+  --color-neutral-500: ${neutral.500.oklch};
+  --color-neutral-600: ${neutral.600.oklch};
+  --color-neutral-700: ${neutral.700.oklch};
+  --color-neutral-800: ${neutral.800.oklch};
+  --color-neutral-900: ${neutral.900.oklch};
+  --color-neutral-950: ${neutral.950.oklch};
+
+  /* Semantic Colors (OKLCH) */
+  --color-error: oklch(55% 0.2 25);
+  --color-error-fg: oklch(30% 0.18 27);
+  --color-warning: oklch(70% 0.15 80);
+  --color-warning-fg: oklch(35% 0.15 90);
+  --color-success: oklch(60% 0.15 150);
+  --color-success-fg: oklch(25% 0.12 145);
+  --color-info: oklch(60% 0.15 250);
+  --color-info-fg: oklch(30% 0.12 240);
+}
+
+/* ========================================
+   SHADCN/UI VARIABLE ALIASES
+   ======================================== */
+
+:root {
+  /* Core Colors */
+  --background: var(--color-neutral-50);
+  --foreground: var(--color-neutral-900);
+
+  /* Cards & Popovers */
+  --card: var(--color-neutral-50);
+  --card-foreground: var(--color-neutral-900);
+  --popover: var(--color-neutral-50);
+  --popover-foreground: var(--color-neutral-900);
+
+  /* Primary */
+  --primary: var(--color-primary-600);
+  --primary-foreground: var(--color-neutral-50);
+
+  /* Secondary */
+  --secondary: var(--color-neutral-100);
+  --secondary-foreground: var(--color-neutral-900);
+
+  /* Muted */
+  --muted: var(--color-neutral-100);
+  --muted-foreground: var(--color-neutral-500);
+
+  /* Accent */
+  --accent: var(--color-neutral-100);
+  --accent-foreground: var(--color-neutral-900);
+
+  /* Destructive */
+  --destructive: var(--color-error);
+  --destructive-foreground: var(--color-neutral-50);
+
+  /* Borders & Inputs */
+  --border: var(--color-neutral-200);
+  --input: var(--color-neutral-200);
+  --ring: var(--color-primary-600);
+
+  /* Border Radius */
+  --radius: ${radius};
+
+  /* Chart Colors (Okabe-Ito color-blind safe) */
+  --chart-1: oklch(68.29% 0.151 58.43);
+  --chart-2: oklch(70.17% 0.099 232.66);
+  --chart-3: oklch(59.78% 0.108 164.04);
+  --chart-4: oklch(89.87% 0.162 99.57);
+  --chart-5: oklch(46.86% 0.131 264.05);
+}
+
+/* ========================================
+   MENU THEMING
+   ======================================== */
+
+:root {
+  /* Menu Background */
+  --menu: ${menu.background};
+  --menu-hover: ${menu.hover};
+  --menu-shadow: ${menu.shadow};
+  --menu-backdrop: ${menu.backdrop};
+
+  /* Menu Accent */
+  --menu-accent-border: ${menuAccent.border};
+  --menu-accent-bg: ${menuAccent.background};
+  --menu-accent-icon: ${menuAccent.icon};
+  --menu-radius: calc(var(--radius) - 2px);
+}
+
+/* ========================================
+   DARK MODE
+   ======================================== */
+
+.dark {
+  --background: var(--color-neutral-950);
+  --foreground: var(--color-neutral-50);
+
+  --card: var(--color-neutral-900);
+  --card-foreground: var(--color-neutral-50);
+
+  --popover: var(--color-neutral-900);
+  --popover-foreground: var(--color-neutral-50);
+
+  --primary: var(--color-primary-500);
+  --primary-foreground: var(--color-neutral-950);
+
+  --secondary: var(--color-neutral-800);
+  --secondary-foreground: var(--color-neutral-50);
+
+  --muted: var(--color-neutral-800);
+  --muted-foreground: var(--color-neutral-400);
+
+  --accent: var(--color-neutral-800);
+  --accent-foreground: var(--color-neutral-50);
+
+  --destructive: oklch(55% 0.2 27);
+  --destructive-foreground: var(--color-neutral-50);
+
+  --border: var(--color-neutral-800);
+  --input: var(--color-neutral-800);
+  --ring: var(--color-primary-500);
+
+  /* Menu Dark Mode */
+  --menu: var(--color-neutral-900);
+  --menu-hover: var(--color-neutral-800);
+}
+
+/* ========================================
+   SYSTEM PREFERENCE DARK MODE
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --background: var(--color-neutral-950);
+    --foreground: var(--color-neutral-50);
+    --card: var(--color-neutral-900);
+    --card-foreground: var(--color-neutral-50);
+    --popover: var(--color-neutral-900);
+    --popover-foreground: var(--color-neutral-50);
+    --primary: var(--color-primary-500);
+    --primary-foreground: var(--color-neutral-950);
+    --secondary: var(--color-neutral-800);
+    --secondary-foreground: var(--color-neutral-50);
+    --muted: var(--color-neutral-800);
+    --muted-foreground: var(--color-neutral-400);
+    --accent: var(--color-neutral-800);
+    --accent-foreground: var(--color-neutral-50);
+    --destructive: oklch(55% 0.2 27);
+    --destructive-foreground: var(--color-neutral-50);
+    --border: var(--color-neutral-800);
+    --input: var(--color-neutral-800);
+    --ring: var(--color-primary-500);
+    --menu: var(--color-neutral-900);
+    --menu-hover: var(--color-neutral-800);
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-all: none;
+  }
+}
+
+/* OKLCH fallback for legacy browsers (~8% of users) */
+@supports not (color: oklch(0% 0 0)) {
+  :root {
+    /* Primary fallbacks */
+    --color-primary-50: ${primary.50.hex};
+    --color-primary-100: ${primary.100.hex};
+    --color-primary-200: ${primary.200.hex};
+    --color-primary-300: ${primary.300.hex};
+    --color-primary-400: ${primary.400.hex};
+    --color-primary-500: ${primary.500.hex};
+    --color-primary-600: ${primary.600.hex};
+    --color-primary-700: ${primary.700.hex};
+    --color-primary-800: ${primary.800.hex};
+    --color-primary-900: ${primary.900.hex};
+    --color-primary-950: ${primary.950.hex};
+
+    /* Neutral fallbacks */
+    --color-neutral-50: ${neutral.50.hex};
+    --color-neutral-100: ${neutral.100.hex};
+    --color-neutral-200: ${neutral.200.hex};
+    --color-neutral-300: ${neutral.300.hex};
+    --color-neutral-400: ${neutral.400.hex};
+    --color-neutral-500: ${neutral.500.hex};
+    --color-neutral-600: ${neutral.600.hex};
+    --color-neutral-700: ${neutral.700.hex};
+    --color-neutral-800: ${neutral.800.hex};
+    --color-neutral-900: ${neutral.900.hex};
+    --color-neutral-950: ${neutral.950.hex};
+
+    /* Semantic fallbacks */
+    --color-error: #dc2626;
+    --color-warning: #d97706;
+    --color-success: #059669;
+    --color-info: #3b82f6;
+  }
+}
+
+/* ========================================
+   TAILWIND UTILITIES
+   ======================================== */
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
