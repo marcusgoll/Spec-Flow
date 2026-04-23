@@ -2,7 +2,13 @@
 
 **Version**: 1.0.0
 **Date**: 2025-10-20
-**Status**: Core infrastructure complete, command updates in progress
+**Status**: Historical migration note; core GitHub Issues roadmap support is already shipped in the current checkout
+
+> Current state:
+> - `npx spec-flow setup-roadmap` is shipped
+> - `/roadmap` command files already describe GitHub Issues as the source of truth
+> - This guide is mainly useful when importing an older `.spec-flow/memory/roadmap.md`
+>   into GitHub Issues or understanding the earlier migration work
 
 ## Overview
 
@@ -13,7 +19,7 @@ This guide covers GitHub Issues-based roadmap management for both:
 
 ## Important Distinction
 
-**This Repository (Spec-Flow Workflow Kit):**
+**This Repository (Spec-Flow source repo):**
 
 - An **npm package** that provides workflow commands
 - Uses GitHub Issues to track workflow system improvements
@@ -107,7 +113,7 @@ Run the label setup script to create all necessary labels:
 chmod +x .spec-flow/scripts/bash/setup-github-labels.sh
 
 # Dry run to preview
-./spec-flow/scripts/bash/setup-github-labels.sh --dry-run
+./.spec-flow/scripts/bash/setup-github-labels.sh --dry-run
 
 # Create labels
 ./.spec-flow/scripts/bash/setup-github-labels.sh
@@ -127,7 +133,7 @@ chmod +x .spec-flow/scripts/bash/setup-github-labels.sh
 
 ```
 ✓ GitHub CLI authenticated
-✓ Repository: your-org/your-repo
+✓ Repository: marcusgoll/Spec-Flow
 
 Creating GitHub Labels
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -171,16 +177,16 @@ cd /path/to/user/project
 gh auth login
 
 # 3. Copy label setup script from workflow package
-cp node_modules/@your-org/spec-flow-workflow/.spec-flow/scripts/bash/setup-github-labels.sh .
+cp node_modules/spec-flow/.spec-flow/scripts/bash/setup-github-labels.sh .
 
 # 4. Run label setup
 ./setup-github-labels.sh
 
-# 5. Use /roadmap command (will be updated to use GitHub Issues)
-# Currently uses markdown, will be updated
+# 5. Use /roadmap command
+# It already uses GitHub Issues in the current checkout
 ```
 
-**Note**: The `/roadmap` command integration for user projects is pending implementation.
+**Note**: The main remaining use for this guide is migrating an older markdown roadmap.
 
 ## Using the New GitHub Roadmap
 
@@ -386,7 +392,11 @@ score=$(calculate_ice_score "$impact" "$effort" "$confidence")
 
 ## What Remains (Pending Implementation)
 
-### Command Updates
+### Historical Command Updates
+
+This section describes migration work from an earlier state of the repo. In the
+current checkout, `/roadmap` command files already describe GitHub Issues
+behavior.
 
 The following slash commands need to be updated to use GitHub Issues:
 
@@ -422,7 +432,7 @@ The following slash commands need to be updated to use GitHub Issues:
 
 ### Example: Updating /roadmap Command
 
-The `/roadmap` command (`.claude/commands/roadmap.md`) needs these changes:
+The `/roadmap` command previously needed these changes:
 
 **Before (Markdown):**
 
@@ -610,4 +620,4 @@ If you encounter issues:
 
 ---
 
-**Next Steps**: Update slash commands to use GitHub Issues API (see "What Remains" section above)
+**Next Steps**: Use [USER_ROADMAP_SETUP.md](USER_ROADMAP_SETUP.md) for the current setup flow, and use this guide only when migrating an older markdown roadmap.

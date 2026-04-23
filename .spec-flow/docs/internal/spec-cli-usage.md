@@ -1,8 +1,43 @@
-# spec-cli.py - Centralized Workflow CLI
+# spec-cli.py - Shared Execution Engine
+
+> Audience: Spec-Flow maintainers, adapter authors, and advanced debugging.
+> This is not a primary public operator surface.
 
 ## Overview
 
-The `spec-cli.py` is a unified command-line interface that provides a single entry point for all Spec-Flow workflow scripts. It replaces the need to embed raw bash/PowerShell scripts inside command markdown files, dramatically reducing file size and improving maintainability.
+The `spec-cli.py` is the shared execution engine behind installed workflow
+commands. It provides a single entry point for shared workflow scripts and
+reduces the amount of embedded bash or PowerShell inside tool-specific command
+markdown files.
+
+Most users should use:
+
+- `npx spec-flow ...` for install, update, and health operations
+- installed workflow commands such as `/feature`, `/plan`, and `/ship` inside
+  Claude, Codex, Gemini, or another supported tool surface
+
+Direct `spec-cli.py` invocation is primarily for maintainers, compatibility
+adapters, and advanced debugging.
+
+## Epic Status
+
+Most feature and phase workflows execute through the shared engine directly.
+Epic orchestration is still transitional: shared canon owns the model, but the
+current interactive runtime is still routed mainly through tool-specific
+`/epic` adapter surfaces.
+
+The shared engine now owns the subset of epic operations that already have
+shared scripts behind them:
+
+- `epic create` scaffolds a new epic via `create-new-epic`
+- `epic list`, `epic progress`, `epic auto-assign`, and `epic list-sprint`
+  dispatch through `epic-manager`
+- `sprint start`, `sprint end`, and `sprint status` mirror the current shared
+  `sprint-manage` script surface
+
+That is still not the same thing as the full interactive `/epic` workflow.
+The full epic orchestrator remains an adapter-layer concern until more runtime
+logic moves into the shared engine.
 
 ## Architecture
 
@@ -30,13 +65,16 @@ The `spec-cli.py` is a unified command-line interface that provides a single ent
 
 3. **Cross-platform**: Auto-detects Windows/Mac/Linux and calls appropriate scripts
 
-4. **One command interface**: `python .spec-flow/scripts/spec-cli.py <cmd>` for everything
+4. **One shared engine interface**: `python .spec-flow/scripts/spec-cli.py <cmd>`
 
 5. **Easier maintenance**: Update scripts without touching command files
 
 6. **Token efficiency**: Commands only describe **what** the workflow does, not **how**
 
-## Usage
+## Direct Invocation
+
+Use direct invocation when working on the Spec-Flow source repo, debugging the
+shared engine, or adapting behavior for a tool-specific command surface.
 
 ### Basic Syntax
 
@@ -183,7 +221,8 @@ python .spec-flow/scripts/spec-cli.py debug --error "TypeError: undefined is not
 
 #### 10. contract-bump
 
-Bump API contract version
+Planned contract-governance compatibility surface. The shared script is not
+shipped in this checkout.
 
 ```bash
 python .spec-flow/scripts/spec-cli.py contract-bump --type <type> [--file <path>]
@@ -202,7 +241,8 @@ python .spec-flow/scripts/spec-cli.py contract-bump --type minor
 
 #### 11. contract-verify
 
-Verify API contract compatibility
+Planned contract-governance compatibility surface. The shared script is not
+shipped in this checkout.
 
 ```bash
 python .spec-flow/scripts/spec-cli.py contract-verify [--baseline <version>]
@@ -213,6 +253,40 @@ python .spec-flow/scripts/spec-cli.py contract-verify [--baseline <version>]
 ```bash
 python .spec-flow/scripts/spec-cli.py contract-verify --baseline v1.2.0
 ```
+
+## Preflight-Only Phase Shims
+
+The following `spec-cli.py` subcommands have executable entrypoints in this
+checkout, but those entrypoints only perform preflight validation and then
+return an explicit handoff message instead of running a full shared runtime:
+
+- `preview`
+- `tasks`
+- `validate`
+- `implement`
+
+These phases still exist as installed workflow commands, but their shared bash
+runtime has not been shipped intact in this checkout.
+
+## Planned Compatibility Surfaces
+
+The following `spec-cli.py` subcommands are still referenced in the shared
+engine, but their shared bash or PowerShell implementations are not shipped in
+this checkout:
+
+- `contract-bump`
+- `contract-verify`
+- `fixture-refresh`
+- `flag`
+- `metrics`
+- `metrics-dora`
+- `schedule`
+- `scheduler-assign`
+- `scheduler-list`
+- `scheduler-park`
+
+When invoked here, they fail explicitly as `not shipped in this checkout`
+surfaces rather than as missing-file shell errors.
 
 ## How It Works
 

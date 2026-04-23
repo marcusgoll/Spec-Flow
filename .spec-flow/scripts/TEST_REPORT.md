@@ -53,6 +53,9 @@ All `--help` commands execute without errors and display usage information corre
 **Status**: ❌ NOT FIXED
 
 ### Issue #3: Missing Bash Scripts (CRITICAL ❌)
+**Historical note**: this report predates the current checkout cleanup. `detect-infrastructure-needs.sh`
+now exists here, but `contract-verify.sh` and several other compatibility surfaces are still not shipped.
+
 **Affected Commands**:
 - `contract-verify`
 - `detect-infra`
@@ -103,7 +106,6 @@ Add `exit 0` to the end of all bash scripts in `.spec-flow/scripts/bash/`:
 ### Priority 2: Create Missing Scripts (High)
 Create bash implementations for:
 - `contract-verify.sh`
-- `detect-infrastructure-needs.sh`
 
 OR ensure PowerShell equivalents exist.
 

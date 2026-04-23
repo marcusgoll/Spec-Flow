@@ -6,6 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=.spec-flow/scripts/bash/common.sh
 source "$SCRIPT_DIR/common.sh"
+PYTHON_CMD="$(resolve_python_cmd)"
 
 show_help() {
     cat <<'EOF'
@@ -53,7 +54,7 @@ done
 
 if $PATHS_ONLY; then
     if $JSON_OUT; then
-        python - "$REPO_ROOT" "$CURRENT_BRANCH" "$FEATURE_DIR" "$INCLUDE_MEMORIES" <<'PY'
+        "$PYTHON_CMD" - "$REPO_ROOT" "$CURRENT_BRANCH" "$FEATURE_DIR" "$INCLUDE_MEMORIES" <<'PY'
 import json, sys
 repo_root, branch, feature_dir, include_memories = sys.argv[1:5]
 include_memories = include_memories.lower() == 'true'
@@ -162,9 +163,10 @@ if $JSON_OUT; then
         INCLUDE_MEMORIES="$INCLUDE_MEMORIES" \
         AVAILABLE_DOCS_PAYLOAD="$available_docs_payload" \
         MEMORY_DOCS_PAYLOAD="$memory_docs_payload" \
-        python <<'PY'
+        "$PYTHON_CMD" <<'PY'
 import json
 import os
+import sys
 
 feature_dir = os.environ["FEATURE_DIR"]
 include_memories = os.environ["INCLUDE_MEMORIES"].lower() == "true"

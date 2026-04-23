@@ -159,7 +159,7 @@ The `/roadmap` slash command integrates with GitHub Issues:
 gh issue list --label type:feature
 ```
 
-**Note**: Current version of `/roadmap` command uses markdown. GitHub Issues integration is coming in v1.17.0.
+The current `/roadmap` command is GitHub-Issues-based in this checkout.
 
 ### Workflow Integration
 

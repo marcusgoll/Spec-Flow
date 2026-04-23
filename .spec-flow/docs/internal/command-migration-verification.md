@@ -15,7 +15,7 @@ Successfully migrated 10 workflow commands from embedded bash to centralized CLI
 
 1. `.claude/commands/phases/clarify.md` (557 → 174 lines, 69% reduction)
 2. `.claude/commands/phases/plan.md` (2061 → 329 lines, 84% reduction)
-3. `.claude/commands/phases/preview.md` (1582 → 257 lines, 84% reduction)
+3. Historical `.claude/commands/phases/preview.md` migration note; that adapter file is not shipped in the current checkout
 4. `.claude/commands/phases/validate.md` (1122 → 334 lines, 70% reduction)
 5. `.claude/commands/phases/tasks.md` (881 → 202 lines, 77% reduction)
 6. `.claude/commands/phases/implement.md` (836 → 317 lines, 62% reduction)
@@ -34,13 +34,13 @@ All located in `.spec-flow/scripts/bash/`:
 1. `clarify-workflow.sh` (17,084 bytes) - Interactive clarification workflow
 2. `debug-workflow.sh` (12,825 bytes) - Error debugging and logging
 3. `feature-workflow.sh` (16,439 bytes) - Feature orchestration and GitHub integration
-4. `implement-workflow.sh` (25,688 bytes) - Task execution and TDD workflow
+4. `implement-workflow.sh` - Compatibility preflight shim in the current checkout; full shared runtime not shipped
 5. `optimize-workflow.sh` (20,109 bytes) - Production readiness validation
 6. `plan-workflow.sh` (51,246 bytes) - Research and design artifact generation
-7. `preview-workflow.sh` (42,676 bytes) - Manual testing and validation
+7. `preview-workflow.sh` - Compatibility preflight shim in the current checkout; full shared runtime not shipped
 8. `ship-finalization.sh` (11,715 bytes) - Deployment finalization tasks
-9. `tasks-workflow.sh` (28,587 bytes) - Task breakdown and TDD sequencing
-10. `validate-workflow.sh` (35,224 bytes) - Cross-artifact consistency checks
+9. `tasks-workflow.sh` - Compatibility preflight shim in the current checkout; task generation remains adapter-owned
+10. `validate-workflow.sh` - Compatibility preflight shim in the current checkout; full shared runtime not shipped
 
 **Total**: ~261,593 bytes of extracted bash logic
 
@@ -78,8 +78,8 @@ All located in `.spec-flow/scripts/bash/`:
 - `detect-infra` - Detect infrastructure needs
 - `enable-auto-merge` - Enable auto-merge for PR
 - `branch-enforce` - Enforce branch naming
-- `contract-bump` - Bump API contract version
-- `contract-verify` - Verify API contract compatibility
+- `contract-bump` - Planned contract-governance surface; not shipped in this checkout
+- `contract-verify` - Planned contract-governance surface; not shipped in this checkout
 
 ## Testing Recommendations
 
@@ -115,19 +115,20 @@ python .spec-flow/scripts/spec-cli.py clarify
 python .spec-flow/scripts/spec-cli.py plan
 
 # 4. Create tasks
-python .spec-flow/scripts/spec-cli.py tasks
+# Use installed /tasks workflow command; direct spec-cli dispatch is preflight-only here
 
 # 5. Validate consistency
-python .spec-flow/scripts/spec-cli.py validate
+# Use installed /validate workflow command; direct spec-cli dispatch is preflight-only here
 
 # 6. Implement
-python .spec-flow/scripts/spec-cli.py implement
+# Use installed /implement workflow command; direct spec-cli dispatch is preflight-only here
 
 # 7. Optimize
 python .spec-flow/scripts/spec-cli.py optimize
 
 # 8. Preview
-python .spec-flow/scripts/spec-cli.py preview
+# Use installed /preview workflow command only if the adapter ships it;
+# direct spec-cli preview is preflight-only in this checkout
 
 # 9. Ship finalization
 python .spec-flow/scripts/spec-cli.py ship-finalize finalize
@@ -149,7 +150,11 @@ python .spec-flow/scripts/spec-cli.py ship-finalize finalize
 
 ## Known Issues & Limitations
 
-### None Identified
+### Current Checkout Drift
+
+- `/preview` adapter command file is not shipped in the current checkout
+- `preview-workflow.sh` is only a compatibility preflight shim here
+- Historical migration notes still describe a fuller extracted preview runtime than this checkout actually contains
 
 Migration completed without errors. All scripts:
 - Have proper shebang (`#!/usr/bin/env bash`)
@@ -168,7 +173,7 @@ cp .claude/commands/deployment/ship.md.backup .claude/commands/deployment/ship.m
 cp .claude/commands/phases/spec.md.backup .claude/commands/phases/spec.md
 cp .claude/commands/phases/clarify.md.backup .claude/commands/phases/clarify.md
 cp .claude/commands/phases/plan.md.backup .claude/commands/phases/plan.md
-cp .claude/commands/phases/preview.md.backup .claude/commands/phases/preview.md
+# Historical path only; preview adapter file is not present in the current checkout
 cp .claude/commands/phases/validate.md.backup .claude/commands/phases/validate.md
 cp .claude/commands/phases/tasks.md.backup .claude/commands/phases/tasks.md
 cp .claude/commands/phases/implement.md.backup .claude/commands/phases/implement.md

@@ -402,8 +402,8 @@ Next Steps:
 **Workflow position**:
 
 ```
-/feature → /clarify → /plan → /tasks → /analyze → /implement →
-/optimize → /preview → **/ship-staging** → /validate-staging → /ship-prod
+/feature → /clarify → /plan → /tasks → /validate → /implement →
+/optimize → local preview (optional) → **/ship-staging** → /validate-staging → /ship-prod
 ```
 
 **Deployment modes:**
@@ -443,7 +443,7 @@ Next Steps:
 
 - `/ship` - Parent orchestrator (calls ship-staging automatically)
 - `/optimize` - Quality gates (must run before shipping)
-- `/preview` - Local testing (recommended before shipping)
+- `Local preview` - Recommended before shipping; use installed `/preview` only if your adapter ships it
 - `/validate-staging` - Manual staging validation (run after shipping)
 - `/ship-prod` - Production deployment (run after validation)
 - `/checks pr [number]` - CI failure investigation

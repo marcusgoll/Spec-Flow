@@ -573,7 +573,7 @@ Optimization phase complete when:
 - [ ] Critical issues fixed (blocking deployment)
 - [ ] Minor issues documented (can defer)
 - [ ] state.yaml updated (optimization.status = completed)
-- [ ] Ready to proceed to /preview (manual UI/UX testing)
+- [ ] Ready to proceed to local preview or staging (use installed /preview only if your adapter ships it)
 
 If blocking issues remain, return to /implement to fix, then re-run /optimize.
 </success_criteria>

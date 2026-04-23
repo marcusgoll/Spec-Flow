@@ -363,19 +363,19 @@ D:\Coding\workflow/
 │   │   └── workflow-state-schema.md  # Schema docs (v2.0.0)
 │   ├── scripts/
 │   │   └── bash/
-│   │       ├── contract-verify.sh    # CDC test runner
-│   │       ├── contract-bump.sh      # Version bumping
-│   │       ├── fixture-refresh.sh    # Fixture generator
+│   │       ├── contract-verify.sh    # Planned CDC test runner; not shipped here
+│   │       ├── contract-bump.sh      # Planned version bumping surface; not shipped here
+│   │       ├── fixture-refresh.sh    # Planned fixture generator; not shipped here
 │   │       ├── branch-enforce.sh     # Branch age audit
-│   │       ├── flag-add.sh           # Register flags
-│   │       ├── flag-list.sh          # List flags
-│   │       ├── flag-cleanup.sh       # Retire flags
-│   │       ├── scheduler-assign.sh   # Assign epic
-│   │       ├── scheduler-park.sh     # Park epic
-│   │       ├── scheduler-list.sh     # List epics
+│   │       ├── flag-add.sh           # Planned flag registration surface; not shipped here
+│   │       ├── flag-list.sh          # Planned flag inventory surface; not shipped here
+│   │       ├── flag-cleanup.sh       # Planned flag retirement surface; not shipped here
+│   │       ├── scheduler-assign.sh   # Planned epic assignment surface; not shipped here
+│   │       ├── scheduler-park.sh     # Planned epic parking surface; not shipped here
+│   │       ├── scheduler-list.sh     # Planned epic listing surface; not shipped here
 │   │       ├── gate-ci.sh            # CI gate
 │   │       ├── gate-sec.sh           # Security gate
-│   │       ├── dora-calculate.sh     # DORA metrics
+│   │       ├── dora-calculate.sh     # Planned DORA metrics surface; not shipped here
 │   │       ├── dora-alerts.sh        # DORA alerting
 │   │       └── git-hooks/
 │   │           └── pre-push          # Branch age hook

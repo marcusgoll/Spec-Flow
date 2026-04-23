@@ -48,6 +48,10 @@ npx spec-flow init
 
 This copies workflow files directly into your project (`.claude/`, `.spec-flow/`, `CLAUDE.md`). No dependency is added to your `package.json` — Spec-Flow becomes part of your codebase.
 
+`npx spec-flow ...` is the installer and maintenance CLI. After installation,
+you use the installed workflow commands such as `/feature`, `/plan`, and
+`/ship` inside your tool environment.
+
 ### 2. Build your first feature
 
 ```bash
@@ -148,7 +152,9 @@ For small changes that don't need the full workflow:
 | `/init-preferences` | Configure workflow defaults |
 | `/roadmap` | Manage features via GitHub Issues |
 
-See [all 46 commands](docs/commands.md) in the full reference.
+See [the public installed workflow command reference](docs/commands.md) for
+the slash-command surface. For installer and maintenance commands, run
+`npx spec-flow help`.
 
 ## How It Works
 
@@ -231,7 +237,10 @@ Handles:
 - Production promotion
 - Rollback capability
 
-## Project Structure
+## Installed Project Structure
+
+This is the typical consumer-project layout after `npx spec-flow init`. It is
+not the source repo layout for Spec-Flow itself.
 
 ```
 your-project/
@@ -296,12 +305,10 @@ Windows users: Install [Git for Windows](https://git-scm.com/download/win) for f
 
 ## Examples
 
-See a complete feature workflow in [`specs/001-example-feature/`](specs/001-example-feature/):
-
-- Full specification with requirements
-- 28 tasks with acceptance criteria
-- Performance benchmarks
-- Release notes
+Checked-in example project docs live under
+[`docs/examples/flightpro-sample-project/`](docs/examples/flightpro-sample-project/).
+Consumer projects will create `specs/NNN-feature/` and `epics/NNN-epic/`
+workspaces after installation.
 
 ## 🆕 Recent Updates
 

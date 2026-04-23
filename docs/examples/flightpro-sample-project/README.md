@@ -124,4 +124,4 @@ regulations. We exist because current solutions are either too expensive
 
 Found this example helpful? Have suggestions?
 
-**GitHub Issues**: https://github.com/anthropics/claude-code/issues
+**GitHub Issues**: https://github.com/marcusgoll/Spec-Flow/issues

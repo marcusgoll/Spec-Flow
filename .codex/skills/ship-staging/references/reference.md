@@ -39,8 +39,8 @@ Suggest /validate-staging
 **Position in workflow**:
 
 ```
-/feature → /clarify → /plan → /tasks → /analyze → /implement →
-/optimize → /preview → **/ ship-staging** → /validate-staging → /ship-prod
+/feature → /clarify → /plan → /tasks → /validate → /implement →
+/optimize → local preview (optional) → **/ship-staging** → /validate-staging → /ship-prod
 ```
 
 ### Auto-Suggestions

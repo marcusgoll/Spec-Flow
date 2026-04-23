@@ -210,6 +210,10 @@ Create `contracts/pacts/auth-ui-to-auth-api.json`:
 
 **Step 3**: Verify contracts
 
+> Current repo note: the contract and fixture script names below describe
+> planned shared-engine surfaces from this roadmap. They are not shipped in
+> the current checkout.
+
 **Command**: `/contract.verify`
 
 ```bash

@@ -979,10 +979,12 @@ Questions? Tag @platform-agent
 
 **Location**: `.spec-flow/scripts/bash/`
 
-**Scripts**:
-- `contract-bump.sh [major|minor|patch]` - Bump contract version
-- `contract-verify.sh` - Verify all pacts
-- `fixture-refresh.sh` - Regenerate test fixtures from contracts
+**Status**: planned shared surfaces, not shipped in this checkout.
+
+**Roadmap script names**:
+- `contract-bump.sh [major|minor|patch]` - Planned contract version bump surface
+- `contract-verify.sh` - Planned pact verification surface
+- `fixture-refresh.sh` - Planned fixture regeneration surface
 
 ### CI/CD Scripts
 

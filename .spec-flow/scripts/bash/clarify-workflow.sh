@@ -17,10 +17,10 @@ set -euo pipefail
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Source common utilities
 source "$SCRIPT_DIR/common.sh" 2>/dev/null || true
+REPO_ROOT="$(resolve_repo_root)"
 
 # ============================================================================
 # STEP 1: Run Prerequisite Script (discover paths)
@@ -37,7 +37,7 @@ if command -v pwsh &> /dev/null; then
   PREREQ_JSON=$(pwsh -File "$SCRIPT_DIR/../powershell/check-prerequisites.ps1" -Json -PathsOnly)
 else
   # macOS/Linux/Git Bash
-  PREREQ_JSON=$("$SCRIPT_DIR/check-prerequisites.sh" --json --paths-only)
+  PREREQ_JSON=$(bash "$SCRIPT_DIR/check-prerequisites.sh" --json --paths-only)
 fi
 
 # Parse JSON for paths

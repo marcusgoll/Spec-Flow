@@ -273,7 +273,7 @@ For each command:
 - [ ] Backup original command markdown
 - [ ] Write refactored command markdown (~70% smaller)
 - [ ] Test `spec-cli.py <command> --help`
-- [ ] Document in `docs/spec-cli-usage.md`
+- [ ] Document in `.spec-flow/docs/internal/spec-cli-usage.md`
 - [ ] Commit changes
 
 ## Priority Order
@@ -448,15 +448,17 @@ All major phase commands have been successfully migrated to the centralized spec
 
 - **Before**: 1582 lines
 - **After**: 257 lines (84% reduction - best result!)
-- **Script**: `.spec-flow/scripts/bash/preview-workflow.sh` (42KB)
+- **Script**: `.spec-flow/scripts/bash/preview-workflow.sh`
+- **Current checkout**: compatibility preflight shim only; full shared runtime not shipped
 - **Handler**: `cmd_preview()`
-- **Usage**: `python .spec-flow/scripts/spec-cli.py preview`
+- **Usage**: Installed `/preview` workflow command if the adapter ships it; direct `spec-cli.py preview` is preflight-only here
 
 ### 4. validate.md
 
 - **Before**: 1122 lines
 - **After**: 334 lines (70% reduction)
-- **Script**: `.spec-flow/scripts/bash/validate-workflow.sh` (35KB)
+- **Script**: `.spec-flow/scripts/bash/validate-workflow.sh`
+- **Current checkout**: compatibility preflight shim only; full shared runtime not shipped
 - **Handler**: `cmd_validate()`
 - **Usage**: `python .spec-flow/scripts/spec-cli.py validate`
 
@@ -464,7 +466,8 @@ All major phase commands have been successfully migrated to the centralized spec
 
 - **Before**: 881 lines
 - **After**: 202 lines (77% reduction)
-- **Script**: `.spec-flow/scripts/bash/tasks-workflow.sh` (28KB)
+- **Script**: `.spec-flow/scripts/bash/tasks-workflow.sh`
+- **Current checkout**: compatibility preflight shim only; task generation remains adapter-owned
 - **Handler**: `cmd_tasks()`
 - **Usage**: `python .spec-flow/scripts/spec-cli.py tasks`
 
@@ -472,7 +475,8 @@ All major phase commands have been successfully migrated to the centralized spec
 
 - **Before**: 836 lines
 - **After**: 317 lines (62% reduction)
-- **Script**: `.spec-flow/scripts/bash/implement-workflow.sh` (26KB)
+- **Script**: `.spec-flow/scripts/bash/implement-workflow.sh`
+- **Current checkout**: compatibility preflight shim only; full shared runtime not shipped
 - **Handler**: `cmd_implement()`
 - **Usage**: `python .spec-flow/scripts/spec-cli.py implement`
 

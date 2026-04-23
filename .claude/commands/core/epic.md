@@ -11,6 +11,11 @@ Orchestrate multi-sprint epic delivery through **isolated phase agents spawned v
 
 **Command**: `/epic [epic description | slug | continue | next]`
 
+**Runtime ownership note**: Epic workflow semantics and state belong to the
+shared canon. This command is currently a Claude adapter surface while epic
+runtime behavior converges on the same shared ownership model as the rest of
+Spec-Flow.
+
 **CRITICAL ARCHITECTURE** (v7.0 - Domain Memory v2):
 
 This orchestrator is **ultra-lightweight**. You MUST:

@@ -216,3 +216,77 @@ export -f create_sprint_labels
 export -f get_epic_progress
 export -f auto_assign_sprint
 export -f list_sprint_issues
+
+show_help() {
+  cat <<'EOF'
+Usage: epic-manager.sh <action> [options]
+
+Actions:
+  list                               List epic labels from GitHub
+  create-label <epic> [description]  Create or update an epic label
+  create-sprint-labels               Create sprint:S01-S12 labels
+  progress <epic>                    Show progress summary for an epic label
+  auto-assign <epic> [sprint]        Assign unlabeled epic issues to a sprint
+  list-sprint <sprint>               List issues currently in a sprint
+
+Examples:
+  epic-manager.sh list
+  epic-manager.sh progress aktr
+  epic-manager.sh auto-assign aktr S02
+EOF
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  action="${1:-}"
+  shift || true
+
+  case "$action" in
+    ""|-h|--help)
+      show_help
+      exit 0
+      ;;
+    list)
+      list_epics
+      ;;
+    create-label)
+      if [ $# -lt 1 ]; then
+        echo "Error: epic name is required" >&2
+        show_help >&2
+        exit 1
+      fi
+      create_epic_label "$@"
+      ;;
+    create-sprint-labels)
+      create_sprint_labels
+      ;;
+    progress)
+      if [ $# -lt 1 ]; then
+        echo "Error: epic name is required" >&2
+        show_help >&2
+        exit 1
+      fi
+      get_epic_progress "$1"
+      ;;
+    auto-assign)
+      if [ $# -lt 1 ]; then
+        echo "Error: epic name is required" >&2
+        show_help >&2
+        exit 1
+      fi
+      auto_assign_sprint "$1" "${2:-S01}"
+      ;;
+    list-sprint)
+      if [ $# -lt 1 ]; then
+        echo "Error: sprint label is required" >&2
+        show_help >&2
+        exit 1
+      fi
+      list_sprint_issues "$1"
+      ;;
+    *)
+      echo "Error: Unknown action '$action'" >&2
+      show_help >&2
+      exit 1
+      ;;
+  esac
+fi

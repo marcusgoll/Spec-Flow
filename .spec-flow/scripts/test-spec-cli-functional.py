@@ -12,13 +12,12 @@ import subprocess
 import sys
 import json
 import argparse
-import os
-import shutil
+import shlex
 from pathlib import Path
 from typing import Tuple
 
 SPEC_CLI = Path(__file__).parent / 'spec-cli.py'
-TEST_FEATURE_DIR = Path(__file__).parent.parent.parent / 'specs' / 'test-cli-feature'
+PYTHON = sys.executable or 'python3'
 
 # Windows console encoding fix
 def safe_print(text: str) -> None:
@@ -42,15 +41,15 @@ def safe_print(text: str) -> None:
 FUNCTIONAL_TESTS = [
     # Utilities (non-destructive)
     {
-        "name": "check-prereqs (JSON)",
+        "name": "check-prereqs (source repo main branch)",
         "command": "check-prereqs --json",
-        "expect_code": 0,
-        "expect_in_output": "git",
-        "description": "Verify prerequisites check returns valid JSON",
+        "expect_code": 1,
+        "expect_in_output": "Feature directory not found",
+        "description": "Source repo should fail explicitly without a feature context",
     },
     {
         "name": "check-prereqs (paths only)",
-        "command": "check-prereqs --paths-only",
+        "command": "check-prereqs --json --paths-only",
         "expect_code": 0,
         "expect_in_output": "",  # Any output is fine
         "description": "Verify prerequisites check returns paths",
@@ -58,23 +57,23 @@ FUNCTIONAL_TESTS = [
     {
         "name": "health-check-docs (JSON)",
         "command": "health-check-docs --json --threshold 7",
-        "expect_code": 0,
-        "expect_in_output": "",  # JSON structure expected
-        "description": "Verify documentation health check returns JSON",
+        "expect_code": [0, 1],
+        "expect_in_output": "",  # JSON or stale-doc failure is acceptable
+        "description": "Verify documentation health check runs in the source repo",
     },
     {
-        "name": "scheduler-list (JSON)",
+        "name": "scheduler-list (planned surface)",
         "command": "scheduler-list --json",
-        "expect_code": [0, 1],  # Might fail if no epics exist
-        "expect_in_output": "",
-        "description": "Verify scheduler list returns data",
+        "expect_code": 1,
+        "expect_in_output": "not shipped in this checkout",
+        "description": "Scheduler list should fail explicitly as a planned surface",
     },
     {
-        "name": "metrics-dora (JSON)",
+        "name": "metrics-dora (planned surface)",
         "command": "metrics-dora --json --since 2025-01-01",
-        "expect_code": [0, 1],  # Might fail if no git history
-        "expect_in_output": "",
-        "description": "Verify DORA metrics calculation",
+        "expect_code": 1,
+        "expect_in_output": "Shared script not shipped",
+        "description": "DORA metrics should fail explicitly as a planned surface",
     },
     {
         "name": "roadmap list (JSON)",
@@ -110,21 +109,21 @@ FUNCTIONAL_TESTS = [
         "name": "tasks (missing feature)",
         "command": "tasks nonexistent-feature --json",
         "expect_code": 1,
-        "expect_in_output": "",
+        "expect_in_output": "\"error\": \"feature_not_found\"",
         "description": "Tasks should fail gracefully for missing feature",
     },
     {
         "name": "validate (missing feature)",
         "command": "validate nonexistent-feature --json",
         "expect_code": 1,
-        "expect_in_output": "",
+        "expect_in_output": "\"error\": \"feature_not_found\"",
         "description": "Validate should fail gracefully for missing feature",
     },
     {
         "name": "implement (missing feature)",
         "command": "implement nonexistent-feature --json",
         "expect_code": 1,
-        "expect_in_output": "",
+        "expect_in_output": "\"error\": \"feature_not_found\"",
         "description": "Implement should fail gracefully for missing feature",
     },
     {
@@ -138,7 +137,7 @@ FUNCTIONAL_TESTS = [
         "name": "preview (missing feature)",
         "command": "preview nonexistent-feature --json",
         "expect_code": 1,
-        "expect_in_output": "",
+        "expect_in_output": "\"error\": \"feature_not_found\"",
         "description": "Preview should fail gracefully for missing feature",
     },
     {
@@ -167,11 +166,11 @@ FUNCTIONAL_TESTS = [
 
     # Infrastructure commands
     {
-        "name": "contract-verify (no baseline)",
+        "name": "contract-verify (planned surface)",
         "command": "contract-verify",
-        "expect_code": [0, 1],  # Might fail if no contracts exist
-        "expect_in_output": "",
-        "description": "Contract verify should run without errors",
+        "expect_code": 1,
+        "expect_in_output": "Shared script not shipped",
+        "description": "Contract verify should fail explicitly as a planned surface",
     },
     {
         "name": "detect-infra (no feature)",
@@ -189,12 +188,11 @@ def run_functional_test(test: dict, verbose: bool = False) -> Tuple[bool, str, s
     Returns:
         (success, stdout, stderr)
     """
-    full_cmd = f"python {SPEC_CLI} {test['command']}"
+    full_cmd = [PYTHON, str(SPEC_CLI), *shlex.split(test['command'])]
 
     try:
         result = subprocess.run(
             full_cmd,
-            shell=True,
             capture_output=True,
             text=True,
             timeout=30,

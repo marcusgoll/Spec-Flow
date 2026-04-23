@@ -624,7 +624,7 @@ See `.claude/skills/task-breakdown-phase/reference.md` for task structure guidel
   </standards>
 
 <notes>
-**Script location**: The bash implementation is at `.spec-flow/scripts/bash/tasks-workflow.sh`. It is invoked via spec-cli.py for cross-platform compatibility.
+**Shared-engine note**: `.spec-flow/scripts/bash/tasks-workflow.sh` is only a compatibility preflight shim in this checkout. Task generation remains adapter-owned and follows the command process above.
 
 **Reference documentation**: Anti-hallucination rules, epic sprint breakdown (9 steps), multi-screen mockup workflow, TDD sequencing, and all detailed procedures are in `.claude/skills/task-breakdown-phase/reference.md`.
 

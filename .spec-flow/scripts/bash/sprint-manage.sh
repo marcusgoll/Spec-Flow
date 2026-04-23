@@ -42,10 +42,9 @@ case "$ACTION" in
     start|end|status)
         echo "Error: Sprint management not yet implemented"
         echo ""
-        echo "WORKAROUND: Use epic scheduler commands instead:"
-        echo "  - scheduler-list.sh        # List epic state and WIP"
-        echo "  - scheduler-assign.sh      # Assign epic to agent"
-        echo "  - epic-manager.sh          # Manage epics"
+        echo "The shared epic scheduler runtime is also not shipped in this checkout."
+        echo "Use the current /epic adapter workflow for orchestration and"
+        echo "epic-manager.sh for the shared GitHub label/progress utilities."
         echo ""
         echo "TODO: Implement sprint cycle management functionality"
         exit 1

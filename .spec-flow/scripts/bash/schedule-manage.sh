@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 #
-# schedule-manage.sh - Wrapper for epic scheduler management
+# schedule-manage.sh - Planned scheduler shim
 #
 # Usage: schedule-manage.sh <action> [OPTIONS]
 #
-# Actions:
-#   assign    - Assign epic to agent (scheduler-assign)
-#   list      - List all epics with state (scheduler-list)
-#   park      - Park blocked epic (scheduler-park)
-#
-# Dispatches to scheduler-assign.sh, scheduler-list.sh, or scheduler-park.sh based on action
+# The scheduler runtime is referenced by internal roadmap docs and adapter
+# inventories, but the shared implementation is not shipped in this checkout.
+# Keep this shim explicit so users get a truthful message instead of a missing
+# file error from nonexistent scheduler-assign/list/park scripts.
 
 set -euo pipefail
 
@@ -18,36 +16,45 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Get action (first argument)
 ACTION="${1:-}"
 
-if [[ -z "$ACTION" ]]; then
-    echo "Error: No action specified"
-    echo ""
+show_help() {
     echo "Usage: schedule-manage.sh <action> [OPTIONS]"
     echo ""
     echo "Actions:"
-    echo "  assign    - Assign epic to agent"
-    echo "  list      - List all epics with state"
-    echo "  park      - Park blocked epic"
+    echo "  assign    - Planned epic assignment surface"
+    echo "  list      - Planned epic scheduler listing surface"
+    echo "  park      - Planned epic parking surface"
+    echo ""
+    echo "Status:"
+    echo "  The shared scheduler runtime is not shipped in this checkout."
+    echo "  Internal roadmap docs still describe the design, but no shared"
+    echo "  scheduler-assign.sh / scheduler-list.sh / scheduler-park.sh"
+    echo "  implementation currently exists."
+    echo ""
+    echo "Use the current /epic adapter workflow for active epic orchestration."
+}
+
+if [[ -z "$ACTION" ]]; then
+    echo "Error: No action specified"
+    echo ""
+    show_help
     exit 1
 fi
 
-# Shift to remove action from arguments
-shift
-
-# Dispatch to appropriate script
 case "$ACTION" in
-    assign)
-        exec "$SCRIPT_DIR/scheduler-assign.sh" "$@"
+    assign|list|park)
+        echo "Error: Scheduler action '$ACTION' is planned but not implemented in the shared engine."
+        echo ""
+        show_help
+        exit 1
         ;;
-    list)
-        exec "$SCRIPT_DIR/scheduler-list.sh" "$@"
-        ;;
-    park)
-        exec "$SCRIPT_DIR/scheduler-park.sh" "$@"
+    -h|--help)
+        show_help
+        exit 0
         ;;
     *)
         echo "Error: Unknown action '$ACTION'"
         echo ""
-        echo "Valid actions: assign, list, park"
+        show_help
         exit 1
         ;;
 esac

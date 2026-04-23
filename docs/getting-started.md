@@ -4,7 +4,10 @@ Welcome to Spec-Flow! This guide will walk you through building your first featu
 
 ## What You'll Build
 
-In this tutorial, you'll use Spec-Flow to plan and implement a Dark Mode Toggle feature (similar to the example in `specs/001-example-feature/`). By the end, you'll understand how to:
+In this tutorial, you'll use Spec-Flow to plan and implement a Dark Mode Toggle
+feature. For a checked-in example, refer to
+`docs/examples/flightpro-sample-project/`. By the end, you'll understand how
+to:
 
 - Build and prioritize your roadmap with ICE scoring
 - Create a feature specification from a roadmap entry
@@ -77,7 +80,7 @@ Spec-Flow follows a fixed sequence of phases:
 └─────┬───────┘
       │
 ┌─────▼───────┐
-│ /spec-flow  │  Phase 0: Write the specification (from roadmap)
+│   /spec     │  Phase 0: Write the specification (from roadmap)
 └─────┬───────┘
       │
 ┌─────▼───────┐
@@ -93,7 +96,7 @@ Spec-Flow follows a fixed sequence of phases:
 └─────┬───────┘
       │
 ┌─────▼───────┐
-│  /analyze   │  Phase 3: Check consistency & risks
+│  /validate  │  Phase 3: Check consistency & risks
 └─────┬───────┘
       │
 ┌─────▼────────┐
@@ -105,11 +108,11 @@ Spec-Flow follows a fixed sequence of phases:
 └─────┬────────┘
       │
 ┌─────▼────────┐
-│  /preview    │  Manual Gate: Validate UI/UX
+│ Local Preview│  Optional: Validate UI/UX locally
 └─────┬────────┘
       │
 ┌─────▼─────────┐
-│ /phase-1-ship │  Phase 7: Deploy to staging
+│/ship-staging  │  Phase 7: Deploy to staging
 └─────┬─────────┘
       │
 ┌─────▼──────────────┐
@@ -117,7 +120,7 @@ Spec-Flow follows a fixed sequence of phases:
 └─────┬──────────────┘
       │
 ┌─────▼─────────┐
-│ /phase-2-ship │  Phase 9: Deploy to production
+│  /ship-prod   │  Phase 9: Deploy to production
 └───────────────┘
 ```
 
@@ -152,7 +155,7 @@ Before implementing features, plan what you want to build:
 
 This will:
 
-1. Initialize or update `.spec-flow/memory/roadmap.md`
+1. Create or update roadmap items as GitHub Issues
 2. Help you add new feature ideas
 3. Prioritize features using ICE scoring (Impact × Confidence / Effort)
 4. Organize features into: Backlog → Next → In Progress → Shipped
@@ -177,12 +180,12 @@ Now select a feature from your roadmap and build it!
 
 ```bash
 # In Claude Code
-/spec-flow "dark-mode-toggle"  # Use the slug from your roadmap
+/spec "dark-mode-toggle"  # Use the slug from your roadmap
 ```
 
 Claude will:
 
-1. Look up the feature in `roadmap.md`
+1. Look up the feature in your GitHub Issues roadmap
 2. Create `specs/001-dark-mode-toggle/` directory
 3. Generate `spec.md` with requirements and acceptance criteria (using roadmap context)
 4. Create `NOTES.md` for tracking progress
@@ -251,10 +254,10 @@ Claude generates `artifacts/tasks.md` with 20-30 specific tasks:
 - T002: Implement theme state management (1 hour, P0)
 - T015: Create ThemeToggle component (0.5 hours, P0)
 
-## Step 8: Analyze Consistency & Risks
+## Step 8: Validate Consistency & Risks
 
 ```bash
-/analyze
+/validate
 ```
 
 Claude reviews:
@@ -310,30 +313,31 @@ Claude performs:
 
 If **blockers** are found, Claude may offer auto-fix or ask you to resolve manually.
 
-## Step 11: Preview & Validate (Manual Gate)
+## Step 11: Optional Local Preview
 
 ```bash
+# If your installed workflow adapter ships /preview
 /preview
 ```
 
-Claude generates:
+If `/preview` is installed in your tool adapter, it can generate:
 
 - **Release notes** draft
 - **Preview checklist** for manual testing
 
-**Your action**:
+Whether or not `/preview` is installed, your action is the same:
 
 1. Run local dev server (`npm run dev`, `make dev`, etc.)
 2. Test the feature manually
 3. Verify it matches the spec
 4. Check visuals against `visuals/README.md` patterns
 
-Once validated, continue to shipping.
+If your adapter does not ship `/preview`, treat this as a manual local gate and continue to staging when satisfied.
 
 ## Step 12: Ship to Staging
 
 ```bash
-/phase-1-ship
+/ship-staging
 ```
 
 Claude will:
@@ -370,7 +374,7 @@ If validation passes, approve for production.
 ## Step 14: Ship to Production
 
 ```bash
-/phase-2-ship
+/ship-prod
 ```
 
 Claude will:
@@ -384,7 +388,7 @@ Claude will:
 
 🎉 **Congratulations!** Your feature is now live in production.
 
-**Note**: The `/phase-2-ship` command automatically:
+**Note**: The `/ship-prod` command automatically:
 
 - Moves your feature from "In Progress" to "Shipped" in the roadmap
 - Updates the roadmap with release version and date
@@ -397,7 +401,8 @@ Claude will:
 - **Architecture**: Read [docs/architecture.md](architecture.md) for system design
 - **Commands**: See [docs/commands.md](commands.md) for full command reference
 - **Contributing**: Review [CONTRIBUTING.md](../CONTRIBUTING.md) for contribution guidelines
-- **Examples**: Explore `specs/001-example-feature/` for a complete workflow example
+- **Examples**: Explore `docs/examples/flightpro-sample-project/` for a
+  checked-in example project
 
 ### Advanced Workflows
 
@@ -438,21 +443,21 @@ Claude identifies and fixes deployment blockers.
 **Create multiple features**:
 
 ```bash
-/spec-flow "User authentication"
+/spec "User authentication"
 # Work through phases...
-/phase-2-ship
+/ship-prod
 
 # Start next feature
-/spec-flow "Profile settings page"
+/spec "Profile settings page"
 ```
 
 **Batch operations**:
 
 ```bash
 # Create several specs, then bulk plan them
-/spec-flow "Feature A"
-/spec-flow "Feature B"
-/spec-flow "Feature C"
+/spec "Feature A"
+/spec "Feature B"
+/spec "Feature C"
 
 # Then plan each
 /plan  # for Feature A
@@ -464,7 +469,7 @@ Claude identifies and fixes deployment blockers.
 
 ### "No feature directory found"
 
-**Solution**: Run `/spec-flow "Feature name"` first to create the directory structure.
+**Solution**: Run `/spec "Feature name"` first to create the directory structure.
 
 ### "Context budget exceeded"
 
@@ -478,7 +483,7 @@ pwsh -File .spec-flow/scripts/powershell/compact-context.ps1 -FeatureDir specs/0
 
 **Solution**: Check `.claude/settings.local.json` has the correct paths in the `allow` list.
 
-### "Command not found: /spec-flow"
+### "Command not found: /spec"
 
 **Solution**: Ensure slash commands are enabled in Claude Code. Check `.claude/commands/` exists.
 
@@ -486,9 +491,9 @@ For more troubleshooting, see [docs/troubleshooting.md](troubleshooting.md).
 
 ## Get Help
 
-- **GitHub Issues**: [Report bugs or request features](https://github.com/your-repo/issues)
-- **Discussions**: [Ask questions or share tips](https://github.com/your-repo/discussions)
-- **Examples**: Browse `specs/001-example-feature/` for reference
+- **GitHub Issues**: [Report bugs or request features](https://github.com/marcusgoll/Spec-Flow/issues)
+- **Repository**: [Spec-Flow on GitHub](https://github.com/marcusgoll/Spec-Flow)
+- **Examples**: Browse `docs/examples/flightpro-sample-project/` for reference
 
 ## Next Steps
 

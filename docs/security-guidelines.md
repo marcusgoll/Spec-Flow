@@ -562,6 +562,6 @@ For security concerns or questions about this guide:
 1. Review this document thoroughly
 2. Check existing command/agent implementations
 3. Test with sanitization tools before committing
-4. Open an issue: https://github.com/anthropics/claude-code/issues
+4. Open an issue: https://github.com/marcusgoll/Spec-Flow/issues
 
 **Remember**: When in doubt, redact. It's better to be overly cautious with secrets than to expose sensitive information.

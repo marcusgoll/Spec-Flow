@@ -24,10 +24,10 @@ Spec-Flow adapts to different project types and team structures. This guide show
 
 **Workflow Adaptations**:
 
-1. **Specification Phase** (`/spec-flow`):
+1. **Specification Phase** (`/spec`):
 
    - Define user flows (login, dashboard, settings)
-     -\spec-flow API contracts between frontend and backend
+   - Specify API contracts between frontend and backend
    - Document data models and relationships
    - Include responsive design requirements (mobile, tablet, desktop)
 
@@ -454,7 +454,7 @@ Specializes in:
 
 **Process**:
 
-1. **Product lead** writes spec (`/spec-flow`)
+1. **Product lead** writes spec (`/spec`)
 2. **Team reviews** spec asynchronously (GitHub PR)
 3. **Lead generates plan** (`/plan`) and tasks (`/tasks`)
 4. **Developers pick tasks** from tasks.md
@@ -528,7 +528,7 @@ Specializes in:
 2. **Update command definitions** to use custom templates:
 
    ```markdown
-   # .claude/commands/spec-flow.md
+   # .claude/commands/phases/spec.md
 
    Use template: .spec-flow/templates/cli-spec-template.md
    ```
@@ -574,11 +574,12 @@ Tailor principles to your domain:
 ## Next Steps
 
 1. **Choose your use case** from the examples above
-2. **Review the example feature** in `specs/001-example-feature/`
+2. **Review the checked-in example docs** in
+   `docs/examples/flightpro-sample-project/`
 3. **Customize templates** for your project type
 4. **Set up agents** for your tech stack
 5. **Define your constitution** with domain-specific principles
-6. **Start building!** with `/spec-flow "Your first feature"`
+6. **Start building!** with `/spec "Your first feature"`
 
 For more guidance:
 
