@@ -43,7 +43,6 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-          always-auth: true
 
       - name: Print tool versions
         run: |
@@ -98,7 +97,6 @@ jobs:
           node-version: 24
           registry-url: https://npm.pkg.github.com
           scope: '@${{ github.repository_owner }}'
-          always-auth: true
 
       - name: Publish to GitHub Packages
         working-directory: .github-package
