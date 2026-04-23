@@ -312,6 +312,17 @@ workspaces after installation.
 
 ## 🆕 Recent Updates
 
+### v11.9.1 (April 2026)
+
+**Source-of-Truth Cleanup and Honest Engine Surfaces** - Align the shipped package with the repo's real public and internal boundaries
+
+- **Locked domain contract**: Added `CONTEXT.md` to define source-repo ownership, consumer-project boundaries, and canonical terms
+- **Truthful command surfaces**: Public docs now clearly separate `npx spec-flow ...` installer commands from installed workflow commands
+- **Honest shared engine**: `spec-cli.py` now labels planned surfaces and compatibility shims explicitly instead of failing through missing-file behavior
+- **Safer compatibility path**: Phase shim entrypoints for `tasks`, `validate`, `implement`, and `preview` now fail cleanly with structured guidance
+
+---
+
 ### v11.9.0 (December 2025)
 
 **shadcn/ui Integration with Token Bridge Pattern** - Generate OKLCH tokens + shadcn-compatible CSS variables

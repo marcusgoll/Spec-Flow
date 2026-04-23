@@ -2,6 +2,32 @@
 
 ---
 
+## [11.9.1] - 2026-04-23
+
+### ✨ Added
+
+**Source-of-Truth Contract for the Spec-Flow Source Repo**
+
+- Added `CONTEXT.md` to lock the repo boundary between source/distribution assets and downstream consumer-project state
+- Declared `.spec-flow/` as the shared canon and `.claude/` / `.codex/` as adapter surfaces over that canon
+- Reclassified checked-in examples and maintainer docs so public docs only describe shipped, user-facing surfaces
+
+### 🔧 Improved
+
+**Workflow Surface Truthfulness**
+
+- Public docs now distinguish installer CLI commands (`npx spec-flow ...`) from installed workflow commands
+- `spec-cli.py` now documents planned and compatibility-only surfaces honestly instead of implying full shared runtimes where none are shipped
+- Shared epic and scheduler support now route the shipped subset through shared scripts while clearly labeling the remaining planned runtime
+
+### 🐛 Fixed
+
+**Shared Engine Compatibility and CI**
+
+- Replaced broken phase shell payloads with executable compatibility shims for `tasks`, `validate`, `implement`, and `preview`
+- Added missing PowerShell wrapper coverage for shipped shared-script entrypoints
+- Fixed `check-prerequisites.sh` ShellCheck compliance so `main` CI is green again before release
+
 ## [11.9.0] - 2025-12-16
 
 ### ✨ Added
