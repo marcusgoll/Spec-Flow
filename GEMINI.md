@@ -54,6 +54,7 @@ When the user provides a command (e.g., "/feature", "/plan"), you must:
     - Loop through phases: `/spec` -> `/plan` -> `/tasks` -> `/implement` -> `/optimize` -> `/ship`.
 
 **Resuming Work**:
+
 - `/feature continue`: Resumes the workflow from the current state in `state.yaml`.
 
 ## Quality Gates & Agents
@@ -74,6 +75,7 @@ Spec-Flow uses specialized "Agents" (personas). When a command file references a
 ## IMPORTANT: Python & Scripts
 
 The workflow relies heavily on Python scripts in `.spec-flow/scripts/`.
+
 - Ensure `python` is installed and available in the shell.
 - If a script fails, report the error to the user.
 
@@ -97,6 +99,7 @@ The workflow references "Skills" and "Agents".
 ### Legacy Tool Handling
 
 The original Claude commands may reference a `Task(...)` tool. **Gemini CLI does not support this tool.**
+
 - **Instruction**: When you see an instruction to "use Task tool", instead **Read the Agent Persona** and **Execute the task yourself** as described above.
 
 ---

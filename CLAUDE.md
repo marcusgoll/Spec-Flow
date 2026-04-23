@@ -106,12 +106,14 @@ Test any command without making changes using `--dry-run`:
 ```
 
 **Dry-run output shows:**
+
 - Files that would be created/modified
 - Agents that would be spawned
 - Git operations that would occur
 - State changes that would happen
 
 **Use cases:**
+
 - Testing new features before committing to workflow
 - Debugging workflow issues safely
 - CI/CD validation without side effects
@@ -124,6 +126,7 @@ Test any command without making changes using `--dry-run`:
 Think deeply about problems, then materialize your thinking into actionable roadmap items.
 
 **Flow:**
+
 ```
 /ultrathink "notification system"    # Deep craftsman thinking
                 │
@@ -142,6 +145,7 @@ Think deeply about problems, then materialize your thinking into actionable road
 ```
 
 **Usage:**
+
 ```bash
 /ultrathink "redesign notification system"     # Interactive mode
 /ultrathink "new feature" --roadmap            # Auto-materialize to roadmap
@@ -161,6 +165,7 @@ Run multiple Claude Code instances in parallel, each with isolated git branches.
 **Problem Solved**: When multiple agents work from the same git branch, they overwrite each other's changes. Studio mode gives each agent its own branch namespace.
 
 **How it works**:
+
 ```bash
 /studio init 3        # Create 3 agent worktrees
 # In agent terminals:
@@ -170,23 +175,27 @@ cd worktrees/studio/agent-3 && claude
 ```
 
 **Branch namespacing (automatic)**:
+
 - Normal mode: `feature/001-auth`
 - Studio mode: `studio/agent-1/feature/001-auth`
 
 **No code changes needed** - existing `/feature`, `/epic`, `/quick` commands auto-detect studio context and namespace branches accordingly.
 
 **Ship behavior in studio mode**:
+
 - Always creates PR instead of direct merge
 - PR targets `main` from namespaced branch
 - Auto-merge via GitHub branch protection when CI passes
 - Like a real dev team with code review gates
 
 **Setup GitHub auto-merge** (one-time):
+
 ```bash
 /studio setup         # Configure branch protection
 ```
 
 **Commands**:
+
 | Command | Purpose |
 |---------|---------|
 | `/studio init N` | Create N agent worktrees (1-10) |
@@ -201,11 +210,13 @@ cd worktrees/studio/agent-3 && claude
 All implementation happens in isolated worktrees. Root is read-only orchestration.
 
 **Protection levels** (configure in preferences):
+
 - `strict` (default) - Block changes from root when active worktrees exist
 - `prompt` - Ask user before allowing changes from root
 - `none` - Allow changes anywhere (not recommended)
 
 **How it works**:
+
 ```
 ROOT (orchestration only)
 ├── Can: Read state, spawn Task() agents, update state.yaml
@@ -218,11 +229,13 @@ ROOT (orchestration only)
 ```
 
 **Automatic behaviors**:
+
 - `/feature "desc"` from root → Creates worktree → Workers operate there
 - `/feature continue` from root → Detects worktree → Prompts to switch
 - `/finalize` → Cleans up worktree → Returns to root
 
 **Preferences**:
+
 ```yaml
 worktrees:
   auto_create: true              # Create worktrees automatically
@@ -233,6 +246,7 @@ worktrees:
 ```
 
 **Commands**:
+
 ```bash
 worktree-context.sh check-safety    # Check if safe to make changes
 worktree-context.sh find-active     # List active worktrees

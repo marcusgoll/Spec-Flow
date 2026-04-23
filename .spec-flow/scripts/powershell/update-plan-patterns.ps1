@@ -143,3 +143,4 @@ Set-Content $planFile $content -NoNewline
 
 Write-Host "[spec-flow] Updated plan.md Discovered Patterns ($Type)" -ForegroundColor Cyan
 
+

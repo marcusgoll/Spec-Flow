@@ -17,6 +17,7 @@ The `/init --tokens` command now generates both OKLCH design tokens (source of t
 - **Menu theming**: New menu-specific tokens for background, hover, active, and accent styles
 
 New files:
+
 - `.spec-flow/scripts/node/generate-shadcn-tokens.js` - Token generation engine
 - `.claude/skills/shadcn-integration/SKILL.md` - Integration skill documentation
 - `.spec-flow/templates/design/shadcn-variables.css` - shadcn variable template
@@ -34,12 +35,14 @@ Ultrathink principles are now embedded as lightweight checkpoints throughout the
 | `/implement` | Craft, Don't Code | Anti-duplication ritual, abstraction justification |
 
 Progressive depth based on complexity:
+
 - Trivial (<5 tasks): Skip checkpoints, fast path
 - Standard (5-30 tasks): Lightweight inline checkpoints
 - Complex (30+ tasks): Full checkpoints + separate artifacts
 - Epic (multi-sprint): Mandatory deep planning + craftsman-decision.md
 
 New files:
+
 - `.spec-flow/config/ultrathink-integration.yaml` - Checkpoint configuration
 
 ### 🔧 Improved
@@ -518,11 +521,13 @@ The `/quick` command now uses the same Task() isolation architecture as `/featur
 ### 🐛 Fixed
 
 **CLAUDE.md Update Mechanism**
+
 - Fixed `npx spec-flow update` not properly updating CLAUDE.md spec-flow section
 - Implemented marker-based update system (`<!-- SPEC-FLOW-START -->` / `<!-- SPEC-FLOW-END -->`)
 - Handles legacy format migration and full spec-flow CLAUDE.md files
 
 **Local-Only Workflow Support**
+
 - Fixed `/feature` command failing in repositories without GitHub integration
 - When GitHub is unavailable, gracefully falls back to local feature creation
 - Uses feature description as slug for local-only workflows
@@ -568,6 +573,7 @@ Commands now explicitly tell Claude to use the Task tool with specific parameter
 ### 📚 Architecture
 
 **Ultra-lightweight Orchestrator Pattern**:
+
 1. Read state from disk (state.yaml, interaction-state.yaml, domain-memory.yaml)
 2. Spawn isolated phase agents via Task tool
 3. Handle user Q&A when agents return questions
@@ -575,6 +581,7 @@ Commands now explicitly tell Claude to use the Task tool with specific parameter
 5. Never carry implementation details in context
 
 **Benefits**:
+
 - Unlimited feature/epic complexity (no context overflow)
 - Observable progress (all state in YAML files)
 - Resumable at any point (`/feature continue`, `/epic continue`)

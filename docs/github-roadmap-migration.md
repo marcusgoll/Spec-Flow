@@ -5,6 +5,7 @@
 **Status**: Historical migration note; core GitHub Issues roadmap support is already shipped in the current checkout
 
 > Current state:
+>
 > - `npx spec-flow setup-roadmap` is shipped
 > - `/roadmap` command files already describe GitHub Issues as the source of truth
 > - This guide is mainly useful when importing an older `.spec-flow/memory/roadmap.md`
