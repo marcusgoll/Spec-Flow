@@ -113,5 +113,5 @@ jobs:
           if [ "$existing" = "$PKG_VERSION" ]; then
             echo "Version $PKG_VERSION already published to GitHub Packages. Skipping."
           else
-            npm publish --access public
+            npm publish --ignore-scripts --access public
           fi
