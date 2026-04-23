@@ -52,9 +52,13 @@ for kv in "${ENV_VARS[@]}"; do
     fi
 done
 
+repo_root="${REPO_ROOT:-}"
+current_branch="${CURRENT_BRANCH:-}"
+feature_dir="${FEATURE_DIR:-}"
+
 if $PATHS_ONLY; then
     if $JSON_OUT; then
-        "$PYTHON_CMD" - "$REPO_ROOT" "$CURRENT_BRANCH" "$FEATURE_DIR" "$INCLUDE_MEMORIES" <<'PY'
+        "$PYTHON_CMD" - "$repo_root" "$current_branch" "$feature_dir" "$INCLUDE_MEMORIES" <<'PY'
 import json, sys
 repo_root, branch, feature_dir, include_memories = sys.argv[1:5]
 include_memories = include_memories.lower() == 'true'
