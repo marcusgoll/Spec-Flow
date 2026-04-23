@@ -3,7 +3,12 @@ name: Publish Packages
 on:
   release:
     types: [published]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      publish_ref:
+        description: 'Git ref to publish (tag, branch, or SHA). Defaults to the triggering ref.'
+        required: false
+        type: string
 
 jobs:
   publish:
@@ -14,15 +19,36 @@ jobs:
       packages: write
       id-token: write
     steps:
+      - name: Resolve publish ref
+        id: publish_ref
+        shell: bash
+        run: |
+          ref="${{ github.event.inputs.publish_ref }}"
+          if [ -z "$ref" ]; then
+            ref="${{ github.event.release.tag_name }}"
+          fi
+          if [ -z "$ref" ]; then
+            ref="${{ github.ref }}"
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "Publishing ref: $ref"
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.publish_ref.outputs.ref }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           registry-url: https://registry.npmjs.org
           always-auth: true
+
+      - name: Print tool versions
+        run: |
+          node --version
+          npm --version
 
       - name: Read package metadata
         id: pkg
@@ -37,15 +63,28 @@ jobs:
 
       - name: Publish to npm
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           PKG_NAME: ${{ steps.pkg.outputs.name }}
           PKG_VERSION: ${{ steps.pkg.outputs.version }}
         run: |
           existing=$(npm view "$PKG_NAME" version || true)
           if [ "$existing" = "$PKG_VERSION" ]; then
             echo "Version $PKG_VERSION already published to npm. Skipping."
+          elif [ -n "${NPM_TOKEN:-}" ]; then
+            echo "Publishing $PKG_NAME@$PKG_VERSION with NPM_TOKEN."
+            NODE_AUTH_TOKEN="$NPM_TOKEN" npm publish --access public
           else
-            npm publish --access public
+            echo "NPM_TOKEN not configured; attempting npm trusted publishing via OIDC."
+            echo "Expected trusted publisher configuration:"
+            echo "  package: $PKG_NAME"
+            echo "  repository: ${{ github.repository }}"
+            echo "  workflow: publish-packages.yml"
+            echo "  environment: npm-publish"
+            unset NODE_AUTH_TOKEN
+            if ! npm publish --access public; then
+              echo "::error::npm publish failed without NPM_TOKEN. Configure secrets.NPM_TOKEN or npm trusted publishing for publish-packages.yml."
+              exit 1
+            fi
           fi
 
       - name: Prepare GitHub package
@@ -54,9 +93,9 @@ jobs:
         run: node scripts/prepare-github-package.cjs
 
       - name: Configure npm for GitHub Packages
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           registry-url: https://npm.pkg.github.com
           scope: '@${{ github.repository_owner }}'
           always-auth: true
