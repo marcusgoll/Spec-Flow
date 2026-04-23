@@ -1,6 +1,10 @@
-# Slash Command Reference
+# Public Slash Command Reference
 
-Complete reference of all available workflow commands in Spec-Flow v6.11.0.
+Public installed workflow commands for Spec-Flow.
+
+This page covers the slash-command or prompt surface installed into a consumer
+project. It does not cover the packaged installer CLI (`npx spec-flow ...`)
+and it does not count maintainer-only source-repo commands.
 
 ## Quick Navigation
 
@@ -13,7 +17,6 @@ Complete reference of all available workflow commands in Spec-Flow v6.11.0.
 - [Quality Commands](#quality-commands) - Quality gates and CI fixes
 - [Infrastructure Commands](#infrastructure-commands) - Workflow health and optimization
 - [Meta Commands](#meta-commands) - Developer tools and utilities
-- [Internal Commands](#internal-commands) - Repository maintenance (not in npm package)
 
 ---
 
@@ -59,7 +62,7 @@ Individual workflow phases - can be run standalone or via `/feature` orchestrati
 | `/validate [feature-slug] [--quick\|--constitution]` | Analyze spec, plan, and tasks for consistency violations, breaking changes, and constitution compliance. Generates analysis-report.md with CRITICAL/MAJOR/MINOR findings. |
 | `/implement [feature-slug]` | Execute all implementation tasks from tasks.md with test-driven development, parallel batching, and atomic commits |
 | `/optimize [feature-slug or empty for auto-detection]` | Run parallel quality gates (performance, security, accessibility, code review, migrations, Docker) and block deployment on failures |
-| `/debug [feature-slug] [options]` | Execute systematic debugging workflow via spec-cli.py, track failures in error-log.md, and generate session reports |
+| `/debug [feature-slug] [options]` | Execute the systematic debugging workflow, track failures in error-log.md, and generate session reports |
 | `/finalize` | Finalize documentation (CHANGELOG, README, help docs), update GitHub milestones/releases, and cleanup branches after production deployment |
 
 **Usage Example:**
@@ -332,45 +335,11 @@ Developer tools for creating commands, skills, agents, and prompts.
 
 ---
 
-## Internal Commands
+## Maintainer-Only Commands
 
-Repository maintenance commands (not included in npm package).
-
-| Command | Description |
-|---------|-------------|
-| `/create-prompt [task description]` | Expert prompt engineer that creates optimized, XML-structured prompts with intelligent depth selection |
-| `/release [--skip-build] [--skip-npm] [--skip-github] [--announce]` | Automate complete release workflow for Spec-Flow package (version bump, CHANGELOG, git tag, GitHub release, npm publish) |
-| `/repo-hygiene [check\|fix\|docs\|commands\|install\|all]` | Maintain public repository documentation, command inventory, installation guides, and file hygiene (internal use only - not in npm package) |
-
-**Usage Example:**
-
-```bash
-# Release new version
-/release
-
-# Check repository hygiene
-/repo-hygiene check
-
-# Fix all hygiene issues
-/repo-hygiene all
-```
-
----
-
-## Command Summary
-
-**Total Commands: 62**
-
-- Core: 4
-- Phase: 9
-- Epic: 2
-- Deployment: 8
-- Build: 2
-- Project: 5
-- Quality: 3
-- Infrastructure: 3
-- Meta: 23
-- Internal: 3
+Maintainer-only source-repo commands are intentionally excluded from this
+public reference. Document them in explicit maintainer docs instead of counting
+them as public operator surface.
 
 ---
 
@@ -394,4 +363,4 @@ Repository maintenance commands (not included in npm package).
 
 ---
 
-*Last updated: 2025-11-20 | Spec-Flow v6.11.0*
+*Last updated: 2026-04-23*

@@ -416,3 +416,4 @@ switch ($Command) {
 
 Write-Host "✓ Learning observation recorded" -ForegroundColor Green
 
+

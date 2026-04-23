@@ -366,7 +366,7 @@ If coverage measurement tools not installed:
 
 **Provide QA summary to shipping phases**:
 
-- Share latest QA summary with /preview phase for manual testing guidance
+- Share latest QA summary with local preview for manual testing guidance
 - Provide evidence to /ship-staging and /ship-prod for deployment confidence
 - Update state.yaml if QA gates fail (block deployment)
 

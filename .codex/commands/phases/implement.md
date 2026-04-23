@@ -52,7 +52,7 @@ Execute all tasks from ${BASE_DIR}/$ARGUMENTS/tasks.md with parallel batching, s
 
 Implementation workflow:
 
-1. Run centralized spec-cli.py implement script with arguments
+1. Execute the implementation process below as the authoritative workflow
 2. Review implementation progress (completed tasks, generated code)
 3. Update living documentation (UI inventory, approved patterns)
 4. Run full test suite verification
@@ -71,7 +71,7 @@ Implementation workflow:
 
 <codex_compatibility>
 Codex cannot invoke Task or SlashCommand tools. Apply `CODEX_COMPATIBILITY.md`:
-- Run `python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"` or the inline shell steps directly.
+- In this checkout, `python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"` is only a compatibility preflight shim. Follow the inline shell/process steps in this command for real implementation work.
 - When parallel batches are suggested, execute them sequentially and note the intended grouping.
 - Ask any clarifications inline (no AskUserQuestion tool).
 </codex_compatibility>
@@ -309,6 +309,7 @@ When `ITERATION_MODE=true`, the implementation script should:
 Run the centralized spec-cli tool with feature slug:
 
 ```bash
+# Compatibility preflight only in this checkout:
 python .spec-flow/scripts/spec-cli.py implement "$ARGUMENTS"
 ```
 
@@ -568,7 +569,7 @@ Next: /optimize (recommended)
 
 Recommended next steps:
   1. /optimize - Production readiness validation (performance, security, accessibility)
-  2. /preview - Manual UI/UX testing before shipping
+  2. Local preview - Manual UI/UX testing before shipping (use installed /preview only if your adapter ships it)
 ```
 
 **If tests fail:**
@@ -768,6 +769,7 @@ Task T005 failed at Green phase (test still failing)
 **Resume after fixing:**
 
 ```bash
+# Compatibility preflight only in this checkout:
 python .spec-flow/scripts/spec-cli.py implement "$SLUG" --continue
 ```
 

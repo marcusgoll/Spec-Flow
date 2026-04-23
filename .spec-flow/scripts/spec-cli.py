@@ -2,18 +2,23 @@
 """
 Spec-Flow Workflow CLI - Centralized command dispatcher
 
+This dispatcher is the shared execution engine behind installed workflow
+commands. It is not the primary public product CLI; use `npx spec-flow ...`
+for install and maintenance operations, and use installed workflow commands in
+your tool environment for normal feature work.
+
 Usage:
     python spec-cli.py <command> [options]
 
 Workflow Commands:
     clarify <feature>           - Interactive clarification workflow
     plan <feature>              - Generate implementation plan from spec
-    tasks <feature>             - Generate concrete TDD tasks
-    validate <feature>          - Cross-artifact consistency analysis
-    implement <feature>         - Execute tasks with TDD
+    tasks <feature>             - Task-phase compatibility shim
+    validate <feature>          - Validation-phase compatibility shim
+    implement <feature>         - Implementation-phase compatibility shim
     debug <feature>             - Debug errors and update error-log.md
     optimize <feature>          - Production-readiness validation
-    preview <feature>           - Manual UI/UX testing
+    preview <feature>           - Preview-phase compatibility shim
     finalize <feature>          - Post-deploy documentation and housekeeping
     feature <args>              - Orchestrate full feature workflow
 
@@ -34,7 +39,7 @@ Epic & Sprint:
 
 Quality & Metrics:
     gate <type>                 - Manage quality gates
-    metrics <type>              - Track HEART metrics
+    metrics <type>              - Metrics compatibility shim (planned)
 
 Utilities:
     compact <feature>           - Compact context for phase
@@ -44,12 +49,12 @@ Utilities:
     detect-infra <feature>      - Detect infrastructure needs
     enable-auto-merge           - Enable auto-merge for PR
     branch-enforce              - Enforce branch naming
-    flag <action>               - Manage feature flags
-    schedule <action>           - Manage release schedules
+    flag <action>               - Feature-flag compatibility shim (planned)
+    schedule <action>           - Epic scheduler compatibility shim (planned)
     version <type>              - Manage version bumps
     deps <action>               - Manage dependency updates
-    contract-bump <type>        - Bump API contract version
-    contract-verify             - Verify API contract compatibility
+    contract-bump <type>        - Contract-governance compatibility shim (planned)
+    contract-verify             - Contract-governance compatibility shim (planned)
 
 Examples:
     python spec-cli.py clarify my-feature
@@ -58,6 +63,11 @@ Examples:
     python spec-cli.py calculate-tokens --feature-dir specs/001-auth
     python spec-cli.py health-check-docs --json
     python spec-cli.py roadmap brainstorm
+
+Compatibility-only or preflight-only surfaces in this checkout:
+    preview, tasks, validate, implement,
+    contract-bump, contract-verify, fixture-refresh, flag, metrics,
+    metrics-dora, schedule, scheduler-assign, scheduler-list, scheduler-park
 """
 
 import sys
@@ -70,6 +80,16 @@ from pathlib import Path
 # Detect platform and choose script type
 IS_WINDOWS = sys.platform == 'win32'
 SCRIPT_DIR = Path(__file__).parent
+
+def missing_shared_script(script_name, capture=False):
+    """Return a consistent error when a referenced shared script is absent."""
+    print(f"Error: Shared script not shipped for command '{script_name}'.", file=sys.stderr)
+    print(
+        "spec-cli.py references this surface, but no bash or PowerShell "
+        "implementation exists in this checkout.",
+        file=sys.stderr,
+    )
+    return ("", 1) if capture else 1
 
 def convert_windows_path_for_bash(path):
     r"""
@@ -127,20 +147,14 @@ def run_script(script_name, args=None, capture=False, shell_type='auto'):
                     bash_path = str(script_path)
                 cmd = ['bash', bash_path]
             else:
-                # Only print error if VERBOSE mode is enabled
-                verbose = os.environ.get('SPEC_CLI_VERBOSE', '0') == '1'
-                if verbose:
-                    print(f"Error: PowerShell script not found: {script_path}", file=sys.stderr)
-                    print(f"Error: Bash fallback not found: {bash_fallback}", file=sys.stderr)
-                return ("", 1) if capture else 1
+                return missing_shared_script(script_name, capture)
         else:
             cmd = ['pwsh', '-File', str(script_path)]
 
     elif shell_type == 'bash':
         script_path = SCRIPT_DIR / 'bash' / f'{script_name}.sh'
         if not script_path.exists():
-            print(f"Error: Bash script not found: {script_path}", file=sys.stderr)
-            return ("", 1) if capture else 1
+            return missing_shared_script(script_name, capture)
         # On Windows, use relative path (subprocess bash can't access /d/ style paths)
         # On Unix, use absolute path
         if IS_WINDOWS:
@@ -155,7 +169,10 @@ def run_script(script_name, args=None, capture=False, shell_type='auto'):
     try:
         if capture:
             result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', cwd=SCRIPT_DIR)
-            return result.stdout, result.returncode
+            output = result.stdout
+            if result.stderr:
+                output = f"{output}{result.stderr}" if output else result.stderr
+            return output, result.returncode
         else:
             return subprocess.run(cmd, cwd=SCRIPT_DIR).returncode
     except FileNotFoundError as e:
@@ -254,10 +271,10 @@ def cmd_debug(args):
         script_args.extend(['--error', args.error])
     if hasattr(args, 'json') and args.json:
         script_args.append('--json')
-        stdout, code = run_script('debug-workflow', script_args, capture=True)
+        stdout, code = run_script('debug', script_args, capture=True)
         print(stdout, end='')
         return code
-    return run_script('debug-workflow', script_args)
+    return run_script('debug', script_args)
 
 def cmd_optimize(args):
     """Run optimization workflow"""
@@ -324,8 +341,7 @@ def cmd_ship_recover(args):
 
 def cmd_compact(args):
     """Run context compaction"""
-    # PowerShell uses PascalCase parameters: -FeatureDir, -Phase
-    script_args = ['-FeatureDir', args.feature_dir, '-Phase', args.phase]
+    script_args = ['--feature-dir', args.feature_dir, '--phase', args.phase]
     return run_script('compact-context', script_args)
 
 def cmd_create_feature(args):
@@ -334,8 +350,7 @@ def cmd_create_feature(args):
 
 def cmd_calculate_tokens(args):
     """Calculate token budget"""
-    # PowerShell uses PascalCase parameters: -FeatureDir
-    return run_script('calculate-tokens', ['-FeatureDir', args.feature_dir])
+    return run_script('calculate-tokens', ['--feature-dir', args.feature_dir])
 
 def cmd_check_prereqs(args):
     """Check prerequisites and return JSON"""
@@ -371,21 +386,21 @@ def cmd_branch_enforce(args):
     return run_script('branch-enforce', [])
 
 def cmd_contract_bump(args):
-    """Bump API contract version"""
+    """Contract-governance compatibility shim"""
     script_args = ['--type', args.type]
     if args.file:
         script_args.extend(['--file', args.file])
     return run_script('contract-bump', script_args)
 
 def cmd_contract_verify(args):
-    """Verify API contract compatibility"""
+    """Contract-governance compatibility shim"""
     script_args = []
     if args.baseline:
         script_args.extend(['--baseline', args.baseline])
     return run_script('contract-verify', script_args)
 
 def cmd_fixture_refresh(args):
-    """Regenerate golden test fixtures from OpenAPI schemas"""
+    """Fixture refresh compatibility shim"""
     script_args = []
     if args.contract:
         script_args.extend(['--contract', args.contract])
@@ -487,15 +502,68 @@ def cmd_design_health(args):
 # Epic & Sprint Management
 
 def cmd_epic(args):
-    """Manage epic workflows - delegates to /epic slash command"""
-    print("Epic workflow management:")
-    print("  Use: /epic \"goal\" [--auto | --interactive | --no-input]")
-    print("  Use: /epic continue")
-    print("  Use: /epic next")
-    print("  Use: /epic [slug]")
-    print("\nNote: spec-cli.py delegates epic management to Claude Code slash commands.")
-    print("Run these commands directly in Claude Code for best experience.")
-    return 0  # Success - informational only
+    """Run shared epic engine operations"""
+    if not args.action:
+        print("Epic runtime support in spec-cli.py is limited to shared engine operations:")
+        print("  create        Scaffold a new epic directory and state file")
+        print("  list          List GitHub epic labels")
+        print("  progress      Show sprint progress for an epic label")
+        print("  auto-assign   Assign unlabeled epic issues to a sprint")
+        print("  list-sprint   List issues in a sprint label")
+        print("\nFull interactive epic orchestration still runs through tool-specific")
+        print("/epic adapter surfaces while runtime ownership converges.")
+        return 0
+
+    if args.action == 'create':
+        description = args.description or args.target or args.epic_name
+        if not description:
+            print("Error: epic create requires a description via positional target or --description", file=sys.stderr)
+            return 1
+
+        script_args = []
+        if args.json:
+            script_args.append('--json')
+        script_args.append(description)
+
+        if args.json:
+            stdout, code = run_script('create-new-epic', script_args, capture=True)
+            print(stdout, end='')
+            return code
+        return run_script('create-new-epic', script_args)
+
+    if args.json:
+        print("Error: --json is only supported for epic create", file=sys.stderr)
+        return 1
+
+    if args.action == 'list':
+        return run_script('epic-manager', ['list'])
+
+    if args.action == 'progress':
+        epic_name = args.target or args.epic_name
+        if not epic_name:
+            print("Error: epic progress requires an epic name or slug", file=sys.stderr)
+            return 1
+        return run_script('epic-manager', ['progress', epic_name])
+
+    if args.action == 'auto-assign':
+        epic_name = args.target or args.epic_name
+        if not epic_name:
+            print("Error: epic auto-assign requires an epic name or slug", file=sys.stderr)
+            return 1
+        script_args = ['auto-assign', epic_name]
+        if args.sprint_label:
+            script_args.append(args.sprint_label)
+        return run_script('epic-manager', script_args)
+
+    if args.action == 'list-sprint':
+        sprint_label = args.target or args.sprint_label
+        if not sprint_label:
+            print("Error: epic list-sprint requires a sprint label (for example S01)", file=sys.stderr)
+            return 1
+        return run_script('epic-manager', ['list-sprint', sprint_label])
+
+    print(f"Error: Unsupported epic action: {args.action}", file=sys.stderr)
+    return 1
 
 def cmd_sprint(args):
     """Manage sprint cycles"""
@@ -511,7 +579,7 @@ def cmd_sprint(args):
 # Feature Flags & Scheduling
 
 def cmd_flag(args):
-    """Manage feature flags"""
+    """Feature-flag compatibility shim"""
     script_args = []
     if args.action:
         script_args.append(args.action)
@@ -522,20 +590,23 @@ def cmd_flag(args):
     return run_script('flag-manage', script_args)
 
 def cmd_schedule(args):
-    """Manage release schedules"""
+    """Epic scheduler compatibility shim during runtime transition"""
     script_args = []
     if args.action:
         script_args.append(args.action)
-    if args.release_date:
-        script_args.extend(['--date', args.release_date])
-    if args.features:
-        script_args.extend(['--features', args.features])
+    if args.epic:
+        script_args.append(args.epic)
+    if args.agent:
+        script_args.extend(['--agent', args.agent])
+    if args.reason:
+        script_args.extend(['--reason', args.reason])
+    if args.json:
+        script_args.append('--json')
     return run_script('schedule-manage', script_args)
 
 def cmd_scheduler_assign(args):
     """Assign epic to agent (max 1 epic per agent)"""
-    script_args = [args.epic, args.agent]
-    return run_script('scheduler-assign', script_args)
+    return run_script('schedule-manage', ['assign', args.epic, '--agent', args.agent])
 
 def cmd_scheduler_list(args):
     """List all epics with state and WIP utilization"""
@@ -544,16 +615,15 @@ def cmd_scheduler_list(args):
         script_args.append('--json')
 
     if args.json:
-        stdout, code = run_script('scheduler-list', script_args, capture=True)
+        stdout, code = run_script('schedule-manage', ['list', *script_args], capture=True)
         print(stdout, end='')
         return code
     else:
-        return run_script('scheduler-list', script_args)
+        return run_script('schedule-manage', ['list', *script_args])
 
 def cmd_scheduler_park(args):
     """Park blocked epic and release WIP slot"""
-    script_args = [args.epic, args.reason]
-    return run_script('scheduler-park', script_args)
+    return run_script('schedule-manage', ['park', args.epic, '--reason', args.reason])
 
 # Quality Gates & Metrics
 
@@ -575,7 +645,7 @@ def cmd_gate(args):
         return run_script('gate-check', script_args)
 
 def cmd_metrics(args):
-    """Track HEART metrics"""
+    """Metrics compatibility shim"""
     script_args = []
     if args.metric_type:
         script_args.append(args.metric_type)
@@ -592,7 +662,7 @@ def cmd_metrics(args):
         return run_script('metrics-track', script_args)
 
 def cmd_metrics_dora(args):
-    """Calculate DORA metrics (Deployment Frequency, Lead Time, CFR, MTTR)"""
+    """DORA metrics compatibility shim"""
     script_args = []
     if args.since:
         script_args.extend(['--since', args.since])
@@ -658,23 +728,39 @@ Examples:
     plan_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # preview
-    preview_parser = subparsers.add_parser('preview', help='Manual UI/UX testing and backend validation')
+    preview_parser = subparsers.add_parser(
+        'preview',
+        help='Preview compatibility shim (shared runtime not shipped here)',
+        description='Direct shared /preview execution is not shipped in this checkout. The shim only performs compatibility preflight.',
+    )
     preview_parser.add_argument('feature', nargs='?', help='Feature slug (optional, auto-detected if in feature dir)')
     preview_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # validate
-    validate_parser = subparsers.add_parser('validate', help='Cross-artifact consistency analysis')
+    validate_parser = subparsers.add_parser(
+        'validate',
+        help='Validation compatibility shim (preflight only here)',
+        description='Direct shared /validate execution is not shipped in this checkout. The shim only performs compatibility preflight.',
+    )
     validate_parser.add_argument('feature', nargs='?', help='Feature slug (optional, auto-detected if in feature dir)')
     validate_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # tasks
-    tasks_parser = subparsers.add_parser('tasks', help='Generate concrete TDD tasks from design artifacts')
+    tasks_parser = subparsers.add_parser(
+        'tasks',
+        help='Task-generation compatibility shim (adapter-owned here)',
+        description='Direct shared /tasks generation is not shipped in this checkout. The shim only performs compatibility preflight.',
+    )
     tasks_parser.add_argument('feature', nargs='?', help='Feature slug (optional, auto-detected if in feature dir)')
     tasks_parser.add_argument('--ui-first', action='store_true', help='Generate HTML mockups before implementation')
     tasks_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # implement
-    implement_parser = subparsers.add_parser('implement', help='Execute tasks with TDD and parallel execution')
+    implement_parser = subparsers.add_parser(
+        'implement',
+        help='Implementation compatibility shim (preflight only here)',
+        description='Direct shared /implement execution is not shipped in this checkout. The shim only performs compatibility preflight.',
+    )
     implement_parser.add_argument('feature', nargs='?', help='Feature slug (optional, auto-detected if in feature dir)')
     implement_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
@@ -747,17 +833,29 @@ Examples:
     branch_parser = subparsers.add_parser('branch-enforce', help='Enforce branch naming')
 
     # contract-bump
-    bump_parser = subparsers.add_parser('contract-bump', help='Bump API contract version')
+    bump_parser = subparsers.add_parser(
+        'contract-bump',
+        help='Contract-governance compatibility shim (not shipped here)',
+        description='Planned contract-governance surface. No shared script is shipped in this checkout.',
+    )
     bump_parser.add_argument('--type', required=True, choices=['major', 'minor', 'patch'],
                             help='Version bump type')
     bump_parser.add_argument('--file', help='Contract file path')
 
     # contract-verify
-    verify_parser = subparsers.add_parser('contract-verify', help='Verify API contract compatibility')
+    verify_parser = subparsers.add_parser(
+        'contract-verify',
+        help='Contract-governance compatibility shim (not shipped here)',
+        description='Planned contract-governance surface. No shared script is shipped in this checkout.',
+    )
     verify_parser.add_argument('--baseline', help='Baseline contract version')
 
     # fixture-refresh
-    fixture_parser = subparsers.add_parser('fixture-refresh', help='Regenerate golden test fixtures from OpenAPI schemas')
+    fixture_parser = subparsers.add_parser(
+        'fixture-refresh',
+        help='Fixture refresh compatibility shim (not shipped here)',
+        description='Planned fixture-refresh surface. No shared script is shipped in this checkout.',
+    )
     fixture_parser.add_argument('--contract', help='Contract version to use')
     fixture_parser.add_argument('--output', help='Output directory for fixtures')
 
@@ -808,42 +906,67 @@ Examples:
     # Epic & Sprint Management
 
     # epic
-    epic_parser = subparsers.add_parser('epic', help='Manage epic groupings')
-    epic_parser.add_argument('action', nargs='?', choices=['create', 'list', 'close'], help='Epic action')
-    epic_parser.add_argument('--name', dest='epic_name', help='Epic name')
+    epic_parser = subparsers.add_parser('epic', help='Run shared epic engine operations')
+    epic_parser.add_argument('action', nargs='?', choices=['create', 'list', 'progress', 'auto-assign', 'list-sprint'], help='Epic action')
+    epic_parser.add_argument('target', nargs='?', help='Epic description or identifier, depending on action')
+    epic_parser.add_argument('--name', '--epic', dest='epic_name', help='Epic name or slug')
     epic_parser.add_argument('--description', help='Epic description')
+    epic_parser.add_argument('--sprint', dest='sprint_label', help='Sprint label (e.g. S01)')
+    epic_parser.add_argument('--json', action='store_true', help='Output JSON when supported')
 
     # sprint
     sprint_parser = subparsers.add_parser('sprint', help='Manage sprint cycles')
-    sprint_parser.add_argument('action', nargs='?', choices=['start', 'plan', 'close'], help='Sprint action')
+    sprint_parser.add_argument('action', nargs='?', choices=['start', 'end', 'status'], help='Sprint action')
     sprint_parser.add_argument('--sprint', dest='sprint_num', type=int, help='Sprint number')
     sprint_parser.add_argument('--features', help='Comma-separated feature slugs')
 
     # Feature Flags & Scheduling
 
     # flag
-    flag_parser = subparsers.add_parser('flag', help='Manage feature flags')
+    flag_parser = subparsers.add_parser(
+        'flag',
+        help='Feature-flag compatibility shim (not shipped here)',
+        description='Planned feature-flag surface. No shared script is shipped in this checkout.',
+    )
     flag_parser.add_argument('action', nargs='?', choices=['create', 'toggle', 'list'], help='Flag action')
     flag_parser.add_argument('--flag', dest='flag_name', help='Flag name')
     flag_parser.add_argument('--enabled', type=bool, help='Enable/disable flag')
 
     # schedule
-    schedule_parser = subparsers.add_parser('schedule', help='Manage release schedules')
-    schedule_parser.add_argument('action', nargs='?', choices=['plan', 'update', 'list'], help='Schedule action')
-    schedule_parser.add_argument('--date', dest='release_date', help='Release date (YYYY-MM-DD)')
-    schedule_parser.add_argument('--features', help='Comma-separated feature slugs')
+    schedule_parser = subparsers.add_parser(
+        'schedule',
+        help='Epic scheduler compatibility shim (planned)',
+        description='Planned scheduler surface. The shared scheduler runtime is not shipped in this checkout.',
+    )
+    schedule_parser.add_argument('action', nargs='?', choices=['assign', 'list', 'park'], help='Scheduler action')
+    schedule_parser.add_argument('epic', nargs='?', help='Epic ID or slug')
+    schedule_parser.add_argument('--agent', help='Agent name for assignment')
+    schedule_parser.add_argument('--reason', help='Reason for parking or scheduler note')
+    schedule_parser.add_argument('--json', action='store_true', help='Output JSON when supported')
 
     # scheduler-assign
-    scheduler_assign_parser = subparsers.add_parser('scheduler-assign', help='Assign epic to agent (max 1 epic per agent)')
+    scheduler_assign_parser = subparsers.add_parser(
+        'scheduler-assign',
+        help='Planned scheduler shim for epic assignment',
+        description='Planned scheduler surface. The shared scheduler runtime is not shipped in this checkout.',
+    )
     scheduler_assign_parser.add_argument('epic', help='Epic ID or slug')
     scheduler_assign_parser.add_argument('agent', help='Agent name (backend/frontend/database/etc)')
 
     # scheduler-list
-    scheduler_list_parser = subparsers.add_parser('scheduler-list', help='List all epics with state and WIP utilization')
+    scheduler_list_parser = subparsers.add_parser(
+        'scheduler-list',
+        help='Planned scheduler shim for epic listing',
+        description='Planned scheduler surface. The shared scheduler runtime is not shipped in this checkout.',
+    )
     scheduler_list_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # scheduler-park
-    scheduler_park_parser = subparsers.add_parser('scheduler-park', help='Park blocked epic and release WIP slot')
+    scheduler_park_parser = subparsers.add_parser(
+        'scheduler-park',
+        help='Planned scheduler shim for parked epics',
+        description='Planned scheduler surface. The shared scheduler runtime is not shipped in this checkout.',
+    )
     scheduler_park_parser.add_argument('epic', help='Epic ID or slug')
     scheduler_park_parser.add_argument('reason', help='Reason for parking (e.g., "blocked by infrastructure")')
 
@@ -856,13 +979,21 @@ Examples:
     gate_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # metrics
-    metrics_parser = subparsers.add_parser('metrics', help='Track HEART metrics')
+    metrics_parser = subparsers.add_parser(
+        'metrics',
+        help='Metrics compatibility shim (not shipped here)',
+        description='Planned metrics surface. No shared script is shipped in this checkout.',
+    )
     metrics_parser.add_argument('metric_type', nargs='?', choices=['happiness', 'engagement', 'adoption', 'retention', 'task-success'], help='Metric type')
     metrics_parser.add_argument('--period', choices=['daily', 'weekly', 'monthly'], help='Time period')
     metrics_parser.add_argument('--json', action='store_true', help='Output as JSON')
 
     # metrics-dora
-    dora_parser = subparsers.add_parser('metrics-dora', help='Calculate DORA metrics (Deployment Frequency, Lead Time, CFR, MTTR)')
+    dora_parser = subparsers.add_parser(
+        'metrics-dora',
+        help='DORA metrics compatibility shim (not shipped here)',
+        description='Planned DORA metrics surface. No shared script is shipped in this checkout.',
+    )
     dora_parser.add_argument('--since', help='Start date for analysis (YYYY-MM-DD, default: 90 days ago)')
     dora_parser.add_argument('--output', help='Output file path (default: .spec-flow/reports/dora-report.md)')
     dora_parser.add_argument('--json', action='store_true', help='Output as JSON')

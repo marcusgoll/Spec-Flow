@@ -12,6 +12,11 @@ updated: 2025-11-20
 
 **Command**: `/epic [epic description | slug | continue | next] [--auto | --interactive | --no-input]`
 
+**Runtime ownership note**: Epic workflow semantics and state belong to the
+shared canon. This command is currently a Codex adapter surface while epic
+runtime behavior converges on the same shared ownership model as the rest of
+Spec-Flow.
+
 **Flags**:
 
 - `--auto`: Run in auto mode - bypass all interactive prompts except critical blockers (CI failures, security issues, deployment errors)
@@ -1121,7 +1126,7 @@ Code quality: ${QUALITY_SCORE}/100
 
 All quality gates passed
 
-Next: /preview (if needed) or /ship
+Next: local preview (if needed) or /ship
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
@@ -1141,13 +1146,14 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 - Small epic (≤2 sprints, no UI changes) → Auto-skip preview
 - Major epic (>2 sprints OR UI changes) → Require manual preview
 
-**If preview required:**
+**If local preview is required:**
 
 ```bash
+# Use installed /preview only if your adapter ships it
 /preview
 ```
 
-**The /preview phase will:**
+**The local preview step will:**
 
 1. Run AI pre-flight checks:
    - Accessibility scan (automated)

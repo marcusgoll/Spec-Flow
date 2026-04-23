@@ -13,11 +13,13 @@ import subprocess
 import sys
 import json
 import argparse
+import shlex
 from pathlib import Path
 from typing import List, Tuple, Dict
 
 # CLI path
 SPEC_CLI = Path(__file__).parent / 'spec-cli.py'
+PYTHON = sys.executable or 'python3'
 
 # Test commands organized by category
 TEST_COMMANDS = {
@@ -93,12 +95,11 @@ def run_test(command: str, expected_desc: str, verbose: bool = False) -> Tuple[b
     Returns:
         (success, stdout, stderr)
     """
-    full_cmd = f"python {SPEC_CLI} {command}"
+    full_cmd = [PYTHON, str(SPEC_CLI), *shlex.split(command)]
 
     try:
         result = subprocess.run(
             full_cmd,
-            shell=True,
             capture_output=True,
             text=True,
             timeout=10,

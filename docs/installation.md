@@ -20,8 +20,8 @@ This guide provides detailed, platform-specific installation instructions for Sp
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/spec-flow-workflow-kit.git
-cd spec-flow-workflow-kit
+git clone https://github.com/marcusgoll/Spec-Flow.git
+cd Spec-Flow
 
 # Copy settings
 cp .claude/settings.example.json .claude/settings.local.json
@@ -112,8 +112,8 @@ python --version
 cd C:\Projects
 
 # Clone the repository
-git clone https://github.com/your-org/spec-flow-workflow-kit.git
-cd spec-flow-workflow-kit
+git clone https://github.com/marcusgoll/Spec-Flow.git
+cd Spec-Flow
 ```
 
 #### 6. Optional: Install GitHub CLI
@@ -184,8 +184,8 @@ python3 --version
 cd ~/Projects
 
 # Clone the repository
-git clone https://github.com/your-org/spec-flow-workflow-kit.git
-cd spec-flow-workflow-kit
+git clone https://github.com/marcusgoll/Spec-Flow.git
+cd Spec-Flow
 ```
 
 #### 7. Optional: Install GitHub CLI
@@ -278,8 +278,8 @@ python3 --version
 cd ~/projects
 
 # Clone the repository
-git clone https://github.com/your-org/spec-flow-workflow-kit.git
-cd spec-flow-workflow-kit
+git clone https://github.com/marcusgoll/Spec-Flow.git
+cd Spec-Flow
 ```
 
 ## Post-Installation Setup
@@ -339,7 +339,7 @@ chmod +x .spec-flow/scripts/bash/*.sh
 Your repository should have:
 
 ```
-spec-flow-workflow-kit/
+Spec-Flow/
 ├── .claude/
 │   ├── agents/
 │   ├── commands/
@@ -380,7 +380,9 @@ pwsh -File .spec-flow/scripts/powershell/roadmap-init.ps1
 .spec-flow/scripts/bash/roadmap-init.sh
 ```
 
-This creates `.spec-flow/memory/roadmap.md` for tracking features.
+This creates `.spec-flow/memory/roadmap.md` as an optional legacy markdown
+roadmap seed. The primary shipped roadmap surface is GitHub Issues via
+`npx spec-flow setup-roadmap` and the installed `/roadmap` workflow command.
 
 ## Verification
 
@@ -477,7 +479,8 @@ claude --version
 Once installation is verified:
 
 1. **Read the Getting Started guide**: [getting-started.md](getting-started.md)
-2. **Explore the example feature**: `specs/001-example-feature/`
+2. **Explore the checked-in example docs**:
+   `docs/examples/flightpro-sample-project/`
 3. **Customize templates**: Edit files in `.spec-flow/templates/`
 4. **Update your constitution**: Tailor `.spec-flow/memory/constitution.md` to your project
 
@@ -486,7 +489,7 @@ Once installation is verified:
 To update to the latest version:
 
 ```bash
-cd spec-flow-workflow-kit
+cd Spec-Flow
 git pull origin main
 ```
 
@@ -501,7 +504,7 @@ To remove Spec-Flow:
 cd ..
 
 # Remove the repository
-rm -rf spec-flow-workflow-kit
+rm -rf Spec-Flow
 
 # Optionally, remove PowerShell (if installed only for Spec-Flow)
 # Windows: winget uninstall Microsoft.PowerShell
@@ -514,7 +517,7 @@ rm -rf spec-flow-workflow-kit
 If you encounter issues not covered here:
 
 - **Troubleshooting Guide**: [troubleshooting.md](troubleshooting.md)
-- **GitHub Issues**: [Report a bug](https://github.com/your-org/spec-flow-workflow-kit/issues)
-- **Discussions**: [Ask a question](https://github.com/your-org/spec-flow-workflow-kit/discussions)
+- **GitHub Issues**: [Report a bug](https://github.com/marcusgoll/Spec-Flow/issues)
+- **Repository**: [Spec-Flow on GitHub](https://github.com/marcusgoll/Spec-Flow)
 
 Happy building! 🚀

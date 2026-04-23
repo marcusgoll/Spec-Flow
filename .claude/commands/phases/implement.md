@@ -884,7 +884,7 @@ Next: /optimize (recommended)
 
 Recommended next steps:
   1. /optimize - Production readiness validation (performance, security, accessibility)
-  2. /preview - Manual UI/UX testing before shipping
+  2. Local preview - Manual UI/UX testing before shipping (use installed /preview only if your adapter ships it)
 ```
 
 **If tests fail:**

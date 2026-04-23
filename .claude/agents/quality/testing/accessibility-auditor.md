@@ -339,13 +339,13 @@ When auditing, always assume this is production-bound code that must meet legal 
 </example>
 
 <example type="proactive_preview_audit">
-**Context**: User approaching /preview gate after implementation.
+**Context**: User approaching local preview after implementation.
 
-**User**: "All implementation tasks are done. Should we run /preview now?"
+**User**: "All implementation tasks are done. Should we run local preview now?"
 
 **Action**: Proactively launch accessibility-auditor before manual testing
 
-**Rationale**: Catch accessibility issues before manual testing begins, preventing rework during /preview phase
+**Rationale**: Catch accessibility issues before manual testing begins, preventing rework during local preview
 
 **Scope**: Scan all modified UI components and pages in this feature
 

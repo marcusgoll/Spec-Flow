@@ -1074,6 +1074,6 @@ All subsequent commands will reference your project docs, ensuring consistency a
 
 Found a bug or have a suggestion?
 
-**GitHub Issues**: https://github.com/anthropics/claude-code/issues
+**GitHub Issues**: https://github.com/marcusgoll/Spec-Flow/issues
 
-**Discussions**: https://github.com/anthropics/claude-code/discussions
+**Repository**: https://github.com/marcusgoll/Spec-Flow

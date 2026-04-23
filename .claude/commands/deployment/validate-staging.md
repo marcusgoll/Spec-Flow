@@ -360,7 +360,7 @@ Validation report: {path}
 
 ```
 /feature → /clarify → /plan → /tasks → /validate → /implement →
-/optimize → /preview → /ship-staging → **/validate-staging** → /ship-prod
+/optimize → local preview (optional) → /ship-staging → **/validate-staging** → /ship-prod
 ```
 
 **Manual gate behavior**:
@@ -410,7 +410,7 @@ Normal to iterate 2-3 times on staging validation. The workflow supports:
 
 - `/ship-staging` - Deploy to staging environment (run before this command)
 - `/ship-prod` - Deploy to production (run after validation passes)
-- `/preview` - Local testing (recommended before staging)
+- `Local preview` - Recommended before staging; use installed `/preview` only if your adapter ships it
 - `/optimize` - Quality gates (recommended before shipping)
 
 **Integration with /ship-prod:**

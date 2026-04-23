@@ -233,7 +233,7 @@ Open Claude Code in your project directory and run:
 
 Claude will help you:
 
-- Add feature ideas to `.spec-flow/memory/roadmap.md`
+- Add feature ideas to your GitHub Issues roadmap
 - Prioritize using ICE scoring (Impact × Confidence ÷ Effort)
 - Organize features: Backlog → Next → In Progress → Shipped
 

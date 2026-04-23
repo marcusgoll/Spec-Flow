@@ -188,7 +188,7 @@ ls -la .spec-flow/scripts/bash/*.sh
 
 ```bash
 # Ensure you're in the repository root
-cd /path/to/spec-flow-workflow-kit
+cd /path/to/Spec-Flow
 pwd  # Verify you're in the right place
 ```
 
@@ -253,9 +253,9 @@ git config --global core.autocrlf true   # Windows
 
 ---
 
-### "Slash command not found" (/spec-flow, /plan, etc.)
+### "Slash command not found" (/spec, /plan, etc.)
 
-**Symptom**: Typing `/spec-flow` in Claude Code does nothing or shows error.
+**Symptom**: Typing `/spec` in Claude Code does nothing or shows error.
 
 **Cause**: Slash commands are not registered or Claude Code is not in the correct directory.
 
@@ -265,7 +265,7 @@ git config --global core.autocrlf true   # Windows
 
    ```bash
    ls .claude/commands/
-   # Should show: spec-flow.md, plan.md, tasks.md, etc.
+   # Should show: commands for spec, plan, tasks, implement, etc.
    ```
 
 2. **Restart Claude Code** - Commands are loaded on startup
@@ -324,13 +324,13 @@ pwsh -File .spec-flow/scripts/powershell/calculate-tokens.ps1 `
 
 **Symptom**: Running `/plan` or other commands fails because no feature directory exists.
 
-**Cause**: You haven't run `/spec-flow` to create the feature directory structure.
+**Cause**: You haven't run `/spec` to create the feature directory structure.
 
 **Solution**:
 
 ```bash
 # In Claude Code
-/spec-flow "Your feature name"
+/spec "Your feature name"
 
 # This creates specs/NNN-feature-name/ with all required files
 ```
@@ -346,7 +346,7 @@ ls specs/
 
 ### "Critical issues found in analysis" - workflow pauses
 
-**Symptom**: `/analyze` finds critical issues and stops progression.
+**Symptom**: `/validate` finds critical issues and stops progression.
 
 **Cause**: Inconsistencies between spec, plan, and tasks that need resolution.
 
@@ -363,7 +363,7 @@ ls specs/
 3. **Re-run analysis**:
 
    ```bash
-   /analyze
+   /validate
    ```
 
 4. **Continue workflow**:
@@ -411,7 +411,7 @@ ls specs/
 4. **Re-create feature** if files are corrupt:
 
    ```bash
-   /spec-flow "Feature name"
+   /spec "Feature name"
    ```
 
 ---
@@ -433,7 +433,7 @@ Ensure NOTES.md has checkpoints in this format:
 - **2025-10-03 11:30** - Phase 2: Tasks breakdown complete
 ```
 
-**Automatic**: Claude Code adds checkpoints when you use `/spec-flow`, `/plan`, `/tasks`, etc.
+**Automatic**: Claude Code adds checkpoints when you use `/spec`, `/plan`, `/tasks`, etc.
 
 **Manual**: Add checkpoints yourself when making significant progress.
 
@@ -518,7 +518,7 @@ git checkout 001-feature-name
 
 ```bash
 # In Claude Code
-/spec-flow "Feature name v2"
+/spec "Feature name v2"
 # Creates specs/002-feature-name-v2/
 ```
 
@@ -691,18 +691,18 @@ If your issue isn't covered here:
 
 ### 1. Search Existing Issues
 
-[GitHub Issues](https://github.com/your-org/spec-flow-workflow-kit/issues?q=is%3Aissue)
+[GitHub Issues](https://github.com/marcusgoll/Spec-Flow/issues?q=is%3Aissue)
 
-### 2. Check Discussions
-
-[GitHub Discussions](https://github.com/your-org/spec-flow-workflow-kit/discussions)
-
-### 3. Review Documentation
+### 2. Review Documentation
 
 - [Installation Guide](installation.md)
 - [Getting Started](getting-started.md)
 - [Architecture Overview](architecture.md)
 - [Command Reference](commands.md)
+
+### 3. Review the Source Repository
+
+[Spec-Flow on GitHub](https://github.com/marcusgoll/Spec-Flow)
 
 ### 4. Enable Debug Logging
 
@@ -777,7 +777,7 @@ uname -a  # or systeminfo on Windows
 ### 6. Community Support
 
 - **Discussions**: Ask questions and share tips
-- **Examples**: Browse `specs/001-example-feature/` for reference
+- **Examples**: Browse `docs/examples/flightpro-sample-project/` for reference
 - **Contributing**: Submit PRs to improve documentation
 
 ---

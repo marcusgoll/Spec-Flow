@@ -176,7 +176,7 @@ Code quality: $QUALITY_SCORE/100
 
 All quality gates passed
 
-Next: /preview (if needed) or /ship"
+Next: local preview (if needed) or /ship"
     ;;
 
   preview)

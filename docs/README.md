@@ -14,7 +14,7 @@ New to Spec-Flow? Start here:
 
 ### Workflow & Commands
 
-- [Commands Reference](commands.md) - All 46 slash commands
+- [Commands Reference](commands.md) - Public installed workflow commands
 - [Architecture](architecture.md) - How Spec-Flow is structured
 - [Configuration](configuration.md) - Customize your workflow
 
@@ -33,7 +33,6 @@ New to Spec-Flow? Start here:
 ### Security & Best Practices
 
 - [Security Guidelines](security-guidelines.md) - Keep your code secure
-- [CLI Usage](spec-cli-usage.md) - Using the spec-cli.py interface
 
 ### Help & Support
 
@@ -62,4 +61,9 @@ Found an issue or want to improve the docs? See [CONTRIBUTING.md](../CONTRIBUTIN
 
 ## Internal Documentation
 
-If you're contributing to Spec-Flow itself, see `.spec-flow/docs/internal/` for workflow implementation details.
+If you're contributing to Spec-Flow itself, see `.spec-flow/docs/internal/` for
+workflow implementation details.
+
+`spec-cli.py` is part of the shared execution engine, not a primary public
+operator surface. Maintainers can find the engine guide at
+`.spec-flow/docs/internal/spec-cli-usage.md`.

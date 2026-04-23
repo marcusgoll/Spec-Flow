@@ -1,9 +1,12 @@
 # Slash Commands Reference
 
 **Location**: `.claude/commands/`
-**Purpose**: Executable slash command specifications for the Spec-Flow workflow
+**Purpose**: Claude adapter surfaces for the Spec-Flow workflow
 
-All commands can be invoked via `/command-name` in Claude Code. Each command is self-contained with embedded bash/PowerShell scripts.
+All commands can be invoked via `/command-name` in Claude Code. These files are
+primarily adapter surfaces over the shared execution engine in
+`.spec-flow/scripts/`, with tool-specific instructions where Claude requires
+them.
 
 ---
 
@@ -35,7 +38,7 @@ All commands can be invoked via `/command-name` in Claude Code. Each command is 
 | `/implement` | Execute tasks with TDD, anti-duplication checks | ✅ Stable | v2.0 | ✅ Done |
 | `/validate` | Cross-artifact consistency analysis | ✅ Stable | - | ⏳ Needs v2.0 |
 | `/optimize` | Production readiness validation (perf, security, a11y) | ✅ Stable | v2.0 | ✅ Done |
-| `/preview` | Manual UI/UX testing on local dev server | ✅ Stable | - | ⏳ Needs v2.0 |
+| `/preview` | Manual UI/UX testing on local dev server | ⚠️ Not shipped here | - | Compatibility shim only |
 | `/finalize` | Workflow completion, artifact archival, roadmap update | ✅ Stable | - | ⏳ Needs v2.0 |
 | `/debug` | Debug errors and update error-log.md | ✅ Stable | - | ⏳ Needs v2.0 |
 
@@ -74,16 +77,19 @@ All commands can be invoked via `/command-name` in Claude Code. Each command is 
 
 ### Infrastructure Commands
 
+Planned surfaces only. These infrastructure command files are not shipped in
+this checkout.
+
 **API contracts, feature flags, test fixtures**
 
 | Command | Description | Status | Version | Refactor |
 |---------|-------------|--------|---------|----------|
-| `/contract-bump` | Bump API contract version (producer changes) | 🚧 Beta | - | ⏳ Needs v2.0 |
-| `/contract-verify` | Verify API contract compatibility (consumer check) | 🚧 Beta | - | ⏳ Needs v2.0 |
-| `/flag-add` | Add feature flag (release toggle) | 🚧 Beta | - | ⏳ Needs v2.0 |
-| `/flag-list` | List active feature flags | 🚧 Beta | - | ⏳ Needs v2.0 |
-| `/flag-cleanup` | Remove expired/merged feature flags | 🚧 Beta | - | ⏳ Needs v2.0 |
-| `/fixture-refresh` | Refresh test fixtures from production | 🚧 Beta | - | ⏳ Needs v2.0 |
+| `/contract-bump` | Planned contract-governance surface | 📝 Planned | - | Not shipped in this checkout |
+| `/contract-verify` | Planned contract-governance surface | 📝 Planned | - | Not shipped in this checkout |
+| `/flag-add` | Planned feature-flag creation surface | 📝 Planned | - | Not shipped in this checkout |
+| `/flag-list` | Planned feature-flag inventory surface | 📝 Planned | - | Not shipped in this checkout |
+| `/flag-cleanup` | Planned feature-flag cleanup surface | 📝 Planned | - | Not shipped in this checkout |
+| `/fixture-refresh` | Planned fixture refresh surface | 📝 Planned | - | Not shipped in this checkout |
 
 ---
 
@@ -103,12 +109,15 @@ All commands can be invoked via `/command-name` in Claude Code. Each command is 
 
 ### Metrics & Monitoring
 
+Planned surfaces only. These metric command files are not shipped in this
+checkout.
+
 **Performance tracking, DORA metrics**
 
 | Command | Description | Status | Version | Refactor |
 |---------|-------------|--------|---------|----------|
-| `/metrics` | Measure HEART metrics (local sources, Lighthouse) | ✅ Stable | - | ⏳ Needs v2.0 |
-| `/metrics-dora` | Calculate DORA metrics (deployment frequency, lead time, MTTR, CFR) | 🚧 Beta | - | ⏳ Needs v2.0 |
+| `/metrics` | Planned HEART metrics surface | 📝 Planned | - | Not shipped in this checkout |
+| `/metrics-dora` | Planned DORA metrics surface | 📝 Planned | - | Not shipped in this checkout |
 
 ---
 
@@ -125,13 +134,16 @@ All commands can be invoked via `/command-name` in Claude Code. Each command is 
 
 ### Task Scheduling
 
+Planned surfaces only. These scheduler commands and files are not shipped in
+this checkout.
+
 **Workload management across features**
 
 | Command | Description | Status | Version | Refactor |
 |---------|-------------|--------|---------|----------|
-| `/scheduler-assign` | Assign task to feature based on capacity | 🚧 Beta | - | ⏳ Needs v2.0 |
-| `/scheduler-list` | List all scheduled tasks across features | 🚧 Beta | - | ⏳ Needs v2.0 |
-| `/scheduler-park` | Park feature when blocked (free up capacity) | 🚧 Beta | - | ⏳ Needs v2.0 |
+| `/scheduler-assign` | Planned epic-to-agent assignment surface | 📝 Planned | - | Not shipped in this checkout |
+| `/scheduler-list` | Planned scheduler inventory surface | 📝 Planned | - | Not shipped in this checkout |
+| `/scheduler-park` | Planned blocked-epic parking surface | 📝 Planned | - | Not shipped in this checkout |
 
 ---
 
@@ -226,13 +238,8 @@ Commands marked "Needs v2.0" should be refactored to include:
 │   ├── gate-sec.md
 │   └── fix-ci.md
 │
-├── infrastructure/         (6 commands)
-│   ├── contract-bump.md
-│   ├── contract-verify.md
-│   ├── flag-add.md
-│   ├── flag-list.md
-│   ├── flag-cleanup.md
-│   └── fixture-refresh.md
+├── infrastructure/         (planned, not shipped here)
+│   └── [no infrastructure command files in this checkout]
 │
 ├── project/                (5 commands)
 │   ├── init-project.md
@@ -241,18 +248,15 @@ Commands marked "Needs v2.0" should be refactored to include:
 │   ├── update-project-config.md
 │   └── init-brand-tokens.md
 │
-├── metrics/                (2 commands)
-│   ├── metrics.md
-│   └── metrics-dora.md
+├── metrics/                (planned, not shipped here)
+│   └── [no metrics command files in this checkout]
 │
 ├── build/                  (2 commands)
 │   ├── build-local.md
 │   └── branch-enforce.md
 │
-├── scheduling/             (3 commands)
-│   ├── scheduler-assign.md
-│   ├── scheduler-list.md
-│   └── scheduler-park.md
+├── scheduling/             (planned, not shipped here)
+│   └── [no scheduler command files in this checkout]
 │
 └── internal/               (1 command)
     └── release.md
@@ -310,7 +314,7 @@ Commands marked "Needs v2.0" should be refactored to include:
 /implement
 /validate                  # Cross-artifact consistency check
 /optimize                  # Quality gates
-/preview                   # Manual testing
+# /preview                 # Optional local/manual preview if your adapter ships it
 /ship                      # Deploy
 ```
 
@@ -381,4 +385,4 @@ internal: true  # Optional: mark as internal-only
 
 **Last Updated**: 2025-11-10
 **Commands**: 46 total (11 refactored to v2.0, 35 pending)
-**Next Priority**: Refactor phase commands (`/validate`, `/preview`, `/finalize`)
+**Next Priority**: Refactor `/validate` and `/finalize`, and either restore or remove the `/preview` adapter surface

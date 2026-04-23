@@ -72,13 +72,14 @@ Cross-artifact consistency analysis to validate implementation readiness.
 
 ### Step 1: Execute Validation Workflow
 
-1. **Execute validation workflow** via spec-cli.py:
+1. **Execute the validation workflow process in this command**. In this checkout,
+   direct `spec-cli.py validate` is only a compatibility preflight shim:
 
    ```bash
    python .spec-flow/scripts/spec-cli.py validate "$ARGUMENTS"
    ```
 
-   The validate-workflow.sh script performs:
+   The installed workflow command performs:
    a. **Prerequisite validation** — Runs check-prerequisites.sh with --require-tasks flag
    b. **Load artifacts** — Reads spec.md, plan.md, tasks.md, engineering-principles.md
    c. **Run 6 detection passes**:
@@ -286,7 +287,7 @@ See `.claude/skills/analysis-phase/references/reference.md` for structured reaso
   </standards>
 
 <notes>
-**Script location**: `.spec-flow/scripts/bash/validate-workflow.sh`
+**Shared-engine note**: `.spec-flow/scripts/bash/validate-workflow.sh` is only a compatibility preflight shim in this checkout. The command process above remains authoritative.
 
 **Reference documentation**: Anti-hallucination rules, reasoning approach, detection passes (6 types), severity assessment criteria, report structure, validation modes (full, quick, constitution-only), and all detailed procedures are in `.claude/skills/analysis-phase/references/reference.md`.
 

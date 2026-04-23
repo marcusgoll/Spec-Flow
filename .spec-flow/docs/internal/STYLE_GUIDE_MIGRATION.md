@@ -704,4 +704,4 @@ npm run design-lint
 
 **Questions?** See [FAQ](#faq) or check the full documentation in `CLAUDE.md` (v3.0.0 section).
 
-**Feedback?** Report issues at [github.com/anthropics/claude-code/issues](https://github.com/anthropics/claude-code/issues)
+**Feedback?** Report issues at [github.com/marcusgoll/Spec-Flow/issues](https://github.com/marcusgoll/Spec-Flow/issues)

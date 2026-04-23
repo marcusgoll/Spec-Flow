@@ -4,40 +4,8 @@ Generate PowerShell wrappers for bash-only scripts.
 
 Usage: python generate-ps-wrappers.py
 """
+import re
 from pathlib import Path
-
-# List of bash-only scripts that need PowerShell wrappers
-BASH_ONLY_SCRIPTS = [
-    # Core workflow scripts (22)
-    "branch-enforce",
-    "clarify-workflow",
-    "contract-bump",
-    "contract-verify",
-    "debug-workflow",
-    "design-health-check",
-    "detect-infrastructure-needs",
-    "feature-workflow",
-    "fixture-refresh",
-    "implement-workflow",
-    "metrics-track",
-    "dora-calculate",
-    "optimize-workflow",
-    "plan-workflow",
-    "preview-workflow",
-    "scheduler-assign",
-    "scheduler-list",
-    "scheduler-park",
-    "ship-finalization",
-    "ship-prod-workflow",
-    "tasks-workflow",
-    "validate-workflow",
-    # New wrapper scripts (5)
-    "flag-manage",
-    "gate-check",
-    "schedule-manage",
-    "deps-manage",
-    "sprint-manage",
-]
 
 WRAPPER_TEMPLATE = '''#!/usr/bin/env pwsh
 #
@@ -85,28 +53,34 @@ try {{
 }}
 '''
 
+def discover_bash_only_scripts(script_dir: Path):
+    """Discover bash-backed spec-cli commands that still need PowerShell wrappers."""
+    spec_cli = script_dir / 'spec-cli.py'
+    bash_dir = script_dir / 'bash'
+    powershell_dir = script_dir / 'powershell'
+
+    script_names = sorted(set(re.findall(r"run_script\('([^']+)'", spec_cli.read_text(encoding='utf-8'))))
+    return [
+        script_name
+        for script_name in script_names
+        if (bash_dir / f'{script_name}.sh').exists()
+        and not (powershell_dir / f'{script_name}.ps1').exists()
+    ]
+
 def generate_wrappers():
     """Generate PowerShell wrappers for all bash-only scripts."""
     script_dir = Path(__file__).parent
     powershell_dir = script_dir / 'powershell'
-    bash_dir = script_dir / 'bash'
+    wrapper_targets = discover_bash_only_scripts(script_dir)
 
-    print("Generating PowerShell wrappers for bash-only scripts...")
+    print("Generating PowerShell wrappers for bash-backed spec-cli commands...")
     print()
 
     created = 0
     skipped = 0
-    errors = 0
 
-    for script_name in BASH_ONLY_SCRIPTS:
-        bash_script = bash_dir / f'{script_name}.sh'
+    for script_name in wrapper_targets:
         ps_script = powershell_dir / f'{script_name}.ps1'
-
-        # Check if bash script exists
-        if not bash_script.exists():
-            print(f"[SKIP] {script_name} (bash script not found)")
-            errors += 1
-            continue
 
         # Check if PowerShell wrapper already exists
         if ps_script.exists():
@@ -126,14 +100,11 @@ def generate_wrappers():
     print("=" * 60)
     print(f"Created: {created}")
     print(f"Skipped (already exists): {skipped}")
-    print(f"Errors (bash script missing): {errors}")
-    print(f"Total: {len(BASH_ONLY_SCRIPTS)}")
+    print(f"Total candidates: {len(wrapper_targets)}")
     print()
 
     if created > 0:
         print(f"[SUCCESS] Generated {created} PowerShell wrappers successfully!")
-    if errors > 0:
-        print(f"[WARNING] {errors} bash scripts not found - wrappers not created")
 
 if __name__ == '__main__':
     generate_wrappers()

@@ -1026,7 +1026,7 @@ See `.claude/skills/task-breakdown-phase/reference.md` for task structure guidel
 <notes>
 **Self-sufficient execution**: This command generates tasks.md directly using the instructions in the `<process>` section. No external scripts are required.
 
-**Optional script**: The bash implementation at `.spec-flow/scripts/bash/tasks-workflow.sh` provides validation utilities but task generation happens via Claude following the process steps above.
+**Optional script**: `.spec-flow/scripts/bash/tasks-workflow.sh` is only a compatibility preflight shim in this checkout. Task generation still happens in the installed workflow command above.
 
 **Reference documentation**: Anti-hallucination rules, epic sprint breakdown (9 steps), multi-screen mockup workflow, TDD sequencing, and all detailed procedures are in `.claude/skills/task-breakdown-phase/reference.md`.
 

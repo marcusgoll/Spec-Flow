@@ -66,3 +66,4 @@ function Get-ProjectType {
 # Execute detection and output result
 Get-ProjectType
 
+

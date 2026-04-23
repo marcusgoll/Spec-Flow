@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 #
-# ship-finalization.ps1 - PowerShell wrapper for ship-finalization.sh
+# finalize-workflow.ps1 - PowerShell wrapper for finalize-workflow.sh
 #
 # Purpose: Enable bash script to be called from Windows PowerShell
 # Requirement: Git Bash must be installed and 'bash' must be in PATH
@@ -14,7 +14,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # Path to the bash script (relative to this PowerShell script)
-$bashScript = Join-Path $PSScriptRoot "..\bash\ship-finalization.sh"
+$bashScript = Join-Path $PSScriptRoot "..\bash\finalize-workflow.sh"
 
 # Verify bash is available
 $bashCommand = Get-Command bash -ErrorAction SilentlyContinue
@@ -43,5 +43,4 @@ catch {
     Write-Error "Error executing bash script: $_"
     exit 1
 }
-
 

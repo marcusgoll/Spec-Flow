@@ -1,6 +1,6 @@
 ---
 name: release-manager
-description: Prepares production releases with comprehensive notes, upgrade guides, rollback procedures, and deployment metadata. Use after /optimize or /preview phases when ready to ship, or when manual release preparation needed. Triggers after optimize, preview, staging validation, implementation complete.
+description: Prepares production releases with comprehensive notes, upgrade guides, rollback procedures, and deployment metadata. Use after /optimize or local preview when ready to ship, or when manual release preparation is needed. Triggers after optimize, local preview, staging validation, implementation complete.
 tools: Read, Grep, Glob, Bash, Write, SlashCommand, AskUserQuestion
 model: sonnet # Complex reasoning required for breaking change analysis and release preparation
 ---

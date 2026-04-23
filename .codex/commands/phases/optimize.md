@@ -334,7 +334,7 @@ fi
 
    f. **Deploy hygiene**: Warns if artifact strategy missing from plan.md
 
-   g. **Final decision**: PASS (ready for /preview) or FAIL (fix blockers first)
+   g. **Final decision**: PASS (ready for local preview or staging) or FAIL (fix blockers first)
 
 2. **Review optimization results** from generated files:
 
@@ -400,7 +400,7 @@ Before completing, verify:
 - Each result file has Status: PASSED/FAILED/SKIPPED
 - Auto-retry attempts logged for fixable failures
 - Blockers are clearly identified with severity (CRITICAL, HIGH, MEDIUM, LOW)
-- User knows exact next action (fix blockers or proceed to /preview)
+- User knows exact next action (fix blockers or proceed to local preview or staging)
 - Script exit code matches result (0 = passed, 1 = failed)
 - Epic workflows: E2E tests, contracts, load tests (if applicable), migration integrity all checked
 </verification>
@@ -623,7 +623,7 @@ Fix Dockerfile and re-run /optimize
 **If passed**:
 ```
 
-Next: /preview
+Next: local preview or /ship-staging
 
 Manual UI/UX testing and backend validation before shipping
 
