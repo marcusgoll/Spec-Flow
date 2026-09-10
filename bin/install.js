@@ -230,11 +230,23 @@ async function install(options) {
       verbose
     });
 
-    // 3) root docs
+    // 3) Codex support files referenced by the installed prompt adapters
+    // ponytail: existing Codex assets stay unchanged; add ownership tracking only if automatic refresh is needed.
+    await installDir({
+      source: path.join(packageRoot, '.codex'),
+      dest: path.join(targetDir, '.codex'),
+      label: 'Installing missing .codex files (existing files preserved)...',
+      preserveMemory: false,
+      conflictStrategy: STRATEGIES.SKIP,
+      excludeDirectories,
+      verbose
+    });
+
+    // 4) root docs
     const docActions = await installDocs({ packageRoot, targetDir, conflictStrategy, verbose });
     conflictActions.push(...docActions);
 
-    // 4) GitHub workflows
+    // 5) GitHub workflows
     const workflowActions = await installWorkflows({ packageRoot, targetDir, conflictStrategy, verbose });
     conflictActions.push(...workflowActions);
 

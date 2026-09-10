@@ -33,6 +33,7 @@ const BUILD_CONFIG = {
   // Essential patterns to include
   include: [
     '.claude/**',
+    '.codex/**',
     '.spec-flow/memory/**',
     '.spec-flow/scripts/**/*.sh',
     '.spec-flow/scripts/**/*.ps1',
@@ -72,6 +73,11 @@ const BUILD_CONFIG = {
 
   // Core files that must exist in dist
   requiredFiles: [
+    '.codex/commands/core/feature.md',
+    '.codex/commands/phases/plan.md',
+    '.codex/commands/phases/validate.md',
+    '.codex/commands/CODEX_COMPATIBILITY.md',
+    '.codex/skills/test-skill-call.js',
     '.claude/commands/core/feature.md',
     '.claude/commands/core/epic.md',
     '.claude/commands/core/implement-epic.md',
@@ -159,6 +165,9 @@ function copyDirectory(src, dest, options = {}) {
 function shouldExclude(filePath, excludePatterns) {
   // Normalize path to use forward slashes for consistent pattern matching
   const normalizedPath = filePath.replace(/\\/g, '/');
+
+  // This historical name belongs to the Codex runtime loader, not a test.
+  if (normalizedPath === '.codex/skills/test-skill-call.js') return false;
 
   // Check if path contains node_modules directory
   if (normalizedPath.includes('node_modules')) {
@@ -379,6 +388,13 @@ function copyEssentialFiles() {
   totalCopied += copyDirectory(
     path.join(BUILD_CONFIG.sourceDir, '.claude'),
     path.join(BUILD_CONFIG.distDir, '.claude'),
+    { exclude: BUILD_CONFIG.exclude }
+  );
+
+  console.log('  Copying .codex/...');
+  totalCopied += copyDirectory(
+    path.join(BUILD_CONFIG.sourceDir, '.codex'),
+    path.join(BUILD_CONFIG.distDir, '.codex'),
     { exclude: BUILD_CONFIG.exclude }
   );
 

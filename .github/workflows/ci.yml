@@ -8,6 +8,22 @@ on:
   workflow_dispatch:
 
 jobs:
+  validate-package:
+    name: Validate Package (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Install dependencies without lifecycle scripts
+        run: npm install --ignore-scripts --no-package-lock --no-audit --no-fund
+      - name: Test the packaged installer
+        run: npm run test:package
+
   # Validate PowerShell scripts
   validate-powershell:
     name: Validate PowerShell Scripts
@@ -270,6 +286,7 @@ jobs:
     name: All Checks Passed
     runs-on: ubuntu-latest
     needs:
+      - validate-package
       - validate-powershell
       - validate-bash
       - validate-markdown

@@ -121,6 +121,10 @@ that explain how Spec-Flow is installed and used.
 
 ## Flagged Ambiguities
 
+The [intent-led execution decision](.spec-flow/docs/internal/intent-led-execution.md) records
+the accepted modernization direction and its bounded installation trial. Existing installed
+workflow contracts remain in force until a separately verified migration changes them.
+
 - `README.md`, `docs/architecture.md`, `.spec-flow/repo-map.yaml`, and `AGENTS.md` currently mix source-repo structure with installed consumer-project structure
 - Several documented directories are absent in this checkout and appear to describe downstream or example layouts rather than current source-repo layout
 - The docs still need a clean distinction between packaged installer commands and installed slash command assets
