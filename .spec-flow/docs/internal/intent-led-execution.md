@@ -56,6 +56,7 @@ semantics. Gemini, other CI failures, and model migrations remain outside this r
 - `scripts/test-package.js`: integration check through a packed archive and the public installer.
 - `package.json`: expose the package integration check as `npm run test:package`.
 - `.github/workflows/ci.yml`: run the package check on Windows and Linux.
+- `.github/workflows/auto-fix-ci.yml`: skip automatic formatting on draft PRs so review scope stays stable.
 - `scripts/build-dist.js`: include Codex assets and validate essential adapter files.
 - `bin/install-codex-prompts.js`: read packaged nested command assets; reject name collisions
   before writes; omit reference docs and the source-repo-only root validation command.
@@ -104,3 +105,15 @@ used separate readline sessions before this change.
 
 These results establish package and installer behavior. They do not establish successful
 end-to-end workflow execution, a native-skill migration, or superiority over another agent.
+
+### Hosted trial and automation recovery
+
+The package checks passed on both hosted Windows and Linux runners for commit `529bcbd`.
+Existing Quality Gates failed at Node setup because no dependency lockfile is tracked, followed
+by failures to post PR comments. The packaging PR remains draft pending separate CI repair.
+
+Opening that draft triggered the existing auto-format workflow, which pushed 62 unrelated
+PowerShell whitespace edits even though cancellation was requested before its commit step.
+The bot commit was reversed without rewriting history, and its job now skips draft pull requests.
+Manual workflow dispatch and non-draft pull requests retain the existing behavior. The restored
+PowerShell tree was compared byte-for-byte through Git against the tested implementation commit.
