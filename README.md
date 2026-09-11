@@ -46,7 +46,7 @@ That's it. Spec-Flow handles the rest: writing specs, planning architecture, bre
 npx spec-flow init
 ```
 
-This copies workflow files directly into your project (`.claude/`, `.spec-flow/`, `CLAUDE.md`). No dependency is added to your `package.json` — Spec-Flow becomes part of your codebase.
+This copies workflow files directly into your project (`.claude/`, `.codex/`, `.spec-flow/`, `CLAUDE.md`). No dependency is added to your `package.json` — Spec-Flow becomes part of your codebase.
 
 `npx spec-flow ...` is the installer and maintenance CLI. After installation,
 you use the installed workflow commands such as `/feature`, `/plan`, and
@@ -260,6 +260,26 @@ your-project/
 └── docs/
     └── project/          # Project documentation
 ```
+
+## Using the Codex prompt adapters
+
+Run `npx spec-flow init` (or `update`) in your project to install the supporting workflow files,
+then run `npx spec-flow install-codex-prompts`. The latter installs the packaged public commands
+into `$CODEX_HOME/prompts`, or `~/.codex/prompts` when `CODEX_HOME` is unset. It works from any
+directory; it does not load commands from that directory.
+
+Project `.codex` files are added only when missing, regardless of the install conflict strategy.
+Existing guidance and customized commands are preserved. Updates do not refresh those existing
+files; back up and remove an individual file before rerunning `update` to replace it deliberately.
+
+Use `--dry-run` to inspect the files first. Existing prompts require confirmation before
+replacement; `--force` explicitly allows replacement. Nested commands are flattened by filename.
+Reference documents and maintainer-only commands are excluded; conflicting names stop installation
+before any writes.
+
+These are the existing prompt adapters, not a native-skill migration or a new autonomous engine.
+Several direct shared-engine phases remain compatibility-only; see the
+[shared engine reference](.spec-flow/docs/internal/spec-cli-usage.md) for their current limits.
 
 ## Using with Gemini CLI
 

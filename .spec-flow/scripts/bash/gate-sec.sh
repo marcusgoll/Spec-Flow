@@ -7,7 +7,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || cd "$SCRIPT_DIR/../../.." && pwd)"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || (cd "$SCRIPT_DIR/../../.." && pwd))"
 WORKFLOW_STATE="$REPO_ROOT/.spec-flow/memory/state.yaml"
 
 # Colors
@@ -92,15 +92,17 @@ run_sast_semgrep() {
   fi
 
   local semgrep_output
-  if semgrep_output=$(semgrep --config=auto --json . 2>&1); then
+  if semgrep_output=$(semgrep --config=auto --json .); then
+    printf '%s\n' "$semgrep_output" > semgrep-results.json
     # Parse results
-    local error_count=0
-    if command_exists jq; then
-      error_count=$(echo "$semgrep_output" | jq '[.results[] | select(.extra.severity == "ERROR" or .extra.severity == "CRITICAL")] | length' 2>/dev/null || echo "0")
+    local error_count
+    if ! error_count=$(echo "$semgrep_output" | jq -e '[.results[] | select(.extra.severity == "ERROR" or .extra.severity == "HIGH" or .extra.severity == "CRITICAL")] | length'); then
+      log_error "Cannot read SAST results"
+      return 1
     fi
 
     if [[ "$VERBOSE" == true ]]; then
-      echo "$semgrep_output" | jq -r '.results[] | select(.extra.severity == "ERROR" or .extra.severity == "CRITICAL") | "\(.path):\(.start.line) - \(.extra.message)"' 2>/dev/null || true
+      echo "$semgrep_output" | jq -r '.results[] | select(.extra.severity == "ERROR" or .extra.severity == "HIGH" or .extra.severity == "CRITICAL") | "\(.path):\(.start.line) - \(.extra.message)"'
     fi
 
     if [[ $error_count -gt 0 ]]; then

@@ -240,7 +240,7 @@ program
 // Install Codex prompts command
 program
   .command('install-codex-prompts')
-  .description('Copy .codex/commands/*.md into your Codex prompts directory')
+  .description('Install packaged Codex workflow commands into your Codex prompts directory')
   .option('-f, --force', 'Overwrite existing prompts without confirmation')
   .option('--dry-run', 'Show what would change without copying files')
   .action(async (options) => {

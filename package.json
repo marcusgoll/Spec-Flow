@@ -32,6 +32,8 @@
   ],
   "scripts": {
     "build": "node scripts/build-dist.js",
+    "test": "npm run test:package",
+    "test:package": "node scripts/test-package.js",
     "prepublishOnly": "npm run build",
     "postinstall": "node bin/postinstall.js",
     "setup:roadmap": "node bin/setup-roadmap.js",

@@ -24,12 +24,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: hashFiles('contracts/**') != ''
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
+        if: hashFiles('contracts/**') != ''
         run: |
           npm ci
           # Install Pact CLI if not in package.json
@@ -41,6 +43,7 @@ jobs:
           fi
 
       - name: Install tooling (jq, yq)
+        if: hashFiles('contracts/**') != ''
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
@@ -48,6 +51,7 @@ jobs:
           sudo chmod +x /usr/local/bin/yq
 
       - name: Start provider services
+        if: hashFiles('contracts/**') != ''
         run: |
           # Start backend API in test mode
           if [ -f "package.json" ] && grep -q "test:api" package.json; then
@@ -69,9 +73,14 @@ jobs:
           fi
 
       - name: Run contract verification
+        if: hashFiles('contracts/**') != ''
         run: |
           chmod +x .spec-flow/scripts/bash/contract-verify.sh
           .spec-flow/scripts/bash/contract-verify.sh
+
+      - name: Report absent contracts
+        if: hashFiles('contracts/**') == ''
+        run: echo 'No contracts in this repository; contract verification is not applicable.' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Stop provider services
         if: always()
@@ -100,24 +109,24 @@ jobs:
               repo: context.repo.repo,
               body: `## ❌ Contract Verification Failed
 
-One or more consumer contracts were violated by this PR.
+            One or more consumer contracts were violated by this PR.
 
-**What this means:**
-- This PR introduces breaking changes to API contracts
-- Existing consumers expect behavior that this PR no longer provides
+            **What this means:**
+            - This PR introduces breaking changes to API contracts
+            - Existing consumers expect behavior that this PR no longer provides
 
-**Next Steps:**
-1. Review the [verification logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
-2. Either:
-   - Fix the contract violations
-   - Coordinate with consumers to update their pacts
-   - Document this as a breaking change (requires RFC for major version bump)
+            **Next Steps:**
+            1. Review the [verification logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            2. Either:
+               - Fix the contract violations
+               - Coordinate with consumers to update their pacts
+               - Document this as a breaking change (requires RFC for major version bump)
 
-**References:**
-- [Contract Governance Guide](contracts/README.md)
-- [Breaking Change Policy](docs/contract-governance.md)
+            **References:**
+            - [Contract Governance Guide](contracts/README.md)
+            - [Breaking Change Policy](docs/contract-governance.md)
 
-Run \`/contract.verify --verbose\` locally to see detailed violations.
+            Run \`/contract.verify --verbose\` locally to see detailed violations.
               `
             })
 
@@ -190,13 +199,14 @@ Run \`/contract.verify --verbose\` locally to see detailed violations.
         env:
           PACT_BROKER_URL: ${{ secrets.PACT_BROKER_URL }}
           PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+          PACT_BRANCH: ${{ github.ref_name }}
         run: |
           if command -v pact-broker &> /dev/null; then
             pact-broker publish contracts/pacts/ \
               --consumer-app-version=$(git rev-parse HEAD) \
-              --branch=${{ github.ref_name }} \
-              --broker-base-url=$PACT_BROKER_URL \
-              --broker-token=$PACT_BROKER_TOKEN
+              --branch="$PACT_BRANCH" \
+              --broker-base-url="$PACT_BROKER_URL" \
+              --broker-token="$PACT_BROKER_TOKEN"
             echo "✅ Pacts published to broker"
           else
             echo "⚠️ pact-broker CLI not available - skipping publish"
