@@ -22,7 +22,7 @@ try {
     'pack', '--ignore-scripts', '--json', '--pack-destination', scratch]));
   assert(packed.files.some(file => file.path === 'dist/.codex/commands/core/feature.md'),
     'The npm package must include the Codex feature command');
-  execFileSync('tar', ['-xzf', path.join(scratch, packed.filename), '-C', scratch]);
+  execFileSync('tar', ['-xzf', packed.filename], { cwd: scratch });
 
   const packageDir = path.join(scratch, 'package');
   const cli = path.join(packageDir, 'bin', 'cli.js');

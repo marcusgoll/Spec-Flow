@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - '.spec-flow/memory/feature-flags.yaml'
+      - '.github/workflows/flag-linter.yml'
   push:
     branches:
       - main
@@ -37,42 +38,26 @@ jobs:
       - name: Check for expired flags (>7 days)
         id: check_expired
         run: |
-          chmod +x .spec-flow/scripts/bash/flag-list.sh
+          EXPIRED=false
+          CRITICAL=false
+          NOW=$(date +%s)
+          FLAG_COUNT=$(yq eval '(.flags // []) | length' .spec-flow/memory/feature-flags.yaml)
 
-          # List expired flags
-          if .spec-flow/scripts/bash/flag-list.sh --expired; then
-            echo "expired=false" >> $GITHUB_OUTPUT
-          else
-            echo "expired=true" >> $GITHUB_OUTPUT
-
-            # Get count and details
-            EXPIRED_COUNT=$(yq eval '[.flags[] | select(.status == "active")] | length' .spec-flow/memory/feature-flags.yaml 2>/dev/null || echo 0)
-
-            # Check age of expired flags
-            NOW=$(date +%s)
-            CRITICAL=false
-
-            if command -v yq &> /dev/null; then
-              FLAG_COUNT=$(yq eval '.flags | length' .spec-flow/memory/feature-flags.yaml 2>/dev/null || echo 0)
-
-              for ((i=0; i<FLAG_COUNT; i++)); do
-                STATUS=$(yq eval ".flags[$i].status" .spec-flow/memory/feature-flags.yaml)
-                EXPIRES=$(yq eval ".flags[$i].expires" .spec-flow/memory/feature-flags.yaml)
-
-                if [[ "$STATUS" == "active" ]]; then
-                  EXPIRES_TS=$(date -d "$EXPIRES" +%s 2>/dev/null || echo 0)
-                  DAYS_EXPIRED=$(( (NOW - EXPIRES_TS) / 86400 ))
-
-                  if [[ $DAYS_EXPIRED -gt 7 ]]; then
-                    CRITICAL=true
-                    break
-                  fi
-                fi
-              done
+          for ((i=0; i<FLAG_COUNT; i++)); do
+            STATUS=$(yq eval ".flags[$i].status" .spec-flow/memory/feature-flags.yaml)
+            [[ "$STATUS" == "active" ]] || continue
+            EXPIRES=$(yq eval ".flags[$i].expires" .spec-flow/memory/feature-flags.yaml)
+            EXPIRES_TS=$(date -d "$EXPIRES" +%s)
+            if (( EXPIRES_TS < NOW )); then
+              EXPIRED=true
+              if (( (NOW - EXPIRES_TS) / 86400 > 7 )); then
+                CRITICAL=true
+              fi
             fi
+          done
 
-            echo "critical=$CRITICAL" >> $GITHUB_OUTPUT
-          fi
+          echo "expired=$EXPIRED" >> "$GITHUB_OUTPUT"
+          echo "critical=$CRITICAL" >> "$GITHUB_OUTPUT"
 
       - name: Create issue for expired flags
         if: steps.check_expired.outputs.expired == 'true' && github.event_name == 'schedule'
@@ -116,20 +101,20 @@ jobs:
                 issue_number: issues.data[0].number,
                 body: `## 🚨 Flag Debt Update
 
-${expiredFlags.length} expired flags detected:
+            ${expiredFlags.length} expired flags detected:
 
-${expiredFlags.join('\n')}
+            ${expiredFlags.join('\n')}
 
-**Action Required**: Clean up flags immediately
-\`\`\`bash
-/flag.list --expired
-/flag.cleanup <flag-name>
-\`\`\`
+            **Action Required**: Clean up flags immediately
+            \`\`\`bash
+            /flag.list --expired
+            /flag.cleanup <flag-name>
+            \`\`\`
 
-**References**:
-- [Feature Flag Guide](docs/feature-flags.md)
-- [Trunk-Based Development](docs/trunk-based-development.md)
-`
+            **References**:
+            - [Feature Flag Guide](docs/feature-flags.md)
+            - [Trunk-Based Development](docs/trunk-based-development.md)
+            `
               });
             } else {
               // Create new issue
@@ -140,46 +125,46 @@ ${expiredFlags.join('\n')}
                 labels: ['flag-debt', 'tech-debt'],
                 body: `## Feature Flag Debt Alert
 
-${expiredFlags.length} feature flags have expired and need cleanup:
+            ${expiredFlags.length} feature flags have expired and need cleanup:
 
-${expiredFlags.join('\n')}
+            ${expiredFlags.join('\n')}
 
-## Why This Matters
+            ## Why This Matters
 
-Feature flags are temporary. Expired flags indicate:
-- Work may be complete but flag not removed
-- Flag debt accumulating
-- Code complexity increasing
+            Feature flags are temporary. Expired flags indicate:
+            - Work may be complete but flag not removed
+            - Flag debt accumulating
+            - Code complexity increasing
 
-## Action Required
+            ## Action Required
 
-Clean up each flag:
+            Clean up each flag:
 
-\`\`\`bash
-# List expired flags
-/flag.list --expired
+            \`\`\`bash
+            # List expired flags
+            /flag.list --expired
 
-# Clean up each flag
-/flag.cleanup flag_name --verify
+            # Clean up each flag
+            /flag.cleanup flag_name --verify
 
-# Commit cleanup
-git commit -m "refactor: remove expired flags"
-\`\`\`
+            # Commit cleanup
+            git commit -m "refactor: remove expired flags"
+            \`\`\`
 
-## Prevention
+            ## Prevention
 
-- Remove flags when work completes
-- Set realistic expiry dates
-- Review flags weekly
+            - Remove flags when work completes
+            - Set realistic expiry dates
+            - Review flags weekly
 
-**References**:
-- [Feature Flag Management](docs/feature-flags.md)
-- [Trunk-Based Development](docs/trunk-based-development.md)
+            **References**:
+            - [Feature Flag Management](docs/feature-flags.md)
+            - [Trunk-Based Development](docs/trunk-based-development.md)
 
----
+            ---
 
-🤖 This issue was automatically created by the Flag Linter workflow.
-`
+            🤖 This issue was automatically created by the Flag Linter workflow.
+            `
               });
             }
 

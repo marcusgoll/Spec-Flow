@@ -117,3 +117,18 @@ PowerShell whitespace edits even though cancellation was requested before its co
 The bot commit was reversed without rewriting history, and its job now skips draft pull requests.
 Manual workflow dispatch and non-draft pull requests retain the existing behavior. The restored
 PowerShell tree was compared byte-for-byte through Git against the tested implementation commit.
+
+### Authorized CI continuation
+
+Marcus instructed autonomous continuation to resolve the remaining checks and integrate the PR.
+Commit disposition remains required. Repair the missing dependency lockfile, connect `npm test`
+to the existing package check, correct gate project discovery, and fail on unreadable SAST
+results. Use GitHub job summaries for gate failures instead of requiring PR-comment permission.
+Repair the malformed contract/flag workflow YAML and enforce YAML parsing in CI. Contract
+verification is not applicable when this toolkit has no contracts; expired flags are checked
+directly with the workflow's existing yq logic, preserving its whole-day threshold.
+
+The lockfile absence, incorrect gate root, invalid workflow YAML, and unreadable SAST false pass
+were reproduced before their respective fixes. Validate the packed installer, gate regression
+check, command-help suite, dependency audit, and hosted workflows before merging. No phase
+migration, new model policy, npm release, or security-check suppression is part of this continuation.

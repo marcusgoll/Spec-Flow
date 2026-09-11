@@ -27,7 +27,7 @@ jobs:
         if: hashFiles('package.json') != ''
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "24"
           cache: "npm"
 
       - name: Setup Python
@@ -39,7 +39,13 @@ jobs:
 
       - name: Install dependencies (Node.js)
         if: hashFiles('package.json') != ''
-        run: npm ci
+        run: npm ci --ignore-scripts
+
+      - name: Test quality gate regressions
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          python scripts/test-quality-gates.py
 
       - name: Install dependencies (Python)
         if: hashFiles('requirements.txt') != ''
@@ -62,17 +68,9 @@ jobs:
             test-results/
             junit.xml
 
-      - name: Comment on PR (failure)
-        if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `## ❌ CI Quality Gate Failed\n\nOne or more CI checks failed:\n\n- Tests\n- Linters\n- Type checks\n- Coverage\n\nPlease review the workflow logs and fix the issues before merging.`
-            });
+      - name: Summarize CI failure
+        if: failure()
+        run: echo 'CI quality gate failed. Review the failed steps before merging.' >> "$GITHUB_STEP_SUMMARY"
 
   security-gate:
     name: Security Quality Gate
@@ -92,15 +90,17 @@ jobs:
 
       - name: Install git-secrets
         run: |
-          git clone https://github.com/awslabs/git-secrets.git
-          cd git-secrets
-          sudo make install
+          sudo apt-get update
+          sudo apt-get install -y jq
+          git clone --depth 1 https://github.com/awslabs/git-secrets.git "$RUNNER_TEMP/git-secrets"
+          sudo make -C "$RUNNER_TEMP/git-secrets" install
+          git secrets --register-aws
 
       - name: Setup Node.js (for npm audit)
         if: hashFiles('package.json') != ''
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "24"
           cache: "npm"
 
       - name: Install pip-audit (Python projects)
@@ -121,17 +121,9 @@ jobs:
             semgrep-results.json
             security-report.txt
 
-      - name: Comment on PR (failure)
-        if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `## ❌ Security Quality Gate Failed\n\nOne or more security checks failed:\n\n- SAST (Static Analysis)\n- Secrets detection\n- Dependency vulnerabilities\n\nPlease review the workflow logs and fix the security issues before merging.\n\n**Critical**: HIGH and CRITICAL severity issues must be resolved.`
-            });
+      - name: Summarize security failure
+        if: failure()
+        run: echo 'Security quality gate failed. Review SAST, secrets, and dependency findings before merging.' >> "$GITHUB_STEP_SUMMARY"
 
   gate-summary:
     name: Quality Gates Summary
@@ -159,15 +151,7 @@ jobs:
               summary += 'Epic remains in Review state until all gates pass.\n';
             }
 
-            // Post summary as PR comment
-            if (context.eventName === 'pull_request') {
-              github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: summary
-              });
-            }
+            await core.summary.addRaw(summary).write();
 
             // Fail workflow if any gate failed
             if (ciResult !== 'success' || secResult !== 'success') {

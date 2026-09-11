@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: '24'
       - name: Install dependencies without lifecycle scripts
-        run: npm install --ignore-scripts --no-package-lock --no-audit --no-fund
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Test the packaged installer
         run: npm run test:package
 
@@ -179,6 +179,7 @@ jobs:
 
       - name: Run yamllint
         run: |
+          python -c "from pathlib import Path; import yaml; [yaml.safe_load(p.read_text()) for p in Path('.github').rglob('*.yml')]"
           yamllint .github/ || true
           echo "ℹ️ YAML linting complete"
 
