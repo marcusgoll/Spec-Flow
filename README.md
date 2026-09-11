@@ -15,6 +15,9 @@
     <a href="https://github.com/marcusgoll/Spec-Flow/stargazers">
       <img src="https://img.shields.io/github/stars/marcusgoll/Spec-Flow?style=social" alt="GitHub Stars">
     </a>
+    <a href="https://github.com/ithiria894/awesome-claude-code-workflows">
+      <img src="https://awesome.re/mentioned-badge.svg" alt="Mentioned in awesome-claude-code-workflows">
+    </a>
   </p>
 </div>
 
