@@ -22,6 +22,20 @@ with tempfile.TemporaryDirectory(prefix="spec-flow-gates-") as temporary:
     nested.mkdir()
     subprocess.run(["git", "init", "--quiet", str(project)], check=True)
 
+    workflow = (root / ".github/workflows/quality-gates.yml").read_text(encoding="utf-8")
+    state_diff = workflow.split("if git diff --quiet", 1)[1].split("; then", 1)[0]
+    state = project / ".spec-flow/memory/state.yaml"
+    for scenario, expected in (("absent", 0), ("unchanged", 0), ("modified", 1)):
+        if scenario == "unchanged":
+            state.parent.mkdir(parents=True)
+            state.write_text("epic_mode: false\n")
+            subprocess.run(["git", "add", str(state)], cwd=project, check=True)
+        elif scenario == "modified":
+            state.write_text("epic_mode: true\n")
+        result = subprocess.run([bash, "-c", "git diff --quiet" + state_diff],
+                                cwd=project, capture_output=True, text=True, timeout=10)
+        assert result.returncode == expected, (scenario, result.stderr)
+
     for name in ("gate-ci.sh", "gate-sec.sh"):
         # Load the actual definitions without starting external checks or writing state.
         source = (root / ".spec-flow/scripts/bash" / name).read_text(encoding="utf-8")
@@ -114,4 +128,4 @@ yq() {
             assert result.returncode == 0, result.stderr
             assert output.read_text().strip() == "ref=" + expected
 
-print("PASS: gate discovery, SAST parsing, flag expiry, and safe publish refs")
+print("PASS: optional epic state, gate discovery, SAST parsing, flag expiry, and safe publish refs")

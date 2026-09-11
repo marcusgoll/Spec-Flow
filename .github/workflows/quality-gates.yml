@@ -203,7 +203,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          if git diff --quiet .spec-flow/memory/state.yaml; then
+          if git diff --quiet -- .spec-flow/memory/state.yaml; then
             echo "No state changes to commit"
           else
             git add .spec-flow/memory/state.yaml
