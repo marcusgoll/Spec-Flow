@@ -22,14 +22,13 @@ jobs:
       - name: Resolve publish ref
         id: publish_ref
         shell: bash
+        env:
+          PUBLISH_REF: ${{ github.event.inputs.publish_ref }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          TRIGGER_REF: ${{ github.ref }}
         run: |
-          ref="${{ github.event.inputs.publish_ref }}"
-          if [ -z "$ref" ]; then
-            ref="${{ github.event.release.tag_name }}"
-          fi
-          if [ -z "$ref" ]; then
-            ref="${{ github.ref }}"
-          fi
+          ref="${PUBLISH_REF:-${RELEASE_TAG:-$TRIGGER_REF}}"
+          git check-ref-format "refs/heads/$ref"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
           echo "Publishing ref: $ref"
 

@@ -199,13 +199,14 @@ jobs:
         env:
           PACT_BROKER_URL: ${{ secrets.PACT_BROKER_URL }}
           PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+          PACT_BRANCH: ${{ github.ref_name }}
         run: |
           if command -v pact-broker &> /dev/null; then
             pact-broker publish contracts/pacts/ \
               --consumer-app-version=$(git rev-parse HEAD) \
-              --branch=${{ github.ref_name }} \
-              --broker-base-url=$PACT_BROKER_URL \
-              --broker-token=$PACT_BROKER_TOKEN
+              --branch="$PACT_BRANCH" \
+              --broker-base-url="$PACT_BROKER_URL" \
+              --broker-token="$PACT_BROKER_TOKEN"
             echo "✅ Pacts published to broker"
           else
             echo "⚠️ pact-broker CLI not available - skipping publish"

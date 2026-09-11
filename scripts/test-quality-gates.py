@@ -89,4 +89,29 @@ yq() {
         values = dict(line.split("=") for line in output.read_text().splitlines())
         assert (values["expired"], values["critical"]) == expected, values
 
-print("PASS: gate project discovery, unreadable SAST rejection, and flag expiry checks")
+    workflow = (root / ".github/workflows/publish-packages.yml").read_text(encoding="utf-8")
+    resolve_ref = textwrap.dedent(workflow.split("- name: Resolve publish ref\n", 1)[1]
+                                 .split("run: |\n", 1)[1].split("\n      - name:", 1)[0])
+    for supplied, release, trigger, expected in (
+        ("feature/example", "v1.0.0", "refs/heads/main", "feature/example"),
+        ("", "v1.0.0", "refs/heads/main", "v1.0.0"),
+        ("", "", "refs/heads/main", "refs/heads/main"),
+        ("$(touch owned)", "", "refs/heads/main", None),
+        ("main\nref=other", "", "refs/heads/main", None),
+    ):
+        output.write_text("")
+        result = subprocess.run([bash, "-c", "set -euo pipefail\n" + resolve_ref],
+                                cwd=project, capture_output=True, text=True,
+                                encoding="utf-8", timeout=10,
+                                env={**os.environ, "PUBLISH_REF": supplied,
+                                     "RELEASE_TAG": release, "TRIGGER_REF": trigger,
+                                     "GITHUB_OUTPUT": output.as_posix()})
+        assert not (project / "owned").exists(), "Publish ref must never execute shell input"
+        if expected is None:
+            assert result.returncode != 0
+            assert output.read_text() == ""
+        else:
+            assert result.returncode == 0, result.stderr
+            assert output.read_text().strip() == "ref=" + expected
+
+print("PASS: gate discovery, SAST parsing, flag expiry, and safe publish refs")
