@@ -2,6 +2,15 @@
 
 ---
 
+## [11.9.2] - 2026-09-10
+
+### Fixed
+
+- Include Codex commands and support assets in the npm package and install nested commands from the installed package.
+- Preserve existing project Codex guidance during initialization and updates; reject duplicate prompt names before writing.
+- Restore CI and security verification, including dependency locking, workflow parsing, security-result validation, and optional epic-state handling.
+- Validate packaged installation on Windows and Linux, including directories with spaces and prompt overwrite choices.
+
 ## [11.9.1] - 2026-04-23
 
 ### ✨ Added
