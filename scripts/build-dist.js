@@ -30,24 +30,6 @@ const BUILD_CONFIG = {
   distDir: path.join(process.cwd(), 'dist'),
   maxSizeMB: 10,
 
-  // Essential patterns to include
-  include: [
-    '.claude/**',
-    '.codex/**',
-    '.spec-flow/memory/**',
-    '.spec-flow/scripts/**/*.sh',
-    '.spec-flow/scripts/**/*.ps1',
-    '.spec-flow/scripts/**/*.py',
-    '.spec-flow/scripts/**/*.mjs',
-    '.spec-flow/templates/**',
-    'package.json',
-    'README.md',
-    'CHANGELOG.md',
-    'LICENSE',
-    'CLAUDE.md',
-    '.gitignore'
-  ],
-
   // Excluded patterns (beta/dev files)
   exclude: [
     '**/*contract*',
@@ -121,7 +103,7 @@ const BUILD_CONFIG = {
  * Recursively copy directory with pattern filtering
  */
 function copyDirectory(src, dest, options = {}) {
-  const { include = [], exclude = [] } = options;
+  const { exclude = [] } = options;
 
   if (!fs.existsSync(dest)) {
     fs.mkdirSync(dest, { recursive: true });
